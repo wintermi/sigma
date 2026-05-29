@@ -7,6 +7,7 @@ package openai_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -51,6 +52,7 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	providerID := sigma.ProviderID("responses-payload-test")
 	model := responsesTestModel(providerID)
 	client := responsesTestClient(t, providerID, model, server.URL, openai.WithHeader("X-Provider", "provider"))
+	parallelToolCalls := false
 
 	final, err := client.Complete(
 		context.Background(),
@@ -62,21 +64,21 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 		sigma.WithHeader("X-Custom", "custom"),
 		sigma.WithMetadataValue("trace", "abc"),
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
-			ReasoningEffort:  sigma.ThinkingLevelHigh,
-			ReasoningSummary: "auto",
-			ServiceTier:      "default",
+			ReasoningEffort:      sigma.ThinkingLevelHigh,
+			ReasoningSummary:     "auto",
+			ServiceTier:          "default",
+			ToolChoice:           "auto",
+			PromptCacheRetention: "24h",
+			ParallelToolCalls:    &parallelToolCalls,
+			TextVerbosity:        "low",
 		}),
 		sigma.WithProviderOptions(providerID, map[string]any{
 			"session_id_header": "X-Session-ID",
 			"store":             false,
 			"include":           []any{"reasoning.encrypted_content"},
 			"text":              map[string]any{"format": map[string]any{"type": "text"}},
-			"tool_choice":       "auto",
 			"truncation":        "auto",
 			"prompt_cache_key":  "cache-key",
-			"extra_body": map[string]any{
-				"parallel_tool_calls": false,
-			},
 		}),
 	)
 	if err != nil {
@@ -96,6 +98,116 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "resp_prev")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
+}
+
+func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-replay-id-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	foreignItemID := strings.Repeat("foreign/item+", 8)
+	toolCallID := "call_foreign|" + foreignItemID
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserText("continue"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.Text("first"),
+					sigma.Text("second"),
+					sigma.Thinking("prior reasoning", ""),
+					sigma.ToolCallBlock(toolCallID, "lookup", map[string]any{"query": "weather"}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: toolCallID,
+				Content: []sigma.ContentBlock{
+					sigma.Text("A red circle."),
+					sigma.ImageBase64("image/png", "aGk="),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	var messageID, textPartID, reasoningID, functionItemID, functionCallID string
+	var toolOutput []any
+	for _, item := range payload.Input {
+		switch item["type"] {
+		case "message":
+			messageID, _ = item["id"].(string)
+			content, _ := item["content"].([]any)
+			if len(content) > 0 {
+				part, _ := content[0].(map[string]any)
+				textPartID, _ = part["id"].(string)
+			}
+		case "reasoning":
+			reasoningID, _ = item["id"].(string)
+		case "function_call":
+			functionItemID, _ = item["id"].(string)
+			functionCallID, _ = item["call_id"].(string)
+		case "function_call_output":
+			toolOutput, _ = item["output"].([]any)
+		}
+	}
+
+	assertResponsesID(t, messageID, "msg_")
+	assertResponsesID(t, textPartID, "text_")
+	assertResponsesID(t, reasoningID, "rs_")
+	assertResponsesID(t, functionItemID, "fc_")
+	if got, want := functionCallID, "call_foreign"; got != want {
+		t.Fatalf("function call_id = %q, want %q", got, want)
+	}
+	if len(toolOutput) != 2 {
+		t.Fatalf("tool output parts = %d, want 2", len(toolOutput))
+	}
+	firstOutput, _ := toolOutput[0].(map[string]any)
+	if got, want := firstOutput["type"], "input_text"; got != want {
+		t.Fatalf("first tool output type = %v, want %v", got, want)
+	}
+	secondOutput, _ := toolOutput[1].(map[string]any)
+	if got, want := secondOutput["type"], "input_image"; got != want {
+		t.Fatalf("second tool output type = %v, want %v", got, want)
+	}
+}
+
+func assertResponsesID(t *testing.T, id string, prefix string) {
+	t.Helper()
+	if !strings.HasPrefix(id, prefix) {
+		t.Fatalf("id %q does not have prefix %q", id, prefix)
+	}
+	if len(id) > 64 {
+		t.Fatalf("id %q length = %d, want <= 64", id, len(id))
+	}
+	for _, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z':
+		case r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == '_' || r == '-':
+		default:
+			t.Fatalf("id %q contains invalid rune %q", id, r)
+		}
+	}
 }
 
 func TestResponsesCompleteSendsProviderDefinedToolsPayload(t *testing.T) {
@@ -461,7 +573,14 @@ func responsesRichRequest() sigma.Request {
 				Role:    sigma.RoleAssistant,
 				Content: []sigma.ContentBlock{text, thinking, toolCall},
 			},
-			sigma.ToolResult("call_prev", "Sunny"),
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_prev",
+				Content: []sigma.ContentBlock{
+					sigma.Text("Sunny"),
+					sigma.ImageBase64("image/png", "aGk="),
+				},
+			},
 		},
 		Tools: []sigma.Tool{{
 			Name:        "weather",

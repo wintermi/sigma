@@ -18,9 +18,13 @@ const (
 // OpenAIOptions carries OpenAI-specific request options known to the root
 // package without importing provider adapters.
 type OpenAIOptions struct {
-	ReasoningEffort  ThinkingLevel
-	ReasoningSummary string
-	ServiceTier      string
+	ReasoningEffort      ThinkingLevel
+	ReasoningSummary     string
+	ServiceTier          string
+	ToolChoice           any
+	PromptCacheRetention string
+	ParallelToolCalls    *bool
+	TextVerbosity        string
 }
 
 // AnthropicOptions carries Anthropic-specific request options known to the root
@@ -335,6 +339,7 @@ func cloneOpenAIOptions(options *OpenAIOptions) *OpenAIOptions {
 		return nil
 	}
 	copied := *options
+	copied.ParallelToolCalls = cloneBoolPtr(options.ParallelToolCalls)
 	return &copied
 }
 

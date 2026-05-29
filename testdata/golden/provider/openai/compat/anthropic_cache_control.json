@@ -1,0 +1,56 @@
+{
+  "messages": [
+    {
+      "content": [
+        {
+          "cache_control": {
+            "ttl": "1h",
+            "type": "ephemeral"
+          },
+          "text": "policy",
+          "type": "text"
+        }
+      ],
+      "role": "system"
+    },
+    {
+      "content": "first",
+      "role": "user"
+    },
+    {
+      "content": "answer",
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "cache_control": {
+            "ttl": "1h",
+            "type": "ephemeral"
+          },
+          "text": "last",
+          "type": "text"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "compat-model",
+  "stream": true,
+  "tools": [
+    {
+      "cache_control": {
+        "ttl": "1h",
+        "type": "ephemeral"
+      },
+      "function": {
+        "description": "Lookup records",
+        "name": "lookup",
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}

@@ -72,6 +72,13 @@ Release scope values:
   OpenAI Responses, Anthropic Messages, or Google APIs are not Go parity today.
 - Caller-defined custom and local OpenAI-compatible endpoints are covered by the
   MVP `openai-completions` row when they use explicit compatibility metadata.
+- OpenAI-compatible Chat Completions supports typed `tool_choice`, opt-in
+  Anthropic-style cache markers, and opt-in `tool_stream`; provider-specific
+  dynamic headers for GitHub Copilot and Cloudflare AI Gateway remain out of
+  scope.
+- OpenAI Responses and Codex Responses support typed prompt cache retention,
+  parallel tool calls, text verbosity, bounded replay IDs, and image-capable
+  tool-result replay through fixture-tested payload coverage.
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
 - Codex Responses requires a caller-supplied OAuth token provider. Interactive login, token persistence, and WebSocket transport are out of scope.
 - Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers.

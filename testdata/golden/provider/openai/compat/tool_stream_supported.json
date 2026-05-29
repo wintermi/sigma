@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "content": "weather",
+      "role": "user"
+    }
+  ],
+  "model": "compat-model",
+  "stream": true,
+  "tool_stream": true,
+  "tools": [
+    {
+      "function": {
+        "description": "Get weather",
+        "name": "weather",
+        "parameters": {
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ]
+}

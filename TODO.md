@@ -33,6 +33,10 @@ first-class row in [provider parity](docs/provider-parity.md).
 - [ ] GitHub Copilot — promote to a first-class provider row with fixtures.
 - [ ] Kimi — promote to a first-class provider row with fixtures.
 - [ ] Xiaomi — promote to a first-class provider row with fixtures.
+- [ ] Evaluate GitHub Copilot dynamic headers before making Copilot a
+      first-class OpenAI-compatible row.
+- [ ] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
+      first-class Cloudflare OpenAI-compatible row.
 - [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
       and cancellation coverage.
 
@@ -49,6 +53,8 @@ first-class row in [provider parity](docs/provider-parity.md).
 ## Transports
 
 - [ ] Add WebSocket transport support.
+- [ ] Add Codex WebSocket session caching, cleanup, and SSE fallback behavior if
+      Sigma adopts Codex WebSocket transport.
 - [ ] Ensure unsupported transport choices fail locally before any network call,
       with tests asserting the early failure.
 

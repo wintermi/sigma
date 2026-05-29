@@ -6,7 +6,10 @@
 package openai
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/wintermi/sigma"
 )
@@ -24,7 +27,7 @@ const (
 )
 
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
-	input, err := responsesInput(req)
+	input, err := responsesInput(model, req)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +52,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
+	addResponsesOpenAIOptions(payload, opts)
 	addResponsesReasoning(payload, model, opts)
 	if len(req.Tools) > 0 {
 		tools, err := responsesTools(req.Tools)
@@ -62,10 +66,10 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	return payload, nil
 }
 
-func responsesInput(req sigma.Request) ([]map[string]any, error) {
+func responsesInput(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
-	for _, message := range req.Messages {
-		converted, err := responsesMessage(message)
+	for index, message := range req.Messages {
+		converted, err := responsesMessage(model, message, index)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +78,7 @@ func responsesInput(req sigma.Request) ([]map[string]any, error) {
 	return items, nil
 }
 
-func responsesMessage(message sigma.Message) ([]map[string]any, error) {
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(message)
@@ -86,12 +90,16 @@ func responsesMessage(message sigma.Message) ([]map[string]any, error) {
 			"content": content,
 		}}, nil
 	case sigma.RoleAssistant:
-		return responsesAssistantItems(message.Content)
+		return responsesAssistantItems(message.Content, messageIndex)
 	case sigma.RoleTool:
+		output, err := responsesToolOutput(model, message)
+		if err != nil {
+			return nil, err
+		}
 		return []map[string]any{{
 			"type":    "function_call_output", //nolint:goconst
-			"call_id": message.ToolCallID,
-			"output":  textContent(message.Content),
+			"call_id": responsesCallID(message.ToolCallID),
+			"output":  output,
 		}}, nil
 	default:
 		return nil, fmt.Errorf("openai responses: unsupported message role %q", message.Role)
@@ -100,15 +108,15 @@ func responsesMessage(message sigma.Message) ([]map[string]any, error) {
 
 func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
 	if len(message.Content) == 0 {
-		return []map[string]any{{"type": "input_text", "text": ""}}, nil
+		return []map[string]any{{"type": "input_text", providerOptionText: ""}}, nil
 	}
 	parts := make([]map[string]any, 0, len(message.Content))
 	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			parts = append(parts, map[string]any{
-				"type": "input_text",
-				"text": block.Text,
+				"type":             "input_text",
+				providerOptionText: block.Text,
 			})
 		case sigma.ContentBlockImage:
 			if message.Role != sigma.RoleUser {
@@ -129,43 +137,56 @@ func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
 	return parts, nil
 }
 
-func responsesAssistantItems(blocks []sigma.ContentBlock) ([]map[string]any, error) {
+func responsesAssistantItems(blocks []sigma.ContentBlock, messageIndex int) ([]map[string]any, error) {
 	var items []map[string]any
 	var content []map[string]any
+	var messageID string
+	messageOrdinal := 0
+	contentOrdinal := 0
 	flushMessage := func() {
 		if len(content) == 0 {
 			return
 		}
-		items = append(items, map[string]any{
+		item := map[string]any{
 			"type":    "message",
 			"role":    "assistant",
 			"content": content,
-		})
+		}
+		item["id"] = responsesBoundedID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
+		items = append(items, item)
 		content = nil
+		messageID = ""
+		messageOrdinal++
 	}
 
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
+			messageID = firstNonEmpty(messageID, providerID(block.ProviderMetadata))
 			part := map[string]any{
-				"type": "output_text",
-				"text": block.Text,
+				"type":             "output_text",
+				providerOptionText: block.Text,
 			}
-			addProviderContentID(part, block.ProviderMetadata)
+			part["id"] = responsesBoundedID(
+				providerOptionText,
+				providerContentID(block.ProviderMetadata),
+				fmt.Sprintf("text_sigma_%d_%d", messageIndex, contentOrdinal),
+			)
 			if block.Signature != "" {
 				part["signature"] = block.Signature
 			}
 			content = append(content, part)
+			contentOrdinal++
 		case sigma.ContentBlockThinking:
 			flushMessage()
 			item := map[string]any{
 				"type": "reasoning",
 				"summary": []map[string]any{{
-					"type": "summary_text",
-					"text": block.ThinkingText,
+					"type":             "summary_text",
+					providerOptionText: block.ThinkingText,
 				}},
 			}
-			addProviderID(item, block.ProviderMetadata)
+			item["id"] = responsesBoundedID("rs", providerID(block.ProviderMetadata), fmt.Sprintf("rs_sigma_%d", messageIndex))
 			if block.Signature != "" {
 				item["signature"] = block.Signature
 			}
@@ -179,13 +200,14 @@ func responsesAssistantItems(blocks []sigma.ContentBlock) ([]map[string]any, err
 			if err != nil {
 				return nil, err
 			}
+			callID, itemID := responsesToolCallIDs(block, fmt.Sprintf("fc_sigma_%d", messageIndex))
 			item := map[string]any{
 				"type":      "function_call",
-				"call_id":   block.ToolCallID,
+				"id":        itemID,
+				"call_id":   callID,
 				"name":      block.ToolName,
 				"arguments": arguments,
 			}
-			addProviderID(item, block.ProviderMetadata)
 			if block.ProviderSignature != "" {
 				item["encrypted_content"] = block.ProviderSignature
 			}
@@ -248,6 +270,29 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	}
 }
 
+func addResponsesOpenAIOptions(payload map[string]any, opts sigma.Options) {
+	if opts.OpenAIOptions == nil {
+		return
+	}
+	if opts.OpenAIOptions.ToolChoice != nil {
+		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
+	}
+	if opts.OpenAIOptions.PromptCacheRetention != "" {
+		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
+	}
+	if opts.OpenAIOptions.ParallelToolCalls != nil {
+		payload["parallel_tool_calls"] = *opts.OpenAIOptions.ParallelToolCalls
+	}
+	if opts.OpenAIOptions.TextVerbosity != "" {
+		text, _ := payload[providerOptionText].(map[string]any)
+		if text == nil {
+			text = make(map[string]any)
+			payload[providerOptionText] = text
+		}
+		text["verbosity"] = opts.OpenAIOptions.TextVerbosity
+	}
+}
+
 func addResponsesSession(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
 	options := providerOptions(opts, provider)
 	if previous, ok := stringOption(options, providerOptionPreviousID); ok {
@@ -272,7 +317,7 @@ func addResponsesProviderOptions(payload map[string]any, provider sigma.Provider
 		payload["include"] = value
 	}
 	if value, ok := options[providerOptionText]; ok {
-		payload["text"] = value
+		setResponsesText(payload, value)
 	}
 	if value, ok := options[providerOptionToolChoice]; ok {
 		payload["tool_choice"] = value
@@ -290,20 +335,148 @@ func addResponsesProviderOptions(payload map[string]any, provider sigma.Provider
 	}
 }
 
-func addProviderID(item map[string]any, metadata map[string]any) {
-	if id, ok := stringOption(metadata, "id"); ok {
-		item["id"] = id
+func setResponsesText(payload map[string]any, value any) {
+	text, ok := value.(map[string]any)
+	if !ok {
+		payload[providerOptionText] = value
 		return
 	}
-	if id, ok := stringOption(metadata, "item_id"); ok {
-		item["id"] = id
+	current, _ := payload[providerOptionText].(map[string]any)
+	if current == nil {
+		payload[providerOptionText] = text
+		return
+	}
+	for key, nested := range text {
+		current[key] = nested
 	}
 }
 
-func addProviderContentID(item map[string]any, metadata map[string]any) {
-	if id, ok := stringOption(metadata, "content_id"); ok {
-		item["id"] = id
-		return
+func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) {
+	var parts []map[string]any
+	var text strings.Builder
+	var hasImage bool
+	for _, block := range message.Content {
+		switch block.Type {
+		case sigma.ContentBlockText:
+			if text.Len() > 0 {
+				text.WriteByte('\n')
+			}
+			text.WriteString(block.Text)
+		case sigma.ContentBlockImage:
+			hasImage = true
+			if !model.SupportsImages() {
+				continue
+			}
+			url, err := imageURL(block)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, map[string]any{
+				"type":      "input_image",
+				"image_url": url,
+			})
+		default:
+			return nil, fmt.Errorf("openai responses: unsupported tool result content block %q", block.Type)
+		}
 	}
-	addProviderID(item, metadata)
+	if len(parts) == 0 {
+		if text.Len() > 0 {
+			return text.String(), nil
+		}
+		if hasImage {
+			return "(see attached image)", nil
+		}
+		return "", nil
+	}
+	if text.Len() > 0 {
+		parts = append([]map[string]any{{
+			"type":             "input_text",
+			providerOptionText: text.String(),
+		}}, parts...)
+	}
+	return parts, nil
+}
+
+func responsesToolCallIDs(block sigma.ContentBlock, fallbackItemID string) (string, string) {
+	callID := firstNonEmpty(block.ToolCallID, providerMetadataString(block.ProviderMetadata, "call_id"))
+	itemID := providerID(block.ProviderMetadata)
+	if before, after, ok := strings.Cut(callID, "|"); ok {
+		callID = before
+		if itemID == "" {
+			itemID = after
+		}
+	}
+	callID = responsesBoundedID("call", callID, fallbackItemID+"_call")
+	itemID = responsesBoundedID("fc", itemID, fallbackItemID)
+	if !strings.HasPrefix(itemID, "fc_") {
+		itemID = responsesBoundedID("fc", "fc_"+itemID, fallbackItemID)
+	}
+	return callID, itemID
+}
+
+func responsesCallID(raw string) string {
+	callID, _, _ := strings.Cut(raw, "|")
+	return responsesBoundedID("call", callID, "call_sigma")
+}
+
+func providerID(metadata map[string]any) string {
+	if id := providerMetadataString(metadata, "id"); id != "" {
+		return id
+	}
+	return providerMetadataString(metadata, "item_id")
+}
+
+func providerContentID(metadata map[string]any) string {
+	if id, ok := stringOption(metadata, "content_id"); ok {
+		return id
+	}
+	return ""
+}
+
+func providerMetadataString(metadata map[string]any, key string) string {
+	value, _ := stringOption(metadata, key)
+	return value
+}
+
+func responsesBoundedID(prefix string, raw string, fallback string) string {
+	id := sanitizeResponsesID(firstNonEmpty(raw, fallback))
+	if id == "" {
+		id = sanitizeResponsesID(fallback)
+	}
+	if id == "" {
+		id = prefix + "_sigma"
+	}
+	if len(id) <= 64 {
+		return id
+	}
+	hash := sha256.Sum256([]byte(id))
+	suffix := hex.EncodeToString(hash[:])[:16]
+	trimmed := strings.TrimRight(id, "_-")
+	maxPrefix := 64 - len(suffix) - 1
+	if len(trimmed) > maxPrefix {
+		trimmed = trimmed[:maxPrefix]
+	}
+	if trimmed == "" {
+		trimmed = prefix
+	}
+	return trimmed + "_" + suffix
+}
+
+func sanitizeResponsesID(id string) string {
+	var b strings.Builder
+	for _, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r)
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '_' || r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	return strings.Trim(b.String(), "_-")
 }

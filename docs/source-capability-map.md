@@ -8,12 +8,12 @@ packages and metadata fields. It should be read with
 
 | Source API or family | Go API constant | Go package or metadata owner | Current role |
 | --- | --- | --- | --- |
-| OpenAI Chat Completions and OpenAI-compatible providers | `openai-completions` | [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat` | Shared text adapter for OpenAI-compatible endpoints, OpenRouter text routing, and custom/local endpoints. |
+| OpenAI Chat Completions and OpenAI-compatible providers | `openai-completions` | [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat`, `OpenAIOptions` | Shared text adapter for OpenAI-compatible endpoints, OpenRouter text routing, custom/local endpoints, typed tool choice, and compatibility-specific cache/tool-stream payloads. |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | [provider/fireworks](../provider/fireworks), [provider/openai](../provider/openai) | Fireworks convenience wrapper over the shared Chat Completions adapter; generated metadata includes the Fire Pass Kimi K2.6 Turbo router. |
 | OpenCode Zen and OpenCode Go OpenAI-compatible Chat Completions | `openai-completions` | [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat` | Curated built-in model metadata for the OpenCode OpenAI-compatible routes using `OPENCODE_API_KEY`; non-OpenAI OpenCode routes remain outside this mapping. |
-| OpenAI Responses | `openai-responses` | [provider/openai](../provider/openai), `Model.API` | Separate Responses adapter for response IDs, reasoning summaries, output blocks, and Responses-specific options. |
+| OpenAI Responses | `openai-responses` | [provider/openai](../provider/openai), `Model.API`, `OpenAIOptions` | Separate Responses adapter for response IDs, reasoning summaries, output blocks, tool-result images, bounded replay IDs, and Responses-specific options. |
 | Azure OpenAI Responses | `azure-openai-responses` | [provider/openai](../provider/openai), `Model.AzureOpenAIResponses` | Azure endpoint/deployment/API-version wrapper over Responses semantics. |
-| OpenAI Codex Responses | `openai-codex-responses` | [provider/openai](../provider/openai), `Model.OpenAICodexResponses` | Codex-specific Responses wrapper with caller-supplied OAuth token provider and transport gating. |
+| OpenAI Codex Responses | `openai-codex-responses` | [provider/openai](../provider/openai), `Model.OpenAICodexResponses`, `OpenAIOptions` | Codex-specific Responses wrapper with caller-supplied OAuth token provider, text verbosity, cache-retention payload fields, and transport gating. |
 | Anthropic Messages | `anthropic-messages` | [provider/anthropic](../provider/anthropic), `Model.ProviderMetadata["modelFamily"]` | Text adapter for Anthropic and Anthropic-compatible variants such as Kimi, Fireworks, and Xiaomi. |
 | Google Gemini API | `google-generative-ai` | [provider/google](../provider/google) | Text adapter for Gemini API payloads, streaming, tool calls, thinking parts, and usage metadata. |
 | Google Vertex AI | `google-vertex` | [provider/google](../provider/google), Vertex provider config | Vertex routing/auth wrapper that reuses the Google payload and stream parser. |
@@ -58,6 +58,7 @@ packages and metadata fields. It should be read with
 | Provider default headers | `ProviderMetadata["headers"]`, provider `WithHeader`, request `WithHeader` | Request construction and fixture assertions. |
 | Routed provider identity | `ProviderMetadata["routedProvider"]` | Gateway/provider-router metadata, especially OpenRouter. |
 | OpenAI-compatible behavior | `Model.OpenAICompletionsCompat` | Chat Completions payload, compatibility detection, reasoning formats, and provider replay quirks. |
+| OpenAI request controls | `OpenAIOptions` | Chat Completions `tool_choice`; Responses/Codex reasoning, service tier, prompt cache retention, parallel tool calls, and text verbosity. |
 | OpenRouter routing | `OpenAICompletionsCompat.OpenRouterRouting` | Chat Completions provider options for OpenRouter-style routing. |
 | Vercel AI Gateway routing | `OpenAICompletionsCompat.VercelAIGatewayRouting` | Compatibility metadata; no generated built-in route today. |
 | Azure Responses configuration | `Model.AzureOpenAIResponses` | Azure endpoint, deployment, API version, and credential-source selection. |
@@ -71,4 +72,6 @@ packages and metadata fields. It should be read with
 - Interactive OAuth login and credential persistence are intentionally absent.
 - Cross-provider context handoff and capability-loss reporting are future work.
 - Source-level provider breadth is larger than generated default models. Several provider IDs exist only for caller-registered compatible models today, and OpenCode coverage is limited to curated OpenAI-compatible routes.
+- GitHub Copilot dynamic headers, Cloudflare AI Gateway auth header rewriting,
+  and Codex WebSocket session caching remain deferred.
 - Live-test coverage is opt-in and sparse. Standard tests must remain deterministic and credential-free.

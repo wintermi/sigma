@@ -71,6 +71,7 @@
     "include_usage": true
   },
   "temperature": 0.2,
+  "tool_choice": "required",
   "tools": [
     {
       "function": {

@@ -72,6 +72,7 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
 			ReasoningEffort: sigma.ThinkingLevelHigh,
 			ServiceTier:     "default",
+			ToolChoice:      "required",
 		}),
 		sigma.WithProviderOptions(providerID, map[string]any{
 			"session_id_header": "X-Session-ID",

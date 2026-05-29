@@ -38,6 +38,7 @@
           "type": "output_text"
         }
       ],
+      "id": "msg_prev",
       "role": "assistant",
       "type": "message"
     },
@@ -62,7 +63,16 @@
     },
     {
       "call_id": "call_prev",
-      "output": "Sunny",
+      "output": [
+        {
+          "text": "Sunny",
+          "type": "input_text"
+        },
+        {
+          "image_url": "data:image/png;base64,aGk=",
+          "type": "input_image"
+        }
+      ],
       "type": "function_call_output"
     }
   ],
@@ -75,6 +85,7 @@
   "parallel_tool_calls": false,
   "previous_response_id": "resp_prev",
   "prompt_cache_key": "cache-key",
+  "prompt_cache_retention": "24h",
   "reasoning": {
     "effort": "high",
     "summary": "auto"
@@ -86,7 +97,8 @@
   "text": {
     "format": {
       "type": "text"
-    }
+    },
+    "verbosity": "low"
   },
   "tool_choice": "auto",
   "tools": [

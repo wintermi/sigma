@@ -11,5 +11,9 @@
     }
   ],
   "model": "codex-mini-latest",
-  "stream": true
+  "prompt_cache_retention": "24h",
+  "stream": true,
+  "text": {
+    "verbosity": "low"
+  }
 }

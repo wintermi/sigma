@@ -54,7 +54,15 @@ func TestCodexResponsesInjectsBearerTokenAndUsesCodexModelName(t *testing.T) {
 	model.OpenAICodexResponses.Model = "codex-mini-latest"
 	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
 
-	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
+			TextVerbosity:        "low",
+			PromptCacheRetention: "24h",
+		}),
+	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}

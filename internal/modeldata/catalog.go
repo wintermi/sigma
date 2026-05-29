@@ -96,6 +96,7 @@ type OpenAICompletionsCompat struct {
 	ReasoningFormat                             string                            `json:"reasoningFormat,omitempty"`
 	SupportsStreamingUsage                      string                            `json:"supportsStreamingUsage,omitempty"`
 	SupportsStrictTools                         string                            `json:"supportsStrictTools,omitempty"`
+	SupportsToolStream                          string                            `json:"supportsToolStream,omitempty"`
 	MaxTokensField                              string                            `json:"maxTokensField,omitempty"`
 	CacheControlFormat                          string                            `json:"cacheControlFormat,omitempty"`
 	SupportsSessionAffinity                     string                            `json:"supportsSessionAffinity,omitempty"`

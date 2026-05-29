@@ -55,6 +55,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addReasoning(payload, model, opts, compat)
 	if opts.OpenAIOptions != nil {
+		if opts.OpenAIOptions.ToolChoice != nil {
+			payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
+		}
 		if opts.OpenAIOptions.ReasoningSummary != "" {
 			addReasoningSummary(payload, opts.OpenAIOptions.ReasoningSummary, compat)
 		}
@@ -68,6 +71,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 			return nil, err
 		}
 		payload["tools"] = tools
+		if compat.supportsToolStream {
+			payload["tool_stream"] = true
+		}
 	}
 
 	for key, value := range extraBody(opts, model.Provider) {
@@ -75,6 +81,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 			continue
 		}
 		payload[key] = value
+	}
+	if cacheControl := anthropicCacheControl(opts.CacheRetention, compat.cacheControlFormat); cacheControl != nil {
+		addAnthropicCacheControl(payload, cacheControl)
 	}
 	addRouting(payload, compat)
 	return payload, nil
@@ -530,6 +539,9 @@ func addCacheControl(message map[string]any, retention sigma.CacheRetention, for
 	if format == sigma.OpenAICompletionsCacheControlUnsupported {
 		return
 	}
+	if format == sigma.OpenAICompletionsCacheControlAnthropic {
+		return
+	}
 	cacheType := "ephemeral"
 	if retention.CacheLongLived() {
 		cacheType = "persistent"
@@ -542,20 +554,67 @@ func addCacheControl(message map[string]any, retention sigma.CacheRetention, for
 	message["cache_control"] = cacheControl
 }
 
-func addContentPartCacheControl(message map[string]any, cacheControl map[string]any) {
-	switch content := message["content"].(type) {
-	case string:
-		message["content"] = []map[string]any{{
-			"type":          "text",
-			"text":          content,
-			"cache_control": cacheControl,
-		}}
-	case []map[string]any:
-		if len(content) == 0 {
+func anthropicCacheControl(retention sigma.CacheRetention, format sigma.OpenAICompletionsCacheControlFormat) map[string]any {
+	if !retention.CacheEnabled() || format != sigma.OpenAICompletionsCacheControlAnthropic {
+		return nil
+	}
+	cacheControl := map[string]any{"type": "ephemeral"}
+	if retention.CacheLongLived() {
+		cacheControl["ttl"] = "1h"
+	}
+	return cacheControl
+}
+
+func addAnthropicCacheControl(payload map[string]any, cacheControl map[string]any) {
+	messages, _ := payload["messages"].([]map[string]any)
+	for _, message := range messages {
+		role, _ := message["role"].(string)
+		if role != "system" && role != "developer" {
+			continue
+		}
+		if addContentPartCacheControl(message, cacheControl) {
+			break
+		}
+	}
+	if tools, _ := payload["tools"].([]map[string]any); len(tools) > 0 {
+		tools[len(tools)-1]["cache_control"] = cacheControl
+	}
+	for index := len(messages) - 1; index >= 0; index-- {
+		role, _ := messages[index]["role"].(string)
+		if role != "user" && role != "assistant" {
+			continue
+		}
+		if addContentPartCacheControl(messages[index], cacheControl) {
 			return
 		}
-		content[len(content)-1]["cache_control"] = cacheControl
 	}
+}
+
+func addContentPartCacheControl(message map[string]any, cacheControl map[string]any) bool {
+	switch content := message["content"].(type) {
+	case string:
+		if content == "" {
+			return false
+		}
+		message["content"] = []map[string]any{{
+			"type":             providerOptionText,
+			providerOptionText: content,
+			"cache_control":    cacheControl,
+		}}
+		return true
+	case []map[string]any:
+		if len(content) == 0 {
+			return false
+		}
+		for index := len(content) - 1; index >= 0; index-- {
+			if content[index]["type"] != providerOptionText {
+				continue
+			}
+			content[index]["cache_control"] = cacheControl
+			return true
+		}
+	}
+	return false
 }
 
 func recordToolNames(names map[string]string, blocks []sigma.ContentBlock) {

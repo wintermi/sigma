@@ -236,6 +236,9 @@ const (
 	OpenAICompletionsCacheControlMessage OpenAICompletionsCacheControlFormat = "message"
 	// OpenAICompletionsCacheControlContentPart sends cache_control on content parts.
 	OpenAICompletionsCacheControlContentPart OpenAICompletionsCacheControlFormat = "content-part"
+	// OpenAICompletionsCacheControlAnthropic sends Anthropic-style cache markers
+	// on the instruction message, last tool, and last conversation message.
+	OpenAICompletionsCacheControlAnthropic OpenAICompletionsCacheControlFormat = "anthropic"
 )
 
 // OpenAICompletionsCompat describes Chat Completions compatibility differences
@@ -248,6 +251,7 @@ type OpenAICompletionsCompat struct {
 	ReasoningFormat                             OpenAICompletionsReasoningFormat    `json:"reasoningFormat,omitempty"`
 	SupportsStreamingUsage                      OpenAICompatSupport                 `json:"supportsStreamingUsage,omitempty"`
 	SupportsStrictTools                         OpenAICompatSupport                 `json:"supportsStrictTools,omitempty"`
+	SupportsToolStream                          OpenAICompatSupport                 `json:"supportsToolStream,omitempty"`
 	MaxTokensField                              OpenAICompletionsMaxTokensField     `json:"maxTokensField,omitempty"`
 	CacheControlFormat                          OpenAICompletionsCacheControlFormat `json:"cacheControlFormat,omitempty"`
 	SupportsSessionAffinity                     OpenAICompatSupport                 `json:"supportsSessionAffinity,omitempty"`

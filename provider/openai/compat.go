@@ -20,6 +20,7 @@ type completionsCompat struct {
 	reasoningFormat                             sigma.OpenAICompletionsReasoningFormat
 	supportsStreamingUsage                      bool
 	supportsStrictTools                         bool
+	supportsToolStream                          bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
 	supportsSessionAffinity                     bool
@@ -31,7 +32,7 @@ type completionsCompat struct {
 }
 
 func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompat {
-	compat := detectedCompletionsCompat(model.Provider, baseURL)
+	compat := detectedCompletionsCompat(model, baseURL)
 	if model.OpenAICompletionsCompat == nil {
 		return compat
 	}
@@ -41,6 +42,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsDeveloperRole = supportOverride(compat.supportsDeveloperRole, override.SupportsDeveloperRole)
 	compat.supportsStreamingUsage = supportOverride(compat.supportsStreamingUsage, override.SupportsStreamingUsage)
 	compat.supportsStrictTools = supportOverride(compat.supportsStrictTools, override.SupportsStrictTools)
+	compat.supportsToolStream = supportOverride(compat.supportsToolStream, override.SupportsToolStream)
 	compat.supportsSessionAffinity = supportOverride(compat.supportsSessionAffinity, override.SupportsSessionAffinity)
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
@@ -66,7 +68,8 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	return compat
 }
 
-func detectedCompletionsCompat(provider sigma.ProviderID, baseURL string) completionsCompat {
+func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCompat {
+	provider := model.Provider
 	compat := conservativeCompletionsCompat()
 	host := baseURLHost(baseURL)
 	providerText := strings.ToLower(string(provider))
@@ -85,6 +88,9 @@ func detectedCompletionsCompat(provider sigma.ProviderID, baseURL string) comple
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
 		compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlMessage
+		if strings.HasPrefix(string(model.ID), "anthropic/") {
+			compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlAnthropic
+		}
 		compat.openRouterRouting = &sigma.OpenRouterRoutingPreference{}
 	case provider == sigma.ProviderDeepSeek || strings.Contains(host, "deepseek.com"):
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningUnsupported

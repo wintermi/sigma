@@ -76,6 +76,45 @@ func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 			golden: "provider/openai/compat/strict_tools_supported.json",
 		},
 		{
+			name: "anthropic cache control",
+			compat: sigma.OpenAICompletionsCompat{
+				CacheControlFormat: sigma.OpenAICompletionsCacheControlAnthropic,
+			},
+			req: sigma.Request{
+				SystemPrompt: "policy",
+				Messages: []sigma.Message{
+					sigma.UserText("first"),
+					{
+						Role:    sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{sigma.Text("answer")},
+					},
+					sigma.UserText("last"),
+				},
+				Tools: []sigma.Tool{{
+					Name:        "lookup",
+					Description: "Lookup records",
+					InputSchema: sigma.Schema{"type": "object"},
+				}},
+			},
+			opts:   sigma.Options{CacheRetention: sigma.CacheRetentionLong},
+			golden: "provider/openai/compat/anthropic_cache_control.json",
+		},
+		{
+			name: "tool stream supported",
+			compat: sigma.OpenAICompletionsCompat{
+				SupportsToolStream: sigma.OpenAICompatSupported,
+			},
+			req: sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("weather")},
+				Tools: []sigma.Tool{{
+					Name:        "weather",
+					Description: "Get weather",
+					InputSchema: sigma.Schema{"type": "object"},
+				}},
+			},
+			golden: "provider/openai/compat/tool_stream_supported.json",
+		},
+		{
 			name: "store field supported",
 			compat: sigma.OpenAICompletionsCompat{
 				SupportsStore: sigma.OpenAICompatSupported,
@@ -202,6 +241,34 @@ func TestOpenAICompletionsCompatDetectsKnownRoutingEndpoints(t *testing.T) {
 		t.Fatalf("chatCompletionsPayload returned error: %v", err)
 	}
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/detected_openrouter_endpoint.json")
+}
+
+func TestOpenAICompletionsCompatDetectsOpenRouterAnthropicCacheControl(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:       "anthropic/claude-sonnet-4.6",
+		Provider: sigma.ProviderOpenRouter,
+		API:      sigma.APIOpenAICompletions,
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{
+			SystemPrompt: "policy",
+			Messages:     []sigma.Message{sigma.UserText("hi")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup records",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.Options{CacheRetention: sigma.CacheRetentionEphemeral},
+		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/detected_openrouter_anthropic_cache.json")
 }
 
 func TestOpenAICompletionsCompatDetectsFireworksEndpoint(t *testing.T) {

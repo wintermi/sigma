@@ -66,6 +66,15 @@ See [release notes](docs/release-notes-v0.2.0.md).
   quality, output MIME type, and `extra_body` provider options.
 - OpenAI Images response mapping for base64 image data, URL outputs, token
   usage, revised prompts, and provider metadata.
+- OpenAI-specific request options for Chat Completions `tool_choice`,
+  Responses/Codex `prompt_cache_retention`, Responses/Codex
+  `parallel_tool_calls`, and Responses/Codex text verbosity.
+- OpenAI Responses replay now preserves or synthesizes bounded provider item
+  IDs for prior assistant text, reasoning, and function-call items.
+- OpenAI Responses tool-result replay can keep image blocks inside
+  `function_call_output` for image-capable models.
+- OpenAI-compatible Chat Completions compatibility metadata now supports
+  Anthropic-style cache markers and opt-in `tool_stream` payloads.
 - Provider parity and image-generation docs now mark `openai-images` as a
   generation-only preview adapter instead of metadata-only.
 
@@ -82,6 +91,8 @@ See [release notes](docs/release-notes-v0.2.0.md).
   Codex Responses in particular requires a caller-supplied OAuth token provider.
 - WebSocket transports are deferred; unsupported transport choices should fail
   locally before network calls.
+- Codex WebSocket session caching/fallback remains deferred; Codex Responses
+  continues to use SSE with a caller-supplied OAuth token provider.
 - Token usage and cost reporting come from provider usage data and model
   metadata; tokenizer-based token estimates are deferred.
 - The Go package targets server/CLI use; browser-specific behavior is out of
