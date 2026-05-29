@@ -1,0 +1,44 @@
+{
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "content": [
+        {
+          "text": "first",
+          "type": "text"
+        }
+      ],
+      "role": "user"
+    },
+    {
+      "content": [
+        {
+          "text": "internal reasoning",
+          "type": "text"
+        }
+      ],
+      "role": "assistant"
+    },
+    {
+      "content": [
+        {
+          "content": "one",
+          "tool_use_id": "toolu_1",
+          "type": "tool_result"
+        },
+        {
+          "content": "two",
+          "is_error": true,
+          "tool_use_id": "toolu_2",
+          "type": "tool_result"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "claude-test",
+  "stream": true,
+  "thinking": {
+    "type": "disabled"
+  }
+}

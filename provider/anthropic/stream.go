@@ -58,10 +58,10 @@ type streamDelta struct {
 }
 
 type streamUsage struct {
-	InputTokens              int                  `json:"input_tokens"`
-	OutputTokens             int                  `json:"output_tokens"`
-	CacheCreationInputTokens int                  `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int                  `json:"cache_read_input_tokens"`
+	InputTokens              *int                 `json:"input_tokens"`
+	OutputTokens             *int                 `json:"output_tokens"`
+	CacheCreationInputTokens *int                 `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     *int                 `json:"cache_read_input_tokens"`
 	CacheCreation            *streamCacheCreation `json:"cache_creation"`
 	ServerToolUse            map[string]int       `json:"server_tool_use"`
 	ServiceTier              string               `json:"service_tier"`
@@ -141,14 +141,13 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		}
 		return p.handleDelta(ctx, parsed.Index, parsed.Delta)
 	case "content_block_stop":
-		return nil
+		return p.handleContentBlockStop(ctx, parsed.Index)
 	case "message_delta":
 		if parsed.Delta.StopReason != "" {
 			p.stopReason = anthropicStopReason(parsed.Delta.StopReason)
 		}
 		if parsed.Usage != nil {
-			usage := parsed.Usage.sigmaUsage()
-			p.usage = &usage
+			p.mergeUsage(parsed.Usage)
 		}
 		return nil
 	case "message_stop":
@@ -176,12 +175,49 @@ func (p *streamParser) captureMessage(message streamMessage) {
 		p.stopReason = anthropicStopReason(message.StopReason)
 	}
 	if message.Usage != nil {
-		usage := message.Usage.sigmaUsage()
-		p.usage = &usage
+		p.mergeUsage(message.Usage)
 	}
 	for index, content := range message.Content {
 		p.captureContent(index, content)
 	}
+}
+
+func (p *streamParser) handleContentBlockStop(ctx context.Context, index int) error {
+	if state := p.text[index]; state != nil && state.Started && !state.Closed {
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:         sigma.EventKindTextEnd,
+			ContentIndex: intPtr(state.ContentIndex),
+			Text:         state.String(),
+		}); err != nil {
+			return err
+		}
+		state.Closed = true
+		return nil
+	}
+	if state := p.thinking[index]; state != nil && state.Started && !state.Closed {
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:         sigma.EventKindThinkingEnd,
+			ContentIndex: intPtr(state.ContentIndex),
+			Thinking:     state.String(),
+		}); err != nil {
+			return err
+		}
+		state.Closed = true
+		return nil
+	}
+	if state := p.toolCalls[index]; state != nil && state.Started && !state.Closed {
+		call := state.ToolCall()
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:         sigma.EventKindToolCallEnd,
+			ContentIndex: intPtr(state.ContentIndex),
+			ToolCall:     &call,
+		}); err != nil {
+			return err
+		}
+		state.Closed = true
+		return nil
+	}
+	return nil
 }
 
 func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, content streamContent) error {
@@ -505,22 +541,34 @@ func (p *streamParser) sortedToolCalls() []*streamblocks.ToolCall {
 	return states
 }
 
-func (u streamUsage) sigmaUsage() sigma.Usage {
-	usage := sigma.Usage{
-		InputTokens:           u.InputTokens,
-		OutputTokens:          u.OutputTokens,
-		CacheReadInputTokens:  u.CacheReadInputTokens,
-		CacheWriteInputTokens: u.CacheCreationInputTokens,
+func (p *streamParser) mergeUsage(update *streamUsage) {
+	if update == nil {
+		return
 	}
-	if usage.CacheWriteInputTokens == 0 && u.CacheCreation != nil {
-		usage.CacheWriteInputTokens = u.CacheCreation.Ephemeral5mInputTokens + u.CacheCreation.Ephemeral1hInputTokens
+	usage := sigma.Usage{}
+	if p.usage != nil {
+		usage = *p.usage
 	}
-	return usage
+	if update.InputTokens != nil {
+		usage.InputTokens = *update.InputTokens
+	}
+	if update.OutputTokens != nil {
+		usage.OutputTokens = *update.OutputTokens
+	}
+	if update.CacheReadInputTokens != nil {
+		usage.CacheReadInputTokens = *update.CacheReadInputTokens
+	}
+	if update.CacheCreationInputTokens != nil {
+		usage.CacheWriteInputTokens = *update.CacheCreationInputTokens
+	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {
+		usage.CacheWriteInputTokens = update.CacheCreation.Ephemeral5mInputTokens + update.CacheCreation.Ephemeral1hInputTokens
+	}
+	p.usage = &usage
 }
 
 func anthropicStopReason(reason string) sigma.StopReason {
 	switch reason {
-	case "end_turn":
+	case "end_turn", "pause_turn":
 		return sigma.StopReasonEndTurn
 	case "max_tokens":
 		return sigma.StopReasonMaxTokens
@@ -528,7 +576,7 @@ func anthropicStopReason(reason string) sigma.StopReason {
 		return sigma.StopReasonStopSequence
 	case "tool_use":
 		return sigma.StopReasonToolCalls
-	case "refusal":
+	case "refusal", "sensitive":
 		return sigma.StopReasonContentFilter
 	default:
 		return sigma.StopReasonUnknown

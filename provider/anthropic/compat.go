@@ -30,10 +30,13 @@ type messagesCompat struct {
 	sessionAffinityHeaders  bool
 	cacheControlOnTools     bool
 	adaptiveThinking        bool
+	emptyThinkingSignature  bool
+	thinkingFormat          sigma.AnthropicThinkingFormat
 }
 
 func anthropicMessagesCompat(model sigma.Model, baseURL string, override *MessagesCompat) messagesCompat {
 	compat := detectedMessagesCompat(model.Provider, baseURL)
+	compat = applyModelMessagesCompat(compat, model.AnthropicMessagesCompat)
 	if override == nil {
 		return compat
 	}
@@ -52,29 +55,68 @@ func detectedMessagesCompat(provider sigma.ProviderID, baseURL string) messagesC
 	switch {
 	case provider == sigma.ProviderAnthropic || host == "api.anthropic.com":
 		return messagesCompat{
-			longCacheRetention:  true,
-			cacheControlOnTools: true,
+			eagerToolInputStreaming: true,
+			longCacheRetention:      true,
+			cacheControlOnTools:     true,
+			thinkingFormat:          sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderFireworks || strings.Contains(host, "fireworks.ai"):
 		return messagesCompat{
-			eagerToolInputStreaming: true,
-			sessionAffinityHeaders:  true,
-			adaptiveThinking:        true,
+			sessionAffinityHeaders: true,
+			adaptiveThinking:       true,
+			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderKimi || strings.Contains(providerText, "kimi") || strings.Contains(host, "moonshot") || strings.Contains(host, "kimi"):
 		return messagesCompat{
-			eagerToolInputStreaming: true,
-			sessionAffinityHeaders:  true,
-			adaptiveThinking:        true,
+			sessionAffinityHeaders: true,
+			adaptiveThinking:       true,
+			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderXiaomi || strings.Contains(host, "xiaomi"):
 		return messagesCompat{
-			eagerToolInputStreaming: true,
-			sessionAffinityHeaders:  true,
-			adaptiveThinking:        true,
+			sessionAffinityHeaders: true,
+			adaptiveThinking:       true,
+			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	default:
-		return messagesCompat{}
+		return messagesCompat{thinkingFormat: sigma.AnthropicThinkingBudget}
+	}
+}
+
+func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMessagesCompat) messagesCompat {
+	if override == nil {
+		return compat
+	}
+	if value, ok := anthropicCompatBool(override.SupportsEagerToolInputStreaming); ok {
+		compat.eagerToolInputStreaming = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsLongCacheRetention); ok {
+		compat.longCacheRetention = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsSessionAffinity); ok {
+		compat.sessionAffinityHeaders = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsCacheControlOnTools); ok {
+		compat.cacheControlOnTools = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsEmptyThinkingSignature); ok {
+		compat.emptyThinkingSignature = value
+	}
+	if override.ThinkingFormat != "" {
+		compat.thinkingFormat = override.ThinkingFormat
+		compat.adaptiveThinking = override.ThinkingFormat == sigma.AnthropicThinkingAdaptive
+	}
+	return compat
+}
+
+func anthropicCompatBool(value sigma.AnthropicCompatSupport) (bool, bool) {
+	switch value {
+	case sigma.AnthropicCompatSupported:
+		return true, true
+	case sigma.AnthropicCompatUnsupported:
+		return false, true
+	default:
+		return false, false
 	}
 }
 

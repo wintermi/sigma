@@ -17,6 +17,9 @@
   ],
   "model": "claude-test",
   "stream": true,
+  "thinking": {
+    "type": "disabled"
+  },
   "tools": [
     {
       "cache_control": {

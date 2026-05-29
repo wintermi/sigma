@@ -51,6 +51,14 @@ type OpenAICompletionsReasoningFormat string
 // encoded by an OpenAI Chat Completions-compatible endpoint.
 type OpenAICompletionsCacheControlFormat string
 
+// AnthropicCompatSupport identifies whether an Anthropic Messages-compatible
+// feature is known to be supported by a provider or endpoint.
+type AnthropicCompatSupport string
+
+// AnthropicThinkingFormat identifies how Anthropic Messages thinking is
+// encoded by a provider or endpoint.
+type AnthropicThinkingFormat string
+
 const (
 	// APIOpenAICompletions identifies the OpenAI chat completions API.
 	APIOpenAICompletions API = "openai-completions"
@@ -241,6 +249,24 @@ const (
 	OpenAICompletionsCacheControlAnthropic OpenAICompletionsCacheControlFormat = "anthropic"
 )
 
+const (
+	// AnthropicCompatDefault uses provider and endpoint defaults.
+	AnthropicCompatDefault AnthropicCompatSupport = ""
+	// AnthropicCompatSupported forces a compatibility feature on.
+	AnthropicCompatSupported AnthropicCompatSupport = "supported"
+	// AnthropicCompatUnsupported forces a compatibility feature off.
+	AnthropicCompatUnsupported AnthropicCompatSupport = "unsupported"
+)
+
+const (
+	// AnthropicThinkingDefault uses provider and endpoint defaults.
+	AnthropicThinkingDefault AnthropicThinkingFormat = ""
+	// AnthropicThinkingBudget sends budget-token thinking controls.
+	AnthropicThinkingBudget AnthropicThinkingFormat = "budget"
+	// AnthropicThinkingAdaptive sends adaptive thinking plus output_config effort.
+	AnthropicThinkingAdaptive AnthropicThinkingFormat = "adaptive"
+)
+
 // OpenAICompletionsCompat describes Chat Completions compatibility differences
 // for routers and local OpenAI-compatible endpoints. Leave fields at their zero
 // value to use provider or base-URL detection, or set them when registering a
@@ -260,6 +286,18 @@ type OpenAICompletionsCompat struct {
 	RequiresReasoningContentOnAssistantMessages OpenAICompatSupport                 `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	OpenRouterRouting                           *OpenRouterRoutingPreference        `json:"openRouterRouting,omitempty"`
 	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference   `json:"vercelAIGatewayRouting,omitempty"`
+}
+
+// AnthropicMessagesCompat describes Messages compatibility differences for
+// Anthropic-compatible routers and custom endpoints. Leave fields at their zero
+// value to use provider or base-URL detection.
+type AnthropicMessagesCompat struct {
+	SupportsEagerToolInputStreaming AnthropicCompatSupport  `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsLongCacheRetention      AnthropicCompatSupport  `json:"supportsLongCacheRetention,omitempty"`
+	SupportsSessionAffinity         AnthropicCompatSupport  `json:"supportsSessionAffinity,omitempty"`
+	SupportsCacheControlOnTools     AnthropicCompatSupport  `json:"supportsCacheControlOnTools,omitempty"`
+	SupportsEmptyThinkingSignature  AnthropicCompatSupport  `json:"supportsEmptyThinkingSignature,omitempty"`
+	ThinkingFormat                  AnthropicThinkingFormat `json:"thinkingFormat,omitempty"`
 }
 
 // OpenRouterRoutingPreference describes OpenRouter's provider routing request

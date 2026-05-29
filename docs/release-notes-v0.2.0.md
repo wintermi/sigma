@@ -8,10 +8,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 ## Release summary
 
 `sigma` v0.2.0 adds a runtime adapter for OpenAI Images generation and tightens
-the existing OpenAI text adapters. The existing generated `gpt-image-1`
-metadata is now runnable when applications register the OpenAI image provider,
-and OpenAI text requests expose more of the stable provider payload controls
-without requiring raw `extra_body` maps.
+the existing OpenAI and Anthropic text adapters. The existing generated
+`gpt-image-1` metadata is now runnable when applications register the OpenAI
+image provider, OpenAI text requests expose more stable provider payload
+controls, and Anthropic-compatible endpoints can declare Messages compatibility
+without relying on raw `extra_body` maps.
 
 The release keeps the image-generation surface narrow: the adapter implements
 non-streaming generation through OpenAI's dedicated Images API and deliberately
@@ -37,6 +38,15 @@ generation for later work.
   `function_call_output` for image-capable models.
 - OpenAI-compatible Chat Completions can opt into Anthropic-style cache markers
   and z.ai-style `tool_stream` payloads through compatibility metadata.
+- `sigma.AnthropicMessagesCompat` and `sigma.AnthropicThinkingFormat` describe
+  Anthropic-compatible endpoint support for eager tool input streaming, cache
+  retention, session affinity, tool cache markers, empty thinking signatures,
+  and budget/adaptive thinking payloads.
+- Anthropic Messages now sends explicit `thinking: {type:"disabled"}` for
+  reasoning-capable models when reasoning is off, supports adaptive thinking
+  with `output_config.effort`, omits temperature while thinking is enabled,
+  groups consecutive tool results, adds compatible tool-streaming hints, and
+  preserves initial stream usage when final usage deltas are partial.
 - Runtime behavior follows existing Sigma provider conventions: request-scoped
   auth, retries, timeouts, redacted debug hooks, typed provider errors, and
   cancellation mapping.
@@ -45,9 +55,10 @@ generation for later work.
 
 ## Compatibility
 
-No persisted root package JSON shapes changed. Public API additions are limited
-to new registration helpers in `provider/openai`, new `OpenAIOptions` fields,
-and new OpenAI-compatible compatibility metadata values.
+No persisted request JSON shapes changed. Public API additions are limited to
+new registration helpers in `provider/openai`, new `OpenAIOptions` fields, new
+OpenAI-compatible compatibility metadata values, and new Anthropic Messages
+compatibility metadata on `sigma.Model`.
 
 Applications still need to register providers explicitly. Built-in image model
 metadata remains metadata-only until a registry has a matching image provider:
@@ -65,13 +76,17 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Streaming partial image events.
 - Responses API image-tool generation.
 - GitHub Copilot dynamic headers and Cloudflare AI Gateway auth rewriting.
+- Anthropic Claude Code OAuth identity headers and Claude Code tool-name
+  canonicalization.
+- GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.
 - Codex WebSocket session caching/fallback.
+- Malformed Anthropic SSE JSON repair.
 - Live OpenAI image tests; standard validation remains deterministic and
   credential-free.
 
 ## Validation status
 
 This release should use the validation process in [RELEASING.md](../RELEASING.md).
-The OpenAI Images adapter and OpenAI text-provider additions are covered by
-deterministic `httptest` fixtures and golden request payloads; no live OpenAI
-network calls are required.
+The OpenAI Images adapter and OpenAI/Anthropic text-provider additions are
+covered by deterministic `httptest` fixtures and golden request payloads; no
+live provider network calls are required.

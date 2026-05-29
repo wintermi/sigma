@@ -106,7 +106,7 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 	}
 	assertHeader(t, request.Headers, "X-Api-Key", "resolved-key")
 	assertHeader(t, request.Headers, "Anthropic-Version", "2023-06-01")
-	assertHeader(t, request.Headers, "Anthropic-Beta", "prompt-caching-2024-07-31")
+	assertHeader(t, request.Headers, "Anthropic-Beta", "prompt-caching-2024-07-31,fine-grained-tool-streaming-2025-05-14")
 	assertHeader(t, request.Headers, "X-Client", "client")
 	assertHeader(t, request.Headers, "X-Provider", "provider")
 	assertHeader(t, request.Headers, "X-Custom", "custom")
@@ -165,6 +165,43 @@ func TestCompleteSendsProviderDefinedToolsPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/provider_defined_tools_payload.json")
 }
 
+func TestCompleteSendsDisabledThinkingAndEagerToolStreamingPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := anthropicTestModel(sigma.ProviderAnthropic)
+	client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use the tool.")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.WithTemperature(0.4),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got := request.Headers.Get("Anthropic-Beta"); got != "" {
+		t.Fatalf("Anthropic-Beta header = %q, want empty", got)
+	}
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/disabled_thinking_eager_tools_payload.json")
+}
+
 func TestCompatibilitySuppressesUnsupportedLongCacheAndToolCache(t *testing.T) {
 	t.Parallel()
 
@@ -199,7 +236,117 @@ func TestCompatibilitySuppressesUnsupportedLongCacheAndToolCache(t *testing.T) {
 
 	request := receiveRequest(t, requests)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/conservative_cache_payload.json")
-	goldentest.AssertNoJSONPath(t, request.Body, "thinking")
+}
+
+func TestAdaptiveThinkingPayloadUsesOutputConfigEffort(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-adaptive-test")
+	model := anthropicTestModel(providerID)
+	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelXHigh: "xhigh"}
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		ThinkingFormat: sigma.AnthropicThinkingAdaptive,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithReasoningLevel(sigma.ThinkingLevelXHigh),
+		sigma.WithTemperature(0.9),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/adaptive_output_config_payload.json")
+	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
+}
+
+func TestToolResultsAreGroupedAndEmptyThinkingSignatureFallsBackToText(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-tool-result-group-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("first"),
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.Thinking("internal reasoning", "")},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "toolu_1",
+				Content:    []sigma.ContentBlock{sigma.Text("one")},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "toolu_2",
+				IsError:    true,
+				Content:    []sigma.ContentBlock{sigma.Text("two")},
+			},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/grouped_tool_results_empty_signature_payload.json")
+}
+
+func TestEmptyThinkingSignatureCanBePreservedForCompatibleEndpoints(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-empty-signature-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsEmptyThinkingSignature: sigma.AnthropicCompatSupported,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{{
+			Role:    sigma.RoleAssistant,
+			Content: []sigma.ContentBlock{sigma.Thinking("internal reasoning", " ")},
+		}}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/empty_signature_preserved_payload.json")
 }
 
 func TestDetectedCompatibleVariantsAddAdaptiveThinkingAndSessionHeader(t *testing.T) {
@@ -239,6 +386,7 @@ func TestDetectedCompatibleVariantsAddAdaptiveThinkingAndSessionHeader(t *testin
 				model,
 				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 				sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+				sigma.WithCacheRetention(sigma.CacheRetentionShort),
 				sigma.WithSessionID("affinity-123"),
 				sigma.WithProviderOption(tt.provider, "session_id_header", "X-Affinity"),
 			)
@@ -343,6 +491,81 @@ data: {"type":"message_stop"}
 	}
 	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
 		t.Fatalf("cache read tokens = %d, want %d", got, want)
+	}
+}
+
+func TestStreamUsageMergeContentBlockStopAndStopReasons(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		stopReason string
+		want       sigma.StopReason
+	}{
+		{name: "pause turn", stopReason: "pause_turn", want: sigma.StopReasonEndTurn},
+		{name: "sensitive", stopReason: "sensitive", want: sigma.StopReasonContentFilter},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeMessagesSSE(t, w, `data: {"type":"message_start","message":{"id":"msg_usage","type":"message","role":"assistant","model":"claude-test","content":[],"usage":{"input_tokens":7,"cache_read_input_tokens":2}}}
+
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}
+
+data: {"type":"content_block_stop","index":0}
+
+data: {"type":"message_delta","delta":{"stop_reason":"`+tt.stopReason+`"},"usage":{"output_tokens":3}}
+
+data: {"type":"message_stop"}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("anthropic-stop-test-" + tt.name)
+			model := anthropicTestModel(providerID)
+			client := anthropicTestClient(t, providerID, model, server.URL)
+
+			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			events := collectEvents(t, stream)
+			if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			final, ok := stream.Final()
+			if !ok {
+				t.Fatal("stream final was not recorded")
+			}
+
+			if got, want := eventKinds(events), []sigma.EventKind{
+				sigma.EventKindStart,
+				sigma.EventKindTextStart,
+				sigma.EventKindTextDelta,
+				sigma.EventKindTextEnd,
+				sigma.EventKindDone,
+			}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("event kinds = %v, want %v", got, want)
+			}
+			if got := final.StopReason; got != tt.want {
+				t.Fatalf("stop reason = %q, want %q", got, tt.want)
+			}
+			if final.Usage == nil {
+				t.Fatal("final usage was nil")
+			}
+			if got, want := final.Usage.InputTokens, 7; got != want {
+				t.Fatalf("input tokens = %d, want %d", got, want)
+			}
+			if got, want := final.Usage.OutputTokens, 3; got != want {
+				t.Fatalf("output tokens = %d, want %d", got, want)
+			}
+			if got, want := final.Usage.CacheReadInputTokens, 2; got != want {
+				t.Fatalf("cache read tokens = %d, want %d", got, want)
+			}
+		})
 	}
 }
 

@@ -54,6 +54,12 @@ var builtinTextModels = []Model{
 		CacheWriteInputCostPerMillion: 3.75,
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
+		AnthropicMessagesCompat: &AnthropicMessagesCompat{
+			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
+			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
+			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"ANTHROPIC_API_KEY"},
 			"baseURL":             "https://api.anthropic.com/v1",

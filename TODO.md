@@ -45,10 +45,22 @@ first-class row in [provider parity](docs/provider-parity.md).
 - [ ] Implement interactive OAuth login (currently MVP uses caller-supplied
       credentials or injected OAuth token providers only).
 - [ ] Implement token persistence for OAuth-based providers.
+- [ ] Add Anthropic Claude Code OAuth identity headers and Claude Code
+      tool-name canonicalization if Sigma adopts a first-class Anthropic OAuth
+      login path.
 - [ ] Wire interactive login and token persistence into OpenAI Codex Responses,
       replacing the injected-token-only path.
 - [ ] Add deterministic coverage for login/refresh/persistence flows without
       live network calls.
+
+## Anthropic-compatible routing
+
+- [ ] Evaluate GitHub Copilot and Cloudflare AI Gateway Anthropic Messages
+      routing before making either a first-class Anthropic-compatible row.
+- [ ] Add opt-in live Anthropic-compatible provider probes for compatibility
+      metadata, separate from the deterministic release gate.
+- [ ] Add malformed Anthropic SSE JSON repair if compatible endpoints keep
+      producing repairable stream chunks in practice.
 
 ## Transports
 

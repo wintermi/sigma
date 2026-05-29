@@ -111,7 +111,6 @@
       "type": "text"
     }
   ],
-  "temperature": 0.2,
   "thinking": {
     "budget_tokens": 2048,
     "display": "hidden",

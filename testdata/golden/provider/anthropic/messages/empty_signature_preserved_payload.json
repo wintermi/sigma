@@ -1,0 +1,20 @@
+{
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "content": [
+        {
+          "signature": "",
+          "thinking": "internal reasoning",
+          "type": "thinking"
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "model": "claude-test",
+  "stream": true,
+  "thinking": {
+    "type": "disabled"
+  }
+}

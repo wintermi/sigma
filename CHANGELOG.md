@@ -75,6 +75,14 @@ See [release notes](docs/release-notes-v0.2.0.md).
   `function_call_output` for image-capable models.
 - OpenAI-compatible Chat Completions compatibility metadata now supports
   Anthropic-style cache markers and opt-in `tool_stream` payloads.
+- Anthropic Messages compatibility metadata for Anthropic-compatible endpoints,
+  including eager tool input streaming, cache/session-affinity support, empty
+  thinking-signature replay, and budget/adaptive thinking formats.
+- Anthropic Messages now sends explicit disabled thinking for reasoning-capable
+  models, supports adaptive thinking `output_config.effort`, omits temperature
+  while thinking is enabled, groups consecutive tool results, emits block-end
+  events at `content_block_stop`, and preserves stream-start usage when later
+  deltas are partial.
 - Provider parity and image-generation docs now mark `openai-images` as a
   generation-only preview adapter instead of metadata-only.
 
@@ -89,6 +97,9 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Interactive OAuth login and token persistence are deferred; the MVP uses
   caller-supplied credentials or injected OAuth token providers only. OpenAI
   Codex Responses in particular requires a caller-supplied OAuth token provider.
+- Anthropic Claude Code OAuth identity headers and Claude Code tool-name
+  canonicalization are deferred with the broader OAuth/provider-specific
+  compatibility work.
 - WebSocket transports are deferred; unsupported transport choices should fail
   locally before network calls.
 - Codex WebSocket session caching/fallback remains deferred; Codex Responses

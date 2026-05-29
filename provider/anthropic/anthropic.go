@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://api.anthropic.com/v1"
-	defaultVersion = "2023-06-01"
+	DefaultBaseURL               = "https://api.anthropic.com/v1"
+	defaultVersion               = "2023-06-01"
+	fineGrainedToolStreamingBeta = "fine-grained-tool-streaming-2025-05-14"
+	defaultSessionAffinityHeader = "x-session-affinity"
 )
 
 // Provider adapts Anthropic Messages-compatible HTTP APIs to sigma.
@@ -202,7 +204,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("User-Agent", "sigma/anthropic-messages")
 	httpReq.Header.Set("Anthropic-Version", anthropicVersion(model.Provider, opts))
-	if beta := anthropicBeta(model.Provider, opts); beta != "" {
+	if beta := anthropicBeta(model.Provider, opts, compat, len(req.Tools) > 0); beta != "" {
 		httpReq.Header.Set("Anthropic-Beta", beta)
 	}
 
@@ -247,7 +249,7 @@ func (p *Provider) addAuthHeader(ctx context.Context, req *http.Request, model s
 }
 
 func (p *Provider) addProviderHeaders(req *http.Request, provider sigma.ProviderID, opts sigma.Options, compat messagesCompat) {
-	if opts.SessionID == "" || !compat.sessionAffinityHeaders {
+	if opts.SessionID == "" || !opts.CacheRetention.CacheEnabled() || !compat.sessionAffinityHeaders {
 		return
 	}
 	options := providerOptions(opts, provider)
@@ -255,6 +257,8 @@ func (p *Provider) addProviderHeaders(req *http.Request, provider sigma.Provider
 		req.Header.Set(header, opts.SessionID)
 	} else if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
 		req.Header.Set(header, opts.SessionID)
+	} else {
+		req.Header.Set(defaultSessionAffinityHeader, opts.SessionID)
 	}
 }
 
@@ -307,15 +311,38 @@ func anthropicVersion(provider sigma.ProviderID, opts sigma.Options) string {
 	return defaultVersion
 }
 
-func anthropicBeta(provider sigma.ProviderID, opts sigma.Options) string {
+func anthropicBeta(provider sigma.ProviderID, opts sigma.Options, compat messagesCompat, hasTools bool) string {
+	betas := make([]string, 0, 2)
 	options := providerOptions(opts, provider)
 	if beta, ok := stringOption(options, providerOptionBeta); ok {
-		return beta
+		betas = appendBetas(betas, beta)
+	} else if beta, ok := stringOption(options, providerOptionBetaGo); ok {
+		betas = appendBetas(betas, beta)
 	}
-	if beta, ok := stringOption(options, providerOptionBetaGo); ok {
-		return beta
+	if hasTools && !compat.eagerToolInputStreaming {
+		betas = appendBetas(betas, fineGrainedToolStreamingBeta)
 	}
-	return ""
+	return strings.Join(betas, ",")
+}
+
+func appendBetas(betas []string, value string) []string {
+	for _, beta := range strings.Split(value, ",") {
+		beta = strings.TrimSpace(beta)
+		if beta == "" {
+			continue
+		}
+		seen := false
+		for _, existing := range betas {
+			if existing == beta {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			betas = append(betas, beta)
+		}
+	}
+	return betas
 }
 
 func responseError(resp *http.Response, model sigma.Model) *sigma.ProviderError {

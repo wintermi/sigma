@@ -29,6 +29,9 @@ type Model struct {
 	// OpenAICompletionsCompat overrides provider/base-URL compatibility
 	// detection for OpenAI Chat Completions-compatible custom models.
 	OpenAICompletionsCompat *OpenAICompletionsCompat `json:"openAICompletionsCompat,omitempty"`
+	// AnthropicMessagesCompat overrides provider/base-URL compatibility
+	// detection for Anthropic Messages-compatible custom models.
+	AnthropicMessagesCompat *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
 	// AzureOpenAIResponses configures Azure OpenAI Responses models. Leave nil
 	// for non-Azure models.
 	AzureOpenAIResponses *AzureOpenAIResponsesConfig `json:"azureOpenAIResponses,omitempty"`
@@ -192,6 +195,7 @@ func cloneModel(model Model) Model {
 	model.ThinkingLevels = append([]ThinkingLevel(nil), model.ThinkingLevels...)
 	model.ThinkingLevelMap = copyThinkingLevelStringMap(model.ThinkingLevelMap)
 	model.OpenAICompletionsCompat = cloneOpenAICompletionsCompat(model.OpenAICompletionsCompat)
+	model.AnthropicMessagesCompat = cloneAnthropicMessagesCompat(model.AnthropicMessagesCompat)
 	model.AzureOpenAIResponses = cloneAzureOpenAIResponsesConfig(model.AzureOpenAIResponses)
 	model.OpenAICodexResponses = cloneOpenAICodexResponsesConfig(model.OpenAICodexResponses)
 	model.ProviderMetadata = copyStringAnyMap(model.ProviderMetadata)
@@ -245,6 +249,14 @@ func cloneOpenAICompletionsCompat(compat *OpenAICompletionsCompat) *OpenAIComple
 	copied := *compat
 	copied.OpenRouterRouting = cloneOpenRouterRoutingPreference(compat.OpenRouterRouting)
 	copied.VercelAIGatewayRouting = cloneVercelAIGatewayRoutingPreference(compat.VercelAIGatewayRouting)
+	return &copied
+}
+
+func cloneAnthropicMessagesCompat(compat *AnthropicMessagesCompat) *AnthropicMessagesCompat {
+	if compat == nil {
+		return nil
+	}
+	copied := *compat
 	return &copied
 }
 

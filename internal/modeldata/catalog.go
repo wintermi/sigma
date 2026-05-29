@@ -50,6 +50,7 @@ type TextModel struct {
 	AuthEnvNames            []string                 `json:"authEnvNames"`
 	DefaultTransport        string                   `json:"defaultTransport"`
 	OpenAICompletionsCompat *OpenAICompletionsCompat `json:"openAICompletionsCompat,omitempty"`
+	AnthropicMessagesCompat *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
 	AzureOpenAIResponses    *AzureOpenAIResponses    `json:"azureOpenAIResponses,omitempty"`
 	OpenAICodexResponses    *OpenAICodexResponses    `json:"openAICodexResponses,omitempty"`
 	ProviderMetadata        map[string]any           `json:"providerMetadata,omitempty"`
@@ -105,6 +106,16 @@ type OpenAICompletionsCompat struct {
 	RequiresReasoningContentOnAssistantMessages string                            `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	OpenRouterRouting                           *OpenRouterRoutingPreference      `json:"openRouterRouting,omitempty"`
 	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference `json:"vercelAIGatewayRouting,omitempty"`
+}
+
+// AnthropicMessagesCompat mirrors sigma.AnthropicMessagesCompat.
+type AnthropicMessagesCompat struct {
+	SupportsEagerToolInputStreaming string `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsLongCacheRetention      string `json:"supportsLongCacheRetention,omitempty"`
+	SupportsSessionAffinity         string `json:"supportsSessionAffinity,omitempty"`
+	SupportsCacheControlOnTools     string `json:"supportsCacheControlOnTools,omitempty"`
+	SupportsEmptyThinkingSignature  string `json:"supportsEmptyThinkingSignature,omitempty"`
+	ThinkingFormat                  string `json:"thinkingFormat,omitempty"`
 }
 
 // OpenRouterRoutingPreference mirrors sigma.OpenRouterRoutingPreference.

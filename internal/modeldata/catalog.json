@@ -82,6 +82,12 @@
       },
       "authEnvNames": ["ANTHROPIC_API_KEY"],
       "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      },
       "providerMetadata": {
         "modelFamily": "claude"
       }

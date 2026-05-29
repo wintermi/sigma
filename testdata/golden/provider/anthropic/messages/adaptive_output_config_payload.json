@@ -12,18 +12,12 @@
     }
   ],
   "model": "claude-test",
-  "stream": true,
-  "system": "Cache me when supported.",
-  "thinking": {
-    "type": "disabled"
+  "output_config": {
+    "effort": "xhigh"
   },
-  "tools": [
-    {
-      "description": "Lookup",
-      "input_schema": {
-        "type": "object"
-      },
-      "name": "lookup"
-    }
-  ]
+  "stream": true,
+  "thinking": {
+    "display": "summarized",
+    "type": "adaptive"
+  }
 }

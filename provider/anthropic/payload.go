@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/transform"
@@ -31,6 +32,7 @@ const (
 	providerOptionToolChoiceGo      = "toolChoice"
 	providerOptionThinkingDisplay   = "thinking_display"
 	providerOptionThinkingDisplayGo = "thinkingDisplay"
+	defaultThinkingDisplay          = "summarized"
 )
 
 func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat messagesCompat) (map[string]any, error) {
@@ -63,13 +65,13 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	if transformed.SystemPrompt != "" {
 		payload["system"] = anthropicSystem(transformed.SystemPrompt, opts.CacheRetention, compat)
 	}
-	if opts.Temperature != nil {
+	thinkingEnabled := addThinking(payload, model, opts, compat)
+	if opts.Temperature != nil && !thinkingEnabled {
 		payload["temperature"] = *opts.Temperature
 	}
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
-	addThinking(payload, model, opts, compat)
 	if len(transformed.Tools) > 0 {
 		tools, err := anthropicTools(transformed.Tools, opts.CacheRetention, compat)
 		if err != nil {
@@ -95,7 +97,22 @@ func anthropicSystem(prompt string, retention sigma.CacheRetention, compat messa
 
 func anthropicMessages(req sigma.Request, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages))
-	for _, message := range req.Messages {
+	for index := 0; index < len(req.Messages); index++ {
+		message := req.Messages[index]
+		if message.Role == sigma.RoleTool {
+			blocks := make([]map[string]any, 0, 1)
+			for index < len(req.Messages) && req.Messages[index].Role == sigma.RoleTool {
+				block, err := anthropicToolResultBlock(req.Messages[index], retention, compat)
+				if err != nil {
+					return nil, err
+				}
+				blocks = append(blocks, block)
+				index++
+			}
+			index--
+			messages = append(messages, map[string]any{"role": "user", "content": blocks})
+			continue
+		}
 		converted, err := anthropicMessage(message, retention, compat)
 		if err != nil {
 			return nil, err
@@ -115,29 +132,37 @@ func anthropicMessage(message sigma.Message, retention sigma.CacheRetention, com
 		addCacheControlToLast(content, retention, compat)
 		return map[string]any{"role": "user", "content": content}, nil
 	case sigma.RoleAssistant:
-		content, err := anthropicAssistantContent(message.Content)
+		content, err := anthropicAssistantContent(message.Content, compat)
 		if err != nil {
 			return nil, err
 		}
 		return map[string]any{"role": "assistant", "content": content}, nil
 	case sigma.RoleTool:
-		content, err := anthropicToolResultContent(message)
+		block, err := anthropicToolResultBlock(message, retention, compat)
 		if err != nil {
 			return nil, err
 		}
-		block := map[string]any{
-			"type":        "tool_result",
-			"tool_use_id": message.ToolCallID,
-			"content":     content,
-		}
-		if message.IsError {
-			block["is_error"] = true
-		}
-		addCacheControl(block, retention, compat)
 		return map[string]any{"role": "user", "content": []map[string]any{block}}, nil
 	default:
 		return nil, fmt.Errorf("anthropic messages: unsupported message role %q", message.Role)
 	}
+}
+
+func anthropicToolResultBlock(message sigma.Message, retention sigma.CacheRetention, compat messagesCompat) (map[string]any, error) {
+	content, err := anthropicToolResultContent(message)
+	if err != nil {
+		return nil, err
+	}
+	block := map[string]any{
+		"type":        "tool_result",
+		"tool_use_id": message.ToolCallID,
+		"content":     content,
+	}
+	if message.IsError {
+		block["is_error"] = true
+	}
+	addCacheControl(block, retention, compat)
+	return block, nil
 }
 
 func anthropicInputContent(blocks []sigma.ContentBlock, toolResult bool) ([]map[string]any, error) {
@@ -175,7 +200,7 @@ func anthropicToolResultContent(message sigma.Message) (any, error) {
 	return anthropicInputContent(message.Content, true)
 }
 
-func anthropicAssistantContent(blocks []sigma.ContentBlock) ([]map[string]any, error) {
+func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompat) ([]map[string]any, error) {
 	content := make([]map[string]any, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
@@ -196,12 +221,20 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock) ([]map[string]any, e
 				})
 				continue
 			}
+			signature := strings.TrimSpace(block.Signature)
+			if signature == "" && !compat.emptyThinkingSignature {
+				content = append(content, map[string]any{
+					"type": "text",
+					"text": block.ThinkingText,
+				})
+				continue
+			}
 			thinking := map[string]any{
 				"type":     "thinking",
 				"thinking": block.ThinkingText,
 			}
-			if block.Signature != "" {
-				thinking["signature"] = block.Signature
+			if signature != "" || compat.emptyThinkingSignature {
+				thinking["signature"] = signature
 			}
 			content = append(content, thinking)
 		case sigma.ContentBlockToolCall:
@@ -291,6 +324,9 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 			"description":  tool.Description,
 			"input_schema": inputSchema,
 		}
+		if compat.eagerToolInputStreaming {
+			convertedTool["eager_input_streaming"] = true
+		}
 		if compat.cacheControlOnTools {
 			addCacheControl(convertedTool, retention, compat)
 		}
@@ -299,22 +335,84 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 	return converted, nil
 }
 
-func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, compat messagesCompat) {
-	budget := thinkingBudget(model, opts, compat)
-	if budget <= 0 {
-		return
-	}
-	thinking := map[string]any{
-		"type":          "enabled",
-		"budget_tokens": budget,
+func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, compat messagesCompat) bool {
+	if !model.SupportsReasoning() {
+		return false
 	}
 	options := providerOptions(opts, model.Provider)
-	if display, ok := stringOption(options, providerOptionThinkingDisplay); ok {
-		thinking["display"] = display
-	} else if display, ok := stringOption(options, providerOptionThinkingDisplayGo); ok {
-		thinking["display"] = display
+	display := thinkingDisplay(options)
+	if thinkingFormat(model, compat) == sigma.AnthropicThinkingAdaptive && thinkingRequested(opts) {
+		payload["thinking"] = map[string]any{
+			"type":    "adaptive",
+			"display": display,
+		}
+		payload["output_config"] = map[string]any{
+			"effort": adaptiveEffort(model, opts),
+		}
+		return true
 	}
-	payload["thinking"] = thinking
+	budget := thinkingBudget(model, opts, compat)
+	if budget <= 0 {
+		payload["thinking"] = map[string]any{"type": "disabled"}
+		return false
+	}
+	payload["thinking"] = map[string]any{
+		"type":          "enabled",
+		"budget_tokens": budget,
+		"display":       display,
+	}
+	return true
+}
+
+func thinkingDisplay(options map[string]any) string {
+	if display, ok := stringOption(options, providerOptionThinkingDisplay); ok {
+		return display
+	}
+	if display, ok := stringOption(options, providerOptionThinkingDisplayGo); ok {
+		return display
+	}
+	return defaultThinkingDisplay
+}
+
+func thinkingFormat(model sigma.Model, compat messagesCompat) sigma.AnthropicThinkingFormat {
+	if compat.thinkingFormat != "" {
+		return compat.thinkingFormat
+	}
+	if compat.adaptiveThinking {
+		return sigma.AnthropicThinkingAdaptive
+	}
+	if model.AnthropicMessagesCompat != nil && model.AnthropicMessagesCompat.ThinkingFormat != "" {
+		return model.AnthropicMessagesCompat.ThinkingFormat
+	}
+	return sigma.AnthropicThinkingBudget
+}
+
+func thinkingRequested(opts sigma.Options) bool {
+	if opts.AnthropicOptions != nil && opts.AnthropicOptions.ThinkingBudgetTokens != nil {
+		return *opts.AnthropicOptions.ThinkingBudgetTokens > 0
+	}
+	if opts.ThinkingBudgetTokens != nil {
+		return *opts.ThinkingBudgetTokens > 0
+	}
+	return opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff
+}
+
+func adaptiveEffort(model sigma.Model, opts sigma.Options) string {
+	if opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff {
+		if value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel); ok && value != "" {
+			return value
+		}
+	}
+	switch opts.ReasoningLevel {
+	case sigma.ThinkingLevelMinimal, sigma.ThinkingLevelLow:
+		return "low"
+	case sigma.ThinkingLevelMedium:
+		return "medium"
+	case sigma.ThinkingLevelXHigh:
+		return "xhigh"
+	default:
+		return "high"
+	}
 }
 
 func thinkingBudget(model sigma.Model, opts sigma.Options, compat messagesCompat) int {

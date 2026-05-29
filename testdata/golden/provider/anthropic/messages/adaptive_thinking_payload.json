@@ -4,6 +4,9 @@
     {
       "content": [
         {
+          "cache_control": {
+            "type": "ephemeral"
+          },
           "text": "hi",
           "type": "text"
         }
@@ -15,6 +18,7 @@
   "stream": true,
   "thinking": {
     "budget_tokens": 8192,
+    "display": "summarized",
     "type": "enabled"
   }
 }

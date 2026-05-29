@@ -123,6 +123,7 @@ func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
 	writeStringField(b, "CostCurrency", "", model.Cost.Currency)
 	writeStringField(b, "DefaultTransport", "Transport", model.DefaultTransport)
 	writeOpenAICompatField(b, model.OpenAICompletionsCompat)
+	writeAnthropicCompatField(b, model.AnthropicMessagesCompat)
 	writeAzureField(b, model.AzureOpenAIResponses)
 	writeCodexField(b, model.OpenAICodexResponses)
 	writeProviderMetadataField(b, textProviderMetadata(model))
@@ -183,6 +184,20 @@ func writeOpenAICompatField(b *bytes.Buffer, compat *modeldata.OpenAICompletions
 	writeStringField(b, "RequiresReasoningContentOnAssistantMessages", "OpenAICompatSupport", compat.RequiresReasoningContentOnAssistantMessages)
 	writeOpenRouterRoutingField(b, compat.OpenRouterRouting)
 	writeVercelRoutingField(b, compat.VercelAIGatewayRouting)
+	b.WriteString("\t\t},\n")
+}
+
+func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessagesCompat) {
+	if compat == nil {
+		return
+	}
+	b.WriteString("\t\tAnthropicMessagesCompat: &AnthropicMessagesCompat{\n")
+	writeStringField(b, "SupportsEagerToolInputStreaming", "AnthropicCompatSupport", compat.SupportsEagerToolInputStreaming)
+	writeStringField(b, "SupportsLongCacheRetention", "AnthropicCompatSupport", compat.SupportsLongCacheRetention)
+	writeStringField(b, "SupportsSessionAffinity", "AnthropicCompatSupport", compat.SupportsSessionAffinity)
+	writeStringField(b, "SupportsCacheControlOnTools", "AnthropicCompatSupport", compat.SupportsCacheControlOnTools)
+	writeStringField(b, "SupportsEmptyThinkingSignature", "AnthropicCompatSupport", compat.SupportsEmptyThinkingSignature)
+	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
 	b.WriteString("\t\t},\n")
 }
 

@@ -74,6 +74,15 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got, want := headers["anthropic-version"], "2023-06-01"; got != want {
 		t.Fatalf("Anthropic version header = %q, want %q", got, want)
 	}
+	if anthropic.AnthropicMessagesCompat == nil {
+		t.Fatal("Anthropic model missing compatibility metadata")
+	}
+	if got, want := anthropic.AnthropicMessagesCompat.SupportsEagerToolInputStreaming, AnthropicCompatSupported; got != want {
+		t.Fatalf("Anthropic eager streaming compat = %q, want %q", got, want)
+	}
+	if got, want := anthropic.AnthropicMessagesCompat.ThinkingFormat, AnthropicThinkingBudget; got != want {
+		t.Fatalf("Anthropic thinking format = %q, want %q", got, want)
+	}
 
 	reasoning, ok := registry.Model(ProviderOpenAI, "o4-mini")
 	if !ok {

@@ -4,7 +4,7 @@
     {
       "content": [
         {
-          "text": "hi",
+          "text": "Use the tool.",
           "type": "text"
         }
       ],
@@ -13,13 +13,14 @@
   ],
   "model": "claude-test",
   "stream": true,
-  "system": "Cache me when supported.",
+  "temperature": 0.4,
   "thinking": {
     "type": "disabled"
   },
   "tools": [
     {
       "description": "Lookup",
+      "eager_input_streaming": true,
       "input_schema": {
         "type": "object"
       },
