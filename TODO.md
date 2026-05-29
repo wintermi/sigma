@@ -8,13 +8,16 @@ cancellation/error coverage (see the coverage standards in
 
 ## Image generation
 
-- [ ] Implement a runnable OpenAI Images provider adapter (generated metadata
-      already exists; the adapter does not).
-- [ ] Add fixture/golden-payload coverage for OpenAI image generation requests
-      and responses.
-- [ ] Add cancellation and error-path coverage for the OpenAI Images adapter.
-- [ ] Decide how image generation graduates the text-first MVP boundary and
-      update docs accordingly.
+- [ ] Implement OpenAI Images reference-image editing through
+      `ImageRequest.Inputs` and the Images edits endpoint.
+- [ ] Implement OpenAI image variations, or document why variations remain
+      outside the provider-neutral image surface.
+- [ ] Add streaming partial image support if Sigma exposes a streaming image
+      generation contract.
+- [ ] Add Responses API image-tool generation if it becomes part of the
+      provider-neutral image workflow.
+- [ ] Decide whether image generation graduates from preview into the MVP
+      boundary and update release docs accordingly.
 
 ## First-class provider rows
 

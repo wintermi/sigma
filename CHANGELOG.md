@@ -8,6 +8,8 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 ## [0.1.0] - 2026-05-29
 
+See [release notes](docs/release-notes-v0.1.0.md).
+
 ### Added
 
 - The repository is licensed under the MIT License.
@@ -50,12 +52,29 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
   errors, custom models, testing, persistence, inspiration from
   `@earendil-works/pi-ai`, provider parity, security, and generated metadata.
 
+## [0.2.0] - TBC
+
+See [release notes](docs/release-notes-v0.2.0.md).
+
+### Added
+
+- OpenAI Images generation adapter in `provider/openai`, with
+  `RegisterImages`, `RegisterImagesDefault`, request-scoped auth, custom
+  headers, retry/timeout handling, debug hooks, typed provider errors, and
+  deterministic `httptest` coverage.
+- OpenAI Images request payload support for prompt, model override, count, size,
+  quality, output MIME type, and `extra_body` provider options.
+- OpenAI Images response mapping for base64 image data, URL outputs, token
+  usage, revised prompts, and provider metadata.
+- Provider parity and image-generation docs now mark `openai-images` as a
+  generation-only preview adapter instead of metadata-only.
+
 ### Known limitations
 
 - Default registry entries are metadata-only; applications must import provider
   packages and call their `Register` functions before runtime dispatch.
-- The MVP is text-first. OpenAI Images has generated metadata but no runnable
-  OpenAI image provider adapter.
+- OpenAI Images is generation-only. Reference-image edits, variations,
+  streaming partial images, and Responses image-tool generation remain deferred.
 - Preview providers are not part of the first release gate and may change before
   `v1.0.0`.
 - Interactive OAuth login and token persistence are deferred; the MVP uses
