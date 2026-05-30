@@ -254,6 +254,80 @@ func TestTypedProviderOptionsAreCopied(t *testing.T) {
 	}
 }
 
+func TestBedrockOptionsAreCopied(t *testing.T) {
+	t.Parallel()
+
+	topP := 0.8
+	interleaved := true
+	options := sigma.BedrockOptions{
+		ToolChoice:          &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: "lookup"},
+		InterleavedThinking: &interleaved,
+		TopP:                &topP,
+		StopSequences:       []string{"stop"},
+		RequestMetadata:     map[string]string{"trace": "original"},
+		AdditionalModelRequestFields: map[string]any{
+			"custom": "original",
+		},
+		AdditionalModelResponseFieldPaths: []string{"/stop_sequence"},
+	}
+	client, provider, model := newOptionsTestClient(t,
+		sigma.WithDefaultOptions(sigma.WithBedrockOptions(options)),
+	)
+	options.ToolChoice.Name = "mutated"
+	options.StopSequences[0] = "mutated"
+	options.RequestMetadata["trace"] = "mutated"
+	options.AdditionalModelRequestFields["custom"] = "mutated"
+	options.AdditionalModelResponseFieldPaths[0] = "/mutated"
+	topP = 0.2
+	interleaved = false
+
+	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	got := provider.opts.BedrockOptions
+	if got == nil {
+		t.Fatal("bedrock options = nil")
+	}
+	if got.ToolChoice == nil || got.ToolChoice.Name != "lookup" {
+		t.Fatalf("tool choice = %+v, want lookup", got.ToolChoice)
+	}
+	if got.StopSequences[0] != "stop" {
+		t.Fatalf("stop sequence = %q, want stop", got.StopSequences[0])
+	}
+	if got.RequestMetadata["trace"] != "original" {
+		t.Fatalf("request metadata = %q, want original", got.RequestMetadata["trace"])
+	}
+	if got.AdditionalModelRequestFields["custom"] != "original" {
+		t.Fatalf("additional fields = %v, want original", got.AdditionalModelRequestFields["custom"])
+	}
+	if got.AdditionalModelResponseFieldPaths[0] != "/stop_sequence" {
+		t.Fatalf("response field path = %q, want /stop_sequence", got.AdditionalModelResponseFieldPaths[0])
+	}
+	if valueOf(got.TopP) != 0.8 {
+		t.Fatalf("top_p = %v, want 0.8", valueOf(got.TopP))
+	}
+	if !valueOf(got.InterleavedThinking) {
+		t.Fatal("interleaved thinking = false, want true")
+	}
+
+	got.ToolChoice.Name = "provider-mutated"
+	got.StopSequences[0] = "provider-mutated"
+	got.RequestMetadata["trace"] = "provider-mutated"
+	got.AdditionalModelRequestFields["custom"] = "provider-mutated"
+	got.AdditionalModelResponseFieldPaths[0] = "/provider-mutated"
+	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
+		t.Fatalf("second Complete returned error: %v", err)
+	}
+	got = provider.opts.BedrockOptions
+	if got.ToolChoice.Name != "lookup" ||
+		got.StopSequences[0] != "stop" ||
+		got.RequestMetadata["trace"] != "original" ||
+		got.AdditionalModelRequestFields["custom"] != "original" ||
+		got.AdditionalModelResponseFieldPaths[0] != "/stop_sequence" {
+		t.Fatalf("bedrock options were not cloned after provider mutation: %+v", got)
+	}
+}
+
 func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 	t.Parallel()
 
@@ -267,6 +341,8 @@ func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 		{name: "max retry delay", opt: sigma.WithMaxRetryDelay(-time.Second)},
 		{name: "thinking budget", opt: sigma.WithThinkingBudgetTokens(-1)},
 		{name: "openai top logprobs", opt: sigma.WithOpenAIOptions(sigma.OpenAIOptions{TopLogprobs: -1})},
+		{name: "bedrock top p", opt: sigma.WithBedrockOptions(sigma.BedrockOptions{TopP: testFloat64Ptr(-0.1)})},
+		{name: "bedrock tool choice", opt: sigma.WithBedrockOptions(sigma.BedrockOptions{ToolChoice: &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool}})},
 	}
 
 	for _, tt := range tests {
@@ -401,4 +477,8 @@ func valueOf[T comparable](value *T) T {
 		return zero
 	}
 	return *value
+}
+
+func testFloat64Ptr(value float64) *float64 {
+	return &value
 }

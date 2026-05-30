@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -264,6 +265,12 @@ func effectiveConfig(base Config, model sigma.Model, opts sigma.Options) Config 
 	} else if value, ok := stringOption(options, providerOptionCredentialSourceGo); ok {
 		config.CredentialSource = CredentialSource(value)
 	}
+	if config.Region == "" {
+		config.Region = os.Getenv("AWS_REGION")
+	}
+	if config.Region == "" {
+		config.Region = os.Getenv("AWS_DEFAULT_REGION")
+	}
 	return config
 }
 
@@ -282,6 +289,7 @@ func newHTTPConverseStreamClient(_ context.Context, bedrockConfig Config, opts s
 		config:      bedrockConfig,
 		credentials: credentialsInfo,
 		httpClient:  httpClient,
+		opts:        opts,
 	}, nil
 }
 
@@ -289,6 +297,7 @@ type httpConverseClient struct {
 	config      Config
 	credentials CredentialInfo
 	httpClient  *http.Client
+	opts        sigma.Options
 }
 
 func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequest) (ConverseStream, error) {
@@ -302,28 +311,49 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 	}
 
 	endpoint := bedrockConverseStreamURL(c.config, req.ModelID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/vnd.amazon.eventstream")
-	httpReq.Header.Set("User-Agent", "sigma/bedrock")
-	if c.credentials.BearerToken != "" {
-		httpReq.Header.Set("Authorization", "Bearer "+c.credentials.BearerToken)
-	} else {
-		signAWSSigV4(httpReq, data, c.credentials.AccessKeyID, c.credentials.SecretAccessKey, c.credentials.SessionToken, c.config.Region, "bedrock")
-	}
-	resp, err := c.httpClient.Do(httpReq)
+	resp, err := sigma.DoHTTPWithRetry(
+		ctx,
+		c.httpClient,
+		c.opts,
+		func(ctx context.Context) (*http.Request, error) {
+			httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(data))
+			if err != nil {
+				return nil, err
+			}
+			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set("Accept", "application/vnd.amazon.eventstream")
+			httpReq.Header.Set("User-Agent", "sigma/bedrock")
+			for key, value := range c.opts.Headers {
+				if !reservedBedrockHeader(key) {
+					httpReq.Header.Set(key, value)
+				}
+			}
+			if c.credentials.BearerToken != "" {
+				httpReq.Header.Set("Authorization", "Bearer "+c.credentials.BearerToken)
+			} else {
+				signAWSSigV4(httpReq, data, c.credentials.AccessKeyID, c.credentials.SecretAccessKey, c.credentials.SessionToken, c.config.Region, "bedrock")
+			}
+			return httpReq, nil
+		},
+		func(resp *http.Response) *sigma.ProviderError {
+			return sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), nil, sigma.ErrProviderResponse)
+		},
+		sigma.TextResponseDebugHTTPHook(ctx, c.opts, sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID)),
+	)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
-		return nil, sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), 0, respBody, sigma.ErrProviderResponse)
+		return nil, sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse)
 	}
 	return newHTTPConverseStream(resp.Body), nil
+}
+
+func reservedBedrockHeader(key string) bool {
+	lower := strings.ToLower(key)
+	return lower == "authorization" || lower == "host" || strings.HasPrefix(lower, "x-amz-")
 }
 
 func awsConverseInput(req ConverseRequest) (map[string]any, error) {
@@ -346,7 +376,11 @@ func awsConverseInput(req ConverseRequest) (map[string]any, error) {
 		input["inferenceConfig"] = inferenceConfig
 	}
 	if len(req.Tools) > 0 {
-		input["toolConfig"] = map[string]any{"tools": awsTools(req.Tools)}
+		toolConfig := map[string]any{"tools": awsTools(req.Tools)}
+		if choice := awsToolChoice(req.ToolChoice); choice != nil {
+			toolConfig["toolChoice"] = choice
+		}
+		input["toolConfig"] = toolConfig
 	}
 	if len(req.AdditionalModelResponseFieldPaths) > 0 {
 		input["additionalModelResponseFieldPaths"] = req.AdditionalModelResponseFieldPaths
@@ -386,6 +420,9 @@ func awsInferenceConfig(config *ConverseInferenceConfig) (map[string]any, error)
 	if config.Temperature != nil {
 		input["temperature"] = *config.Temperature
 	}
+	if config.TopP != nil {
+		input["topP"] = *config.TopP
+	}
 	if len(config.StopSequences) > 0 {
 		input["stopSequences"] = append([]string(nil), config.StopSequences...)
 	}
@@ -407,7 +444,7 @@ func awsSystemBlocks(blocks []ConverseContentBlock) ([]map[string]any, error) {
 		case converseBlockText:
 			converted = append(converted, map[string]any{"text": block.Text})
 		case converseBlockCachePoint:
-			converted = append(converted, map[string]any{"cachePoint": map[string]any{"type": "default"}})
+			converted = append(converted, map[string]any{"cachePoint": awsCachePoint(block.CachePoint)})
 		default:
 			return nil, fmt.Errorf("bedrock converse stream: unsupported system block %q", block.Type)
 		}
@@ -442,7 +479,7 @@ func awsContentBlocks(blocks []ConverseContentBlock) ([]map[string]any, error) {
 		case converseBlockReasoning:
 			converted = append(converted, awsReasoningBlock(block.Reasoning))
 		case converseBlockCachePoint:
-			converted = append(converted, map[string]any{"cachePoint": map[string]any{"type": "default"}})
+			converted = append(converted, map[string]any{"cachePoint": awsCachePoint(block.CachePoint)})
 		default:
 			return nil, fmt.Errorf("bedrock converse stream: unsupported content block %q", block.Type)
 		}
@@ -463,12 +500,39 @@ func awsImageBlock(image *ConverseImageBlock) (map[string]any, error) {
 func awsToolResultBlock(result *ConverseToolResultBlock) map[string]any {
 	block := map[string]any{
 		"toolUseId": result.ToolUseID,
-		"content":   []map[string]any{{"text": result.Text}},
+		"content":   awsToolResultContent(result.Content),
 	}
 	if result.Status != "" {
 		block["status"] = result.Status
 	}
 	return block
+}
+
+func awsToolResultContent(content []ConverseToolResultContent) []map[string]any {
+	if len(content) == 0 {
+		return []map[string]any{{"text": ""}}
+	}
+	converted := make([]map[string]any, 0, len(content))
+	for _, item := range content {
+		switch item.Type {
+		case converseBlockImage:
+			image, err := awsImageBlock(item.Image)
+			if err == nil {
+				converted = append(converted, map[string]any{"image": image})
+			}
+		default:
+			converted = append(converted, map[string]any{"text": item.Text})
+		}
+	}
+	return converted
+}
+
+func awsCachePoint(cachePoint *ConverseCachePointBlock) map[string]any {
+	out := map[string]any{"type": "default"}
+	if cachePoint != nil && cachePoint.TTL != "" {
+		out["ttl"] = cachePoint.TTL
+	}
+	return out
 }
 
 func awsReasoningBlock(reasoning *ConverseReasoningBlock) map[string]any {
@@ -499,6 +563,25 @@ func awsTools(tools []ConverseTool) []map[string]any {
 		converted = append(converted, map[string]any{"toolSpec": spec})
 	}
 	return converted
+}
+
+func awsToolChoice(choice *sigma.BedrockToolChoice) map[string]any {
+	if choice == nil {
+		return nil
+	}
+	switch choice.Type {
+	case sigma.BedrockToolChoiceAuto:
+		return map[string]any{"auto": map[string]any{}}
+	case sigma.BedrockToolChoiceAny:
+		return map[string]any{"any": map[string]any{}}
+	case sigma.BedrockToolChoiceTool:
+		if choice.Name == "" {
+			return nil
+		}
+		return map[string]any{"tool": map[string]any{"name": choice.Name}}
+	default:
+		return nil
+	}
 }
 
 func awsRole(role string) string {

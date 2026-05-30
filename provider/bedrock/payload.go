@@ -28,10 +28,20 @@ const (
 	providerOptionCredentialSourceGo           = "credentialSource"
 	providerOptionAdditionalModelRequestFields = "additional_model_request_fields"
 	providerOptionAdditionalModelRequestGo     = "additionalModelRequestFields"
+	providerOptionAdditionalResponsePaths      = "additional_model_response_field_paths"
+	providerOptionAdditionalResponsePathsGo    = "additionalModelResponseFieldPaths"
+	providerOptionRequestMetadata              = "request_metadata"
+	providerOptionRequestMetadataGo            = "requestMetadata"
 	providerOptionStopSequences                = "stop_sequences"
 	providerOptionStopSequencesGo              = "stopSequences"
 	providerOptionTopP                         = "top_p"
 	providerOptionTopPGo                       = "topP"
+	providerOptionToolChoice                   = "tool_choice"
+	providerOptionToolChoiceGo                 = "toolChoice"
+	providerOptionThinkingDisplay              = "thinking_display"
+	providerOptionThinkingDisplayGo            = "thinkingDisplay"
+	providerOptionInterleavedThinking          = "interleaved_thinking"
+	providerOptionInterleavedThinkingGo        = "interleavedThinking"
 )
 
 const (
@@ -55,6 +65,7 @@ type ConverseRequest struct {
 	Messages                          []ConverseMessage        `json:"messages,omitempty"`
 	InferenceConfig                   *ConverseInferenceConfig `json:"inferenceConfig,omitempty"`
 	Tools                             []ConverseTool           `json:"tools,omitempty"`
+	ToolChoice                        *sigma.BedrockToolChoice `json:"toolChoice,omitempty"`
 	AdditionalModelRequestFields      map[string]any           `json:"additionalModelRequestFields,omitempty"`
 	AdditionalModelResponseFieldPaths []string                 `json:"additionalModelResponseFieldPaths,omitempty"`
 	RequestMetadata                   map[string]string        `json:"requestMetadata,omitempty"`
@@ -74,6 +85,7 @@ type ConverseContentBlock struct {
 	ToolUse    *ConverseToolUseBlock    `json:"toolUse,omitempty"`
 	ToolResult *ConverseToolResultBlock `json:"toolResult,omitempty"`
 	Reasoning  *ConverseReasoningBlock  `json:"reasoning,omitempty"`
+	CachePoint *ConverseCachePointBlock `json:"cachePoint,omitempty"`
 }
 
 // ConverseImageBlock carries inline image bytes as base64 text.
@@ -91,9 +103,16 @@ type ConverseToolUseBlock struct {
 
 // ConverseToolResultBlock carries a user tool result.
 type ConverseToolResultBlock struct {
-	ToolUseID string `json:"toolUseId"`
-	Text      string `json:"text"`
-	Status    string `json:"status,omitempty"`
+	ToolUseID string                      `json:"toolUseId"`
+	Content   []ConverseToolResultContent `json:"content,omitempty"`
+	Status    string                      `json:"status,omitempty"`
+}
+
+// ConverseToolResultContent carries one tool-result content item.
+type ConverseToolResultContent struct {
+	Type  string              `json:"type"`
+	Text  string              `json:"text,omitempty"`
+	Image *ConverseImageBlock `json:"image,omitempty"`
 }
 
 // ConverseReasoningBlock carries replayed reasoning content.
@@ -104,10 +123,16 @@ type ConverseReasoningBlock struct {
 	Redacted          bool   `json:"redacted,omitempty"`
 }
 
+// ConverseCachePointBlock carries Bedrock prompt cache marker options.
+type ConverseCachePointBlock struct {
+	TTL string `json:"ttl,omitempty"`
+}
+
 // ConverseInferenceConfig carries portable Converse inference parameters.
 type ConverseInferenceConfig struct {
 	MaxTokens     *int     `json:"maxTokens,omitempty"`
 	Temperature   *float64 `json:"temperature,omitempty"`
+	TopP          *float64 `json:"topP,omitempty"`
 	StopSequences []string `json:"stopSequences,omitempty"`
 }
 
@@ -143,7 +168,7 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		Messages:                          messages,
 		InferenceConfig:                   inferenceConfig(opts, model.Provider),
 		AdditionalModelRequestFields:      additionalModelRequestFields(opts, model.Provider),
-		RequestMetadata:                   requestMetadata(opts.Metadata),
+		RequestMetadata:                   requestMetadata(opts, model.Provider),
 		AdditionalModelResponseFieldPaths: responseFieldPaths(opts, model.Provider),
 	}
 	if payload.ModelID == "" {
@@ -152,35 +177,41 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	if transformed.SystemPrompt != "" {
 		payload.System = append(payload.System, ConverseContentBlock{Type: converseBlockText, Text: transformed.SystemPrompt})
 	}
-	if opts.CacheRetention != "" && opts.CacheRetention != sigma.CacheRetentionNone {
+	if cachePointsEnabled(model, opts.CacheRetention) {
+		cachePoint := cachePointBlock(opts.CacheRetention)
 		if len(payload.System) > 0 {
-			payload.System = append(payload.System, ConverseContentBlock{Type: converseBlockCachePoint})
-		} else if len(payload.Messages) > 0 {
+			payload.System = append(payload.System, cachePoint)
+		}
+		if len(payload.Messages) > 0 {
 			last := len(payload.Messages) - 1
-			payload.Messages[last].Content = append(payload.Messages[last].Content, ConverseContentBlock{Type: converseBlockCachePoint})
+			if payload.Messages[last].Role == "user" {
+				payload.Messages[last].Content = append(payload.Messages[last].Content, cachePoint)
+			}
 		}
 	}
-	if opts.ThinkingBudgetTokens != nil {
+	if thinkingFields := bedrockThinkingFields(model, opts, config); len(thinkingFields) > 0 {
 		if payload.AdditionalModelRequestFields == nil {
 			payload.AdditionalModelRequestFields = make(map[string]any)
 		}
-		payload.AdditionalModelRequestFields["thinking"] = map[string]any{
-			"type":          "enabled",
-			"budget_tokens": *opts.ThinkingBudgetTokens,
+		for key, value := range thinkingFields {
+			payload.AdditionalModelRequestFields[key] = value
 		}
 	}
-	if len(transformed.Tools) > 0 {
+	toolChoice := bedrockToolChoice(opts, model.Provider)
+	if len(transformed.Tools) > 0 && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
 		tools, err := converseTools(model, transformed.Tools)
 		if err != nil {
 			return ConverseRequest{}, err
 		}
 		payload.Tools = tools
+		payload.ToolChoice = toolChoice
 	}
 	return payload, nil
 }
 
 func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Options) error {
-	if len(req.Tools) > 0 && !model.SupportsTools {
+	toolChoice := bedrockToolChoice(opts, model.Provider)
+	if len(req.Tools) > 0 && !model.SupportsTools && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
 		return unsupportedError(model, "target model does not support tools")
 	}
 	if opts.ThinkingBudgetTokens != nil && !model.SupportsThinking {
@@ -210,7 +241,17 @@ func unsupportedError(model sigma.Model, message string) error {
 
 func converseMessages(req sigma.Request) ([]ConverseMessage, error) {
 	messages := make([]ConverseMessage, 0, len(req.Messages))
-	for _, message := range req.Messages {
+	for index := 0; index < len(req.Messages); index++ {
+		message := req.Messages[index]
+		if message.Role == sigma.RoleTool {
+			converted, next, err := converseToolResults(req.Messages, index)
+			if err != nil {
+				return nil, err
+			}
+			messages = append(messages, converted)
+			index = next - 1
+			continue
+		}
 		converted, err := converseMessage(message)
 		if err != nil {
 			return nil, err
@@ -229,20 +270,62 @@ func converseMessage(message sigma.Message) (ConverseMessage, error) {
 		content, err := converseAssistantContent(message.Content)
 		return ConverseMessage{Role: "assistant", Content: content}, err
 	case sigma.RoleTool:
-		return ConverseMessage{
-			Role: "user",
-			Content: []ConverseContentBlock{{
-				Type: converseBlockToolResult,
-				ToolResult: &ConverseToolResultBlock{
-					ToolUseID: message.ToolCallID,
-					Text:      textContent(message.Content),
-					Status:    toolResultStatus(message.IsError),
-				},
-			}},
-		}, nil
+		converted, _, err := converseToolResults([]sigma.Message{message}, 0)
+		return converted, err
 	default:
 		return ConverseMessage{}, fmt.Errorf("bedrock converse stream: unsupported message role %q", message.Role)
 	}
+}
+
+func converseToolResults(messages []sigma.Message, start int) (ConverseMessage, int, error) {
+	content := []ConverseContentBlock{}
+	index := start
+	for index < len(messages) && messages[index].Role == sigma.RoleTool {
+		block, err := converseToolResult(messages[index])
+		if err != nil {
+			return ConverseMessage{}, index, err
+		}
+		content = append(content, block)
+		index++
+	}
+	return ConverseMessage{Role: "user", Content: content}, index, nil
+}
+
+func converseToolResult(message sigma.Message) (ConverseContentBlock, error) {
+	content, err := converseToolResultContent(message.Content)
+	if err != nil {
+		return ConverseContentBlock{}, err
+	}
+	return ConverseContentBlock{
+		Type: converseBlockToolResult,
+		ToolResult: &ConverseToolResultBlock{
+			ToolUseID: message.ToolCallID,
+			Content:   content,
+			Status:    toolResultStatus(message.IsError),
+		},
+	}, nil
+}
+
+func converseToolResultContent(blocks []sigma.ContentBlock) ([]ConverseToolResultContent, error) {
+	if len(blocks) == 0 {
+		return []ConverseToolResultContent{{Type: converseBlockText, Text: ""}}, nil
+	}
+	content := make([]ConverseToolResultContent, 0, len(blocks))
+	for _, block := range blocks {
+		switch block.Type {
+		case sigma.ContentBlockText:
+			content = append(content, ConverseToolResultContent{Type: converseBlockText, Text: block.Text})
+		case sigma.ContentBlockImage:
+			image, err := converseImage(block)
+			if err != nil {
+				return nil, err
+			}
+			content = append(content, ConverseToolResultContent{Type: converseBlockImage, Image: image})
+		default:
+			return nil, fmt.Errorf("bedrock converse stream: unsupported tool result content block %q", block.Type)
+		}
+	}
+	return content, nil
 }
 
 func converseInputContent(blocks []sigma.ContentBlock) ([]ConverseContentBlock, error) {
@@ -364,13 +447,24 @@ func inferenceConfig(opts sigma.Options, provider sigma.ProviderID) *ConverseInf
 	if opts.Temperature != nil {
 		config.Temperature = opts.Temperature
 	}
+	if opts.BedrockOptions != nil && opts.BedrockOptions.TopP != nil {
+		config.TopP = opts.BedrockOptions.TopP
+	}
 	options := providerOptions(opts, provider)
 	if values, ok := stringSliceOption(options, providerOptionStopSequences); ok {
 		config.StopSequences = values
 	} else if values, ok := stringSliceOption(options, providerOptionStopSequencesGo); ok {
 		config.StopSequences = values
 	}
-	if config.MaxTokens == nil && config.Temperature == nil && len(config.StopSequences) == 0 {
+	if topP, ok := float64Option(options, providerOptionTopP); ok && config.TopP == nil {
+		config.TopP = &topP
+	} else if topP, ok := float64Option(options, providerOptionTopPGo); ok && config.TopP == nil {
+		config.TopP = &topP
+	}
+	if opts.BedrockOptions != nil && len(opts.BedrockOptions.StopSequences) > 0 {
+		config.StopSequences = append([]string(nil), opts.BedrockOptions.StopSequences...)
+	}
+	if config.MaxTokens == nil && config.Temperature == nil && config.TopP == nil && len(config.StopSequences) == 0 {
 		return nil
 	}
 	return config
@@ -382,31 +476,325 @@ func additionalModelRequestFields(opts sigma.Options, provider sigma.ProviderID)
 	if len(fields) == 0 {
 		fields = mapOption(options, providerOptionAdditionalModelRequestGo)
 	}
-	if len(fields) == 0 {
+	copied := copyAnyMap(fields)
+	if opts.BedrockOptions != nil && len(opts.BedrockOptions.AdditionalModelRequestFields) > 0 {
+		if copied == nil {
+			copied = make(map[string]any, len(opts.BedrockOptions.AdditionalModelRequestFields))
+		}
+		for key, value := range opts.BedrockOptions.AdditionalModelRequestFields {
+			copied[key] = value
+		}
+	}
+	if len(copied) == 0 {
 		return nil
 	}
-	return copyAnyMap(fields)
+	return copied
 }
 
 func responseFieldPaths(opts sigma.Options, provider sigma.ProviderID) []string {
+	if opts.BedrockOptions != nil && len(opts.BedrockOptions.AdditionalModelResponseFieldPaths) > 0 {
+		return append([]string(nil), opts.BedrockOptions.AdditionalModelResponseFieldPaths...)
+	}
 	options := providerOptions(opts, provider)
-	return stringSlice(options["additional_model_response_field_paths"])
+	if values := stringSlice(options[providerOptionAdditionalResponsePaths]); len(values) > 0 {
+		return values
+	}
+	return stringSlice(options[providerOptionAdditionalResponsePathsGo])
 }
 
-func requestMetadata(metadata map[string]any) map[string]string {
-	if len(metadata) == 0 {
-		return nil
-	}
-	converted := make(map[string]string, len(metadata))
-	for key, value := range metadata {
+func requestMetadata(opts sigma.Options, provider sigma.ProviderID) map[string]string {
+	converted := make(map[string]string)
+	for key, value := range opts.Metadata {
 		if text, ok := value.(string); ok {
 			converted[key] = text
+		}
+	}
+	options := providerOptions(opts, provider)
+	for key, value := range stringMapOption(options, providerOptionRequestMetadata) {
+		converted[key] = value
+	}
+	for key, value := range stringMapOption(options, providerOptionRequestMetadataGo) {
+		converted[key] = value
+	}
+	if opts.BedrockOptions != nil {
+		for key, value := range opts.BedrockOptions.RequestMetadata {
+			converted[key] = value
 		}
 	}
 	if len(converted) == 0 {
 		return nil
 	}
 	return converted
+}
+
+func bedrockToolChoice(opts sigma.Options, provider sigma.ProviderID) *sigma.BedrockToolChoice {
+	if opts.BedrockOptions != nil && opts.BedrockOptions.ToolChoice != nil {
+		toolChoice := *opts.BedrockOptions.ToolChoice
+		return &toolChoice
+	}
+	options := providerOptions(opts, provider)
+	if choice, ok := stringOption(options, providerOptionToolChoice); ok {
+		return stringToolChoice(choice)
+	}
+	if choice, ok := stringOption(options, providerOptionToolChoiceGo); ok {
+		return stringToolChoice(choice)
+	}
+	if choice := mapToolChoice(mapOption(options, providerOptionToolChoice)); choice != nil {
+		return choice
+	}
+	return mapToolChoice(mapOption(options, providerOptionToolChoiceGo))
+}
+
+func stringToolChoice(choice string) *sigma.BedrockToolChoice {
+	return &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceType(choice)}
+}
+
+func mapToolChoice(values map[string]any) *sigma.BedrockToolChoice {
+	if len(values) == 0 {
+		return nil
+	}
+	choice := sigma.BedrockToolChoice{}
+	if text, ok := values["type"].(string); ok {
+		choice.Type = sigma.BedrockToolChoiceType(text)
+	}
+	if text, ok := values["name"].(string); ok {
+		choice.Name = text
+	}
+	if choice.Type == "" && choice.Name == "" {
+		return nil
+	}
+	return &choice
+}
+
+func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config) map[string]any {
+	if opts.ThinkingBudgetTokens == nil && (opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff) {
+		return nil
+	}
+	if !isClaudeBedrockModel(model) {
+		if opts.ThinkingBudgetTokens == nil {
+			return nil
+		}
+		return map[string]any{
+			"thinking": map[string]any{
+				"type":          "enabled",
+				"budget_tokens": *opts.ThinkingBudgetTokens,
+			},
+		}
+	}
+
+	display := bedrockThinkingDisplay(model, opts, config)
+	if supportsAdaptiveThinking(model) && opts.ThinkingBudgetTokens == nil {
+		thinking := map[string]any{"type": "adaptive"}
+		if display != "" {
+			thinking["display"] = display
+		}
+		return map[string]any{
+			"thinking":      thinking,
+			"output_config": map[string]any{"effort": bedrockThinkingEffort(model, opts.ReasoningLevel)},
+		}
+	}
+
+	budget := bedrockThinkingBudget(opts)
+	thinking := map[string]any{
+		"type":          "enabled",
+		"budget_tokens": budget,
+	}
+	if display != "" {
+		thinking["display"] = display
+	}
+	fields := map[string]any{"thinking": thinking}
+	if bedrockInterleavedThinking(opts, model.Provider) {
+		fields["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
+	}
+	return fields
+}
+
+func bedrockThinkingDisplay(model sigma.Model, opts sigma.Options, config Config) string {
+	if isGovCloudBedrockTarget(model, config) {
+		return ""
+	}
+	if opts.BedrockOptions != nil && opts.BedrockOptions.ThinkingDisplay != "" {
+		return string(opts.BedrockOptions.ThinkingDisplay)
+	}
+	options := providerOptions(opts, model.Provider)
+	if value, ok := stringOption(options, providerOptionThinkingDisplay); ok {
+		return value
+	}
+	if value, ok := stringOption(options, providerOptionThinkingDisplayGo); ok {
+		return value
+	}
+	return string(sigma.BedrockThinkingDisplaySummarized)
+}
+
+func bedrockThinkingEffort(model sigma.Model, level sigma.ThinkingLevel) string {
+	if level == sigma.ThinkingLevelXHigh && supportsNativeXHighEffort(model) {
+		return "xhigh"
+	}
+	if level != "" {
+		if value, ok := model.ProviderThinkingLevel(level); ok {
+			return value
+		}
+	}
+	switch level {
+	case sigma.ThinkingLevelMinimal, sigma.ThinkingLevelLow:
+		return "low"
+	case sigma.ThinkingLevelMedium:
+		return "medium"
+	case sigma.ThinkingLevelHigh, sigma.ThinkingLevelXHigh:
+		return "high"
+	default:
+		return "high"
+	}
+}
+
+func bedrockThinkingBudget(opts sigma.Options) int {
+	if opts.ThinkingBudgetTokens != nil {
+		return *opts.ThinkingBudgetTokens
+	}
+	switch opts.ReasoningLevel {
+	case sigma.ThinkingLevelMinimal:
+		return 1024
+	case sigma.ThinkingLevelLow:
+		return 2048
+	case sigma.ThinkingLevelMedium:
+		return 8192
+	case sigma.ThinkingLevelHigh, sigma.ThinkingLevelXHigh:
+		return 16384
+	default:
+		return 1024
+	}
+}
+
+func bedrockInterleavedThinking(opts sigma.Options, provider sigma.ProviderID) bool {
+	if opts.BedrockOptions != nil && opts.BedrockOptions.InterleavedThinking != nil {
+		return *opts.BedrockOptions.InterleavedThinking
+	}
+	options := providerOptions(opts, provider)
+	if value, ok := boolOption(options, providerOptionInterleavedThinking); ok {
+		return value
+	}
+	if value, ok := boolOption(options, providerOptionInterleavedThinkingGo); ok {
+		return value
+	}
+	return true
+}
+
+func cachePointsEnabled(model sigma.Model, retention sigma.CacheRetention) bool {
+	if retention == "" || retention == sigma.CacheRetentionNone {
+		return false
+	}
+	return supportsPromptCaching(model)
+}
+
+func cachePointBlock(retention sigma.CacheRetention) ConverseContentBlock {
+	block := ConverseContentBlock{
+		Type:       converseBlockCachePoint,
+		CachePoint: &ConverseCachePointBlock{},
+	}
+	if retention == sigma.CacheRetentionLong || retention == sigma.CacheRetentionPersistent {
+		block.CachePoint.TTL = "ONE_HOUR"
+	}
+	return block
+}
+
+func isClaudeBedrockModel(model sigma.Model) bool {
+	for _, candidate := range modelMatchCandidates(model) {
+		if strings.Contains(candidate, "anthropic.claude") ||
+			strings.Contains(candidate, "anthropic/claude") ||
+			strings.Contains(candidate, "claude") {
+			return true
+		}
+	}
+	return false
+}
+
+func supportsPromptCaching(model sigma.Model) bool {
+	candidates := modelMatchCandidates(model)
+	hasClaude := false
+	for _, candidate := range candidates {
+		if strings.Contains(candidate, "claude") {
+			hasClaude = true
+			break
+		}
+	}
+	if !hasClaude {
+		return false
+	}
+	for _, candidate := range candidates {
+		if strings.Contains(candidate, "-4-") ||
+			strings.Contains(candidate, "claude-3-7-sonnet") ||
+			strings.Contains(candidate, "claude-3-5-haiku") {
+			return true
+		}
+	}
+	return false
+}
+
+func supportsAdaptiveThinking(model sigma.Model) bool {
+	for _, candidate := range modelMatchCandidates(model) {
+		if strings.Contains(candidate, "opus-4-6") ||
+			strings.Contains(candidate, "opus-4-7") ||
+			strings.Contains(candidate, "opus-4-8") ||
+			strings.Contains(candidate, "sonnet-4-6") {
+			return true
+		}
+	}
+	return false
+}
+
+func supportsNativeXHighEffort(model sigma.Model) bool {
+	for _, candidate := range modelMatchCandidates(model) {
+		if strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") {
+			return true
+		}
+	}
+	return false
+}
+
+func isGovCloudBedrockTarget(model sigma.Model, config Config) bool {
+	if strings.HasPrefix(strings.ToLower(config.Region), "us-gov-") {
+		return true
+	}
+	id := strings.ToLower(string(model.ID))
+	return strings.HasPrefix(id, "us-gov.") || strings.HasPrefix(id, "arn:aws-us-gov:")
+}
+
+func modelMatchCandidates(model sigma.Model) []string {
+	values := []string{string(model.ID)}
+	if model.Name != "" {
+		values = append(values, model.Name)
+	}
+	candidates := make([]string, 0, len(values)*2)
+	for _, value := range values {
+		lower := strings.ToLower(value)
+		candidates = append(candidates, lower, normalizeModelCandidate(lower))
+	}
+	return candidates
+}
+
+func normalizeModelCandidate(value string) string {
+	replacer := strings.NewReplacer(" ", "-", "_", "-", ".", "-", ":", "-")
+	return replacer.Replace(value)
+}
+
+func stringMapOption(options map[string]any, key string) map[string]string {
+	if len(options) == 0 {
+		return nil
+	}
+	switch values := options[key].(type) {
+	case map[string]string:
+		return copyStringMap(values)
+	case map[string]any:
+		converted := make(map[string]string, len(values))
+		for key, value := range values {
+			if text, ok := value.(string); ok {
+				converted[key] = text
+			}
+		}
+		return converted
+	default:
+		return nil
+	}
 }
 
 func providerOptions(opts sigma.Options, provider sigma.ProviderID) map[string]any {
@@ -417,16 +805,6 @@ func providerOptions(opts sigma.Options, provider sigma.ProviderID) map[string]a
 		return values
 	}
 	return opts.ProviderOptions[sigma.ProviderAmazonBedrock]
-}
-
-func textContent(blocks []sigma.ContentBlock) string {
-	var text strings.Builder
-	for _, block := range blocks {
-		if block.Type == sigma.ContentBlockText {
-			text.WriteString(block.Text)
-		}
-	}
-	return text.String()
 }
 
 func toolResultStatus(isError bool) string {
@@ -512,6 +890,30 @@ func stringOption(options map[string]any, key string) (string, bool) {
 	return value, ok && value != ""
 }
 
+func boolOption(options map[string]any, key string) (bool, bool) {
+	if len(options) == 0 {
+		return false, false
+	}
+	value, ok := options[key].(bool)
+	return value, ok
+}
+
+func float64Option(options map[string]any, key string) (float64, bool) {
+	if len(options) == 0 {
+		return 0, false
+	}
+	switch value := options[key].(type) {
+	case float64:
+		return value, true
+	case float32:
+		return float64(value), true
+	case int:
+		return float64(value), true
+	default:
+		return 0, false
+	}
+}
+
 func stringSliceOption(options map[string]any, key string) ([]string, bool) {
 	if len(options) == 0 {
 		return nil, false
@@ -542,6 +944,17 @@ func copyAnyMap(values map[string]any) map[string]any {
 		return nil
 	}
 	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
 	for key, value := range values {
 		copied[key] = value
 	}

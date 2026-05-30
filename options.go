@@ -43,6 +43,51 @@ type GoogleOptions struct {
 	DisableThinking      *bool
 }
 
+// BedrockToolChoiceType identifies Bedrock Converse tool selection behavior.
+type BedrockToolChoiceType string
+
+const (
+	// BedrockToolChoiceAuto lets Bedrock choose whether to call a tool.
+	BedrockToolChoiceAuto BedrockToolChoiceType = "auto"
+	// BedrockToolChoiceAny requires Bedrock to call one of the supplied tools.
+	BedrockToolChoiceAny BedrockToolChoiceType = "any"
+	// BedrockToolChoiceNone omits tools from the Bedrock request.
+	BedrockToolChoiceNone BedrockToolChoiceType = "none"
+	// BedrockToolChoiceTool requires Bedrock to call the named tool.
+	BedrockToolChoiceTool BedrockToolChoiceType = "tool"
+)
+
+// BedrockToolChoice carries Bedrock Converse tool choice controls.
+type BedrockToolChoice struct {
+	Type BedrockToolChoiceType `json:"type"`
+	Name string                `json:"name,omitempty"`
+}
+
+// BedrockThinkingDisplay controls how Claude thinking content is returned by
+// Bedrock when the model supports the display field.
+type BedrockThinkingDisplay string
+
+const (
+	// BedrockThinkingDisplaySummarized requests summarized thinking text.
+	BedrockThinkingDisplaySummarized BedrockThinkingDisplay = "summarized"
+	// BedrockThinkingDisplayOmitted asks Bedrock to omit thinking text while
+	// preserving signatures for replay.
+	BedrockThinkingDisplayOmitted BedrockThinkingDisplay = "omitted"
+)
+
+// BedrockOptions carries Bedrock-specific request options known to the root
+// package without importing the provider adapter.
+type BedrockOptions struct {
+	ToolChoice                        *BedrockToolChoice
+	ThinkingDisplay                   BedrockThinkingDisplay
+	InterleavedThinking               *bool
+	StopSequences                     []string
+	TopP                              *float64
+	RequestMetadata                   map[string]string
+	AdditionalModelRequestFields      map[string]any
+	AdditionalModelResponseFieldPaths []string
+}
+
 // Options configures a single provider request.
 //
 // Client.Stream merges options in this order: client defaults, defaults from
@@ -75,6 +120,7 @@ type Options struct {
 	OpenAIOptions           *OpenAIOptions
 	AnthropicOptions        *AnthropicOptions
 	GoogleOptions           *GoogleOptions
+	BedrockOptions          *BedrockOptions
 }
 
 // Option configures a single provider request.
@@ -277,6 +323,13 @@ func WithGoogleOptions(googleOptions GoogleOptions) Option {
 	}
 }
 
+// WithBedrockOptions configures known Bedrock-specific request options.
+func WithBedrockOptions(bedrockOptions BedrockOptions) Option {
+	return func(options *Options) {
+		options.BedrockOptions = cloneBedrockOptions(&bedrockOptions)
+	}
+}
+
 func applyOptions(options Options, opts []Option) Options {
 	applied := cloneOptions(options)
 	for _, opt := range opts {
@@ -313,6 +366,7 @@ func cloneOptions(options Options) Options {
 		OpenAIOptions:           cloneOpenAIOptions(options.OpenAIOptions),
 		AnthropicOptions:        cloneAnthropicOptions(options.AnthropicOptions),
 		GoogleOptions:           cloneGoogleOptions(options.GoogleOptions),
+		BedrockOptions:          cloneBedrockOptions(options.BedrockOptions),
 	}
 }
 
@@ -363,6 +417,24 @@ func cloneGoogleOptions(options *GoogleOptions) *GoogleOptions {
 	copied := *options
 	copied.ThinkingBudgetTokens = cloneIntPtr(options.ThinkingBudgetTokens)
 	copied.DisableThinking = cloneBoolPtr(options.DisableThinking)
+	return &copied
+}
+
+func cloneBedrockOptions(options *BedrockOptions) *BedrockOptions {
+	if options == nil {
+		return nil
+	}
+	copied := *options
+	if options.ToolChoice != nil {
+		toolChoice := *options.ToolChoice
+		copied.ToolChoice = &toolChoice
+	}
+	copied.InterleavedThinking = cloneBoolPtr(options.InterleavedThinking)
+	copied.StopSequences = append([]string(nil), options.StopSequences...)
+	copied.TopP = cloneFloat64Ptr(options.TopP)
+	copied.RequestMetadata = copyStringStringMap(options.RequestMetadata)
+	copied.AdditionalModelRequestFields = copyStringAnyMap(options.AdditionalModelRequestFields)
+	copied.AdditionalModelResponseFieldPaths = append([]string(nil), options.AdditionalModelResponseFieldPaths...)
 	return &copied
 }
 

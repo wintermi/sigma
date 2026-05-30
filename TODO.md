@@ -127,6 +127,17 @@ evidence bar.
       workflow, with deterministic modeldata, payload, error, and compatibility
       coverage for promoted rows.
 
+## Bedrock parity
+
+- [ ] Keep live Bedrock validation out of `mise run ci`; use credential-gated
+      checks only for manual compatibility investigation.
+- [ ] Expand broad Bedrock generated metadata only through the catalog refresh
+      workflow, with deterministic modeldata, payload, error, and compatibility
+      coverage for promoted rows.
+- [ ] Keep AWS profile, SSO, web identity, IMDS, and shared-config loading
+      outside the built-in stdlib Bedrock adapter unless Sigma adopts an AWS SDK
+      credential integration.
+
 ## Authentication and credentials
 
 - [ ] Implement interactive OAuth login (currently MVP uses caller-supplied

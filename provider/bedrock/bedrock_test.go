@@ -48,6 +48,7 @@ func TestConversePayloadMapsMessagesToolsImagesThinkingAndCache(t *testing.T) {
 
 	imageData := "aGVsbG8="
 	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.Name = "Claude Sonnet 4.5"
 	maxTokens := 256
 	temperature := 0.2
 	req := sigma.Request{
@@ -95,6 +96,235 @@ func TestConversePayloadMapsMessagesToolsImagesThinkingAndCache(t *testing.T) {
 	}
 
 	goldentest.AssertJSON(t, payload, "provider/bedrock/converse/rich_payload.json")
+}
+
+func TestBedrockOptionsOverrideProviderOptionsAndMapToolChoice(t *testing.T) {
+	t.Parallel()
+
+	topP := 0.7
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("hi")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Look up records",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.Options{
+			BedrockOptions: &sigma.BedrockOptions{
+				ToolChoice:                   &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: "lookup"},
+				TopP:                         &topP,
+				StopSequences:                []string{"typed-stop"},
+				RequestMetadata:              map[string]string{"trace": "typed"},
+				AdditionalModelRequestFields: map[string]any{"field": "typed"},
+				AdditionalModelResponseFieldPaths: []string{
+					"/stop_sequence",
+				},
+			},
+			ProviderOptions: map[sigma.ProviderID]map[string]any{
+				sigma.ProviderAmazonBedrock: {
+					providerOptionToolChoice:                   "auto",
+					providerOptionTopP:                         0.2,
+					providerOptionStopSequences:                []string{"provider-stop"},
+					providerOptionRequestMetadata:              map[string]any{"trace": "provider"},
+					providerOptionAdditionalModelRequestFields: map[string]any{"field": "provider"},
+					providerOptionAdditionalResponsePaths:      []string{"/provider"},
+				},
+			},
+		},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if payload.ToolChoice == nil || payload.ToolChoice.Type != sigma.BedrockToolChoiceTool || payload.ToolChoice.Name != "lookup" {
+		t.Fatalf("tool choice = %+v, want named lookup", payload.ToolChoice)
+	}
+	if payload.InferenceConfig == nil || payload.InferenceConfig.TopP == nil || *payload.InferenceConfig.TopP != 0.7 {
+		t.Fatalf("top_p = %+v, want 0.7", payload.InferenceConfig)
+	}
+	if got, want := payload.InferenceConfig.StopSequences, []string{"typed-stop"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("stop sequences = %v, want %v", got, want)
+	}
+	if got, want := payload.RequestMetadata["trace"], "typed"; got != want {
+		t.Fatalf("request metadata trace = %q, want %q", got, want)
+	}
+	if got, want := payload.AdditionalModelRequestFields["field"], "typed"; got != want {
+		t.Fatalf("additional field = %v, want %v", got, want)
+	}
+	if got, want := payload.AdditionalModelResponseFieldPaths, []string{"/stop_sequence"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("response field paths = %v, want %v", got, want)
+	}
+
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	toolConfig := input["toolConfig"].(map[string]any)
+	if got, want := toolConfig["toolChoice"], map[string]any{"tool": map[string]any{"name": "lookup"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool choice body = %#v, want %#v", got, want)
+	}
+}
+
+func TestBedrockToolChoiceNoneOmitsToolsBeforeCapabilityCheck(t *testing.T) {
+	t.Parallel()
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.SupportsTools = false
+	payload, err := conversePayload(
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("hi")},
+			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.Options{BedrockOptions: &sigma.BedrockOptions{
+			ToolChoice: &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceNone},
+		}},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if len(payload.Tools) != 0 || payload.ToolChoice != nil {
+		t.Fatalf("tools = %v choice = %+v, want omitted", payload.Tools, payload.ToolChoice)
+	}
+}
+
+func TestBedrockThinkingPayloadVariants(t *testing.T) {
+	t.Parallel()
+
+	disabled := false
+	tests := []struct {
+		name   string
+		model  sigma.Model
+		opts   sigma.Options
+		config Config
+		want   map[string]any
+	}{
+		{
+			name: "adaptive claude",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "global.anthropic.claude-opus-4-8-v1"
+				model.Name = "Claude Opus 4.8"
+				return model
+			}(),
+			opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelXHigh},
+			want: map[string]any{
+				"thinking":      map[string]any{"type": "adaptive", "display": "summarized"},
+				"output_config": map[string]any{"effort": "xhigh"},
+			},
+		},
+		{
+			name: "fixed budget claude",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+				model.Name = "Claude Sonnet 4.5"
+				return model
+			}(),
+			opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelMedium},
+			want: map[string]any{
+				"thinking":       map[string]any{"type": "enabled", "budget_tokens": 8192, "display": "summarized"},
+				"anthropic_beta": []string{"interleaved-thinking-2025-05-14"},
+			},
+		},
+		{
+			name: "explicit budget without interleaved beta",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+				model.Name = "Claude Sonnet 4.5"
+				return model
+			}(),
+			opts: sigma.Options{
+				ThinkingBudgetTokens: intPtr(4096),
+				BedrockOptions:       &sigma.BedrockOptions{InterleavedThinking: &disabled},
+			},
+			want: map[string]any{
+				"thinking": map[string]any{"type": "enabled", "budget_tokens": 4096, "display": "summarized"},
+			},
+		},
+		{
+			name: "govcloud omits display",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"
+				model.Name = "Claude Sonnet 4.5"
+				return model
+			}(),
+			opts:   sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+			config: Config{Region: "us-gov-west-1"},
+			want: map[string]any{
+				"thinking":       map[string]any{"type": "enabled", "budget_tokens": 16384},
+				"anthropic_beta": []string{"interleaved-thinking-2025-05-14"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			payload, err := conversePayload(tt.model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}, tt.opts, tt.config)
+			if err != nil {
+				t.Fatalf("conversePayload returned error: %v", err)
+			}
+			if !reflect.DeepEqual(payload.AdditionalModelRequestFields, tt.want) {
+				t.Fatalf("thinking fields = %#v, want %#v", payload.AdditionalModelRequestFields, tt.want)
+			}
+		})
+	}
+}
+
+func TestToolResultsGroupAndPreserveImages(t *testing.T) {
+	t.Parallel()
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_a",
+				Content:    []sigma.ContentBlock{sigma.Text("alpha")},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_b",
+				Content: []sigma.ContentBlock{
+					sigma.Text("beta"),
+					sigma.ImageBase64("image/png", "aW1hZ2U="),
+				},
+			},
+		}},
+		sigma.Options{},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if len(payload.Messages) != 1 {
+		t.Fatalf("messages = %d, want grouped single message", len(payload.Messages))
+	}
+	if len(payload.Messages[0].Content) != 2 {
+		t.Fatalf("tool result blocks = %d, want 2", len(payload.Messages[0].Content))
+	}
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	messages := input["messages"].([]map[string]any)
+	content := messages[0]["content"].([]map[string]any)
+	second := content[1]["toolResult"].(map[string]any)
+	resultContent := second["content"].([]map[string]any)
+	if len(resultContent) != 2 {
+		t.Fatalf("second tool result content = %d, want text and image", len(resultContent))
+	}
+	if _, ok := resultContent[1]["image"]; !ok {
+		t.Fatalf("second tool result image missing: %#v", resultContent[1])
+	}
 }
 
 func TestAWSConverseInputRejectsMaxTokensOutsideInt32(t *testing.T) {
@@ -185,11 +415,15 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 
 	var gotPath string
 	var gotAuthorization string
+	var gotCustomHeader string
+	var gotAmzDate string
 	var gotSecurityToken string
 	var gotPayload []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.EscapedPath()
 		gotAuthorization = r.Header.Get("Authorization")
+		gotCustomHeader = r.Header.Get("X-Custom")
+		gotAmzDate = r.Header.Get("X-Amz-Date")
 		gotSecurityToken = r.Header.Get("X-Amz-Security-Token")
 		var err error
 		gotPayload, err = io.ReadAll(r.Body)
@@ -209,7 +443,11 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	client, err := newHTTPConverseStreamClient(context.Background(), Config{
 		Region:   "us-east-1",
 		Endpoint: server.URL,
-	}, sigma.Options{}, CredentialInfo{
+	}, sigma.Options{Headers: map[string]string{
+		"X-Custom":      "custom",
+		"Authorization": "evil",
+		"X-Amz-Date":    "evil",
+	}}, CredentialInfo{
 		Source:          CredentialSourceAuthResolver,
 		AccessKeyID:     "AKIAFAKE",
 		SecretAccessKey: "secret",
@@ -236,6 +474,12 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	if !strings.HasPrefix(gotAuthorization, "AWS4-HMAC-SHA256 Credential=AKIAFAKE/") {
 		t.Fatalf("Authorization = %q, want SigV4 credential", gotAuthorization)
 	}
+	if got, want := gotCustomHeader, "custom"; got != want {
+		t.Fatalf("custom header = %q, want %q", got, want)
+	}
+	if gotAmzDate == "evil" {
+		t.Fatalf("reserved x-amz-date header was overwritten by caller")
+	}
 	if got, want := gotSecurityToken, "session"; got != want {
 		t.Fatalf("security token = %q, want %q", got, want)
 	}
@@ -253,6 +497,53 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	}
 	if events[3].Usage == nil || events[3].Usage.TotalTokens != 3 {
 		t.Fatalf("usage = %+v, want total tokens 3", events[3].Usage)
+	}
+}
+
+func TestHTTPConverseStreamClientRetriesAndRunsResponseHooks(t *testing.T) {
+	t.Parallel()
+
+	var attempts int
+	var statuses []int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"message":"retry"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+		_, _ = w.Write(bedrockEventStream(bedrockEventStreamFrame("messageStop", []byte(`{"stopReason":"end_turn"}`))))
+	}))
+	defer server.Close()
+
+	client, err := newHTTPConverseStreamClient(context.Background(), Config{
+		Region:   "us-east-1",
+		Endpoint: server.URL,
+	}, sigma.Options{
+		MaxRetries:    intPtr(1),
+		MaxRetryDelay: durationPtrForTest(0),
+		TextResponseDebugHooks: []sigma.TextResponseDebugHook{
+			func(_ context.Context, debug sigma.TextResponseDebug) error {
+				statuses = append(statuses, debug.StatusCode)
+				return nil
+			},
+		},
+	}, CredentialInfo{BearerToken: "bedrock-token"})
+	if err != nil {
+		t.Fatalf("newHTTPConverseStreamClient returned error: %v", err)
+	}
+	stream, err := client.ConverseStream(context.Background(), ConverseRequest{ModelID: "model"})
+	if err != nil {
+		t.Fatalf("ConverseStream returned error: %v", err)
+	}
+	_ = readConverseEvents(stream)
+
+	if got, want := attempts, 2; got != want {
+		t.Fatalf("attempts = %d, want %d", got, want)
+	}
+	if got, want := statuses, []int{http.StatusTooManyRequests, http.StatusOK}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("response hook statuses = %v, want %v", got, want)
 	}
 }
 
@@ -485,6 +776,22 @@ func TestDefaultCredentialDetectorUsesStaticEnvironmentCredentials(t *testing.T)
 	}
 }
 
+func TestEffectiveConfigUsesRegionEnvironmentFallback(t *testing.T) {
+	t.Setenv("AWS_REGION", "ap-southeast-2")
+	t.Setenv("AWS_DEFAULT_REGION", "us-west-2")
+
+	config := effectiveConfig(Config{}, bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{})
+	if got, want := config.Region, "ap-southeast-2"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+
+	t.Setenv("AWS_REGION", "")
+	config = effectiveConfig(Config{}, bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{})
+	if got, want := config.Region, "us-west-2"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+}
+
 func TestAuthResolverOAuthTokenBecomesBearerToken(t *testing.T) {
 	t.Parallel()
 
@@ -669,6 +976,10 @@ func readConverseEvents(stream ConverseStream) []ConverseEvent {
 		events = append(events, event)
 	}
 	return events
+}
+
+func durationPtrForTest(value time.Duration) *time.Duration {
+	return &value
 }
 
 func bedrockEventStream(frames ...[]byte) []byte {

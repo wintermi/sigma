@@ -347,6 +347,9 @@ func mergeOptions(base Options, override Options) Options {
 	if override.GoogleOptions != nil {
 		merged.GoogleOptions = cloneGoogleOptions(override.GoogleOptions)
 	}
+	if override.BedrockOptions != nil {
+		merged.BedrockOptions = cloneBedrockOptions(override.BedrockOptions)
+	}
 	return merged
 }
 
@@ -395,6 +398,14 @@ func validateOptions(model Model, options Options) error {
 		!validGoogleToolChoice(options.GoogleOptions.ToolChoice) {
 		return invalidOptionsError(model, "google tool choice must be auto, none, or any")
 	}
+	if options.BedrockOptions != nil {
+		if options.BedrockOptions.TopP != nil && *options.BedrockOptions.TopP < 0 {
+			return invalidOptionsError(model, "bedrock top_p must be non-negative")
+		}
+		if options.BedrockOptions.ToolChoice != nil && !validBedrockToolChoice(*options.BedrockOptions.ToolChoice) {
+			return invalidOptionsError(model, "bedrock tool choice must be auto, none, any, or a named tool")
+		}
+	}
 	if options.OpenAIOptions != nil {
 		api := effectiveTextAPI(model)
 		if options.OpenAIOptions.TopLogprobs < 0 {
@@ -408,6 +419,17 @@ func validateOptions(model Model, options Options) error {
 		}
 	}
 	return nil
+}
+
+func validBedrockToolChoice(choice BedrockToolChoice) bool {
+	switch choice.Type {
+	case BedrockToolChoiceAuto, BedrockToolChoiceAny, BedrockToolChoiceNone:
+		return choice.Name == ""
+	case BedrockToolChoiceTool:
+		return choice.Name != ""
+	default:
+		return false
+	}
 }
 
 func validGoogleToolChoice(choice string) bool {

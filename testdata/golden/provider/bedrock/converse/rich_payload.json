@@ -1,7 +1,11 @@
 {
   "additionalModelRequestFields": {
+    "anthropic_beta": [
+      "interleaved-thinking-2025-05-14"
+    ],
     "thinking": {
       "budget_tokens": 1024,
+      "display": "summarized",
       "type": "enabled"
     }
   },
@@ -57,11 +61,20 @@
       "content": [
         {
           "toolResult": {
+            "content": [
+              {
+                "text": "found",
+                "type": "text"
+              }
+            ],
             "status": "success",
-            "text": "found",
             "toolUseId": "tool_1"
           },
           "type": "tool_result"
+        },
+        {
+          "cachePoint": {},
+          "type": "cache_point"
         }
       ],
       "role": "user"
@@ -77,6 +90,7 @@
       "type": "text"
     },
     {
+      "cachePoint": {},
       "type": "cache_point"
     }
   ],

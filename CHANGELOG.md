@@ -138,6 +138,15 @@ See [release notes](docs/release-notes-v0.2.0.md).
   `sigma.WithSessionID`, and stable replay of cross-provider tool-call IDs.
 - Generated Mistral metadata now includes representative adjustable-reasoning
   and native Magistral Conversations rows.
+- Amazon Bedrock Converse Stream now has typed `sigma.BedrockOptions` for tool
+  choice, thinking display, interleaved thinking, stop sequences, top-p,
+  request metadata, additional model request fields, and response field paths.
+- Amazon Bedrock Converse Stream now maps provider-neutral reasoning levels to
+  Claude adaptive or fixed-budget thinking payloads, supports cache-point TTLs,
+  groups consecutive tool results, preserves image tool-result content, applies
+  request headers before SigV4 signing, reads region fallback from AWS region
+  environment variables, and uses Sigma's shared HTTP retry and response-debug
+  hooks.
 - Release docs now record the deferred model-registry generation plan, including
   future `models.dev` ingestion, source precedence, refresh reports, and the
   deterministic catalog review gate.
@@ -168,6 +177,9 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Mistral Conversations image input, built-in connectors, append/restart, and
   broad catalog expansion remain deferred until their request shapes are covered
   by deterministic fixtures.
+- Broad Bedrock catalog expansion, AWS SDK credential-chain integration,
+  profiles, SSO, web identity, IMDS, shared AWS config loading, and live
+  Bedrock CI coverage remain deferred.
 - Live Google Gemini API and Vertex AI validation remains deferred; deterministic
   fixtures are the release evidence for the Google preview adapters.
 - The Go package targets server/CLI use; browser-specific behavior is out of

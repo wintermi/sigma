@@ -57,6 +57,14 @@ safer thought-signature replay, JSON Schema function declarations by default,
 image-capable tool-result replay, stable fallback tool-call IDs, and corrected
 cached/thinking-token accounting.
 
+Amazon Bedrock Converse Stream gets a focused preview lift without changing its
+stdlib transport boundary. Applications can now use typed Bedrock request
+options for tool choice, thinking display, interleaved thinking, stop sequences,
+top-p, request metadata, additional model fields, and response field paths.
+The adapter also has better Claude thinking payloads, cache-point placement,
+tool-result replay, request headers, region fallback, retries, and response
+debug hooks while keeping AWS SDK credential-chain integration deferred.
+
 ## Added
 
 - `provider/openai` now exposes `NewImagesProvider`, `RegisterImages`, and
@@ -127,6 +135,16 @@ cached/thinking-token accounting.
   `x-affinity` from `sigma.WithSessionID`, and normalizes replayed tool-call IDs.
 - Generated Mistral metadata now includes representative adjustable-reasoning
   and native Magistral Conversations rows.
+- `sigma.BedrockOptions` and `sigma.WithBedrockOptions` now expose typed
+  Bedrock request controls for tool choice, thinking display, interleaved
+  thinking, stop sequences, top-p, request metadata, additional model request
+  fields, and additional model response field paths.
+- Bedrock Converse Stream now maps provider-neutral reasoning levels to Claude
+  adaptive or fixed-budget thinking payloads, omits thinking display for
+  GovCloud targets, supports cache-point TTLs, groups consecutive tool results,
+  preserves image tool-result content, applies request headers before SigV4
+  signing, reads region fallback from `AWS_REGION`/`AWS_DEFAULT_REGION`, and
+  uses the shared HTTP retry and response-debug-hook path.
 - `TODO.md` now records the model-registry generation plan for future
   `models.dev` ingestion, provider-catalog overlays, refresh reports, and
   deterministic source review.
@@ -154,7 +172,8 @@ cached/thinking-token accounting.
 No persisted request JSON shapes changed. Public API additions are limited to
 new registration helpers in `provider/openai`, new `OpenAIOptions` fields, new
 `GoogleOptions` fields for Google tool choice and disabled thinking, new
-OpenAI-compatible compatibility metadata values including
+`BedrockOptions` fields for Bedrock Converse controls, new OpenAI-compatible
+compatibility metadata values including
 `OpenAICompletionsCompat.SupportsReasoningEffort`, and new Anthropic Messages
 compatibility metadata on `sigma.Model`.
 
@@ -191,6 +210,9 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
   behavior and curated representative metadata are in scope for this tag.
 - Mistral Conversations image input, built-in connectors, append/restart, and
   broad Mistral catalog expansion.
+- Broad Bedrock catalog expansion, AWS SDK credential-chain integration,
+  profiles, SSO, web identity, IMDS, shared AWS config loading, proxy-specific
+  SDK behavior, and live Bedrock CI coverage.
 - Live Google Gemini API and Vertex AI validation; deterministic fixtures remain
   the release evidence for Google preview adapter behaviour.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
@@ -218,3 +240,7 @@ and golden request payloads.
 Google Gemini API and Vertex AI request controls, thought-signature replay,
 image tool-result replay, fallback tool-call IDs, and usage accounting are
 covered by deterministic `httptest` fixtures and golden request payloads.
+Bedrock typed options, Claude thinking payloads, cache points, grouped
+tool-result replay, image tool-result replay, custom headers, environment
+region fallback, retries, and response debug hooks are covered by deterministic
+payload, fake-client, and `httptest` fixtures.

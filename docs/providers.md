@@ -194,7 +194,8 @@ _ = bedrock.Register(registry, sigma.ProviderAmazonBedrock,
 
 The Bedrock adapter uses stdlib HTTP, SigV4 signing, and EventStream parsing; it
 does not import the AWS SDK. Configure the region with `bedrock.WithRegion` or
-provider options. The built-in environment credential path supports
+provider options; if neither is set, it falls back to `AWS_REGION` and then
+`AWS_DEFAULT_REGION`. The built-in environment credential path supports
 `AWS_BEARER_TOKEN_BEDROCK`, or `AWS_ACCESS_KEY_ID` plus
 `AWS_SECRET_ACCESS_KEY` and optional `AWS_SESSION_TOKEN`. AWS profiles, SSO,
 web identity, IMDS, and shared-config loading are intentionally not implemented;
@@ -202,6 +203,13 @@ applications that need them should resolve credentials before calling Sigma and
 pass them through `sigma.WithAuthResolver` or a provider-specific auth resolver.
 Tests can inject `ConverseStreamClient` and `CredentialDetector` fakes, or use
 `bedrock.WithEndpoint` with an `httptest.Server`.
+
+Use `sigma.WithBedrockOptions` for Bedrock-specific request controls such as
+tool choice, thinking display, interleaved thinking, stop sequences, top-p,
+request metadata, additional model request fields, and response field paths.
+Request headers from `sigma.WithHeader` and `sigma.WithHeaders` are applied
+before SigV4 signing; `authorization`, `host`, and `x-amz-*` headers remain
+owned by the adapter.
 
 ### OpenRouter Images
 
