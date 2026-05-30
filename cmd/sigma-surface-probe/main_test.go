@@ -88,6 +88,24 @@ func TestFireworksRoutesBuildExpectedModels(t *testing.T) {
 	assertMetadataStrings(t, anthropic.ProviderMetadata, "apiKeyEnvVars", []string{"FIREWORKS_API_KEY"})
 }
 
+func TestXAIRouteBuildsExpectedModel(t *testing.T) {
+	t.Parallel()
+
+	route := routes["xai"]
+	model := route.Model(route, "grok-4.3")
+	if model.Provider != sigma.ProviderXAI || model.API != sigma.APIOpenAICompletions {
+		t.Fatalf("xai model provider/API = %q/%q", model.Provider, model.API)
+	}
+	if !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+		t.Fatalf("xai probe model did not enable optimistic probe capabilities: %+v", model)
+	}
+	assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://api.x.ai/v1")
+	assertMetadataString(t, model.ProviderMetadata, "modelFamily", "grok")
+	assertMetadataString(t, model.ProviderMetadata, "probeRoute", "xai")
+	assertMetadataString(t, model.ProviderMetadata, "probeSurface", "openai-completions")
+	assertMetadataStrings(t, model.ProviderMetadata, "apiKeyEnvVars", []string{"XAI_API_KEY"})
+}
+
 func TestModelsForRouteUsesSelectedModelsWithoutDiscovery(t *testing.T) {
 	t.Parallel()
 
@@ -116,6 +134,22 @@ func TestOpenAICompatibleProbeCasesUseRouteProviderOptions(t *testing.T) {
 	}
 }
 
+func TestXAIProbeCasesUseRouteProviderOptions(t *testing.T) {
+	t.Parallel()
+
+	testCase := findProbeCase(t, openAICompatibleProbeCases(routes["xai"]), "json_object")
+	options := applyProbeOptions(testCase.Options)
+	if _, ok := options.ProviderOptions[sigma.ProviderXAI]["extra_body"]; !ok {
+		t.Fatalf("xai provider options = %#v, want extra_body", options.ProviderOptions[sigma.ProviderXAI])
+	}
+	if _, ok := options.ProviderOptions[sigma.ProviderOpenCode]; ok {
+		t.Fatalf("unexpected OpenCode provider options: %#v", options.ProviderOptions[sigma.ProviderOpenCode])
+	}
+	if _, ok := options.ProviderOptions[sigma.ProviderFireworks]; ok {
+		t.Fatalf("unexpected Fireworks provider options: %#v", options.ProviderOptions[sigma.ProviderFireworks])
+	}
+}
+
 func TestAnthropicProbeCasesDoNotSendRawOpenAIExtraBody(t *testing.T) {
 	t.Parallel()
 
@@ -126,6 +160,23 @@ func TestAnthropicProbeCasesDoNotSendRawOpenAIExtraBody(t *testing.T) {
 				t.Fatalf("%s set raw extra_body for Anthropic route: %#v", testCase.Name, providerOptions)
 			}
 		}
+	}
+}
+
+func TestXAIRouteRegistrationBuildsClient(t *testing.T) {
+	t.Parallel()
+
+	route := routes["xai"]
+	registry := sigma.NewRegistry()
+	if err := route.RegisterProvider(registry, route); err != nil {
+		t.Fatalf("RegisterProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(route.Model(route, "grok-code-fast-1")); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if client == nil {
+		t.Fatal("NewClient returned nil")
 	}
 }
 

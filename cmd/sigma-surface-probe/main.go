@@ -23,6 +23,7 @@ import (
 	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/fireworks"
 	"github.com/wintermi/sigma/provider/opencode"
+	"github.com/wintermi/sigma/provider/xai"
 )
 
 type routeSpec struct {
@@ -109,6 +110,15 @@ var routes = map[string]routeSpec{
 		Model:            discoveredFireworksAnthropicModel,
 		Cases:            anthropicCompatibleProbeCases,
 	},
+	"xai": {
+		Name:             "xai",
+		Provider:         sigma.ProviderXAI,
+		BaseURL:          xai.DefaultBaseURL,
+		APIKeyEnv:        "XAI_API_KEY",
+		RegisterProvider: registerXAIProvider,
+		Model:            discoveredXAIModel,
+		Cases:            openAICompatibleProbeCases,
+	},
 }
 
 const jsonTypeKey = "type"
@@ -157,7 +167,7 @@ func parseConfig() config {
 	var timeout time.Duration
 	var repair bool
 	var includeUnavailable bool
-	flag.StringVar(&routeList, "routes", "zen,go", "comma-separated routes: zen,go,fireworks-openai,fireworks-anthropic")
+	flag.StringVar(&routeList, "routes", "zen,go", "comma-separated routes: zen,go,fireworks-openai,fireworks-anthropic,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
 	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run known unavailable advertised models instead of skipping them")
@@ -317,6 +327,13 @@ func registerFireworksAnthropicProvider(registry *sigma.Registry, route routeSpe
 	return nil
 }
 
+func registerXAIProvider(registry *sigma.Registry, route routeSpec) error {
+	if err := xai.Register(registry, xai.WithBaseURL(route.BaseURL)); err != nil {
+		return fmt.Errorf("register xai provider: %w", err)
+	}
+	return nil
+}
+
 func discoveredOpenCodeModel(route routeSpec, id string) sigma.Model {
 	return sigma.Model{
 		ID:               sigma.ModelID(id),
@@ -331,6 +348,25 @@ func discoveredOpenCodeModel(route routeSpec, id string) sigma.Model {
 			"modelFamily":     modelFamily(id),
 			"opencodeAPI":     string(openCodeRouteAPI(route.Name, id)),
 			"probeDiscovered": true,
+		},
+	}
+}
+
+func discoveredXAIModel(route routeSpec, id string) sigma.Model {
+	return sigma.Model{
+		ID:               sigma.ModelID(id),
+		Provider:         route.Provider,
+		API:              sigma.APIOpenAICompletions,
+		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		SupportsTools:    true,
+		SupportsThinking: true,
+		ProviderMetadata: map[string]any{
+			"baseURL":         route.BaseURL,
+			"apiKeyEnvVars":   []string{route.APIKeyEnv},
+			"modelFamily":     modelFamily(id),
+			"probeDiscovered": true,
+			"probeRoute":      route.Name,
+			"probeSurface":    "openai-completions",
 		},
 	}
 }

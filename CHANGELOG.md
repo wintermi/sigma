@@ -116,6 +116,8 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - `cmd/sigma-surface-probe` can also run opt-in live Fireworks probes for both
   the OpenAI-compatible Fire Pass route and the Anthropic-compatible Messages
   route, using `FIREWORKS_API_KEY`.
+- `cmd/sigma-surface-probe` can run opt-in live xAI/Grok surface probes over
+  the OpenAI-compatible Chat Completions route, using `XAI_API_KEY`.
 - OpenAI Responses now normalizes Chat Completions-style function
   `tool_choice` objects to the Responses function-choice shape.
 - OpenAI-compatible Chat Completions stream metadata now accumulates streamed
@@ -196,11 +198,11 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Kimi, and Xiaomi are
   not yet first-class provider rows; generated metadata and routing may exist,
   but independent provider-quality claims still need fixtures.
-- Future xAI/Grok catalog refreshes, live probes, and provider-specific Grok
+- Future xAI/Grok catalog refreshes and provider-specific Grok
   request semantics beyond the preview Chat Completions adapter remain
   deferred until they have deterministic coverage.
 - No live provider calls are required or expected for release validation.
-  Live OpenCode and Fireworks probing is available through
+  Live OpenCode, Fireworks, and xAI/Grok probing is available through
   `cmd/sigma-surface-probe`, but it is credential-gated and outside the
   deterministic release gate.
 - The release should not be tagged until maintainers accept the verification

@@ -118,6 +118,8 @@ debug hooks while keeping AWS SDK credential-chain integration deferred.
 - `cmd/sigma-surface-probe` also provides opt-in live Fireworks probes for the
   OpenAI-compatible Fire Pass route and the Anthropic-compatible Messages
   route, with the same JSONL result and repair workflow.
+- `cmd/sigma-surface-probe` also provides opt-in live xAI/Grok probes for the
+  OpenAI-compatible Chat Completions route, using `XAI_API_KEY`.
 - OpenAI Responses now normalizes Chat Completions-style function
   `tool_choice` payloads before sending Responses requests.
 - OpenAI-compatible Chat Completions streams now accumulate streamed `logprobs`
@@ -214,11 +216,11 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Streaming partial image events.
 - Responses API image-tool generation.
 - GitHub Copilot dynamic headers and Cloudflare AI Gateway auth rewriting.
-- Future xAI/Grok catalog refreshes, live xAI probes, and provider-specific Grok
+- Future xAI/Grok catalog refreshes and provider-specific Grok
   request semantics beyond the preview Chat Completions adapter.
 - Full OpenCode catalog parity, including advertised-but-unavailable models and
   provider-specific feature quirks beyond the curated routed preview metadata.
-- Live OpenCode or Fireworks surface validation in CI.
+- Live OpenCode, Fireworks, or xAI/Grok surface validation in CI.
   `cmd/sigma-surface-probe` is credential-gated and remains outside
   deterministic release validation.
 - Automated model catalog refresh from `models.dev` and provider catalog APIs;
@@ -252,6 +254,8 @@ is optional and requires `OPENCODE_API_KEY`.
 The Fireworks surface probe helpers are covered by deterministic route,
 metadata, and classification tests; live Fireworks probing is optional and
 requires `FIREWORKS_API_KEY`.
+The xAI/Grok surface probe helper is covered by deterministic route and metadata
+tests; live xAI/Grok probing is optional and requires `XAI_API_KEY`.
 xAI/Grok Chat Completions behavior is covered by deterministic `httptest`
 fixtures for streaming text, tool-call deltas, usage, error redaction,
 cancellation, context-overflow classification, and payload compatibility.

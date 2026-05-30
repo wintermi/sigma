@@ -50,7 +50,7 @@ promoted only with deterministic request-shape evidence.
 
 - [ ] Keep future xAI/Grok generated metadata refreshes tied to deterministic
       modeldata, payload, error, and compatibility coverage.
-- [ ] Add opt-in live xAI/Grok surface probes only as diagnostics, keeping live
+- [x] Add opt-in live xAI/Grok surface probes only as diagnostics, keeping live
       provider calls out of `mise run ci`.
 
 ## Model registry generation
