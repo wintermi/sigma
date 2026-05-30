@@ -171,7 +171,7 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 		if len(choice.Logprobs) > 0 && !bytes.Equal(bytes.TrimSpace(choice.Logprobs), []byte("null")) {
 			var logprobs any
 			if err := json.Unmarshal(choice.Logprobs, &logprobs); err == nil && logprobs != nil {
-				p.setMetadata("logprobs", logprobs)
+				p.appendLogprobs(logprobs)
 			}
 		}
 		if err := p.handleDelta(ctx, choice.Delta); err != nil {
@@ -419,6 +419,31 @@ func (p *completionStreamParser) setMetadata(key string, value any) {
 		p.metadata = make(map[string]any)
 	}
 	p.metadata[key] = value
+}
+
+func (p *completionStreamParser) appendLogprobs(value any) {
+	next, ok := value.(map[string]any)
+	if !ok {
+		p.setMetadata("logprobs", value)
+		return
+	}
+	if p.metadata == nil {
+		p.metadata = make(map[string]any)
+	}
+	current, _ := p.metadata["logprobs"].(map[string]any)
+	if current == nil {
+		p.metadata["logprobs"] = copyAnyMap(next)
+		return
+	}
+	for key, nextValue := range next {
+		currentSlice, currentOK := current[key].([]any)
+		nextSlice, nextOK := nextValue.([]any)
+		if currentOK && nextOK {
+			current[key] = append(currentSlice, nextSlice...)
+			continue
+		}
+		current[key] = nextValue
+	}
 }
 
 func (p *completionStreamParser) captureCompletionTokenDetails(details *outputTokenDetails) {

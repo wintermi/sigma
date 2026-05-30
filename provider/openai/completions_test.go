@@ -231,6 +231,7 @@ func TestStreamingParsesOpenAICompatibleMetadataAndFallbackToolID(t *testing.T) 
 		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_meta","model":"gpt-provider","choices":[{"index":0,"delta":{"content":[{"type":"text","text":"Hello"},{"type":"text","text":" array"}],"annotations":[{"type":"url_citation","url_citation":{"url":"https://annotation.example","title":"Annotation","start_index":0,"end_index":5}}]},"logprobs":{"content":[{"token":"Hello","logprob":-0.1}]}}]}`+"\n\n")
 		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"name":"lookup","arguments":""}}]},"finish_reason":null}]}`+"\n\n")
 		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"real_call","function":{"arguments":"{\"city\":\"Melbourne\"}"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_meta","model":"gpt-provider","choices":[{"index":0,"delta":{},"logprobs":{"content":[{"token":" array","logprob":-0.2}]}}]}`+"\n\n")
 		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_meta","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"citations":["https://top.example"],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"completion_tokens_details":{"reasoning_tokens":3,"accepted_prediction_tokens":4,"rejected_prediction_tokens":5}}}`+"\n\n")
 		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
@@ -283,8 +284,16 @@ func TestStreamingParsesOpenAICompatibleMetadataAndFallbackToolID(t *testing.T) 
 	if got, want := final.ProviderMetadata["rejectedPredictionTokens"], 5; got != want {
 		t.Fatalf("rejected prediction tokens = %v, want %v", got, want)
 	}
-	if _, ok := final.ProviderMetadata["logprobs"].(map[string]any); !ok {
+	logprobs, ok := final.ProviderMetadata["logprobs"].(map[string]any)
+	if !ok {
 		t.Fatalf("logprobs metadata type = %T, want map", final.ProviderMetadata["logprobs"])
+	}
+	content, ok := logprobs["content"].([]any)
+	if !ok {
+		t.Fatalf("logprobs content type = %T, want []any", logprobs["content"])
+	}
+	if got, want := len(content), 2; got != want {
+		t.Fatalf("logprobs content length = %d, want %d", got, want)
 	}
 	sources, ok := final.ProviderMetadata["sources"].([]map[string]any)
 	if !ok {

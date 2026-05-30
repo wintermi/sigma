@@ -100,6 +100,66 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesNormalizesOpenAIOptionsFunctionToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-tool-choice-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("call a tool")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: map[string]any{
+			"type":     "function",
+			"function": map[string]any{"name": "read_file"},
+		}}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertResponsesFunctionToolChoice(t, receiveRequest(t, requests).Body)
+}
+
+func TestResponsesNormalizesProviderOptionFunctionToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-provider-tool-choice-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("call a tool")}},
+		sigma.WithProviderOption(providerID, "tool_choice", map[string]any{
+			"type":     "function",
+			"function": map[string]any{"name": "read_file"},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertResponsesFunctionToolChoice(t, receiveRequest(t, requests).Body)
+}
+
 func TestResponsesUsesModelBaseURLAndHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -577,6 +637,28 @@ func responsesTestModel(providerID sigma.ProviderID) sigma.Model {
 		InputCostPerMillion:          1,
 		OutputCostPerMillion:         2,
 		CacheReadInputCostPerMillion: 0.5,
+	}
+}
+
+func assertResponsesFunctionToolChoice(t *testing.T, body []byte) {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	choice, ok := payload["tool_choice"].(map[string]any)
+	if !ok {
+		t.Fatalf("tool_choice type = %T, want map", payload["tool_choice"])
+	}
+	if got, want := choice["type"], "function"; got != want {
+		t.Fatalf("tool_choice.type = %v, want %q", got, want)
+	}
+	if got, want := choice["name"], "read_file"; got != want {
+		t.Fatalf("tool_choice.name = %v, want %q", got, want)
+	}
+	if _, ok := choice["function"]; ok {
+		t.Fatalf("tool_choice.function was not normalized: %#v", choice)
 	}
 }
 

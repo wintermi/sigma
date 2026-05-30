@@ -19,10 +19,12 @@ non-streaming generation through OpenAI's dedicated Images API and deliberately
 leaves edits, variations, streaming partial images, and Responses image-tool
 generation for later work.
 
-OpenCode remains a curated OpenAI-compatible preview surface in this release.
-The v0.2.0 work promotes only the narrow Kimi/Grok Build compatibility gaps
-with deterministic fixtures; it does not promote OpenCode to full
-source-package parity.
+OpenCode has a routed preview provider for selected Zen/Go model families in
+this release. Models that use Google Generative AI, Anthropic Messages, OpenAI
+Responses, or OpenAI-compatible Chat Completions routes can share the
+`opencode` and `opencode-go` provider IDs while still dispatching to the
+correct Sigma adapter at runtime. The release keeps this coverage curated and
+fixture-backed; it does not promote every advertised OpenCode model.
 
 Built-in model metadata remains generated from Sigma's curated checked-in
 catalog for v0.2.0. A future refresh workflow should ingest `models.dev` and
@@ -59,6 +61,19 @@ first-class parity rows.
 - OpenCode Zen and OpenCode Go metadata now cover Kimi K2.6 DeepSeek-style
   thinking payloads without `reasoning_effort`, plus OpenCode Zen Grok Build
   0.1 reasoning-effort suppression.
+- `provider/opencode` now routes selected OpenCode Zen and OpenCode Go model
+  families to Google Generative AI, Anthropic Messages, OpenAI Responses, or
+  OpenAI-compatible Chat Completions using generated model metadata hints.
+- OpenCode metadata now includes representative routed entries for Gemini,
+  Claude, Qwen, GPT/Codex, and Go MiniMax/Qwen route families, while known
+  unavailable advertised models remain outside default promoted metadata.
+- `cmd/sigma-surface-probe` provides an opt-in live OpenCode probe and repair
+  workflow. It reports Sigma request-shape failures separately from provider
+  capability limits and upstream model availability failures.
+- OpenAI Responses now normalizes Chat Completions-style function
+  `tool_choice` payloads before sending Responses requests.
+- OpenAI-compatible Chat Completions streams now accumulate streamed `logprobs`
+  metadata across chunks.
 - Generated metadata now seeds representative entries for the remaining exposed
   provider IDs, including current OpenAI-compatible, Anthropic-compatible, and
   Vertex compatibility metadata.
@@ -104,10 +119,10 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Streaming partial image events.
 - Responses API image-tool generation.
 - GitHub Copilot dynamic headers and Cloudflare AI Gateway auth rewriting.
-- OpenCode catalog parity, including broader curated OpenCode/OpenCode Go model
-  metadata beyond the promoted Kimi/Grok Build OpenAI-compatible gaps.
-- OpenCode-routed OpenAI Responses, Anthropic Messages, and Google API models;
-  each route needs separate deterministic coverage before promotion.
+- Full OpenCode catalog parity, including advertised-but-unavailable models and
+  provider-specific feature quirks beyond the curated routed preview metadata.
+- Live OpenCode surface validation in CI. `cmd/sigma-surface-probe` is
+  credential-gated and remains outside deterministic release validation.
 - Automated model catalog refresh from `models.dev` and provider catalog APIs;
   generated metadata still enters the release through the checked-in catalog,
   checksum test, and generated Go review flow.
@@ -125,3 +140,6 @@ This release should use the validation process in [RELEASING.md](../RELEASING.md
 The OpenAI Images adapter and OpenAI/Anthropic text-provider additions are
 covered by deterministic `httptest` fixtures and golden request payloads; no
 live provider network calls are required.
+The OpenCode routed preview provider and surface probe helpers are covered by
+deterministic route, metadata, and classification tests; live OpenCode probing
+is optional and requires `OPENCODE_API_KEY`.

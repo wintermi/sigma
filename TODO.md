@@ -69,18 +69,22 @@ upstream.
 
 ## OpenCode parity
 
-Sigma currently keeps OpenCode Zen and OpenCode Go as curated
-OpenAI-compatible preview routes. Broader OpenCode catalog coverage includes
-OpenAI Responses, Anthropic Messages, and Google-routed OpenCode models. Do not
-mirror that catalog wholesale without deterministic evidence.
+Sigma now has a routed OpenCode Zen/Go preview provider for selected model
+families that need Google Generative AI, Anthropic Messages, OpenAI Responses,
+or OpenAI-compatible Chat Completions routes. Broader catalog coverage should
+still be promoted only with deterministic evidence.
 
 - [ ] Continue refreshing curated OpenCode Zen and OpenCode Go metadata after
-      checking the current source metadata, prioritizing remaining high-value
-      OpenAI-compatible gaps.
-- [ ] Evaluate OpenCode-routed OpenAI Responses, Anthropic Messages, and Google
-      API models separately before promoting them to built-in metadata.
+      checking current provider catalogs, prioritizing remaining high-value
+      routed families and avoiding advertised-but-unavailable models.
+- [x] Evaluate and fixture selected OpenCode-routed OpenAI Responses,
+      Anthropic Messages, and Google API models before promoting them to
+      built-in metadata.
 - [ ] Cover each promoted OpenCode addition with deterministic modeldata and
       golden payload tests; no live OpenCode calls should be required.
+- [ ] Keep `cmd/sigma-surface-probe` as an opt-in live diagnostic tool for
+      route-shape regressions, capability limits, and upstream availability
+      changes; do not add live OpenCode calls to `mise run ci`.
 
 ## Authentication and credentials
 

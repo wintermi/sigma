@@ -275,7 +275,7 @@ func addResponsesOpenAIOptions(payload map[string]any, opts sigma.Options) {
 		return
 	}
 	if opts.OpenAIOptions.ToolChoice != nil {
-		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
+		setResponsesToolChoice(payload, opts.OpenAIOptions.ToolChoice)
 	}
 	if opts.OpenAIOptions.PromptCacheRetention != "" {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
@@ -320,9 +320,9 @@ func addResponsesProviderOptions(payload map[string]any, provider sigma.Provider
 		setResponsesText(payload, value)
 	}
 	if value, ok := options[providerOptionToolChoice]; ok {
-		payload["tool_choice"] = value
+		setResponsesToolChoice(payload, value)
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
-		payload["tool_choice"] = value
+		setResponsesToolChoice(payload, value)
 	}
 	if value, ok := stringOption(options, providerOptionTruncation); ok {
 		payload["truncation"] = value
@@ -349,6 +349,37 @@ func setResponsesText(payload map[string]any, value any) {
 	for key, nested := range text {
 		current[key] = nested
 	}
+}
+
+func setResponsesToolChoice(payload map[string]any, value any) {
+	choice, ok := value.(map[string]any)
+	if !ok {
+		payload["tool_choice"] = value
+		return
+	}
+	if choiceType, _ := choice["type"].(string); choiceType != "function" {
+		payload["tool_choice"] = value
+		return
+	}
+	if _, ok := choice["name"]; ok {
+		payload["tool_choice"] = value
+		return
+	}
+	function, _ := choice["function"].(map[string]any)
+	name, _ := function["name"].(string)
+	if name == "" {
+		payload["tool_choice"] = value
+		return
+	}
+	normalized := make(map[string]any, len(choice))
+	for key, nested := range choice {
+		if key == "function" {
+			continue
+		}
+		normalized[key] = nested
+	}
+	normalized["name"] = name
+	payload["tool_choice"] = normalized
 }
 
 func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) {

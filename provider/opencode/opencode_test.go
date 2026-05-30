@@ -1,0 +1,240 @@
+// Copyright (c) 2026 Matthew Winter
+//
+// This source code is licensed under the MIT license found in the LICENSE file
+// in the root directory of this source tree.
+
+package opencode_test
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/provider/opencode"
+)
+
+func TestRegisterZenReportsRegistryAPI(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	if err := opencode.RegisterZen(registry); err != nil {
+		t.Fatalf("RegisterZen returned error: %v", err)
+	}
+	providers := registry.ListProviders()
+	if got, want := len(providers), 1; got != want {
+		t.Fatalf("providers length = %d, want %d", got, want)
+	}
+	if got, want := providers[0].TextAPI, sigma.APIOpenAICompletions; got != want {
+		t.Fatalf("provider API = %q, want %q", got, want)
+	}
+}
+
+func TestOpenCodeDispatchRoutesByModelMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		provider      sigma.ProviderID
+		modelID       sigma.ModelID
+		opencodeAPI   sigma.API
+		register      func(*sigma.Registry, ...opencode.ProviderOption) error
+		wantPath      string
+		wantQuery     string
+		wantAuthKey   string
+		response      string
+		supported     []sigma.ContentBlockType
+		supportsTools bool
+	}{
+		{
+			name:        "zen gemini uses google generative ai",
+			provider:    sigma.ProviderOpenCode,
+			modelID:     "gemini-3-flash",
+			opencodeAPI: sigma.APIGoogleGenerativeAI,
+			register:    opencode.RegisterZen,
+			wantPath:    "/models/gemini-3-flash:streamGenerateContent",
+			wantQuery:   "alt=sse",
+			wantAuthKey: "X-Goog-Api-Key",
+			response:    googleCompletedEvent,
+			supported:   []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		},
+		{
+			name:        "zen claude uses anthropic messages",
+			provider:    sigma.ProviderOpenCode,
+			modelID:     "claude-opus-4-7",
+			opencodeAPI: sigma.APIAnthropicMessages,
+			register:    opencode.RegisterZen,
+			wantPath:    "/messages",
+			wantAuthKey: "X-Api-Key",
+			response:    anthropicCompletedEvent,
+			supported:   []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		},
+		{
+			name:        "zen gpt uses responses",
+			provider:    sigma.ProviderOpenCode,
+			modelID:     "gpt-5.1-codex",
+			opencodeAPI: sigma.APIOpenAIResponses,
+			register:    opencode.RegisterZen,
+			wantPath:    "/responses",
+			wantAuthKey: "Authorization",
+			response:    responsesCompletedEvent,
+			supported:   []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		},
+		{
+			name:          "zen kimi defaults to chat completions",
+			provider:      sigma.ProviderOpenCode,
+			modelID:       "kimi-k2.6",
+			register:      opencode.RegisterZen,
+			wantPath:      "/chat/completions",
+			wantAuthKey:   "Authorization",
+			response:      chatCompletedEvent,
+			supported:     []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+			supportsTools: true,
+		},
+		{
+			name:        "go qwen uses anthropic messages",
+			provider:    sigma.ProviderOpenCodeGo,
+			modelID:     "qwen3.7-max",
+			opencodeAPI: sigma.APIAnthropicMessages,
+			register:    opencode.RegisterGo,
+			wantPath:    "/messages",
+			wantAuthKey: "X-Api-Key",
+			response:    anthropicCompletedEvent,
+			supported:   []sigma.ContentBlockType{sigma.ContentBlockText},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, tt.response)
+			}))
+			t.Cleanup(server.Close)
+
+			client := opencodeTestClient(t, tt.provider, tt.modelID, tt.opencodeAPI, tt.supported, tt.supportsTools, tt.register, server.URL)
+			_, err := client.Complete(
+				context.Background(),
+				sigma.Model{Provider: tt.provider, ID: tt.modelID},
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("Reply with ok.")}},
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			if got := request.Path; got != tt.wantPath {
+				t.Fatalf("request path = %q, want %q", got, tt.wantPath)
+			}
+			if got := request.Query; got != tt.wantQuery {
+				t.Fatalf("request query = %q, want %q", got, tt.wantQuery)
+			}
+			if got := request.Headers.Get(tt.wantAuthKey); got == "" {
+				t.Fatalf("missing auth header %q in %#v", tt.wantAuthKey, request.Headers)
+			}
+			if got := request.Headers.Get("X-Provider"); got != "provider" {
+				t.Fatalf("provider header = %q, want provider", got)
+			}
+		})
+	}
+}
+
+func opencodeTestClient(
+	t *testing.T,
+	providerID sigma.ProviderID,
+	modelID sigma.ModelID,
+	api sigma.API,
+	inputs []sigma.ContentBlockType,
+	supportsTools bool,
+	register func(*sigma.Registry, ...opencode.ProviderOption) error,
+	baseURL string,
+) *sigma.Client {
+	t.Helper()
+
+	registry := sigma.NewRegistry()
+	if err := register(registry, opencode.WithBaseURL(baseURL), opencode.WithHeader("X-Provider", "provider")); err != nil {
+		t.Fatalf("register returned error: %v", err)
+	}
+	metadata := map[string]any{}
+	if api != "" {
+		metadata["opencodeAPI"] = string(api)
+	}
+	if err := registry.RegisterModel(sigma.Model{
+		ID:               modelID,
+		Provider:         providerID,
+		API:              sigma.APIOpenAICompletions,
+		SupportedInputs:  inputs,
+		SupportsTools:    supportsTools,
+		ProviderMetadata: metadata,
+	}); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
+	})
+	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+}
+
+type capturedRequest struct {
+	Path    string
+	Query   string
+	Headers http.Header
+}
+
+func captureRequest(t *testing.T, requests chan<- capturedRequest, r *http.Request) {
+	t.Helper()
+
+	_, _ = io.Copy(io.Discard, r.Body)
+	requests <- capturedRequest{
+		Path:    r.URL.Path,
+		Query:   r.URL.RawQuery,
+		Headers: r.Header.Clone(),
+	}
+}
+
+func receiveRequest(t *testing.T, requests <-chan capturedRequest) capturedRequest {
+	t.Helper()
+
+	select {
+	case request := <-requests:
+		return request
+	default:
+		t.Fatal("server did not receive request")
+		return capturedRequest{}
+	}
+}
+
+const googleCompletedEvent = `data: {"responseId":"resp_complete","candidates":[{"content":{"role":"model","parts":[{"text":"ok"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2}}
+
+`
+
+const anthropicCompletedEvent = `data: {"type":"message_start","message":{"id":"msg_complete","type":"message","role":"assistant","model":"claude-test","content":[]}}
+
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ok"}}
+
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":1,"output_tokens":1}}
+
+data: {"type":"message_stop"}
+
+`
+
+const responsesCompletedEvent = `data: {"type":"response.completed","response":{"id":"resp_complete","model":"gpt-test","status":"completed","output":[{"type":"message","id":"msg_complete","role":"assistant","content":[{"type":"output_text","id":"text_complete","text":"ok"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}
+
+`
+
+const chatCompletedEvent = `data: {"id":"chatcmpl_complete","model":"kimi-test","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl_complete","model":"kimi-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}
+
+data: [DONE]
+
+`

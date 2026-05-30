@@ -90,6 +90,17 @@ See [release notes](docs/release-notes-v0.2.0.md).
   OpenAI-compatible `kimi-k2.6` and `grok-build-0.1` gaps, with deterministic
   payload fixtures for Kimi thinking and Grok Build reasoning-effort
   suppression.
+- OpenCode Zen and OpenCode Go now have a routed preview provider that
+  dispatches selected model families to Google Generative AI, Anthropic
+  Messages, OpenAI Responses, or OpenAI-compatible Chat Completions based on
+  model metadata, with deterministic route tests and curated metadata hints.
+- `cmd/sigma-surface-probe` can run opt-in live OpenCode Zen/Go surface probes,
+  including repair variants that distinguish Sigma request-shape issues,
+  provider capability limits, and upstream availability failures.
+- OpenAI Responses now normalizes Chat Completions-style function
+  `tool_choice` objects to the Responses function-choice shape.
+- OpenAI-compatible Chat Completions stream metadata now accumulates streamed
+  `logprobs` chunks instead of keeping only the latest chunk.
 - Generated text metadata now includes representative metadata-only entries for
   every exposed non-custom provider ID, aligned with current compatibility
   metadata and generated base URL/header handling.
@@ -129,5 +140,7 @@ See [release notes](docs/release-notes-v0.2.0.md).
   not yet first-class provider rows; generated metadata and routing may exist,
   but independent provider-quality claims still need fixtures.
 - No live provider calls are required or expected for release validation.
+  Live OpenCode probing is available through `cmd/sigma-surface-probe`, but it
+  is credential-gated and outside the deterministic release gate.
 - The release should not be tagged until maintainers accept the verification
   results and the [release notes](docs/release-notes-v0.2.0.md).

@@ -128,6 +128,10 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
 	assertMetadataStrings(t, openCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gemini-3-flash", APIGoogleGenerativeAI)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-opus-4-7", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "qwen3.6-plus", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.1-codex", APIOpenAIResponses)
 
 	grokBuild, ok := registry.Model(ProviderOpenCode, "grok-build-0.1")
 	if !ok {
@@ -158,6 +162,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
 	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)
 
 	openCodeGoKimi, ok := registry.Model(ProviderOpenCodeGo, "kimi-k2.6")
 	if !ok {
@@ -366,4 +372,16 @@ func assertMetadataStrings(t *testing.T, metadata map[string]any, key string, wa
 			t.Fatalf("metadata %q[%d] = %q, want %q", key, i, got[i], want[i])
 		}
 	}
+}
+
+func assertOpenCodeAPI(t *testing.T, registry *Registry, provider ProviderID, id ModelID, want API) {
+	t.Helper()
+	model, ok := registry.Model(provider, id)
+	if !ok {
+		t.Fatalf("fresh registry missing generated %s model %s", provider, id)
+	}
+	if model.API != APIOpenAICompletions {
+		t.Fatalf("%s/%s API = %q, want registry-facing %q", provider, id, model.API, APIOpenAICompletions)
+	}
+	assertMetadataString(t, model.ProviderMetadata, "opencodeAPI", string(want))
 }
