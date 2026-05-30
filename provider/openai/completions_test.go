@@ -94,11 +94,14 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 	if final.Usage == nil {
 		t.Fatal("final usage was nil")
 	}
-	if got, want := final.Usage.InputTokens, 10; got != want {
+	if got, want := final.Usage.InputTokens, 5; got != want {
 		t.Fatalf("input tokens = %d, want %d", got, want)
 	}
 	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
 		t.Fatalf("cache read tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.CacheWriteInputTokens, 2; got != want {
+		t.Fatalf("cache write tokens = %d, want %d", got, want)
 	}
 	if got, want := final.Usage.ThinkingTokens, 2; got != want {
 		t.Fatalf("thinking tokens = %d, want %d", got, want)

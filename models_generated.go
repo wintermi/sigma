@@ -1446,6 +1446,14 @@ var builtinTextModels = []Model{
 			CacheControlFormat:     OpenAICompletionsCacheControlFormat("message"),
 			OpenRouterRouting: &OpenRouterRoutingPreference{
 				AllowFallbacks: generatedBoolPtr(true),
+				Quantizations:  []string{"fp16", "int8"},
+				MaxPrice: map[string]any{
+					"completion": "2.5",
+					"prompt":     1.5,
+				},
+				PreferredMinThroughput: map[string]any{"p50": 40},
+				PreferredMaxLatency:    3,
+				Sort:                   map[string]any{"by": "latency", "partition": "model"},
 			},
 		},
 		ProviderMetadata: map[string]any{

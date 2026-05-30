@@ -284,10 +284,15 @@ func cloneOpenRouterRoutingPreference(routing *OpenRouterRoutingPreference) *Ope
 	copied.Order = append([]string(nil), routing.Order...)
 	copied.Only = append([]string(nil), routing.Only...)
 	copied.Ignore = append([]string(nil), routing.Ignore...)
+	copied.Quantizations = append([]string(nil), routing.Quantizations...)
 	copied.AllowFallbacks = cloneBoolPtr(routing.AllowFallbacks)
 	copied.RequireParameters = cloneBoolPtr(routing.RequireParameters)
 	copied.ZDR = cloneBoolPtr(routing.ZDR)
 	copied.EnforceDistillableText = cloneBoolPtr(routing.EnforceDistillableText)
+	copied.MaxPrice = copyStringAnyMap(routing.MaxPrice)
+	copied.PreferredMinThroughput = cloneAnyValue(routing.PreferredMinThroughput)
+	copied.PreferredMaxLatency = cloneAnyValue(routing.PreferredMaxLatency)
+	copied.Sort = cloneAnyValue(routing.Sort)
 	return &copied
 }
 
@@ -309,6 +314,19 @@ func cloneBoolPtr(value *bool) *bool {
 	}
 	copied := *value
 	return &copied
+}
+
+func cloneAnyValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return copyStringAnyMap(typed)
+	case []any:
+		return append([]any(nil), typed...)
+	case []string:
+		return append([]string(nil), typed...)
+	default:
+		return value
+	}
 }
 
 func modelMatchesAll(model Model, filters []ModelFilter) bool {

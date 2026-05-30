@@ -468,7 +468,8 @@ type openAIUsage struct {
 	CompletionTokens    int `json:"completion_tokens"`
 	TotalTokens         int `json:"total_tokens"`
 	PromptTokensDetails struct {
-		CachedTokens int `json:"cached_tokens"`
+		CachedTokens     int `json:"cached_tokens"`
+		CacheWriteTokens int `json:"cache_write_tokens"`
 	} `json:"prompt_tokens_details"`
 	CompletionTokensDetails struct {
 		ReasoningTokens int `json:"reasoning_tokens"`
@@ -613,11 +614,12 @@ func outputImage(part imagePart) (sigma.ImageInput, error) {
 
 func (u openAIUsage) sigmaUsage() sigma.Usage {
 	return sigma.Usage{
-		InputTokens:          u.PromptTokens,
-		OutputTokens:         u.CompletionTokens,
-		TotalTokens:          u.TotalTokens,
-		CacheReadInputTokens: u.PromptTokensDetails.CachedTokens,
-		ThinkingTokens:       u.CompletionTokensDetails.ReasoningTokens,
+		InputTokens:           max(0, u.PromptTokens-u.PromptTokensDetails.CachedTokens-u.PromptTokensDetails.CacheWriteTokens),
+		OutputTokens:          u.CompletionTokens,
+		TotalTokens:           u.TotalTokens,
+		CacheReadInputTokens:  u.PromptTokensDetails.CachedTokens,
+		CacheWriteInputTokens: u.PromptTokensDetails.CacheWriteTokens,
+		ThinkingTokens:        u.CompletionTokensDetails.ReasoningTokens,
 	}
 }
 

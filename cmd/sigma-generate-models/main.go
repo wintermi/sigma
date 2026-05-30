@@ -215,7 +215,11 @@ func writeOpenRouterRoutingField(b *bytes.Buffer, routing *modeldata.OpenRouterR
 	writeStringField(b, "DataCollection", "", routing.DataCollection)
 	writeBoolPtrField(b, "ZDR", routing.ZDR)
 	writeBoolPtrField(b, "EnforceDistillableText", routing.EnforceDistillableText)
-	writeStringField(b, "Sort", "", routing.Sort)
+	writeStringSliceField(b, "Quantizations", "", routing.Quantizations)
+	writeAnyMapField(b, "MaxPrice", routing.MaxPrice)
+	writeAnyField(b, "PreferredMinThroughput", routing.PreferredMinThroughput)
+	writeAnyField(b, "PreferredMaxLatency", routing.PreferredMaxLatency)
+	writeAnyField(b, "Sort", routing.Sort)
 	b.WriteString("\t\t\t},\n")
 }
 
@@ -344,6 +348,15 @@ func writeAnyMapField(b *bytes.Buffer, field string, values map[string]any) {
 		b.WriteString(",\n")
 	}
 	b.WriteString("\t\t},\n")
+}
+
+func writeAnyField(b *bytes.Buffer, field string, value any) {
+	if value == nil {
+		return
+	}
+	fmt.Fprintf(b, "\t\t\t\t%s: ", field)
+	writeAny(b, value)
+	b.WriteString(",\n")
 }
 
 func writeAny(b *bytes.Buffer, value any) {

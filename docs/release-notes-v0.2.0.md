@@ -39,6 +39,12 @@ credential-source reporting, compatibility metadata, and model limits line up
 with Sigma's current provider constants without promoting those providers to
 first-class parity rows.
 
+OpenRouter-compatible behavior is tighter in this release without broadening
+the default catalog: text requests use OpenRouter's nested reasoning payload,
+request-scoped routing can override generated routing metadata, expanded
+routing fields are represented in typed metadata, and cache-write token usage
+is reported separately from cache reads.
+
 ## Added
 
 - `provider/openai` now exposes `NewImagesProvider`, `RegisterImages`, and
@@ -62,6 +68,13 @@ first-class parity rows.
 - OpenAI-compatible Chat Completions can opt into Anthropic-style cache markers
   and z.ai-style `tool_stream` payloads through compatibility metadata, and can
   suppress explicit `reasoning_effort` for models that reject it.
+- OpenAI-compatible Chat Completions now detects OpenRouter reasoning as nested
+  `reasoning.effort`, supports request-scoped OpenRouter routing overrides,
+  and includes expanded OpenRouter routing metadata for price, quantization,
+  throughput, latency, and object-form sorting preferences.
+- OpenAI-compatible Chat Completions and OpenRouter Images now map
+  `cache_write_tokens` into `Usage.CacheWriteInputTokens` while keeping cache
+  reads and normalized input tokens separate.
 - OpenCode Zen and OpenCode Go metadata now cover Kimi K2.6 DeepSeek-style
   thinking payloads without `reasoning_effort`, plus OpenCode Zen Grok Build
   0.1 reasoning-effort suppression.
@@ -143,6 +156,8 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Automated model catalog refresh from `models.dev` and provider catalog APIs;
   generated metadata still enters the release through the checked-in catalog,
   checksum test, and generated Go review flow.
+- Broad OpenRouter text and image catalog expansion; only fixture-backed
+  behavior and curated representative metadata are in scope for this tag.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization.
 - GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.

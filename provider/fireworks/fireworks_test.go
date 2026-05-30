@@ -72,7 +72,8 @@ func TestCompleteStreamsTextWithFireworksDefaults(t *testing.T) {
 	if got, want := final.Content[0].Text, "Hello world"; got != want {
 		t.Fatalf("final text = %q, want %q", got, want)
 	}
-	if final.Usage == nil || final.Usage.InputTokens != 10 || final.Usage.OutputTokens != 5 {
+	if final.Usage == nil || final.Usage.InputTokens != 5 || final.Usage.OutputTokens != 5 ||
+		final.Usage.CacheReadInputTokens != 3 || final.Usage.CacheWriteInputTokens != 2 {
 		t.Fatalf("final usage = %#v, want input/output usage", final.Usage)
 	}
 	if final.Cost == nil || final.Cost.TotalCost == 0 {

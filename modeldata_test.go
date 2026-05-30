@@ -138,6 +138,16 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		!*routed.OpenAICompletionsCompat.OpenRouterRouting.AllowFallbacks {
 		t.Fatal("OpenRouter routing fallback metadata was not generated")
 	}
+	if got := routed.OpenAICompletionsCompat.OpenRouterRouting.Quantizations; len(got) != 2 || got[0] != "fp16" || got[1] != "int8" {
+		t.Fatalf("OpenRouter routing quantizations = %#v, want [fp16 int8]", got)
+	}
+	if got := routed.OpenAICompletionsCompat.OpenRouterRouting.MaxPrice["completion"]; got != "2.5" {
+		t.Fatalf("OpenRouter routing max price completion = %#v, want 2.5", got)
+	}
+	sort, ok := routed.OpenAICompletionsCompat.OpenRouterRouting.Sort.(map[string]any)
+	if !ok || sort["by"] != "latency" {
+		t.Fatalf("OpenRouter routing sort = %#v, want latency object", routed.OpenAICompletionsCompat.OpenRouterRouting.Sort)
+	}
 
 	openCode, ok := registry.Model(ProviderOpenCode, "kimi-k2.6")
 	if !ok {

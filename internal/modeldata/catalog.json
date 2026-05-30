@@ -1470,7 +1470,20 @@
         "cacheControlFormat": "message",
         "maxTokensField": "max_tokens",
         "openRouterRouting": {
-          "allow_fallbacks": true
+          "allow_fallbacks": true,
+          "quantizations": ["fp16", "int8"],
+          "max_price": {
+            "prompt": 1.5,
+            "completion": "2.5"
+          },
+          "preferred_min_throughput": {
+            "p50": 40
+          },
+          "preferred_max_latency": 3,
+          "sort": {
+            "by": "latency",
+            "partition": "model"
+          }
         }
       },
       "providerMetadata": {

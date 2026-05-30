@@ -121,15 +121,19 @@ type AnthropicMessagesCompat struct {
 
 // OpenRouterRoutingPreference mirrors sigma.OpenRouterRoutingPreference.
 type OpenRouterRoutingPreference struct {
-	Order                  []string `json:"order,omitempty"`
-	Only                   []string `json:"only,omitempty"`
-	Ignore                 []string `json:"ignore,omitempty"`
-	AllowFallbacks         *bool    `json:"allow_fallbacks,omitempty"`
-	RequireParameters      *bool    `json:"require_parameters,omitempty"`
-	DataCollection         string   `json:"data_collection,omitempty"`
-	ZDR                    *bool    `json:"zdr,omitempty"`
-	EnforceDistillableText *bool    `json:"enforce_distillable_text,omitempty"`
-	Sort                   string   `json:"sort,omitempty"`
+	Order                  []string       `json:"order,omitempty"`
+	Only                   []string       `json:"only,omitempty"`
+	Ignore                 []string       `json:"ignore,omitempty"`
+	AllowFallbacks         *bool          `json:"allow_fallbacks,omitempty"`
+	RequireParameters      *bool          `json:"require_parameters,omitempty"`
+	DataCollection         string         `json:"data_collection,omitempty"`
+	ZDR                    *bool          `json:"zdr,omitempty"`
+	EnforceDistillableText *bool          `json:"enforce_distillable_text,omitempty"`
+	Quantizations          []string       `json:"quantizations,omitempty"`
+	MaxPrice               map[string]any `json:"max_price,omitempty"`
+	PreferredMinThroughput any            `json:"preferred_min_throughput,omitempty"`
+	PreferredMaxLatency    any            `json:"preferred_max_latency,omitempty"`
+	Sort                   any            `json:"sort,omitempty"`
 }
 
 // VercelAIGatewayRoutingPreference mirrors sigma.VercelAIGatewayRoutingPreference.

@@ -75,7 +75,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	if cacheControl := anthropicCacheControl(opts.CacheRetention, compat.cacheControlFormat); cacheControl != nil {
 		addAnthropicCacheControl(payload, cacheControl)
 	}
-	addRouting(payload, compat)
+	addRouting(payload, opts, model.Provider, compat)
 	return payload, nil
 }
 
@@ -409,16 +409,24 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 	}
 
 	effort := reasoningEffort(model, opts)
-	if effort == "" {
-		return
-	}
 	switch compat.reasoningFormat { //nolint:exhaustive
 	case sigma.OpenAICompletionsReasoningEffort:
+		if effort == "" {
+			return
+		}
 		if compat.supportsReasoningEffort {
 			payload["reasoning_effort"] = effort
 		}
 	case sigma.OpenAICompletionsReasoningObject:
 		if compat.supportsReasoningEffort {
+			if effort == "" {
+				if off, ok := model.ThinkingLevelMap[sigma.ThinkingLevelOff]; ok {
+					effort = off
+				}
+			}
+			if effort == "" {
+				return
+			}
 			payload["reasoning"] = map[string]any{"effort": effort}
 		}
 	}
@@ -669,12 +677,48 @@ func repairMessages(messages []map[string]any, compat completionsCompat) []map[s
 	return repaired
 }
 
-func addRouting(payload map[string]any, compat completionsCompat) {
-	if routing := routingMap(compat.openRouterRouting); len(routing) > 0 {
+func addRouting(payload map[string]any, opts sigma.Options, provider sigma.ProviderID, compat completionsCompat) {
+	if routing := mergedRoutingMap(routingMap(compat.openRouterRouting), requestOpenRouterRouting(opts, provider)); len(routing) > 0 {
 		payload["provider"] = routing
 	}
 	if routing := routingMap(compat.vercelAIGatewayRouting); len(routing) > 0 {
 		payload["providerOptions"] = map[string]any{"gateway": routing}
+	}
+}
+
+func mergedRoutingMap(base map[string]any, override map[string]any) map[string]any {
+	if len(base) == 0 {
+		return override
+	}
+	merged := copyAnyMap(base)
+	for key, value := range override {
+		merged[key] = value
+	}
+	return merged
+}
+
+func requestOpenRouterRouting(opts sigma.Options, provider sigma.ProviderID) map[string]any {
+	routing := make(map[string]any)
+	mergeProviderRouting(routing, providerOptions(opts, provider))
+	if provider != sigma.ProviderOpenRouter {
+		mergeProviderRouting(routing, providerOptions(opts, sigma.ProviderOpenRouter))
+	}
+	if len(routing) == 0 {
+		return nil
+	}
+	return routing
+}
+
+func mergeProviderRouting(out map[string]any, options map[string]any) {
+	if value, ok := mapOption(options, "routing"); ok {
+		for key, item := range value {
+			out[key] = item
+		}
+	}
+	if value, ok := mapOption(options, "provider"); ok {
+		for key, item := range value {
+			out[key] = item
+		}
 	}
 }
 

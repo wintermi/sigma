@@ -79,6 +79,11 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - OpenAI-compatible Chat Completions compatibility metadata now supports
   Anthropic-style cache markers, opt-in `tool_stream` payloads, and
   model-specific suppression of explicit `reasoning_effort`.
+- OpenAI-compatible Chat Completions now maps OpenRouter reasoning requests to
+  nested `reasoning.effort`, supports request-scoped OpenRouter routing
+  overrides, and exposes expanded OpenRouter routing metadata.
+- OpenAI-compatible Chat Completions and OpenRouter Images now account for
+  provider-reported prompt cache writes separately from cache reads.
 - Anthropic Messages compatibility metadata for Anthropic-compatible endpoints,
   including eager tool input streaming, cache/session-affinity support, empty
   thinking-signature replay, and budget/adaptive thinking formats.

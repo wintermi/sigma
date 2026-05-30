@@ -58,6 +58,9 @@ upstream.
       mismatches.
 - [ ] Emit a refresh report that lists added, removed, changed, skipped, and
       overridden models by provider so catalog review is tractable.
+- [ ] Expand broad OpenRouter text and image metadata only through the catalog
+      refresh workflow, with deterministic diffs and reviewable routing/cost
+      changes instead of ad hoc catalog imports.
 - [ ] Preserve Sigma's current generated-output contract: deterministic order,
       validated `internal/modeldata/catalog.json`, generated Go code, checksum
       tests, and metadata-only default registry entries.

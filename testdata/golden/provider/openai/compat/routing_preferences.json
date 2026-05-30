@@ -9,11 +9,27 @@
   "provider": {
     "allow_fallbacks": false,
     "data_collection": "deny",
+    "max_price": {
+      "completion": "2.5",
+      "prompt": 1.5
+    },
     "order": [
       "anthropic",
       "openai"
     ],
-    "require_parameters": true
+    "preferred_max_latency": 3,
+    "preferred_min_throughput": {
+      "p50": 40
+    },
+    "quantizations": [
+      "fp16",
+      "int8"
+    ],
+    "require_parameters": true,
+    "sort": {
+      "by": "latency",
+      "partition": "model"
+    }
   },
   "providerOptions": {
     "gateway": {

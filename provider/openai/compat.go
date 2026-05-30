@@ -91,6 +91,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
 		compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlMessage
+		compat.reasoningFormat = sigma.OpenAICompletionsReasoningObject
 		if strings.HasPrefix(string(model.ID), "anthropic/") {
 			compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlAnthropic
 		}

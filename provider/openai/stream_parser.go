@@ -72,7 +72,8 @@ type openAIUsage struct {
 }
 
 type promptTokenDetails struct {
-	CachedTokens int `json:"cached_tokens"`
+	CachedTokens     int `json:"cached_tokens"`
+	CacheWriteTokens int `json:"cache_write_tokens"`
 }
 
 type outputTokenDetails struct {
@@ -407,6 +408,8 @@ func (u openAIUsage) sigmaUsage() sigma.Usage {
 	}
 	if u.PromptTokensDetails != nil {
 		usage.CacheReadInputTokens = u.PromptTokensDetails.CachedTokens
+		usage.CacheWriteInputTokens = u.PromptTokensDetails.CacheWriteTokens
+		usage.InputTokens = max(0, u.PromptTokens-usage.CacheReadInputTokens-usage.CacheWriteInputTokens)
 	}
 	if u.CompletionTokensDetails != nil {
 		usage.ThinkingTokens = u.CompletionTokensDetails.ReasoningTokens

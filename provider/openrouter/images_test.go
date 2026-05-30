@@ -64,7 +64,7 @@ func TestGenerateImagesSendsGoldenPayloadAndMapsResponse(t *testing.T) {
 				"prompt_tokens": 7,
 				"completion_tokens": 3,
 				"total_tokens": 10,
-				"prompt_tokens_details": {"cached_tokens": 2},
+				"prompt_tokens_details": {"cached_tokens": 2, "cache_write_tokens": 1},
 				"completion_tokens_details": {"reasoning_tokens": 1}
 			}
 		}`)
@@ -107,7 +107,8 @@ func TestGenerateImagesSendsGoldenPayloadAndMapsResponse(t *testing.T) {
 	if got.Provider != sigma.ProviderOpenRouter {
 		t.Fatalf("provider = %q, want openrouter", got.Provider)
 	}
-	if got.Usage == nil || got.Usage.InputTokens != 7 || got.Usage.CacheReadInputTokens != 2 || got.Usage.ThinkingTokens != 1 {
+	if got.Usage == nil || got.Usage.InputTokens != 4 || got.Usage.CacheReadInputTokens != 2 ||
+		got.Usage.CacheWriteInputTokens != 1 || got.Usage.ThinkingTokens != 1 {
 		t.Fatalf("usage = %#v, want mapped usage", got.Usage)
 	}
 	if want := []sigma.ImageInput{

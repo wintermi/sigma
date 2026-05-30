@@ -129,10 +129,15 @@ func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 			name: "routing preferences",
 			compat: sigma.OpenAICompletionsCompat{
 				OpenRouterRouting: &sigma.OpenRouterRoutingPreference{
-					Order:             []string{"anthropic", "openai"},
-					AllowFallbacks:    boolPtr(false),
-					RequireParameters: boolPtr(true),
-					DataCollection:    "deny",
+					Order:                  []string{"anthropic", "openai"},
+					AllowFallbacks:         boolPtr(false),
+					RequireParameters:      boolPtr(true),
+					DataCollection:         "deny",
+					Quantizations:          []string{"fp16", "int8"},
+					MaxPrice:               map[string]any{"prompt": 1.5, "completion": "2.5"},
+					PreferredMinThroughput: map[string]any{"p50": 40.0},
+					PreferredMaxLatency:    3.0,
+					Sort:                   map[string]any{"by": "latency", "partition": "model"},
 				},
 				VercelAIGatewayRouting: &sigma.VercelAIGatewayRoutingPreference{
 					Order:  []string{"bedrock", "anthropic"},
@@ -156,6 +161,99 @@ func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 			}
 			goldentest.AssertJSON(t, payload, tt.golden)
 		})
+	}
+}
+
+func TestOpenAICompletionsCompatDetectsOpenRouterReasoningObject(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:               "router-model",
+		Provider:         sigma.ProviderOpenRouter,
+		API:              sigma.APIOpenAICompletions,
+		SupportsThinking: true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
+			sigma.ThinkingLevelHigh: "high",
+			sigma.ThinkingLevelOff:  "none",
+		},
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
+		sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	reasoning, ok := payload["reasoning"].(map[string]any)
+	if !ok {
+		t.Fatalf("reasoning = %#v, want object", payload["reasoning"])
+	}
+	if got, want := reasoning["effort"], "high"; got != want {
+		t.Fatalf("reasoning effort = %v, want %v", got, want)
+	}
+
+	payload, err = chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
+		sigma.Options{},
+		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload with off reasoning returned error: %v", err)
+	}
+	reasoning, ok = payload["reasoning"].(map[string]any)
+	if !ok {
+		t.Fatalf("off reasoning = %#v, want object", payload["reasoning"])
+	}
+	if got, want := reasoning["effort"], "none"; got != want {
+		t.Fatalf("off reasoning effort = %v, want %v", got, want)
+	}
+}
+
+func TestOpenAICompletionsProviderOptionsOverrideOpenRouterRouting(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:       "router-model",
+		Provider: sigma.ProviderOpenRouter,
+		API:      sigma.APIOpenAICompletions,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			OpenRouterRouting: &sigma.OpenRouterRoutingPreference{
+				Order:          []string{"openai"},
+				AllowFallbacks: boolPtr(true),
+			},
+		},
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("route")}},
+		sigma.Options{ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderOpenRouter: {
+				"routing": map[string]any{
+					"only":            []string{"anthropic"},
+					"allow_fallbacks": false,
+				},
+			},
+		}},
+		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	routing, ok := payload["provider"].(map[string]any)
+	if !ok {
+		t.Fatalf("provider routing = %#v, want object", payload["provider"])
+	}
+	if got, want := routing["allow_fallbacks"], false; got != want {
+		t.Fatalf("allow_fallbacks = %v, want %v", got, want)
+	}
+	if _, ok := routing["order"]; !ok {
+		t.Fatalf("routing = %#v, want model order preserved", routing)
+	}
+	if got, ok := routing["only"].([]string); !ok || len(got) != 1 || got[0] != "anthropic" {
+		t.Fatalf("only = %#v, want [anthropic]", routing["only"])
 	}
 }
 
