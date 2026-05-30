@@ -100,6 +100,39 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesUsesModelBaseURLAndHeaders(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-model-metadata-test")
+	model := responsesTestModel(providerID)
+	model.ProviderMetadata = map[string]any{
+		"baseURL": server.URL + "/model-base",
+		"headers": map[string]string{
+			"Authorization": "Bearer metadata-secret",
+			"X-Model":       "model",
+		},
+	}
+	client := responsesTestClient(t, providerID, model, "https://provider-base.invalid")
+
+	if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/model-base/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "Authorization", "Bearer resolved-key")
+	assertHeader(t, request.Headers, "X-Model", "model")
+}
+
 func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
 	t.Parallel()
 

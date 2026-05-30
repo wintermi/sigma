@@ -181,7 +181,7 @@ func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request,
 }
 
 func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Request, error) {
-	baseURL := p.baseURLForProvider(model.Provider, opts)
+	baseURL := p.baseURLForModel(model, opts)
 	compat := anthropicMessagesCompat(model, baseURL, p.compat)
 	payload, err := messagesPayload(model, req, opts, compat)
 	if err != nil {
@@ -192,7 +192,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 		return nil, fmt.Errorf("anthropic messages: encode request: %w", err)
 	}
 
-	endpoint, err := p.endpoint(model.Provider, opts)
+	endpoint, err := p.endpoint(model, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +213,12 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	}
 	p.addProviderHeaders(httpReq, model.Provider, opts, compat)
 	for key, value := range p.headers {
+		httpReq.Header.Set(key, value)
+	}
+	for key, value := range anthropicModelHeaders(model) {
+		if unsafeCredentialHeader(key) {
+			continue
+		}
 		httpReq.Header.Set(key, value)
 	}
 	for key, value := range opts.Headers {
@@ -262,18 +268,32 @@ func (p *Provider) addProviderHeaders(req *http.Request, provider sigma.Provider
 	}
 }
 
-func (p *Provider) endpoint(provider sigma.ProviderID, opts sigma.Options) (string, error) {
-	options := providerOptions(opts, provider)
+func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {
+	options := providerOptions(opts, model.Provider)
 	if endpoint, ok := stringOption(options, providerOptionEndpoint); ok {
 		return endpoint, nil
 	}
 
-	baseURL := p.baseURLForProvider(provider, opts)
+	baseURL := p.baseURLForModel(model, opts)
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("anthropic messages: invalid base URL %q", baseURL)
 	}
 	return baseURL + "/messages", nil
+}
+
+func (p *Provider) baseURLForModel(model sigma.Model, opts sigma.Options) string {
+	baseURL := p.baseURLForProvider(model.Provider, opts)
+	if value, ok := model.ProviderMetadata["baseURL"].(string); ok && strings.TrimSpace(value) != "" {
+		baseURL = value
+	}
+	options := providerOptions(opts, model.Provider)
+	if value, ok := stringOption(options, providerOptionBaseURL); ok {
+		baseURL = value
+	} else if value, ok := stringOption(options, providerOptionBaseURLCamel); ok {
+		baseURL = value
+	}
+	return strings.TrimRight(baseURL, "/")
 }
 
 func (p *Provider) baseURLForProvider(provider sigma.ProviderID, opts sigma.Options) string {
@@ -288,6 +308,35 @@ func (p *Provider) baseURLForProvider(provider sigma.ProviderID, opts sigma.Opti
 		baseURL = value
 	}
 	return strings.TrimRight(baseURL, "/")
+}
+
+func anthropicModelHeaders(model sigma.Model) map[string]string {
+	raw := model.ProviderMetadata["headers"]
+	switch headers := raw.(type) {
+	case map[string]string:
+		return headers
+	case map[string]any:
+		copied := make(map[string]string, len(headers))
+		for key, value := range headers {
+			text, ok := value.(string)
+			if !ok {
+				continue
+			}
+			copied[key] = text
+		}
+		return copied
+	default:
+		return nil
+	}
+}
+
+func unsafeCredentialHeader(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "authorization", "proxy-authorization":
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *Provider) httpClient(opts sigma.Options) *http.Client {

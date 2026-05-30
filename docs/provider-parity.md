@@ -62,7 +62,9 @@ Release scope values:
 
 - Default registry entries are metadata-only. Importing provider packages and calling their `Register` functions is still required for runtime provider dispatch.
 - `openai-images` currently implements generation-only requests. Reference-image editing, variations, streaming partial images, and Responses image-tool generation are deferred.
-- Azure, Codex, and Vertex adapters are implemented provider packages, but their APIs are not represented by generated default model metadata yet.
+- Azure and Codex adapters are implemented provider packages, but their APIs are
+  not represented by generated default model metadata yet. Vertex now has a
+  representative metadata-only route.
 - OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/OpenCode rely
   on shared compatibility detection or explicit `OpenAICompletionsCompat`
   metadata. They are future-scope rows and are not independently

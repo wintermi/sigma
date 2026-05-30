@@ -49,8 +49,8 @@ See [release notes](docs/release-notes-v0.1.0.md).
   debug hooks, credential formatting, persistence boundaries, and synthetic
   secret fixtures.
 - Documentation for MVP scope, providers, streaming, tools, images, reasoning,
-  errors, custom models, testing, persistence, inspiration from
-  `@earendil-works/pi-ai`, provider parity, security, and generated metadata.
+  errors, custom models, testing, persistence, design inspiration, provider
+  parity, security, and generated metadata.
 
 ## [0.2.0] - TBC
 
@@ -90,6 +90,12 @@ See [release notes](docs/release-notes-v0.2.0.md).
   OpenAI-compatible `kimi-k2.6` and `grok-build-0.1` gaps, with deterministic
   payload fixtures for Kimi thinking and Grok Build reasoning-effort
   suppression.
+- Generated text metadata now includes representative metadata-only entries for
+  every exposed non-custom provider ID, aligned with current compatibility
+  metadata and generated base URL/header handling.
+- Release docs now record the deferred model-registry generation plan, including
+  future `models.dev` ingestion, source precedence, refresh reports, and the
+  deterministic catalog review gate.
 
 ### Known limitations
 
@@ -111,14 +117,17 @@ See [release notes](docs/release-notes-v0.2.0.md).
   continues to use SSE with a caller-supplied OAuth token provider.
 - Token usage and cost reporting come from provider usage data and model
   metadata; tokenizer-based token estimates are deferred.
+- Built-in model metadata is still refreshed through the curated checked-in
+  catalog; automated `models.dev`/provider-catalog ingestion is deferred until
+  it can preserve deterministic review and fixtures.
 - The Go package targets server/CLI use; browser-specific behavior is out of
   scope for the MVP.
 - Agent runtime orchestration and cross-provider context handoff (with
   capability-loss reporting) are deferred to later integration work; the MVP
   exposes only provider-neutral primitives.
 - DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot, Kimi, and Xiaomi are
-  not yet first-class provider rows; provider IDs or routing may exist, but
-  independent provider-quality claims still need fixtures.
+  not yet first-class provider rows; generated metadata and routing may exist,
+  but independent provider-quality claims still need fixtures.
 - No live provider calls are required or expected for release validation.
 - The release should not be tagged until maintainers accept the verification
   results and the [release notes](docs/release-notes-v0.2.0.md).

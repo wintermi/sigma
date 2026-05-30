@@ -32,13 +32,13 @@ packages and metadata fields. It should be read with
 | Anthropic | `anthropic` | `anthropic-messages` | Generated metadata includes a Claude text model. |
 | Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream` | Generated metadata includes a Claude-on-Bedrock text model. |
 | Google Gemini API | `google` | `google-generative-ai` | Generated metadata includes Gemini text. |
-| Google Vertex AI | `google-vertex` | `google-vertex` | Adapter exists; generated model metadata does not currently seed Vertex models. |
+| Google Vertex AI | `google-vertex` | `google-vertex` | Generated metadata includes a representative Gemini Vertex route; callers still supply project/location routing. |
 | Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text. |
 | OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and one image route. |
 | OpenCode Zen, OpenCode Go | `opencode`, `opencode-go` | `openai-completions` | Generated metadata includes curated OpenAI-compatible text routes. Register the shared OpenAI-compatible provider under these IDs to make requests. |
-| DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot | `deepseek`, `groq`, `cerebras`, `xai`, `together`, `github-copilot` | `openai-completions` when caller registers compatible models | Provider IDs exist for compatibility routing, but generated default models are not seeded. |
+| DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot | `deepseek`, `groq`, `cerebras`, `xai`, `together`, `github-copilot` | `openai-completions` or `openai-responses` when caller registers compatible providers | Generated metadata includes representative metadata-only routes, but first-class provider parity still needs fixtures. |
 | Fireworks | `fireworks` | `openai-completions`; `anthropic-messages` when caller registers compatible models | Generated metadata includes the Fire Pass Kimi K2.6 Turbo router for the OpenAI-compatible endpoint. Anthropic-compatible routing remains caller-registered. |
-| Kimi, Xiaomi | `kimi`, `xiaomi` | `anthropic-messages` when caller registers compatible models | Compatibility detection exists for Anthropic-style routing; generated default models are not seeded. |
+| Kimi, Xiaomi | `kimi`, `xiaomi` | `anthropic-messages` or `openai-completions` when caller registers compatible providers | Generated metadata includes representative metadata-only routes with compatibility metadata. |
 | Custom/local endpoints | `custom` or caller-defined | Usually `openai-completions` | Use explicit registry entries, `WithBaseURL`, and compatibility metadata. |
 
 ## Metadata flags

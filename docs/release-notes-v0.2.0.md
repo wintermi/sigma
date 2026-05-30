@@ -24,6 +24,18 @@ The v0.2.0 work promotes only the narrow Kimi/Grok Build compatibility gaps
 with deterministic fixtures; it does not promote OpenCode to full
 source-package parity.
 
+Built-in model metadata remains generated from Sigma's curated checked-in
+catalog for v0.2.0. A future refresh workflow should ingest `models.dev` and
+provider catalog APIs into reviewable candidate metadata, but the release keeps
+that automation outside the current tag so generated registry changes remain
+deterministic and fixture-backed.
+
+The curated catalog now includes representative metadata-only text models for
+each exposed non-custom provider ID. These rows make provider discovery,
+credential-source reporting, compatibility metadata, and model limits line up
+with Sigma's current provider constants without promoting those providers to
+first-class parity rows.
+
 ## Added
 
 - `provider/openai` now exposes `NewImagesProvider`, `RegisterImages`, and
@@ -47,6 +59,12 @@ source-package parity.
 - OpenCode Zen and OpenCode Go metadata now cover Kimi K2.6 DeepSeek-style
   thinking payloads without `reasoning_effort`, plus OpenCode Zen Grok Build
   0.1 reasoning-effort suppression.
+- Generated metadata now seeds representative entries for the remaining exposed
+  provider IDs, including current OpenAI-compatible, Anthropic-compatible, and
+  Vertex compatibility metadata.
+- `TODO.md` now records the model-registry generation plan for future
+  `models.dev` ingestion, provider-catalog overlays, refresh reports, and
+  deterministic source review.
 - `sigma.AnthropicMessagesCompat` and `sigma.AnthropicThinkingFormat` describe
   Anthropic-compatible endpoint support for eager tool input streaming, cache
   retention, session affinity, tool cache markers, empty thinking signatures,
@@ -90,6 +108,9 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
   metadata beyond the promoted Kimi/Grok Build OpenAI-compatible gaps.
 - OpenCode-routed OpenAI Responses, Anthropic Messages, and Google API models;
   each route needs separate deterministic coverage before promotion.
+- Automated model catalog refresh from `models.dev` and provider catalog APIs;
+  generated metadata still enters the release through the checked-in catalog,
+  checksum test, and generated Go review flow.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization.
 - GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.

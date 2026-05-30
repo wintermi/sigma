@@ -127,7 +127,7 @@ func (p *ResponsesProvider) newRequest(ctx context.Context, model sigma.Model, r
 		return nil, fmt.Errorf("openai responses: encode request: %w", err)
 	}
 
-	endpoint, err := p.endpoint(model.Provider, opts)
+	endpoint, err := p.endpoint(model, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +146,7 @@ func (p *ResponsesProvider) newRequest(ctx context.Context, model sigma.Model, r
 	for key, value := range p.base.headers {
 		httpReq.Header.Set(key, value)
 	}
+	addOpenAICompatibleModelHeaders(httpReq, model)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -172,13 +173,13 @@ func (p *ResponsesProvider) addProviderHeaders(req *http.Request, provider sigma
 	}
 }
 
-func (p *ResponsesProvider) endpoint(provider sigma.ProviderID, opts sigma.Options) (string, error) {
-	options := providerOptions(opts, provider)
+func (p *ResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {
+	options := providerOptions(opts, model.Provider)
 	if endpoint, ok := stringOption(options, providerOptionEndpoint); ok {
 		return endpoint, nil
 	}
 
-	baseURL := p.base.baseURLForProvider(provider, opts)
+	baseURL := p.base.baseURLForModel(model, opts)
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("openai responses: invalid base URL %q", baseURL)

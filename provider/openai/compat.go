@@ -179,7 +179,7 @@ func addOpenAICompatibleModelHeaders(req *http.Request, model sigma.Model) {
 func openAICompatibleModelHeaders(model sigma.Model) map[string]string {
 	raw, ok := model.ProviderMetadata[sigma.MetadataOpenAICompatibleHeaders]
 	if !ok {
-		return nil
+		raw = model.ProviderMetadata["headers"]
 	}
 	switch headers := raw.(type) {
 	case map[string]string:

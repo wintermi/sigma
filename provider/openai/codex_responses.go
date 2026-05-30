@@ -146,7 +146,7 @@ func (p *CodexResponsesProvider) newRequest(ctx context.Context, model sigma.Mod
 		return nil, fmt.Errorf("openai codex responses: encode request: %w", err)
 	}
 
-	endpoint, err := p.endpoint(model.Provider, opts)
+	endpoint, err := p.endpoint(model, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +165,7 @@ func (p *CodexResponsesProvider) newRequest(ctx context.Context, model sigma.Mod
 	for key, value := range p.base.headers {
 		httpReq.Header.Set(key, value)
 	}
+	addOpenAICompatibleModelHeaders(httpReq, model)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -225,9 +226,9 @@ func (p *CodexResponsesProvider) addProviderHeaders(req *http.Request, provider 
 	}
 }
 
-func (p *CodexResponsesProvider) endpoint(provider sigma.ProviderID, opts sigma.Options) (string, error) {
+func (p *CodexResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {
 	responses := ResponsesProvider{base: p.base}
-	endpoint, err := responses.endpoint(provider, opts)
+	endpoint, err := responses.endpoint(model, opts)
 	if err != nil {
 		return "", fmt.Errorf("openai codex responses: %w", err)
 	}

@@ -692,6 +692,254 @@
         "modelFamily": "gpt",
         "routedProvider": "openai"
       }
+    },
+    {
+      "id": "llama3.1-8b",
+      "name": "Llama 3.1 8B",
+      "provider": "cerebras",
+      "api": "openai-completions",
+      "baseURL": "https://api.cerebras.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 32000,
+      "maxOutputTokens": 8000,
+      "headers": {},
+      "authEnvNames": ["CEREBRAS_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "provider": "deepseek",
+      "api": "openai-completions",
+      "baseURL": "https://api.deepseek.com",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "xhigh": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0.14,
+        "outputPerMillion": 0.28,
+        "cacheReadInputPerMillion": 0.0028,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": ["DEEPSEEK_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      }
+    },
+    {
+      "id": "gpt-5.2-codex",
+      "name": "GPT-5.2 Codex",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "low",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 400000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "Copilot-Integration-Id": "vscode-chat",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "User-Agent": "GitHubCopilotChat/0.35.0"
+      },
+      "authEnvNames": ["COPILOT_GITHUB_TOKEN"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      }
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "name": "Gemini 2.5 Flash (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.03,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": ["GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      }
+    },
+    {
+      "id": "llama-3.3-70b-versatile",
+      "name": "Llama 3.3 70B Versatile",
+      "provider": "groq",
+      "api": "openai-completions",
+      "baseURL": "https://api.groq.com/openai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.59,
+        "outputPerMillion": 0.79,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": ["GROQ_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "kimi-for-coding",
+      "name": "Kimi For Coding",
+      "provider": "kimi",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 32768,
+      "headers": {
+        "User-Agent": "KimiCLI/1.5"
+      },
+      "authEnvNames": ["KIMI_API_KEY"],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      }
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
+      "name": "Qwen3 Coder 480B A35B Instruct",
+      "provider": "together",
+      "api": "openai-completions",
+      "baseURL": "https://api.together.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 2,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": ["TOGETHER_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      }
+    },
+    {
+      "id": "grok-3",
+      "name": "Grok 3",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.75,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "mimo-v2.5",
+      "name": "MiMo V2.5",
+      "provider": "xiaomi",
+      "api": "openai-completions",
+      "baseURL": "https://api.xiaomimimo.com/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.4,
+        "outputPerMillion": 2,
+        "cacheReadInputPerMillion": 0.08,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": ["XIAOMI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "providerMetadata": {
+        "modelFamily": "mimo"
+      }
     }
   ],
   "imageModels": [

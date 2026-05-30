@@ -169,6 +169,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		t.Fatalf("OpenCode Go Kimi compat = %#v, want deepseek reasoning without effort", openCodeGoKimi.OpenAICompletionsCompat)
 	}
 
+	assertProviderConstantsHaveGeneratedTextMetadata(t, registry)
+	assertGeneratedOpenAICompatibleProviderMetadata(t, registry)
+	assertGeneratedAnthropicCompatibleProviderMetadata(t, registry)
+	assertGeneratedVertexMetadata(t, registry)
+
 	image, ok := registry.ImageModel(ProviderOpenAI, "gpt-image-1")
 	if !ok {
 		t.Fatal("fresh registry missing generated OpenAI image model")
@@ -182,6 +187,129 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if cost, ok := image.ProviderMetadata["cost"].(map[string]any); !ok || cost["currency"] != "USD" {
 		t.Fatalf("image cost metadata = %#v, want USD cost map", image.ProviderMetadata["cost"])
 	}
+}
+
+func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	providers := map[ProviderID]bool{}
+	for _, model := range registry.ListModels() {
+		providers[model.Provider] = true
+	}
+	for _, provider := range []ProviderID{
+		ProviderAmazonBedrock,
+		ProviderAnthropic,
+		ProviderCerebras,
+		ProviderDeepSeek,
+		ProviderFireworks,
+		ProviderGitHubCopilot,
+		ProviderGoogle,
+		ProviderGoogleVertex,
+		ProviderGroq,
+		ProviderKimi,
+		ProviderMistral,
+		ProviderOpenAI,
+		ProviderOpenCode,
+		ProviderOpenCodeGo,
+		ProviderOpenRouter,
+		ProviderTogether,
+		ProviderXAI,
+		ProviderXiaomi,
+	} {
+		if !providers[provider] {
+			t.Fatalf("generated text metadata missing provider %q", provider)
+		}
+	}
+}
+
+func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	deepSeek, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-flash")
+	if !ok {
+		t.Fatal("fresh registry missing generated DeepSeek model")
+	}
+	if deepSeek.OpenAICompletionsCompat == nil ||
+		deepSeek.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		deepSeek.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("DeepSeek compat = %#v, want deepseek reasoning content replay", deepSeek.OpenAICompletionsCompat)
+	}
+	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
+		t.Fatalf("DeepSeek xhigh level = %q, %v; want max, true", got, ok)
+	}
+
+	together, ok := registry.Model(ProviderTogether, "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8")
+	if !ok {
+		t.Fatal("fresh registry missing generated Together model")
+	}
+	if together.OpenAICompletionsCompat == nil ||
+		together.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+		together.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+		together.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+		t.Fatalf("Together compat = %#v, want conservative OpenAI-compatible overrides", together.OpenAICompletionsCompat)
+	}
+
+	xiaomi, ok := registry.Model(ProviderXiaomi, "mimo-v2.5")
+	if !ok {
+		t.Fatal("fresh registry missing generated Xiaomi model")
+	}
+	if xiaomi.OpenAICompletionsCompat == nil ||
+		xiaomi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		xiaomi.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("Xiaomi compat = %#v, want deepseek reasoning content replay", xiaomi.OpenAICompletionsCompat)
+	}
+
+	for _, tt := range []struct {
+		provider ProviderID
+		id       ModelID
+		baseURL  string
+		envVars  []string
+	}{
+		{provider: ProviderCerebras, id: "llama3.1-8b", baseURL: "https://api.cerebras.ai/v1", envVars: []string{"CEREBRAS_API_KEY"}},
+		{provider: ProviderGroq, id: "llama-3.3-70b-versatile", baseURL: "https://api.groq.com/openai/v1", envVars: []string{"GROQ_API_KEY"}},
+		{provider: ProviderXAI, id: "grok-3", baseURL: "https://api.x.ai/v1", envVars: []string{"XAI_API_KEY"}},
+		{provider: ProviderGitHubCopilot, id: "gpt-5.2-codex", baseURL: "https://api.individual.githubcopilot.com", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s model %s", tt.provider, tt.id)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
+	}
+}
+
+func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	kimi, ok := registry.Model(ProviderKimi, "kimi-for-coding")
+	if !ok {
+		t.Fatal("fresh registry missing generated Kimi model")
+	}
+	if kimi.API != APIAnthropicMessages || !kimi.SupportsTools || !kimi.SupportsImages() || !kimi.SupportsReasoning() {
+		t.Fatalf("Kimi model capabilities were not generated: %+v", kimi)
+	}
+	if kimi.AnthropicMessagesCompat == nil ||
+		kimi.AnthropicMessagesCompat.SupportsSessionAffinity != AnthropicCompatSupported ||
+		kimi.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+		t.Fatalf("Kimi compat = %#v, want adaptive Anthropic-compatible metadata", kimi.AnthropicMessagesCompat)
+	}
+	assertMetadataString(t, kimi.ProviderMetadata, "baseURL", "https://api.kimi.com/coding/v1")
+	assertMetadataStrings(t, kimi.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"KIMI_API_KEY"})
+}
+
+func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	vertex, ok := registry.Model(ProviderGoogleVertex, "gemini-2.5-flash")
+	if !ok {
+		t.Fatal("fresh registry missing generated Vertex model")
+	}
+	if vertex.API != APIGoogleVertex || !vertex.SupportsTools || !vertex.SupportsImages() || !vertex.SupportsReasoning() {
+		t.Fatalf("Vertex model capabilities were not generated: %+v", vertex)
+	}
+	assertMetadataString(t, vertex.ProviderMetadata, "vertexPublisher", "google")
+	assertMetadataStrings(t, vertex.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
 }
 
 func TestGeneratedModelMetadataOrder(t *testing.T) {

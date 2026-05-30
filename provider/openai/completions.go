@@ -264,17 +264,6 @@ func (p *Provider) baseURLForModel(model sigma.Model, opts sigma.Options) string
 	return strings.TrimRight(baseURL, "/")
 }
 
-func (p *Provider) baseURLForProvider(provider sigma.ProviderID, opts sigma.Options) string {
-	baseURL := p.defaultBaseURL()
-	options := providerOptions(opts, provider)
-	if value, ok := stringOption(options, providerOptionBaseURL); ok {
-		baseURL = value
-	} else if value, ok := stringOption(options, providerOptionBaseURLCamel); ok {
-		baseURL = value
-	}
-	return strings.TrimRight(baseURL, "/")
-}
-
 func (p *Provider) defaultBaseURL() string {
 	if p.baseURL == "" {
 		return DefaultBaseURL

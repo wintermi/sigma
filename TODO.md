@@ -23,7 +23,9 @@ cancellation/error coverage (see the coverage standards in
 
 Provider IDs and compatibility routing may already exist, but each needs
 independent provider-quality claims backed by fixtures before becoming a
-first-class row in [provider parity](docs/provider-parity.md).
+first-class row in [provider parity](docs/provider-parity.md). Representative
+generated metadata can exist before first-class promotion when it is
+metadata-only and backed by compatibility checks.
 
 - [ ] DeepSeek — promote to a first-class provider row with fixtures.
 - [ ] Groq — promote to a first-class provider row with fixtures.
@@ -39,6 +41,31 @@ first-class row in [provider parity](docs/provider-parity.md).
       first-class Cloudflare OpenAI-compatible row.
 - [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
       and cancellation coverage.
+
+## Model registry generation
+
+Sigma's built-in model registry is generated from a curated checked-in catalog.
+That keeps release output reviewable, but refreshes are manual and the default
+catalog is intentionally smaller than the provider/source metadata available
+upstream.
+
+- [ ] Add an offline-friendly refresh command that can ingest `models.dev` and
+      provider catalog APIs into a candidate catalog file without replacing the
+      checked-in review step.
+- [ ] Keep explicit source precedence and override rules near the generator:
+      `models.dev` for broad text model discovery, provider APIs for surfaces
+      not covered there, and hand-curated overrides for known endpoint behavior
+      mismatches.
+- [ ] Emit a refresh report that lists added, removed, changed, skipped, and
+      overridden models by provider so catalog review is tractable.
+- [ ] Preserve Sigma's current generated-output contract: deterministic order,
+      validated `internal/modeldata/catalog.json`, generated Go code, checksum
+      tests, and metadata-only default registry entries.
+- [ ] Add source-aware tests for provider/API mapping, tool-capable filtering,
+      reasoning metadata, thinking-level maps, provider headers, auth env vars,
+      and compatibility metadata.
+- [ ] Expand generated metadata only after matching provider adapters or
+      compatibility routes have deterministic payload/error coverage.
 
 ## OpenCode parity
 
