@@ -79,7 +79,9 @@ Reasoning support is provider- and model-specific:
   `OpenAICompletionsCompat` for routers and local models.
 - Fireworks Chat Completions maps reasoning levels to `reasoning_effort` and
   thinking budgets to Fireworks' `thinking` object.
-- Anthropic, Google, and Bedrock have fixture-tested thinking paths.
-- Mistral thinking is not implemented.
+- Anthropic, Google, Bedrock, and Mistral have fixture-tested thinking paths.
+- Mistral Conversations maps adjustable-reasoning models to
+  `completion_args.reasoning_effort` and native Magistral models to
+  `completion_args.prompt_mode`.
 
 See [provider parity](provider-parity.md) for current status.

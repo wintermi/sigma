@@ -130,6 +130,57 @@ func TestCompleteSendsTextPayloadWithHooksHeadersAndOptions(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/mistral/conversations/rich_text_payload.json")
 }
 
+func TestCompleteSetsSessionAffinityHeaderUnlessCallerOverrides(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		opts []sigma.Option
+		want string
+	}{
+		{
+			name: "session id",
+			opts: []sigma.Option{sigma.WithSessionID("session-123")},
+			want: "session-123",
+		},
+		{
+			name: "caller header wins",
+			opts: []sigma.Option{
+				sigma.WithSessionID("session-123"),
+				sigma.WithHeader("X-Affinity", "caller-affinity"),
+			},
+			want: "caller-affinity",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMistralSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-session-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+
+			if _, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("Hello")},
+			}, tt.opts...); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			assertHeader(t, request.Headers, "X-Affinity", tt.want)
+		})
+	}
+}
+
 func TestConversationsRejectsProviderDefinedTools(t *testing.T) {
 	t.Parallel()
 
@@ -242,6 +293,43 @@ func TestConversationGoldenPayloads(t *testing.T) {
 			},
 			golden: "provider/mistral/conversations/tool_result_payload.json",
 		},
+		{
+			name: "normalized tool ids",
+			req: sigma.Request{
+				Messages: []sigma.Message{
+					sigma.UserText("Weather?"),
+					{
+						Role: sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{
+							sigma.ToolCallBlock("foreign|tool-call-id-that-is-too-long", "weather", map[string]any{"city": "Melbourne"}),
+						},
+					},
+					{
+						Role:       sigma.RoleTool,
+						ToolCallID: "foreign|tool-call-id-that-is-too-long",
+						ToolName:   "weather",
+						Content:    []sigma.ContentBlock{sigma.Text("Sunny")},
+					},
+				},
+			},
+			golden: "provider/mistral/conversations/normalized_tool_ids_payload.json",
+		},
+		{
+			name: "thinking replay",
+			req: sigma.Request{
+				Messages: []sigma.Message{
+					sigma.UserText("Solve this."),
+					{
+						Role: sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{
+							sigma.Thinking("Check constraints.", ""),
+							sigma.Text("Answer."),
+						},
+					},
+				},
+			},
+			golden: "provider/mistral/conversations/thinking_replay_payload.json",
+		},
 	}
 
 	for _, tt := range tests {
@@ -258,9 +346,72 @@ func TestConversationGoldenPayloads(t *testing.T) {
 
 			providerID := sigma.ProviderID("mistral-golden-" + strings.ReplaceAll(tt.name, " ", "-"))
 			model := mistralTestModel(providerID)
+			if tt.name == "thinking replay" {
+				model.SupportsThinking = true
+			}
 			client := mistralTestClient(t, providerID, model, server.URL)
 
 			if _, err := client.Complete(context.Background(), model, tt.req); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			request := receiveRequest(t, requests)
+			goldentest.AssertJSON(t, request.Body, tt.golden)
+		})
+	}
+}
+
+func TestConversationReasoningPayloads(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		model  sigma.Model
+		opts   []sigma.Option
+		golden string
+	}{
+		{
+			name: "adjustable reasoning",
+			model: func() sigma.Model {
+				model := mistralTestModel("mistral-adjustable-reasoning")
+				model.ID = "mistral-small-latest"
+				model.SupportsThinking = true
+				model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelHigh: "high"}
+				model.ProviderMetadata = map[string]any{"mistral_reasoning_mode": "reasoning_effort"}
+				return model
+			}(),
+			opts:   []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelHigh)},
+			golden: "provider/mistral/conversations/adjustable_reasoning_payload.json",
+		},
+		{
+			name: "native reasoning",
+			model: func() sigma.Model {
+				model := mistralTestModel("mistral-native-reasoning")
+				model.ID = "magistral-medium-latest"
+				model.SupportsThinking = true
+				model.ProviderMetadata = map[string]any{"mistral_reasoning_mode": "prompt_mode"}
+				return model
+			}(),
+			opts:   []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelMedium)},
+			golden: "provider/mistral/conversations/native_reasoning_payload.json",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMistralSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			client := mistralTestClient(t, tt.model.Provider, tt.model, server.URL)
+			if _, err := client.Complete(context.Background(), tt.model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("Think carefully.")},
+			}, tt.opts...); err != nil {
 				t.Fatalf("Complete returned error: %v", err)
 			}
 			request := receiveRequest(t, requests)
@@ -326,6 +477,63 @@ data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completi
 	}
 	if got, want := final.Usage.InputTokens, 10; got != want {
 		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+}
+
+func TestStreamingMapsThinkingAndText(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMistralSSE(t, w, `event: conversation.response.started
+data: {"type":"conversation.response.started","conversation_id":"conv_thinking"}
+
+event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"id":"msg_1","content_index":0,"content":{"type":"thinking","thinking":[{"type":"text","text":"Checked constraints. "}]}}
+
+event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"id":"msg_1","content_index":1,"content":{"type":"text","text":"The answer"}}
+
+event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"id":"msg_1","content_index":1,"content":{"type":"text","text":" is 42."}}
+
+event: conversation.response.done
+data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-thinking-stream-test")
+	model := mistralTestModel(providerID)
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindThinkingStart,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextDelta,
+		sigma.EventKindThinkingEnd,
+		sigma.EventKindTextEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if got, want := final.Content[0].ThinkingText, "Checked constraints. "; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "The answer is 42."; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
 	}
 }
 

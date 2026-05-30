@@ -685,6 +685,30 @@
       }
     },
     {
+      "id": "magistral-medium-latest",
+      "name": "Magistral Medium",
+      "provider": "mistral",
+      "api": "mistral-conversations",
+      "baseURL": "https://api.mistral.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 5,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": ["MISTRAL_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "mistral_reasoning_mode": "prompt_mode",
+        "modelFamily": "magistral"
+      }
+    },
+    {
       "id": "mistral-large-latest",
       "name": "Mistral Large",
       "provider": "mistral",
@@ -704,6 +728,37 @@
       "authEnvNames": ["MISTRAL_API_KEY"],
       "defaultTransport": "sse",
       "providerMetadata": {
+        "modelFamily": "mistral"
+      }
+    },
+    {
+      "id": "mistral-small-latest",
+      "name": "Mistral Small",
+      "provider": "mistral",
+      "api": "mistral-conversations",
+      "baseURL": "https://api.mistral.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "high",
+        "low": "high",
+        "medium": "high",
+        "high": "high",
+        "xhigh": "high"
+      },
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "currency": "USD"
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 256000,
+      "headers": {},
+      "authEnvNames": ["MISTRAL_API_KEY"],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "mistral_reasoning_mode": "reasoning_effort",
         "modelFamily": "mistral"
       }
     },

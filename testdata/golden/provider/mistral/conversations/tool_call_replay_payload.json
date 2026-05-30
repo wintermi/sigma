@@ -16,7 +16,7 @@
       "arguments": "{\"city\":\"Melbourne\"}",
       "name": "weather",
       "object": "entry",
-      "tool_call_id": "call_weather",
+      "tool_call_id": "23336afc7",
       "type": "function.call"
     }
   ],

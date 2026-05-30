@@ -178,8 +178,10 @@ _ = mistral.Register(registry, sigma.ProviderMistral)
 
 Environment: `MISTRAL_API_KEY`.
 
-The current adapter covers streaming text and function tools. Image input,
-thinking blocks, connectors, append, and restart are not implemented.
+The current adapter covers streaming text, streamed thinking chunks, function
+tools, request-scoped `x-affinity` session reuse through `sigma.WithSessionID`,
+and replay of cross-provider tool-call IDs. Image input, built-in connectors,
+append, and restart are not implemented.
 
 ### Amazon Bedrock Converse Stream
 

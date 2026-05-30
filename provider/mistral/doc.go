@@ -5,8 +5,9 @@
 
 // Package mistral adapts the Mistral Conversations API to sigma.
 //
-// The provider currently implements streaming text conversations and function
-// tools. Image inputs, thinking blocks, built-in connectors, append, and restart
-// are intentionally not implemented. Credentials resolve through
-// sigma.Options.AuthResolver instead of direct environment reads.
+// The provider currently implements streaming text conversations, thinking
+// chunks, function tools, and session affinity. Image inputs, built-in
+// connectors, append, and restart are intentionally not implemented.
+// Credentials resolve through sigma.Options.AuthResolver instead of direct
+// environment reads.
 package mistral

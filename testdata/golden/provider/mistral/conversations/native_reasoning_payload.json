@@ -1,0 +1,15 @@
+{
+  "completion_args": {
+    "prompt_mode": "reasoning"
+  },
+  "inputs": [
+    {
+      "content": "Think carefully.",
+      "object": "entry",
+      "role": "user",
+      "type": "message.input"
+    }
+  ],
+  "model": "magistral-medium-latest",
+  "stream": true
+}

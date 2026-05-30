@@ -17,7 +17,7 @@ packages and metadata fields. It should be read with
 | Anthropic Messages | `anthropic-messages` | [provider/anthropic](../provider/anthropic), `Model.ProviderMetadata["modelFamily"]` | Text adapter for Anthropic and Anthropic-compatible variants such as Kimi, Fireworks, and Xiaomi. |
 | Google Gemini API | `google-generative-ai` | [provider/google](../provider/google) | Text adapter for Gemini API payloads, streaming, tool calls, thinking parts, and usage metadata. |
 | Google Vertex AI | `google-vertex` | [provider/google](../provider/google), Vertex provider config | Vertex routing/auth wrapper that reuses the Google payload and stream parser. |
-| Mistral Conversations | `mistral-conversations` | [provider/mistral](../provider/mistral) | Text adapter for Mistral Conversations streaming and tool-call deltas. |
+| Mistral Conversations | `mistral-conversations` | [provider/mistral](../provider/mistral) | Text adapter for Mistral Conversations streaming, thinking chunks, session affinity, and tool-call deltas. |
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | [provider/bedrock](../provider/bedrock) | AWS-isolated text adapter with stdlib SigV4/EventStream transport, injectable Converse Stream client, and credential detector. |
 | OpenAI Images | `openai-images` | [provider/openai](../provider/openai), [image_models_generated.go](../image_models_generated.go) | Generation-only adapter over OpenAI's dedicated Images API plus generated image model metadata. |
 | OpenRouter image generation through Chat Completions | `openrouter-images` | [provider/openrouter](../provider/openrouter), `ImageModel.ProviderMetadata` | Image-generation adapter over OpenRouter chat-completions image responses. |
@@ -33,7 +33,7 @@ packages and metadata fields. It should be read with
 | Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream` | Generated metadata includes a Claude-on-Bedrock text model. |
 | Google Gemini API | `google` | `google-generative-ai` | Generated metadata includes Gemini text. |
 | Google Vertex AI | `google-vertex` | `google-vertex` | Generated metadata includes a representative Gemini Vertex route; callers still supply project/location routing. |
-| Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text. |
+| Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text plus representative adjustable and native reasoning models. |
 | OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and one image route. |
 | OpenCode Zen, OpenCode Go | `opencode`, `opencode-go` | `openai-completions` | Generated metadata includes curated OpenAI-compatible text routes. Register the shared OpenAI-compatible provider under these IDs to make requests. |
 | DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot | `deepseek`, `groq`, `cerebras`, `xai`, `together`, `github-copilot` | `openai-completions` or `openai-responses` when caller registers compatible providers | Generated metadata includes representative metadata-only routes, but first-class provider parity still needs fixtures. |

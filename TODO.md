@@ -103,6 +103,20 @@ evidence bar.
 - [ ] Promote additional Fireworks metadata only after matching deterministic
       modeldata, payload, error, and compatibility coverage exists.
 
+## Mistral parity
+
+- [ ] Add Mistral Conversations image input only after the Conversations request
+      shape is verified and covered by deterministic payload fixtures, or add a
+      separate Mistral Chat adapter if image support belongs on that API surface.
+- [ ] Add Mistral built-in connector tools such as web search, code interpreter,
+      image generation, and document libraries after deciding how they map to
+      Sigma provider-defined tools.
+- [ ] Add Mistral Conversations append and restart support only if Sigma exposes
+      provider conversation lifecycle operations beyond single-turn streaming.
+- [ ] Expand broad Mistral generated metadata only through the catalog refresh
+      workflow, with deterministic modeldata, payload, error, and compatibility
+      coverage for promoted rows.
+
 ## Authentication and credentials
 
 - [ ] Implement interactive OAuth login (currently MVP uses caller-supplied

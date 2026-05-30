@@ -119,6 +119,11 @@ See [release notes](docs/release-notes-v0.2.0.md).
   metadata and generated base URL/header handling.
 - Native Anthropic metadata now includes current Claude Haiku, Sonnet, and Opus
   Messages rows, including adaptive-thinking metadata for supported models.
+- Mistral Conversations now supports provider-neutral reasoning controls,
+  streamed thinking chunks, `x-affinity` session reuse through
+  `sigma.WithSessionID`, and stable replay of cross-provider tool-call IDs.
+- Generated Mistral metadata now includes representative adjustable-reasoning
+  and native Magistral Conversations rows.
 - Release docs now record the deferred model-registry generation plan, including
   future `models.dev` ingestion, source precedence, refresh reports, and the
   deterministic catalog review gate.
@@ -146,6 +151,9 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Built-in model metadata is still refreshed through the curated checked-in
   catalog; automated `models.dev`/provider-catalog ingestion is deferred until
   it can preserve deterministic review and fixtures.
+- Mistral Conversations image input, built-in connectors, append/restart, and
+  broad catalog expansion remain deferred until their request shapes are covered
+  by deterministic fixtures.
 - The Go package targets server/CLI use; browser-specific behavior is out of
   scope for the MVP.
 - Agent runtime orchestration and cross-provider context handoff (with

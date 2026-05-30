@@ -1,0 +1,32 @@
+{
+  "inputs": [
+    {
+      "content": "Solve this.",
+      "object": "entry",
+      "role": "user",
+      "type": "message.input"
+    },
+    {
+      "content": [
+        {
+          "thinking": [
+            {
+              "text": "Check constraints.",
+              "type": "text"
+            }
+          ],
+          "type": "thinking"
+        },
+        {
+          "text": "Answer.",
+          "type": "text"
+        }
+      ],
+      "object": "entry",
+      "role": "assistant",
+      "type": "message.output"
+    }
+  ],
+  "model": "mistral-test",
+  "stream": true
+}

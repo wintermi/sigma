@@ -32,8 +32,8 @@ type ResponseHook func(context.Context, sigma.Model, sigma.Options, *http.Respon
 // Provider adapts the Mistral Conversations API to sigma.
 //
 // This provider currently implements model-backed text conversations with
-// function tools. Image inputs, thinking blocks, built-in connectors, append,
-// and restart are intentionally unsupported by this adapter.
+// function tools, thinking chunks, and session affinity. Image inputs, built-in
+// connectors, append, and restart are intentionally unsupported by this adapter.
 type Provider struct {
 	baseURL       string
 	client        *http.Client
@@ -238,6 +238,9 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	for key, value := range p.headers {
 		httpReq.Header.Set(key, value)
 	}
+	if opts.SessionID != "" && httpReq.Header.Get("x-affinity") == "" && !hasHeader(opts.Headers, "x-affinity") {
+		httpReq.Header.Set("x-affinity", opts.SessionID)
+	}
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -302,6 +305,15 @@ func (p *Provider) httpClient(opts sigma.Options) *http.Client {
 		return p.client
 	}
 	return http.DefaultClient
+}
+
+func hasHeader(headers map[string]string, key string) bool {
+	for header := range headers {
+		if strings.EqualFold(header, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func responseError(resp *http.Response, model sigma.Model) *sigma.ProviderError {

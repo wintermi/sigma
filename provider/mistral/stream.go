@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/sse"
@@ -26,7 +27,7 @@ type conversationEvent struct {
 	Model          string                 `json:"model"`
 	AgentID        string                 `json:"agent_id"`
 	Role           string                 `json:"role"`
-	Content        *string                `json:"content"`
+	Content        conversationContent    `json:"content"`
 	Name           string                 `json:"name"`
 	ToolCallID     string                 `json:"tool_call_id"`
 	Arguments      string                 `json:"arguments"`
@@ -37,6 +38,87 @@ type conversationEvent struct {
 	Code           any                    `json:"code"`
 	Metadata       map[string]any         `json:"metadata"`
 	Raw            map[string]interface{} `json:"-"`
+}
+
+type conversationContent struct {
+	Set    bool
+	Text   *string
+	Chunks []conversationContentChunk
+}
+
+type conversationContentChunk struct {
+	Type string
+	Text string
+}
+
+func (c *conversationContent) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		return nil
+	}
+	c.Set = true
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		c.Text = &text
+		return nil
+	}
+	var rawChunks []json.RawMessage
+	if err := json.Unmarshal(data, &rawChunks); err == nil {
+		for _, raw := range rawChunks {
+			chunk, err := parseConversationContentChunk(raw)
+			if err != nil {
+				return err
+			}
+			c.Chunks = append(c.Chunks, chunk)
+		}
+		return nil
+	}
+	chunk, err := parseConversationContentChunk(data)
+	if err != nil {
+		return err
+	}
+	c.Chunks = append(c.Chunks, chunk)
+	return nil
+}
+
+func parseConversationContentChunk(data []byte) (conversationContentChunk, error) {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		return conversationContentChunk{Type: "text", Text: text}, nil
+	}
+	var raw struct {
+		Type     string          `json:"type"`
+		Text     string          `json:"text"`
+		Thinking json.RawMessage `json:"thinking"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return conversationContentChunk{}, err
+	}
+	chunk := conversationContentChunk{Type: raw.Type, Text: raw.Text}
+	if raw.Type == "thinking" && len(raw.Thinking) > 0 {
+		chunk.Text = thinkingText(raw.Thinking)
+	}
+	if chunk.Type == "" {
+		chunk.Type = "text"
+	}
+	return chunk, nil
+}
+
+func thinkingText(data json.RawMessage) string {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		return text
+	}
+	var parts []struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(data, &parts); err == nil {
+		var out strings.Builder
+		for _, part := range parts {
+			out.WriteString(part.Text)
+		}
+		return out.String()
+	}
+	return ""
 }
 
 type conversationUsage struct {
@@ -59,6 +141,7 @@ type conversationStreamParser struct {
 	final          sigma.AssistantMessage
 	started        bool
 	textBlocks     map[string]*streamblocks.Text
+	thinkingBlocks map[string]*streamblocks.Thinking
 	toolCalls      map[string]*streamblocks.ToolCall
 	nextBlock      int
 	usage          *sigma.Usage
@@ -71,10 +154,11 @@ type conversationStreamParser struct {
 
 func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
 	parser := conversationStreamParser{
-		writer:     writer,
-		model:      model,
-		textBlocks: make(map[string]*streamblocks.Text),
-		toolCalls:  make(map[string]*streamblocks.ToolCall),
+		writer:         writer,
+		model:          model,
+		textBlocks:     make(map[string]*streamblocks.Text),
+		thinkingBlocks: make(map[string]*streamblocks.Thinking),
+		toolCalls:      make(map[string]*streamblocks.ToolCall),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -109,7 +193,7 @@ func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Ev
 	case "conversation.response.started":
 		return p.emitStart(ctx)
 	case "message.output.delta":
-		return p.emitText(ctx, parsed)
+		return p.emitContent(ctx, parsed)
 	case "function.call.delta":
 		return p.emitToolCall(ctx, parsed)
 	case "conversation.response.done":
@@ -151,14 +235,32 @@ func (p *conversationStreamParser) emitStart(ctx context.Context) error {
 	return p.writer.Emit(ctx, sigma.Event{Kind: sigma.EventKindStart})
 }
 
-func (p *conversationStreamParser) emitText(ctx context.Context, event conversationEvent) error {
+func (p *conversationStreamParser) emitContent(ctx context.Context, event conversationEvent) error {
+	if !event.Content.Set {
+		return nil
+	}
+	if event.Content.Text != nil {
+		return p.emitText(ctx, outputContentKey(event, sigma.ContentBlockText), *event.Content.Text)
+	}
+	for _, chunk := range event.Content.Chunks {
+		switch chunk.Type {
+		case "thinking":
+			if err := p.emitThinking(ctx, outputContentKey(event, sigma.ContentBlockThinking), chunk.Text); err != nil {
+				return err
+			}
+		default:
+			if err := p.emitText(ctx, outputContentKey(event, sigma.ContentBlockText), chunk.Text); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (p *conversationStreamParser) emitText(ctx context.Context, key string, delta string) error {
 	if err := p.emitStart(ctx); err != nil {
 		return err
 	}
-	if event.Content == nil {
-		return nil
-	}
-	key := outputContentKey(event)
 	state := p.textBlocks[key]
 	if state == nil {
 		state = &streamblocks.Text{ContentIndex: p.nextContentIndex()}
@@ -173,15 +275,45 @@ func (p *conversationStreamParser) emitText(ctx context.Context, event conversat
 		}
 		state.Started = true
 	}
-	if *event.Content == "" {
+	if delta == "" {
 		return nil
 	}
-	text := state.Append(*event.Content)
+	text := state.Append(delta)
 	return p.writer.Emit(ctx, sigma.Event{
 		Kind:         sigma.EventKindTextDelta,
 		ContentIndex: intPtr(state.ContentIndex),
-		DeltaText:    *event.Content,
+		DeltaText:    delta,
 		Text:         text,
+	})
+}
+
+func (p *conversationStreamParser) emitThinking(ctx context.Context, key string, delta string) error {
+	if err := p.emitStart(ctx); err != nil {
+		return err
+	}
+	state := p.thinkingBlocks[key]
+	if state == nil {
+		state = &streamblocks.Thinking{ContentIndex: p.nextContentIndex()}
+		p.thinkingBlocks[key] = state
+	}
+	if !state.Started {
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:         sigma.EventKindThinkingStart,
+			ContentIndex: intPtr(state.ContentIndex),
+		}); err != nil {
+			return err
+		}
+		state.Started = true
+	}
+	if delta == "" {
+		return nil
+	}
+	thinking := state.Append(delta)
+	return p.writer.Emit(ctx, sigma.Event{
+		Kind:         sigma.EventKindThinkingDelta,
+		ContentIndex: intPtr(state.ContentIndex),
+		DeltaText:    delta,
+		Thinking:     thinking,
 	})
 }
 
@@ -242,40 +374,69 @@ func (p *conversationStreamParser) eventError(event conversationEvent) error {
 }
 
 func (p *conversationStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
-	contentByIndex := make(map[int]sigma.ContentBlock)
+	items := make([]finalContentItem, 0, len(p.textBlocks)+len(p.thinkingBlocks)+len(p.toolCalls))
 	for _, state := range p.sortedTextBlocks() {
-		contentByIndex[state.ContentIndex] = sigma.Text(state.String())
-		if !state.Closed && state.Started {
-			_ = p.writer.Emit(ctx, sigma.Event{
-				Kind:         sigma.EventKindTextEnd,
-				ContentIndex: intPtr(state.ContentIndex),
-				Text:         state.String(),
-			})
-			state.Closed = true
-		}
+		state := state
+		items = append(items, finalContentItem{
+			index: state.ContentIndex,
+			block: sigma.Text(state.String()),
+			close: func() {
+				if !state.Closed && state.Started {
+					_ = p.writer.Emit(ctx, sigma.Event{
+						Kind:         sigma.EventKindTextEnd,
+						ContentIndex: intPtr(state.ContentIndex),
+						Text:         state.String(),
+					})
+					state.Closed = true
+				}
+			},
+		})
+	}
+	for _, state := range p.sortedThinkingBlocks() {
+		state := state
+		items = append(items, finalContentItem{
+			index: state.ContentIndex,
+			block: sigma.Thinking(state.String(), state.Signature),
+			close: func() {
+				if !state.Closed && state.Started {
+					_ = p.writer.Emit(ctx, sigma.Event{
+						Kind:         sigma.EventKindThinkingEnd,
+						ContentIndex: intPtr(state.ContentIndex),
+						Thinking:     state.String(),
+					})
+					state.Closed = true
+				}
+			},
+		})
 	}
 	for _, state := range p.sortedToolCalls() {
+		state := state
 		call := state.ToolCall()
-		contentByIndex[state.ContentIndex] = sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
-		if !state.Closed && state.Started {
-			_ = p.writer.Emit(ctx, sigma.Event{
-				Kind:         sigma.EventKindToolCallEnd,
-				ContentIndex: intPtr(state.ContentIndex),
-				ToolCall:     &call,
-			})
-			state.Closed = true
-		}
+		items = append(items, finalContentItem{
+			index: state.ContentIndex,
+			block: sigma.ToolCallBlock(call.ID, call.Name, call.Arguments),
+			close: func() {
+				call := state.ToolCall()
+				if !state.Closed && state.Started {
+					_ = p.writer.Emit(ctx, sigma.Event{
+						Kind:         sigma.EventKindToolCallEnd,
+						ContentIndex: intPtr(state.ContentIndex),
+						ToolCall:     &call,
+					})
+					state.Closed = true
+				}
+			},
+		})
 	}
 
-	if len(contentByIndex) > 0 {
-		indexes := make([]int, 0, len(contentByIndex))
-		for index := range contentByIndex {
-			indexes = append(indexes, index)
-		}
-		sort.Ints(indexes)
-		p.final.Content = make([]sigma.ContentBlock, 0, len(indexes))
-		for _, index := range indexes {
-			p.final.Content = append(p.final.Content, contentByIndex[index])
+	if len(items) > 0 {
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].index < items[j].index
+		})
+		p.final.Content = make([]sigma.ContentBlock, 0, len(items))
+		for _, item := range items {
+			p.final.Content = append(p.final.Content, item.block)
+			item.close()
 		}
 	}
 	if p.stopReason != "" {
@@ -293,6 +454,12 @@ func (p *conversationStreamParser) finalize(ctx context.Context) sigma.Assistant
 	}
 	p.final.ProviderMetadata = p.responseMetadata()
 	return p.final
+}
+
+type finalContentItem struct {
+	index int
+	block sigma.ContentBlock
+	close func()
 }
 
 func (p *conversationStreamParser) responseMetadata() map[string]any {
@@ -332,6 +499,17 @@ func (p *conversationStreamParser) sortedTextBlocks() []*streamblocks.Text {
 	return states
 }
 
+func (p *conversationStreamParser) sortedThinkingBlocks() []*streamblocks.Thinking {
+	states := make([]*streamblocks.Thinking, 0, len(p.thinkingBlocks))
+	for _, state := range p.thinkingBlocks {
+		states = append(states, state)
+	}
+	sort.Slice(states, func(i, j int) bool {
+		return states[i].ContentIndex < states[j].ContentIndex
+	})
+	return states
+}
+
 func (p *conversationStreamParser) sortedToolCalls() []*streamblocks.ToolCall {
 	states := make([]*streamblocks.ToolCall, 0, len(p.toolCalls))
 	for _, state := range p.toolCalls {
@@ -351,7 +529,7 @@ func (u conversationUsage) sigmaUsage() sigma.Usage {
 	}
 }
 
-func outputContentKey(event conversationEvent) string {
+func outputContentKey(event conversationEvent, kind sigma.ContentBlockType) string {
 	outputIndex := 0
 	if event.OutputIndex != nil {
 		outputIndex = *event.OutputIndex
@@ -360,7 +538,7 @@ func outputContentKey(event conversationEvent) string {
 	if event.ContentIndex != nil {
 		contentIndex = *event.ContentIndex
 	}
-	return fmt.Sprintf("%d:%d", outputIndex, contentIndex)
+	return fmt.Sprintf("%d:%d:%s", outputIndex, contentIndex, kind)
 }
 
 func toolCallKey(event conversationEvent) string {

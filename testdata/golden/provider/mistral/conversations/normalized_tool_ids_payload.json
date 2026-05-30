@@ -10,14 +10,14 @@
       "arguments": "{\"city\":\"Melbourne\"}",
       "name": "weather",
       "object": "entry",
-      "tool_call_id": "23336afc7",
+      "tool_call_id": "99a945e4e",
       "type": "function.call"
     },
     {
       "name": "weather",
       "object": "entry",
       "result": "Sunny",
-      "tool_call_id": "23336afc7",
+      "tool_call_id": "99a945e4e",
       "type": "function.result"
     }
   ],

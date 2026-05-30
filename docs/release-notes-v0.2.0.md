@@ -39,6 +39,12 @@ credential-source reporting, compatibility metadata, and model limits line up
 with Sigma's current provider constants without promoting those providers to
 first-class parity rows.
 
+Mistral Conversations also gets a targeted preview lift: provider-neutral
+reasoning requests now map to Mistral's Conversations completion arguments,
+streamed thinking chunks are preserved as Sigma thinking blocks, session IDs can
+reuse Mistral prefix cache affinity, and replayed cross-provider tool-call IDs are
+normalized to Mistral-compatible IDs.
+
 OpenRouter-compatible behavior is tighter in this release without broadening
 the default catalog: text requests use OpenRouter's nested reasoning payload,
 request-scoped routing can override generated routing metadata, expanded
@@ -99,6 +105,12 @@ is reported separately from cache reads.
   Vertex compatibility metadata.
 - Native Anthropic generated metadata now includes current Claude Haiku, Sonnet,
   and Opus Messages rows, with adaptive-thinking metadata on supported models.
+- Mistral Conversations now maps adjustable-reasoning models to
+  `completion_args.reasoning_effort`, native Magistral models to
+  `completion_args.prompt_mode`, parses streamed thinking chunks, sends
+  `x-affinity` from `sigma.WithSessionID`, and normalizes replayed tool-call IDs.
+- Generated Mistral metadata now includes representative adjustable-reasoning
+  and native Magistral Conversations rows.
 - `TODO.md` now records the model-registry generation plan for future
   `models.dev` ingestion, provider-catalog overlays, refresh reports, and
   deterministic source review.
@@ -158,6 +170,8 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
   checksum test, and generated Go review flow.
 - Broad OpenRouter text and image catalog expansion; only fixture-backed
   behavior and curated representative metadata are in scope for this tag.
+- Mistral Conversations image input, built-in connectors, append/restart, and
+  broad Mistral catalog expansion.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization.
 - GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.
@@ -177,3 +191,6 @@ is optional and requires `OPENCODE_API_KEY`.
 The Fireworks surface probe helpers are covered by deterministic route,
 metadata, and classification tests; live Fireworks probing is optional and
 requires `FIREWORKS_API_KEY`.
+Mistral Conversations reasoning, thinking-stream, session-affinity, and
+tool-call replay compatibility are covered by deterministic `httptest` fixtures
+and golden request payloads.

@@ -123,6 +123,27 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		t.Fatalf("reasoning high level = %q, %v; want high, true", got, ok)
 	}
 
+	mistralSmall, ok := registry.Model(ProviderMistral, "mistral-small-latest")
+	if !ok {
+		t.Fatal("fresh registry missing generated Mistral Small model")
+	}
+	if mistralSmall.API != APIMistralConversations || !mistralSmall.SupportsTools || !mistralSmall.SupportsReasoning() {
+		t.Fatalf("Mistral Small metadata = %+v, want conversations tools and reasoning", mistralSmall)
+	}
+	if got, ok := mistralSmall.ProviderThinkingLevel(ThinkingLevelMedium); !ok || got != "high" {
+		t.Fatalf("Mistral Small medium level = %q, %v; want high, true", got, ok)
+	}
+	assertMetadataString(t, mistralSmall.ProviderMetadata, "mistral_reasoning_mode", "reasoning_effort")
+	assertMetadataStrings(t, mistralSmall.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"MISTRAL_API_KEY"})
+	magistral, ok := registry.Model(ProviderMistral, "magistral-medium-latest")
+	if !ok {
+		t.Fatal("fresh registry missing generated Magistral model")
+	}
+	if magistral.API != APIMistralConversations || !magistral.SupportsTools || !magistral.SupportsReasoning() {
+		t.Fatalf("Magistral metadata = %+v, want conversations tools and reasoning", magistral)
+	}
+	assertMetadataString(t, magistral.ProviderMetadata, "mistral_reasoning_mode", "prompt_mode")
+
 	routed, ok := registry.Model(ProviderOpenRouter, "openai/gpt-4o-mini")
 	if !ok {
 		t.Fatal("fresh registry missing generated OpenRouter model")

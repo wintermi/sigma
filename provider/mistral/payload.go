@@ -6,6 +6,8 @@
 package mistral
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -15,18 +17,23 @@ import (
 )
 
 const (
-	providerOptionBaseURL            = "base_url"
-	providerOptionBaseURLCamel       = "baseURL"
-	providerOptionEndpoint           = "endpoint"
-	providerOptionExtraBody          = "extra_body"
-	providerOptionExtraBodyGo        = "extraBody"
-	providerOptionCompletionArgs     = "completion_args"
-	providerOptionCompletionArgsGo   = "completionArgs"
-	providerOptionStore              = "store"
-	providerOptionHandoffExecution   = "handoff_execution"
-	providerOptionHandoffExecutionGo = "handoffExecution"
-	providerOptionToolChoice         = "tool_choice"
-	providerOptionToolChoiceGo       = "toolChoice"
+	providerOptionBaseURL             = "base_url"
+	providerOptionBaseURLCamel        = "baseURL"
+	providerOptionEndpoint            = "endpoint"
+	providerOptionExtraBody           = "extra_body"
+	providerOptionExtraBodyGo         = "extraBody"
+	providerOptionCompletionArgs      = "completion_args"
+	providerOptionCompletionArgsGo    = "completionArgs"
+	providerOptionStore               = "store"
+	providerOptionHandoffExecution    = "handoff_execution"
+	providerOptionHandoffExecutionGo  = "handoffExecution"
+	providerOptionToolChoice          = "tool_choice"
+	providerOptionToolChoiceGo        = "toolChoice"
+	providerOptionReasoningMode       = "mistral_reasoning_mode"
+	providerOptionReasoningModeGo     = "mistralReasoningMode"
+	providerOptionReasoningModeEffort = "reasoning_effort"
+	providerOptionReasoningModePrompt = "prompt_mode"
+	payloadKeyType                    = "type"
 )
 
 func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
@@ -61,7 +68,7 @@ func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Option
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
-	completionArgs := completionArgs(model.Provider, opts)
+	completionArgs := completionArgs(model, opts)
 	if len(completionArgs) > 0 {
 		payload["completion_args"] = completionArgs
 	}
@@ -81,7 +88,15 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 		return unsupportedError(model, "target model does not support tools")
 	}
 	if opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff {
-		return unsupportedError(model, "mistral conversations does not support thinking options")
+		if !model.SupportsThinking {
+			return unsupportedError(model, "target model does not support thinking options")
+		}
+		if !model.SupportsThinkingLevel(opts.ReasoningLevel) {
+			return unsupportedError(model, fmt.Sprintf("target model does not support thinking level %q", opts.ReasoningLevel))
+		}
+		if _, ok := mistralReasoningMode(model); !ok {
+			return unsupportedError(model, "mistral conversations does not support thinking options for this model")
+		}
 	}
 	if opts.ThinkingBudgetTokens != nil {
 		return unsupportedError(model, "mistral conversations does not support thinking options")
@@ -92,7 +107,9 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 			case sigma.ContentBlockImage:
 				return unsupportedError(model, fmt.Sprintf("message %d: mistral conversations does not support image content", messageIndex))
 			case sigma.ContentBlockThinking:
-				return unsupportedError(model, fmt.Sprintf("message %d: mistral conversations does not support thinking content", messageIndex))
+				if !model.SupportsThinking {
+					return unsupportedError(model, fmt.Sprintf("message %d: target model does not support thinking content", messageIndex))
+				}
 			}
 		}
 	}
@@ -110,8 +127,9 @@ func unsupportedError(model sigma.Model, message string) error {
 
 func conversationInputs(req sigma.Request) ([]map[string]any, error) {
 	inputs := make([]map[string]any, 0, len(req.Messages))
+	ids := newToolCallIDNormalizer()
 	for _, message := range req.Messages {
-		converted, err := conversationInput(message)
+		converted, err := conversationInput(message, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -120,22 +138,22 @@ func conversationInputs(req sigma.Request) ([]map[string]any, error) {
 	return inputs, nil
 }
 
-func conversationInput(message sigma.Message) ([]map[string]any, error) {
+func conversationInput(message sigma.Message, ids *toolCallIDNormalizer) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		return []map[string]any{{
-			"object":  "entry",
-			"type":    "message.input",
-			"role":    "user",
-			"content": textContent(message.Content),
+			"object":       "entry",
+			payloadKeyType: "message.input",
+			"role":         "user",
+			"content":      textContent(message.Content),
 		}}, nil
 	case sigma.RoleAssistant:
-		return assistantEntries(message.Content)
+		return assistantEntries(message.Content, ids)
 	case sigma.RoleTool:
 		entry := map[string]any{
 			"object":       "entry",
-			"type":         "function.result",
-			"tool_call_id": message.ToolCallID,
+			payloadKeyType: "function.result",
+			"tool_call_id": ids.normalize(message.ToolCallID),
 			"result":       textContent(message.Content),
 		}
 		if message.ToolName != "" {
@@ -150,36 +168,38 @@ func conversationInput(message sigma.Message) ([]map[string]any, error) {
 	}
 }
 
-func assistantEntries(blocks []sigma.ContentBlock) ([]map[string]any, error) {
+func assistantEntries(blocks []sigma.ContentBlock, ids *toolCallIDNormalizer) ([]map[string]any, error) {
 	var entries []map[string]any
-	var text strings.Builder
-	flushText := func() {
-		if text.Len() == 0 {
+	var output assistantOutput
+	flushOutput := func() {
+		if output.empty() {
 			return
 		}
 		entries = append(entries, map[string]any{
-			"object":  "entry",
-			"type":    "message.output",
-			"role":    "assistant",
-			"content": text.String(),
+			"object":       "entry",
+			payloadKeyType: "message.output",
+			"role":         "assistant",
+			"content":      output.content(),
 		})
-		text.Reset()
+		output.reset()
 	}
 
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			text.WriteString(block.Text)
+			output.addText(block.Text)
+		case sigma.ContentBlockThinking:
+			output.addThinking(block.ThinkingText)
 		case sigma.ContentBlockToolCall:
-			flushText()
+			flushOutput()
 			arguments, err := toolArgumentsString(block.ToolArguments)
 			if err != nil {
 				return nil, err
 			}
 			entries = append(entries, map[string]any{
 				"object":       "entry",
-				"type":         "function.call",
-				"tool_call_id": block.ToolCallID,
+				payloadKeyType: "function.call",
+				"tool_call_id": ids.normalize(block.ToolCallID),
 				"name":         block.ToolName,
 				"arguments":    arguments,
 			})
@@ -187,16 +207,73 @@ func assistantEntries(blocks []sigma.ContentBlock) ([]map[string]any, error) {
 			return nil, fmt.Errorf("mistral conversations: unsupported assistant content block %q", block.Type)
 		}
 	}
-	flushText()
+	flushOutput()
 	if len(entries) == 0 {
 		entries = append(entries, map[string]any{
-			"object":  "entry",
-			"type":    "message.output",
-			"role":    "assistant",
-			"content": "",
+			"object":       "entry",
+			payloadKeyType: "message.output",
+			"role":         "assistant",
+			"content":      "",
 		})
 	}
 	return entries, nil
+}
+
+type assistantOutput struct {
+	text   strings.Builder
+	chunks []map[string]any
+	typed  bool
+}
+
+func (o *assistantOutput) addText(text string) {
+	if text == "" {
+		return
+	}
+	if o.typed {
+		o.chunks = append(o.chunks, map[string]any{
+			payloadKeyType: "text",
+			"text":         text,
+		})
+		return
+	}
+	o.text.WriteString(text)
+}
+
+func (o *assistantOutput) addThinking(text string) {
+	if !o.typed {
+		if existing := o.text.String(); existing != "" {
+			o.chunks = append(o.chunks, map[string]any{
+				payloadKeyType: "text",
+				"text":         existing,
+			})
+			o.text.Reset()
+		}
+		o.typed = true
+	}
+	o.chunks = append(o.chunks, map[string]any{
+		payloadKeyType: "thinking",
+		"thinking": []map[string]any{{
+			payloadKeyType: "text",
+			"text":         text,
+		}},
+	})
+}
+
+func (o *assistantOutput) empty() bool {
+	return !o.typed && o.text.Len() == 0
+}
+
+func (o *assistantOutput) content() any {
+	if o.typed {
+		return o.chunks
+	}
+	return o.text.String()
+}
+
+func (o *assistantOutput) reset() {
+	o.text.Reset()
+	o.chunks = nil
+	o.typed = false
 }
 
 func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any, error) {
@@ -213,7 +290,7 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 			parameters = map[string]any{"type": "object"}
 		}
 		converted = append(converted, map[string]any{
-			"type": "function",
+			payloadKeyType: "function",
 			"function": map[string]any{
 				"name":        tool.Name,
 				"description": tool.Description,
@@ -224,8 +301,8 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 	return converted, nil
 }
 
-func completionArgs(provider sigma.ProviderID, opts sigma.Options) map[string]any {
-	args := copyAnyMap(completionArgsOption(opts, provider))
+func completionArgs(model sigma.Model, opts sigma.Options) map[string]any {
+	args := copyAnyMap(completionArgsOption(opts, model.Provider))
 	if args == nil {
 		args = make(map[string]any)
 	}
@@ -235,7 +312,8 @@ func completionArgs(provider sigma.ProviderID, opts sigma.Options) map[string]an
 	if opts.MaxTokens != nil {
 		args["max_tokens"] = *opts.MaxTokens
 	}
-	options := providerOptions(opts, provider)
+	addMistralReasoningArgs(args, model, opts)
+	options := providerOptions(opts, model.Provider)
 	if value, ok := options[providerOptionToolChoice]; ok {
 		args["tool_choice"] = value
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
@@ -245,6 +323,47 @@ func completionArgs(provider sigma.ProviderID, opts sigma.Options) map[string]an
 		return nil
 	}
 	return args
+}
+
+func addMistralReasoningArgs(args map[string]any, model sigma.Model, opts sigma.Options) {
+	if opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		return
+	}
+	mode, ok := mistralReasoningMode(model)
+	if !ok {
+		return
+	}
+	switch mode {
+	case providerOptionReasoningModePrompt:
+		args["prompt_mode"] = "reasoning"
+	case providerOptionReasoningModeEffort:
+		value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel)
+		if !ok || value == "" {
+			value = "high"
+		}
+		args["reasoning_effort"] = value
+	}
+}
+
+func mistralReasoningMode(model sigma.Model) (string, bool) {
+	if value, ok := stringMetadata(model.ProviderMetadata, providerOptionReasoningMode); ok {
+		return value, true
+	}
+	if value, ok := stringMetadata(model.ProviderMetadata, providerOptionReasoningModeGo); ok {
+		return value, true
+	}
+	modelID := string(model.ID)
+	switch {
+	case strings.HasPrefix(modelID, "magistral-"):
+		return providerOptionReasoningModePrompt, true
+	case modelID == "mistral-small-2603",
+		modelID == "mistral-small-latest",
+		modelID == "mistral-medium-3.5",
+		modelID == "mistral-medium-2604":
+		return providerOptionReasoningModeEffort, true
+	default:
+		return "", false
+	}
 }
 
 func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
@@ -365,6 +484,15 @@ func mapOption(options map[string]any, key string) (map[string]any, bool) {
 	return values, ok
 }
 
+func stringMetadata(values map[string]any, key string) (string, bool) {
+	value, ok := values[key]
+	if !ok {
+		return "", false
+	}
+	text, ok := value.(string)
+	return text, ok && text != ""
+}
+
 func copyAnyMap(values map[string]any) map[string]any {
 	if len(values) == 0 {
 		return nil
@@ -374,4 +502,66 @@ func copyAnyMap(values map[string]any) map[string]any {
 		copied[key] = value
 	}
 	return copied
+}
+
+const mistralToolCallIDLength = 9
+
+type toolCallIDNormalizer struct {
+	ids     map[string]string
+	reverse map[string]string
+}
+
+func newToolCallIDNormalizer() *toolCallIDNormalizer {
+	return &toolCallIDNormalizer{
+		ids:     make(map[string]string),
+		reverse: make(map[string]string),
+	}
+}
+
+func (n *toolCallIDNormalizer) normalize(id string) string {
+	if id == "" {
+		return ""
+	}
+	if existing := n.ids[id]; existing != "" {
+		return existing
+	}
+	for attempt := 0; ; attempt++ {
+		candidate := deriveMistralToolCallID(id, attempt)
+		if owner := n.reverse[candidate]; owner == "" || owner == id {
+			n.ids[id] = candidate
+			n.reverse[candidate] = id
+			return candidate
+		}
+	}
+}
+
+func deriveMistralToolCallID(id string, attempt int) string {
+	normalized := alphanumeric(id)
+	if attempt == 0 && len(normalized) == mistralToolCallIDLength {
+		return normalized
+	}
+	seed := normalized
+	if seed == "" {
+		seed = id
+	}
+	if attempt > 0 {
+		seed = fmt.Sprintf("%s:%d", seed, attempt)
+	}
+	hash := sha256.Sum256([]byte(seed))
+	return hex.EncodeToString(hash[:])[:mistralToolCallIDLength]
+}
+
+func alphanumeric(value string) string {
+	var out strings.Builder
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			out.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			out.WriteRune(r)
+		case r >= '0' && r <= '9':
+			out.WriteRune(r)
+		}
+	}
+	return out.String()
 }

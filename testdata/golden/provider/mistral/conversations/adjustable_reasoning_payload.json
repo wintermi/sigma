@@ -1,0 +1,15 @@
+{
+  "completion_args": {
+    "reasoning_effort": "high"
+  },
+  "inputs": [
+    {
+      "content": "Think carefully.",
+      "object": "entry",
+      "role": "user",
+      "type": "message.input"
+    }
+  ],
+  "model": "mistral-small-latest",
+  "stream": true
+}
