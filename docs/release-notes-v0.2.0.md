@@ -39,6 +39,14 @@ credential-source reporting, compatibility metadata, and model limits line up
 with Sigma's current provider constants without promoting those providers to
 first-class parity rows.
 
+xAI/Grok has a first-class preview provider in this release. The adapter reuses
+Sigma's OpenAI-compatible Chat Completions path with xAI defaults, deterministic
+fixtures for streaming, tools, errors, redaction, cancellation, and
+context-overflow detection, and `XAI_API_KEY` credential fallback for
+caller-defined xAI models. The generated registry also includes curated direct
+Grok Chat Completions routes for Grok 3, Grok 4.20, Grok 4.3, Grok Build, and
+Grok Code models.
+
 Mistral Conversations also gets a targeted preview lift: provider-neutral
 reasoning requests now map to Mistral's Conversations completion arguments,
 streamed thinking chunks are preserved as Sigma thinking blocks, session IDs can
@@ -114,6 +122,14 @@ debug hooks while keeping AWS SDK credential-chain integration deferred.
   `tool_choice` payloads before sending Responses requests.
 - OpenAI-compatible Chat Completions streams now accumulate streamed `logprobs`
   metadata across chunks.
+- `provider/xai` now exposes `NewProvider`, `Register`, and `RegisterDefault`
+  for xAI/Grok OpenAI-compatible Chat Completions requests.
+- xAI/Grok requests now use `XAI_API_KEY` as the default environment credential
+  fallback, suppress unsupported `reasoning_effort` payloads, and classify
+  xAI maximum-prompt-length errors as context overflow.
+- Generated xAI/Grok metadata now includes curated text, image-input, and
+  reasoning-capable Grok Chat Completions routes with explicit xAI
+  compatibility metadata.
 - Generated metadata now seeds representative entries for the remaining exposed
   provider IDs, including current OpenAI-compatible, Anthropic-compatible, and
   Vertex compatibility metadata.
@@ -198,6 +214,8 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Streaming partial image events.
 - Responses API image-tool generation.
 - GitHub Copilot dynamic headers and Cloudflare AI Gateway auth rewriting.
+- Future xAI/Grok catalog refreshes, live xAI probes, and provider-specific Grok
+  request semantics beyond the preview Chat Completions adapter.
 - Full OpenCode catalog parity, including advertised-but-unavailable models and
   provider-specific feature quirks beyond the curated routed preview metadata.
 - Live OpenCode or Fireworks surface validation in CI.
@@ -234,6 +252,9 @@ is optional and requires `OPENCODE_API_KEY`.
 The Fireworks surface probe helpers are covered by deterministic route,
 metadata, and classification tests; live Fireworks probing is optional and
 requires `FIREWORKS_API_KEY`.
+xAI/Grok Chat Completions behavior is covered by deterministic `httptest`
+fixtures for streaming text, tool-call deltas, usage, error redaction,
+cancellation, context-overflow classification, and payload compatibility.
 Mistral Conversations reasoning, thinking-stream, session-affinity, and
 tool-call replay compatibility are covered by deterministic `httptest` fixtures
 and golden request payloads.

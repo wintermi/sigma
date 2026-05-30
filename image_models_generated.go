@@ -15,6 +15,7 @@
 // - OpenAI models and pricing: https://platform.openai.com/docs/models
 // - OpenCode Zen models: https://opencode.ai/zen
 // - OpenRouter models: https://openrouter.ai/models
+// - xAI models: https://docs.x.ai/developers/models
 
 package sigma
 

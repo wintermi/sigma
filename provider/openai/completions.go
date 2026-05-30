@@ -291,7 +291,7 @@ func responseError(resp *http.Response, model sigma.Model) *sigma.ProviderError 
 		requestID(resp.Header),
 		sigma.RetryAfter(resp.Header),
 		body,
-		nil,
+		contextOverflowCause(body),
 	)
 }
 
@@ -302,6 +302,17 @@ func requestID(headers http.Header) string {
 		}
 	}
 	return ""
+}
+
+func contextOverflowCause(body []byte) error {
+	text := strings.ToLower(string(body))
+	if strings.Contains(text, "context") && (strings.Contains(text, "too long") || strings.Contains(text, "maximum") || strings.Contains(text, "exceed")) {
+		return sigma.ErrContextOverflow
+	}
+	if strings.Contains(text, "maximum prompt length") {
+		return sigma.ErrContextOverflow
+	}
+	return nil
 }
 
 func contextError(ctx context.Context, err error) error {

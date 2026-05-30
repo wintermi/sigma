@@ -110,6 +110,10 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 	case provider == sigma.ProviderTogether || strings.Contains(host, "together.ai"):
 	case provider == sigma.ProviderCerebras || strings.Contains(host, "cerebras.ai"):
 	case provider == sigma.ProviderXAI || strings.Contains(host, "x.ai"):
+		compat.supportsReasoningEffort = false
+		compat.supportsStreamingUsage = true
+		compat.supportsStrictTools = true
+		compat.maxTokensField = sigma.OpenAICompletionsMaxCompletionTokens
 	case providerText == "z.ai" || providerText == "zai" || strings.Contains(host, "z.ai"):
 	case providerText == "cloudflare" || strings.Contains(host, "workers-ai") || strings.Contains(host, "cloudflare.com"):
 	case strings.Contains(host, "ai-gateway.vercel.sh") || strings.Contains(host, "gateway.ai.vercel.com"):

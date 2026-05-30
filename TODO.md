@@ -30,7 +30,6 @@ metadata-only and backed by compatibility checks.
 - [ ] DeepSeek — promote to a first-class provider row with fixtures.
 - [ ] Groq — promote to a first-class provider row with fixtures.
 - [ ] Cerebras — promote to a first-class provider row with fixtures.
-- [ ] xAI — promote to a first-class provider row with fixtures.
 - [ ] Together — promote to a first-class provider row with fixtures.
 - [ ] GitHub Copilot — promote to a first-class provider row with fixtures.
 - [ ] Kimi — promote to a first-class provider row with fixtures.
@@ -41,6 +40,18 @@ metadata-only and backed by compatibility checks.
       first-class Cloudflare OpenAI-compatible row.
 - [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
       and cancellation coverage.
+
+## xAI/Grok parity
+
+Sigma now has a first-class preview xAI/Grok provider over the shared
+OpenAI-compatible Chat Completions adapter and curated generated metadata for
+the direct xAI Grok Chat Completions routes. Future additions should still be
+promoted only with deterministic request-shape evidence.
+
+- [ ] Keep future xAI/Grok generated metadata refreshes tied to deterministic
+      modeldata, payload, error, and compatibility coverage.
+- [ ] Add opt-in live xAI/Grok surface probes only as diagnostics, keeping live
+      provider calls out of `mise run ci`.
 
 ## Model registry generation
 

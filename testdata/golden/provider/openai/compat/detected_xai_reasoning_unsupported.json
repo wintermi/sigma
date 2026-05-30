@@ -1,0 +1,13 @@
+{
+  "messages": [
+    {
+      "content": "think",
+      "role": "user"
+    }
+  ],
+  "model": "grok-code-fast-1",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  }
+}

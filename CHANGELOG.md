@@ -84,6 +84,12 @@ See [release notes](docs/release-notes-v0.2.0.md).
   overrides, and exposes expanded OpenRouter routing metadata.
 - OpenAI-compatible Chat Completions and OpenRouter Images now account for
   provider-reported prompt cache writes separately from cache reads.
+- xAI/Grok now has a first-class preview provider package in `provider/xai`,
+  reusing the OpenAI-compatible Chat Completions adapter with xAI defaults,
+  `XAI_API_KEY` credential fallback, and deterministic streaming, tools, error,
+  redaction, cancellation, and context-overflow coverage.
+- Generated xAI/Grok text metadata now includes curated Grok 3, Grok 4.20,
+  Grok 4.3, Grok Build, and Grok Code routes with xAI compatibility metadata.
 - Anthropic Messages compatibility metadata for Anthropic-compatible endpoints,
   including eager tool input streaming, cache/session-affinity support, empty
   thinking-signature replay, and budget/adaptive thinking formats.
@@ -187,9 +193,12 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Agent runtime orchestration and cross-provider context handoff (with
   capability-loss reporting) are deferred to later integration work; the MVP
   exposes only provider-neutral primitives.
-- DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot, Kimi, and Xiaomi are
+- DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Kimi, and Xiaomi are
   not yet first-class provider rows; generated metadata and routing may exist,
   but independent provider-quality claims still need fixtures.
+- Future xAI/Grok catalog refreshes, live probes, and provider-specific Grok
+  request semantics beyond the preview Chat Completions adapter remain
+  deferred until they have deterministic coverage.
 - No live provider calls are required or expected for release validation.
   Live OpenCode and Fireworks probing is available through
   `cmd/sigma-surface-probe`, but it is credential-gated and outside the

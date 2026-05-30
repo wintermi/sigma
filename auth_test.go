@@ -81,6 +81,7 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "google cloud", provider: sigma.ProviderGoogleVertex, env: "GOOGLE_CLOUD_API_KEY"},
 		{name: "mistral", provider: sigma.ProviderMistral, env: "MISTRAL_API_KEY"},
 		{name: "openrouter", provider: sigma.ProviderOpenRouter, env: "OPENROUTER_API_KEY"},
+		{name: "xai", provider: sigma.ProviderXAI, env: "XAI_API_KEY"},
 	}
 
 	for _, tt := range tests {

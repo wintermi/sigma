@@ -324,6 +324,35 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		t.Fatalf("Xiaomi compat = %#v, want deepseek reasoning content replay", xiaomi.OpenAICompletionsCompat)
 	}
 
+	for _, id := range []ModelID{
+		"grok-3",
+		"grok-3-fast",
+		"grok-4.20-0309-non-reasoning",
+		"grok-4.20-0309-reasoning",
+		"grok-4.3",
+		"grok-build-0.1",
+		"grok-code-fast-1",
+	} {
+		model, ok := registry.Model(ProviderXAI, id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated xAI model %s", id)
+		}
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+			model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
+			model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxCompletionTokens {
+			t.Fatalf("xAI %s compat = %#v, want xAI OpenAI-compatible overrides", id, model.OpenAICompletionsCompat)
+		}
+	}
+	grok43, ok := registry.Model(ProviderXAI, "grok-4.3")
+	if !ok {
+		t.Fatal("fresh registry missing generated xAI Grok 4.3 model")
+	}
+	if !grok43.SupportsTools || !grok43.SupportsImages() || !grok43.SupportsReasoning() {
+		t.Fatalf("Grok 4.3 capabilities were not generated: %+v", grok43)
+	}
+
 	for _, tt := range []struct {
 		provider ProviderID
 		id       ModelID

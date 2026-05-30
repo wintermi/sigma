@@ -398,6 +398,31 @@ func TestOpenAICompletionsCompatDetectsFireworksEndpoint(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/detected_fireworks_endpoint.json")
 }
 
+func TestOpenAICompletionsCompatDetectsXAIReasoningUnsupported(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:               "grok-code-fast-1",
+		Provider:         sigma.ProviderXAI,
+		API:              sigma.APIOpenAICompletions,
+		SupportsThinking: true,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			ReasoningFormat: sigma.OpenAICompletionsReasoningEffort,
+		},
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
+		sigma.Options{ReasoningLevel: sigma.ThinkingLevelMedium},
+		openAICompletionsCompat(model, "https://api.x.ai/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/detected_xai_reasoning_unsupported.json")
+	goldentest.AssertNoJSONPath(t, payload, "reasoning_effort")
+}
+
 func TestOpenAICompletionsCompatDetectsOpenCodeEndpoint(t *testing.T) {
 	t.Parallel()
 

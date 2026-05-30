@@ -33,6 +33,10 @@
     {
       "name": "OpenRouter models",
       "url": "https://openrouter.ai/models"
+    },
+    {
+      "name": "xAI models",
+      "url": "https://docs.x.ai/developers/models"
     }
   ],
   "textModels": [
@@ -1762,6 +1766,192 @@
       "headers": {},
       "authEnvNames": ["XAI_API_KEY"],
       "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-3-fast",
+      "name": "Grok 3 Fast",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-4.20-0309-non-reasoning",
+      "name": "Grok 4.20 (Non-Reasoning)",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 2000000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-4.20-0309-reasoning",
+      "name": "Grok 4.20 (Reasoning)",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 2000000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-4.3",
+      "name": "Grok 4.3",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-build-0.1",
+      "name": "Grok Build 0.1",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 2,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 256000,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
+      "id": "grok-code-fast-1",
+      "name": "Grok Code Fast 1",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": ["text"],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.2,
+        "outputPerMillion": 1.5,
+        "cacheReadInputPerMillion": 0.02,
+        "currency": "USD"
+      },
+      "contextWindow": 32768,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": ["XAI_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
       "providerMetadata": {
         "modelFamily": "grok"
       }

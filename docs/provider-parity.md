@@ -27,6 +27,7 @@ Release scope values:
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OpenAI-compatible Chat Completions, including OpenRouter text and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| xAI/Grok OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | OpenCode Zen and OpenCode Go OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `partial` | `intentionally omitted` |
 | OpenAI Responses | `openai-responses` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Azure OpenAI Responses | `azure-openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
@@ -38,12 +39,13 @@ Release scope values:
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` |
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `not yet implemented` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
-| Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, Together, GitHub Copilot | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 
 ## Evidence references
 
 - `openai-completions`: [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/sse/testdata/openai/text_usage.sse](../internal/sse/testdata/openai/text_usage.sse), [internal/sse/testdata/openai/tool_call.sse](../internal/sse/testdata/openai/tool_call.sse).
 - Fireworks `openai-completions`: [provider/fireworks/fireworks_test.go](../provider/fireworks/fireworks_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
+- xAI/Grok `openai-completions`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - OpenCode `openai-completions`: [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/modeldata/modeldata_test.go](../internal/modeldata/modeldata_test.go).
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - `azure-openai-responses`: [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
@@ -65,7 +67,7 @@ Release scope values:
 - Azure and Codex adapters are implemented provider packages, but their APIs are
   not represented by generated default model metadata yet. Vertex now has a
   representative metadata-only route.
-- OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/OpenCode rely
+- OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/xAI/OpenCode rely
   on shared compatibility detection or explicit `OpenAICompletionsCompat`
   metadata. They are future-scope rows and are not independently
   release-complete.
