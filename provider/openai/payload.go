@@ -54,17 +54,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
 	addReasoning(payload, model, opts, compat)
-	if opts.OpenAIOptions != nil {
-		if opts.OpenAIOptions.ToolChoice != nil {
-			payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
-		}
-		if opts.OpenAIOptions.ReasoningSummary != "" {
-			addReasoningSummary(payload, opts.OpenAIOptions.ReasoningSummary, compat)
-		}
-		if opts.OpenAIOptions.ServiceTier != "" {
-			payload["service_tier"] = opts.OpenAIOptions.ServiceTier
-		}
-	}
+	addChatOpenAIOptions(payload, opts, compat)
 	if len(req.Tools) > 0 {
 		tools, err := chatTools(model, req.Tools, compat)
 		if err != nil {
@@ -87,6 +77,28 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addRouting(payload, compat)
 	return payload, nil
+}
+
+func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat completionsCompat) {
+	if opts.OpenAIOptions == nil {
+		return
+	}
+	if opts.OpenAIOptions.ToolChoice != nil {
+		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
+	}
+	if opts.OpenAIOptions.ResponseFormat != nil {
+		payload["response_format"] = opts.OpenAIOptions.ResponseFormat
+	}
+	if opts.OpenAIOptions.TopLogprobs > 0 {
+		payload["logprobs"] = true
+		payload["top_logprobs"] = opts.OpenAIOptions.TopLogprobs
+	}
+	if opts.OpenAIOptions.ReasoningSummary != "" {
+		addReasoningSummary(payload, opts.OpenAIOptions.ReasoningSummary, compat)
+	}
+	if opts.OpenAIOptions.ServiceTier != "" {
+		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
+	}
 }
 
 func chatMessages(req sigma.Request, retention sigma.CacheRetention, compat completionsCompat) ([]map[string]any, error) {

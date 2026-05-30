@@ -11,8 +11,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 the existing OpenAI and Anthropic text adapters. The existing generated
 `gpt-image-1` metadata is now runnable when applications register the OpenAI
 image provider, OpenAI text requests expose more stable provider payload
-controls, and Anthropic-compatible endpoints can declare Messages compatibility
-without relying on raw `extra_body` maps.
+controls including structured output and logprob requests, and
+Anthropic-compatible endpoints can declare Messages compatibility without
+relying on raw `extra_body` maps.
 
 The release keeps the image-generation surface narrow: the adapter implements
 non-streaming generation through OpenAI's dedicated Images API and deliberately
@@ -50,6 +51,9 @@ first-class parity rows.
 - `sigma.OpenAIOptions` now covers Chat Completions `tool_choice`,
   Responses/Codex `prompt_cache_retention`, Responses/Codex
   `parallel_tool_calls`, and Responses/Codex text verbosity.
+- `sigma.OpenAIOptions` also covers structured output across OpenAI-compatible
+  Chat Completions and Responses-family payloads, plus Chat Completions token
+  logprob requests.
 - OpenAI Responses replay now preserves existing provider item metadata or
   synthesizes bounded IDs for prior assistant text, reasoning, and function-call
   items.
@@ -111,6 +115,9 @@ new registration helpers in `provider/openai`, new `OpenAIOptions` fields, new
 OpenAI-compatible compatibility metadata values including
 `OpenAICompletionsCompat.SupportsReasoningEffort`, and new Anthropic Messages
 compatibility metadata on `sigma.Model`.
+
+Typed OpenAI structured-output and logprob controls fail locally with
+`ErrorInvalidOptions` when requested for unsupported API families.
 
 Applications still need to register providers explicitly. Built-in image model
 metadata remains metadata-only until a registry has a matching image provider:

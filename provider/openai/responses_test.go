@@ -100,6 +100,76 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesSendsTypedResponseFormatAsTextFormat(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-format-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("judge")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
+			ResponseFormat: map[string]any{
+				"type": "json_schema",
+				"json_schema": map[string]any{
+					"name":   "judge",
+					"strict": true,
+					"schema": map[string]any{
+						"type":                 "object",
+						"additionalProperties": false,
+					},
+				},
+			},
+			TextVerbosity: "low",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	text, ok := payload["text"].(map[string]any)
+	if !ok {
+		t.Fatalf("text type = %T, want map", payload["text"])
+	}
+	if got, want := text["verbosity"], "low"; got != want {
+		t.Fatalf("text.verbosity = %v, want %q", got, want)
+	}
+	format, ok := text["format"].(map[string]any)
+	if !ok {
+		t.Fatalf("text.format type = %T, want map", text["format"])
+	}
+	if got, want := format["type"], "json_schema"; got != want {
+		t.Fatalf("text.format.type = %v, want %q", got, want)
+	}
+	if got, want := format["name"], "judge"; got != want {
+		t.Fatalf("text.format.name = %v, want %q", got, want)
+	}
+	if got, want := format["strict"], true; got != want {
+		t.Fatalf("text.format.strict = %v, want %v", got, want)
+	}
+	if _, ok := format["json_schema"]; ok {
+		t.Fatalf("text.format contains unflattened json_schema: %#v", format)
+	}
+	wantSchema := map[string]any{"type": "object", "additionalProperties": false}
+	if !reflect.DeepEqual(format["schema"], wantSchema) {
+		t.Fatalf("text.format.schema = %#v, want %#v", format["schema"], wantSchema)
+	}
+}
+
 func TestResponsesNormalizesOpenAIOptionsFunctionToolChoice(t *testing.T) {
 	t.Parallel()
 

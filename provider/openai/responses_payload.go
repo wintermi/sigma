@@ -8,6 +8,7 @@ package openai
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -52,7 +53,9 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
-	addResponsesOpenAIOptions(payload, opts)
+	if err := addResponsesOpenAIOptions(payload, model, opts); err != nil {
+		return nil, err
+	}
 	addResponsesReasoning(payload, model, opts)
 	if len(req.Tools) > 0 {
 		tools, err := responsesTools(req.Tools)
@@ -270,12 +273,28 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	}
 }
 
-func addResponsesOpenAIOptions(payload map[string]any, opts sigma.Options) {
+func addResponsesOpenAIOptions(payload map[string]any, model sigma.Model, opts sigma.Options) error {
 	if opts.OpenAIOptions == nil {
-		return
+		return nil
+	}
+	if opts.OpenAIOptions.TopLogprobs > 0 {
+		return &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  "openai logprobs are only supported by openai-completions",
+			Provider: model.Provider,
+			Model:    model.ID,
+		}
 	}
 	if opts.OpenAIOptions.ToolChoice != nil {
 		setResponsesToolChoice(payload, opts.OpenAIOptions.ToolChoice)
+	}
+	if opts.OpenAIOptions.ResponseFormat != nil {
+		text, _ := payload[providerOptionText].(map[string]any)
+		if text == nil {
+			text = make(map[string]any)
+			payload[providerOptionText] = text
+		}
+		text["format"] = responsesTextFormat(opts.OpenAIOptions.ResponseFormat)
 	}
 	if opts.OpenAIOptions.PromptCacheRetention != "" {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
@@ -291,6 +310,44 @@ func addResponsesOpenAIOptions(payload map[string]any, opts sigma.Options) {
 		}
 		text["verbosity"] = opts.OpenAIOptions.TextVerbosity
 	}
+	return nil
+}
+
+func responsesTextFormat(value any) any {
+	responseFormat := anyMap(value)
+	if responseFormat == nil {
+		return value
+	}
+	if formatType, _ := responseFormat["type"].(string); formatType != "json_schema" {
+		return copyAnyMap(responseFormat)
+	}
+	jsonSchema := anyMap(responseFormat["json_schema"])
+	if jsonSchema == nil {
+		return copyAnyMap(responseFormat)
+	}
+	textFormat := map[string]any{"type": "json_schema"}
+	for key, value := range jsonSchema {
+		textFormat[key] = value
+	}
+	return textFormat
+}
+
+func anyMap(value any) map[string]any {
+	switch v := value.(type) {
+	case map[string]any:
+		return v
+	case sigma.Schema:
+		return map[string]any(v)
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil
+	}
+	return out
 }
 
 func addResponsesSession(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {

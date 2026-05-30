@@ -7,6 +7,7 @@ package openai_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -119,6 +120,59 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/completions/rich_payload.json")
+}
+
+func TestChatCompletionsSendsTypedResponseFormatAndLogprobs(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-options-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	responseFormat := map[string]any{
+		"type": "json_schema",
+		"json_schema": map[string]any{
+			"name":   "judge",
+			"strict": true,
+			"schema": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+			},
+		},
+	}
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("judge")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
+			ResponseFormat: responseFormat,
+			TopLogprobs:    2,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if !reflect.DeepEqual(payload["response_format"], responseFormat) {
+		t.Fatalf("response_format = %#v, want %#v", payload["response_format"], responseFormat)
+	}
+	if got, want := payload["logprobs"], true; got != want {
+		t.Fatalf("logprobs = %v, want %v", got, want)
+	}
+	if got, want := payload["top_logprobs"], float64(2); got != want {
+		t.Fatalf("top_logprobs = %v, want %v", got, want)
+	}
 }
 
 func TestChatCompletionsRejectsProviderDefinedTools(t *testing.T) {

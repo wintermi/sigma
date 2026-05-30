@@ -7,6 +7,7 @@ package opencode_test
 
 import (
 	"context"
+	stderrors "errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -143,6 +144,50 @@ func TestOpenCodeDispatchRoutesByModelMetadata(t *testing.T) {
 				t.Fatalf("provider header = %q, want provider", got)
 			}
 		})
+	}
+}
+
+func TestOpenCodeRoutedResponsesRejectsLogprobsBeforeRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	client := opencodeTestClient(
+		t,
+		sigma.ProviderOpenCode,
+		"gpt-5.1-codex",
+		sigma.APIOpenAIResponses,
+		[]sigma.ContentBlockType{sigma.ContentBlockText},
+		false,
+		opencode.RegisterZen,
+		server.URL,
+	)
+	_, err := client.Complete(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderOpenCode, ID: "gpt-5.1-codex"},
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("Reply with ok.")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{TopLogprobs: 2}),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !stderrors.As(err, &sigmaErr) {
+		t.Fatalf("error type = %T, want *sigma.Error", err)
+	}
+	if sigmaErr.Code != sigma.ErrorInvalidOptions {
+		t.Fatalf("error code = %q, want %q", sigmaErr.Code, sigma.ErrorInvalidOptions)
+	}
+	select {
+	case <-requests:
+		t.Fatal("server received request for invalid logprobs option")
+	default:
 	}
 }
 

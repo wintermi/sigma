@@ -266,6 +266,7 @@ func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 		{name: "timeout", opt: sigma.WithTimeout(-time.Second)},
 		{name: "max retry delay", opt: sigma.WithMaxRetryDelay(-time.Second)},
 		{name: "thinking budget", opt: sigma.WithThinkingBudgetTokens(-1)},
+		{name: "openai top logprobs", opt: sigma.WithOpenAIOptions(sigma.OpenAIOptions{TopLogprobs: -1})},
 	}
 
 	for _, tt := range tests {
@@ -274,6 +275,86 @@ func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 
 			client, provider, model := newOptionsTestClient(t)
 			_, err := client.Complete(context.Background(), model, sigma.Request{}, tt.opt)
+			if err == nil {
+				t.Fatal("Complete returned nil error")
+			}
+			var sigmaErr *sigma.Error
+			if !stderrors.As(err, &sigmaErr) {
+				t.Fatalf("error type = %T, want *sigma.Error", err)
+			}
+			if sigmaErr.Code != sigma.ErrorInvalidOptions {
+				t.Fatalf("error code = %q, want %q", sigmaErr.Code, sigma.ErrorInvalidOptions)
+			}
+			if provider.called {
+				t.Fatal("provider was called for invalid options")
+			}
+		})
+	}
+}
+
+func TestOpenAIOptionsValidateAPICompatibility(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		api      sigma.API
+		metadata map[string]any
+		options  sigma.OpenAIOptions
+	}{
+		{
+			name: "response format rejects non openai api",
+			api:  sigma.APIAnthropicMessages,
+			options: sigma.OpenAIOptions{
+				ResponseFormat: map[string]any{"type": "json_object"},
+			},
+		},
+		{
+			name: "logprobs rejects responses api",
+			api:  sigma.APIOpenAIResponses,
+			options: sigma.OpenAIOptions{
+				TopLogprobs: 2,
+			},
+		},
+		{
+			name: "logprobs rejects codex responses api",
+			api:  sigma.APIOpenAICodexResponses,
+			options: sigma.OpenAIOptions{
+				TopLogprobs: 2,
+			},
+		},
+		{
+			name: "logprobs rejects non openai api",
+			api:  sigma.APIAnthropicMessages,
+			options: sigma.OpenAIOptions{
+				TopLogprobs: 2,
+			},
+		},
+		{
+			name: "logprobs rejects routed opencode responses api",
+			api:  sigma.APIOpenAICompletions,
+			metadata: map[string]any{
+				"opencodeAPI": string(sigma.APIOpenAIResponses),
+			},
+			options: sigma.OpenAIOptions{
+				TopLogprobs: 2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client, provider, model := newOptionsTestClient(t)
+			model.API = tt.api
+			model.ProviderMetadata = tt.metadata
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{},
+				sigma.WithOpenAIOptions(tt.options),
+			)
 			if err == nil {
 				t.Fatal("Complete returned nil error")
 			}

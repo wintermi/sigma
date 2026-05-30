@@ -22,6 +22,8 @@ type OpenAIOptions struct {
 	ReasoningSummary     string
 	ServiceTier          string
 	ToolChoice           any
+	ResponseFormat       any
+	TopLogprobs          int
 	PromptCacheRetention string
 	ParallelToolCalls    *bool
 	TextVerbosity        string

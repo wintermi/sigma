@@ -135,6 +135,11 @@ evidence bar.
 - [ ] Reconcile tokenizer estimates against provider usage data and model
       metadata so reported cost stays consistent.
 
+## Request controls
+
+- [ ] Design provider-neutral structured-output and logprob semantics before
+      mapping those controls beyond OpenAI-compatible API families.
+
 ## Platform reach
 
 - [ ] Add browser-specific behavior support (the MVP package stays server/CLI

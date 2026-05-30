@@ -390,7 +390,37 @@ func validateOptions(model Model, options Options) error {
 		*options.GoogleOptions.ThinkingBudgetTokens < 0 {
 		return invalidOptionsError(model, "google thinking budget tokens must be non-negative")
 	}
+	if options.OpenAIOptions != nil {
+		api := effectiveTextAPI(model)
+		if options.OpenAIOptions.TopLogprobs < 0 {
+			return invalidOptionsError(model, "openai top logprobs must be non-negative")
+		}
+		if options.OpenAIOptions.TopLogprobs > 0 && api != APIOpenAICompletions {
+			return invalidOptionsError(model, "openai logprobs are only supported by openai-completions")
+		}
+		if options.OpenAIOptions.ResponseFormat != nil && !supportsOpenAIResponseFormat(api) {
+			return invalidOptionsError(model, "openai response format is only supported by OpenAI-compatible APIs")
+		}
+	}
 	return nil
+}
+
+func effectiveTextAPI(model Model) API {
+	if model.ProviderMetadata != nil {
+		if api, ok := model.ProviderMetadata["opencodeAPI"].(string); ok && api != "" {
+			return API(api)
+		}
+	}
+	return model.API
+}
+
+func supportsOpenAIResponseFormat(api API) bool {
+	switch api {
+	case APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
+		return true
+	default:
+		return false
+	}
 }
 
 func invalidOptionsError(model Model, message string) error {

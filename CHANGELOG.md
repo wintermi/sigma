@@ -69,6 +69,9 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - OpenAI-specific request options for Chat Completions `tool_choice`,
   Responses/Codex `prompt_cache_retention`, Responses/Codex
   `parallel_tool_calls`, and Responses/Codex text verbosity.
+- OpenAI-specific typed request options for structured output and Chat
+  Completions token logprobs, with local validation for unsupported API
+  families.
 - OpenAI Responses replay now preserves or synthesizes bounded provider item
   IDs for prior assistant text, reasoning, and function-call items.
 - OpenAI Responses tool-result replay can keep image blocks inside
