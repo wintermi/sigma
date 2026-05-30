@@ -1,10 +1,10 @@
 # sigma
 
-`sigma` is a Go package for provider-neutral AI model calls. The first release
-scope is text-first: one root API for model metadata, text streaming,
+`sigma` is a Go package for provider-neutral AI model calls. The stable release
+surface is text-first: one root API for model metadata, text streaming,
 completions, tools, request persistence, custom OpenAI-compatible endpoints, and
 deterministic tests. Other documented surfaces, including image generation and
-some provider adapters, are preview or future work until the MVP scope says
+some provider adapters, are preview or future work until release notes say
 otherwise.
 
 The module path is currently:
@@ -16,7 +16,7 @@ go get github.com/wintermi/sigma
 The root package name is `sigma`. Version tags follow standard
 Major.Minor.Patch numbering, starting with `v0.1.0`. Any breaking changes before
 `v1.0.0` should be documented in [CHANGELOG.md](CHANGELOG.md),
-[release notes](docs/release-notes-v0.1.0.md), and upgrade guidance. This
+[release notes](docs/release-notes-v0.2.0.md), and upgrade guidance. This
 checkout is licensed under the [MIT License](LICENSE).
 
 ## Quick Start
@@ -159,8 +159,8 @@ images, `GenerateImages` dispatches to a registered image provider and returns
 
 - [Changelog](CHANGELOG.md) tracks release-visible changes and known
   limitations.
-- [Release notes](docs/release-notes-v0.1.0.md) summarize the `v0.1.0` tag scope
-  and serialization boundary.
+- [Release notes](docs/release-notes-v0.2.0.md) summarize the latest closed tag
+  scope and compatibility boundary.
 - [Releasing](RELEASING.md) documents the validation commands and pre-tag
   checklist used for every release.
 - [TODO](TODO.md) lists deferred work that is outside the current release scope.
@@ -181,7 +181,7 @@ images, `GenerateImages` dispatches to a registered image provider and returns
 - [Inspired by `@earendil-works/pi-ai`](docs/inspired-by-pi-ai.md) maps
   familiar TypeScript concepts to Go.
 - [Provider parity](docs/provider-parity.md) distinguishes implemented, partial,
-  planned, unsupported, and MVP provider features.
+  planned, unsupported, and preview provider features.
 - [Security](docs/security.md) covers credential handling and diagnostic
   redaction.
 - [Generated model metadata](tools/modeldata/README.md) describes catalog

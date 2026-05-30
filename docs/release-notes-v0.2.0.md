@@ -1,7 +1,7 @@
 # Release notes: sigma v0.2.0
 
-This is the maintainer-facing release note for the next `sigma` tag. It records
-the v0.2.0 summary and scope. For the itemized change list see
+This is the maintainer-facing release note for the `sigma` v0.2.0 tag. It
+records the v0.2.0 summary and scope. For the itemized change list see
 [CHANGELOG.md](../CHANGELOG.md); for the validation commands and pre-tag
 checklist see [RELEASING.md](../RELEASING.md).
 
@@ -244,7 +244,7 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 ## Validation status
 
-This release should use the validation process in [RELEASING.md](../RELEASING.md).
+This release uses the validation process in [RELEASING.md](../RELEASING.md).
 The OpenAI Images adapter and OpenAI/Anthropic text-provider additions are
 covered by deterministic `httptest` fixtures and golden request payloads; no
 live provider network calls are required.
