@@ -295,6 +295,33 @@
       }
     },
     {
+      "id": "grok-build-0.1",
+      "name": "Grok Build 0.1",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": ["text", "image"],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 2,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 256000,
+      "headers": {},
+      "authEnvNames": ["OPENCODE_API_KEY"],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
       "id": "kimi-k2.5",
       "name": "Kimi K2.5",
       "provider": "opencode",
@@ -338,6 +365,10 @@
       "headers": {},
       "authEnvNames": ["OPENCODE_API_KEY"],
       "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "supportsReasoningEffort": "unsupported"
+      },
       "providerMetadata": {
         "modelFamily": "kimi"
       }
@@ -535,9 +566,6 @@
       "supportedInputs": ["text", "image"],
       "supportsTools": true,
       "supportsThinking": true,
-      "thinkingLevelMap": {
-        "off": "none"
-      },
       "cost": {
         "inputPerMillion": 0.95,
         "outputPerMillion": 4,
@@ -550,7 +578,8 @@
       "authEnvNames": ["OPENCODE_API_KEY"],
       "defaultTransport": "sse",
       "openAICompletionsCompat": {
-        "reasoningFormat": "string-thinking"
+        "reasoningFormat": "deepseek",
+        "supportsReasoningEffort": "unsupported"
       },
       "providerMetadata": {
         "modelFamily": "kimi"

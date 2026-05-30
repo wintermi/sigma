@@ -1,7 +1,7 @@
 # TODO
 
 Deferred work that is outside the current release scope. None of these are
-`v0.1.0` release gates. Each item should land with the same evidence bar as MVP
+current release gates. Each item should land with the same evidence bar as MVP
 features — deterministic fixtures, golden payloads, or fake clients, plus
 cancellation/error coverage (see the coverage standards in
 [RELEASING.md](RELEASING.md)) — before it can be promoted out of "future" status.
@@ -39,6 +39,21 @@ first-class row in [provider parity](docs/provider-parity.md).
       first-class Cloudflare OpenAI-compatible row.
 - [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
       and cancellation coverage.
+
+## OpenCode parity
+
+Sigma currently keeps OpenCode Zen and OpenCode Go as curated
+OpenAI-compatible preview routes. Broader OpenCode catalog coverage includes
+OpenAI Responses, Anthropic Messages, and Google-routed OpenCode models. Do not
+mirror that catalog wholesale without deterministic evidence.
+
+- [ ] Continue refreshing curated OpenCode Zen and OpenCode Go metadata after
+      checking the current source metadata, prioritizing remaining high-value
+      OpenAI-compatible gaps.
+- [ ] Evaluate OpenCode-routed OpenAI Responses, Anthropic Messages, and Google
+      API models separately before promoting them to built-in metadata.
+- [ ] Cover each promoted OpenCode addition with deterministic modeldata and
+      golden payload tests; no live OpenCode calls should be required.
 
 ## Authentication and credentials
 

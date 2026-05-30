@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {
+      "content": "hi",
+      "role": "user"
+    }
+  ],
+  "model": "kimi-k2.6",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "thinking": {
+    "type": "disabled"
+  }
+}

@@ -19,6 +19,11 @@ non-streaming generation through OpenAI's dedicated Images API and deliberately
 leaves edits, variations, streaming partial images, and Responses image-tool
 generation for later work.
 
+OpenCode remains a curated OpenAI-compatible preview surface in this release.
+The v0.2.0 work promotes only the narrow Kimi/Grok Build compatibility gaps
+with deterministic fixtures; it does not promote OpenCode to full
+source-package parity.
+
 ## Added
 
 - `provider/openai` now exposes `NewImagesProvider`, `RegisterImages`, and
@@ -37,7 +42,11 @@ generation for later work.
 - OpenAI Responses tool-result replay keeps image blocks inside
   `function_call_output` for image-capable models.
 - OpenAI-compatible Chat Completions can opt into Anthropic-style cache markers
-  and z.ai-style `tool_stream` payloads through compatibility metadata.
+  and z.ai-style `tool_stream` payloads through compatibility metadata, and can
+  suppress explicit `reasoning_effort` for models that reject it.
+- OpenCode Zen and OpenCode Go metadata now cover Kimi K2.6 DeepSeek-style
+  thinking payloads without `reasoning_effort`, plus OpenCode Zen Grok Build
+  0.1 reasoning-effort suppression.
 - `sigma.AnthropicMessagesCompat` and `sigma.AnthropicThinkingFormat` describe
   Anthropic-compatible endpoint support for eager tool input streaming, cache
   retention, session affinity, tool cache markers, empty thinking signatures,
@@ -57,7 +66,8 @@ generation for later work.
 
 No persisted request JSON shapes changed. Public API additions are limited to
 new registration helpers in `provider/openai`, new `OpenAIOptions` fields, new
-OpenAI-compatible compatibility metadata values, and new Anthropic Messages
+OpenAI-compatible compatibility metadata values including
+`OpenAICompletionsCompat.SupportsReasoningEffort`, and new Anthropic Messages
 compatibility metadata on `sigma.Model`.
 
 Applications still need to register providers explicitly. Built-in image model
@@ -76,6 +86,10 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 - Streaming partial image events.
 - Responses API image-tool generation.
 - GitHub Copilot dynamic headers and Cloudflare AI Gateway auth rewriting.
+- OpenCode catalog parity, including broader curated OpenCode/OpenCode Go model
+  metadata beyond the promoted Kimi/Grok Build OpenAI-compatible gaps.
+- OpenCode-routed OpenAI Responses, Anthropic Messages, and Google API models;
+  each route needs separate deterministic coverage before promotion.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization.
 - GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.

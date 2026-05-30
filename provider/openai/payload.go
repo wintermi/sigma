@@ -384,11 +384,11 @@ func reasoningEffort(model sigma.Model, opts sigma.Options) string {
 
 func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningFireworks {
-		addFireworksReasoning(payload, model, opts)
+		addFireworksReasoning(payload, model, opts, compat)
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningDeepSeek {
-		addDeepSeekReasoning(payload, model, opts)
+		addDeepSeekReasoning(payload, model, opts, compat)
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningStringThinking {
@@ -402,13 +402,17 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 	}
 	switch compat.reasoningFormat { //nolint:exhaustive
 	case sigma.OpenAICompletionsReasoningEffort:
-		payload["reasoning_effort"] = effort
+		if compat.supportsReasoningEffort {
+			payload["reasoning_effort"] = effort
+		}
 	case sigma.OpenAICompletionsReasoningObject:
-		payload["reasoning"] = map[string]any{"effort": effort}
+		if compat.supportsReasoningEffort {
+			payload["reasoning"] = map[string]any{"effort": effort}
+		}
 	}
 }
 
-func addDeepSeekReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+func addDeepSeekReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if !model.SupportsReasoning() {
 		return
 	}
@@ -418,7 +422,9 @@ func addDeepSeekReasoning(payload map[string]any, model sigma.Model, opts sigma.
 		return
 	}
 	payload["thinking"] = map[string]any{"type": "enabled"}
-	payload["reasoning_effort"] = effort
+	if compat.supportsReasoningEffort {
+		payload["reasoning_effort"] = effort
+	}
 }
 
 func addStringThinkingReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
@@ -442,7 +448,7 @@ func addStringThinkingReasoning(payload map[string]any, model sigma.Model, opts 
 	}
 }
 
-func addFireworksReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+func addFireworksReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if opts.ThinkingBudgetTokens != nil {
 		payload["thinking"] = map[string]any{
 			"type":          "enabled",
@@ -451,7 +457,9 @@ func addFireworksReasoning(payload map[string]any, model sigma.Model, opts sigma
 		return
 	}
 	if effort := reasoningEffort(model, opts); effort != "" {
-		payload["reasoning_effort"] = effort
+		if compat.supportsReasoningEffort {
+			payload["reasoning_effort"] = effort
+		}
 	}
 }
 

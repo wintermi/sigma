@@ -5,10 +5,9 @@
       "role": "user"
     }
   ],
-  "model": "kimi-k2.6",
+  "model": "grok-build-0.1",
   "stream": true,
   "stream_options": {
     "include_usage": true
-  },
-  "thinking": "high"
+  }
 }

@@ -358,6 +358,59 @@ func TestOpenAICompletionsCompatMapsFireworksReasoning(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/fireworks_thinking_budget.json")
 }
 
+func TestOpenAICompletionsCompatSuppressesReasoningEffort(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		format sigma.OpenAICompletionsReasoningFormat
+		path   []string
+	}{
+		{
+			name:   "reasoning effort",
+			format: sigma.OpenAICompletionsReasoningEffort,
+			path:   []string{"reasoning_effort"},
+		},
+		{
+			name:   "reasoning object effort",
+			format: sigma.OpenAICompletionsReasoningObject,
+			path:   []string{"reasoning"},
+		},
+		{
+			name:   "fireworks reasoning effort",
+			format: sigma.OpenAICompletionsReasoningFireworks,
+			path:   []string{"reasoning_effort"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{
+				ID:               "reasoning-effort-test",
+				Provider:         sigma.ProviderCustom,
+				API:              sigma.APIOpenAICompletions,
+				SupportsThinking: true,
+				OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+					ReasoningFormat:         tt.format,
+					SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
+				},
+			}
+			payload, err := chatCompletionsPayload(
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+				openAICompletionsCompat(model, "https://example.test/v1"),
+			)
+			if err != nil {
+				t.Fatalf("chatCompletionsPayload returned error: %v", err)
+			}
+			goldentest.AssertNoJSONPath(t, payload, tt.path...)
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 	t.Parallel()
 
@@ -397,40 +450,92 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 	}
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_deepseek_reasoning_enabled.json")
 
-	kimi := sigma.Model{
+	zenKimi := sigma.Model{
+		ID:               "kimi-k2.6",
+		Provider:         sigma.ProviderOpenCode,
+		API:              sigma.APIOpenAICompletions,
+		SupportsThinking: true,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			ReasoningFormat:         sigma.OpenAICompletionsReasoningDeepSeek,
+			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
+		},
+	}
+
+	payload, err = chatCompletionsPayload(
+		zenKimi,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{},
+		openAICompletionsCompat(zenKimi, "https://opencode.ai/zen/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for disabled OpenCode Zen Kimi reasoning returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_kimi_deepseek_reasoning_disabled.json")
+
+	payload, err = chatCompletionsPayload(
+		zenKimi,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+		openAICompletionsCompat(zenKimi, "https://opencode.ai/zen/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for enabled OpenCode Zen Kimi reasoning returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_kimi_deepseek_reasoning_enabled.json")
+
+	goKimi := sigma.Model{
 		ID:               "kimi-k2.6",
 		Provider:         sigma.ProviderOpenCodeGo,
 		API:              sigma.APIOpenAICompletions,
 		SupportsThinking: true,
-		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
-			sigma.ThinkingLevelOff: "none",
-		},
 		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			ReasoningFormat: sigma.OpenAICompletionsReasoningStringThinking,
+			ReasoningFormat:         sigma.OpenAICompletionsReasoningDeepSeek,
+			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
 		},
 	}
 
 	payload, err = chatCompletionsPayload(
-		kimi,
+		goKimi,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.Options{},
-		openAICompletionsCompat(kimi, "https://opencode.ai/zen/go/v1"),
+		openAICompletionsCompat(goKimi, "https://opencode.ai/zen/go/v1"),
 	)
 	if err != nil {
-		t.Fatalf("chatCompletionsPayload for disabled Kimi reasoning returned error: %v", err)
+		t.Fatalf("chatCompletionsPayload for disabled OpenCode Go Kimi reasoning returned error: %v", err)
 	}
-	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_kimi_string_thinking_disabled.json")
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_kimi_deepseek_reasoning_disabled.json")
 
 	payload, err = chatCompletionsPayload(
-		kimi,
+		goKimi,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
-		openAICompletionsCompat(kimi, "https://opencode.ai/zen/go/v1"),
+		openAICompletionsCompat(goKimi, "https://opencode.ai/zen/go/v1"),
 	)
 	if err != nil {
-		t.Fatalf("chatCompletionsPayload for enabled Kimi reasoning returned error: %v", err)
+		t.Fatalf("chatCompletionsPayload for enabled OpenCode Go Kimi reasoning returned error: %v", err)
 	}
-	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_kimi_string_thinking_enabled.json")
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_kimi_deepseek_reasoning_enabled.json")
+
+	grokBuild := sigma.Model{
+		ID:               "grok-build-0.1",
+		Provider:         sigma.ProviderOpenCode,
+		API:              sigma.APIOpenAICompletions,
+		SupportsThinking: true,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
+		},
+	}
+
+	payload, err = chatCompletionsPayload(
+		grokBuild,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+		openAICompletionsCompat(grokBuild, "https://opencode.ai/zen/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for OpenCode Zen Grok Build reasoning returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_grok_build_reasoning_unsupported.json")
 }
 
 func TestOpenAICompletionsCompatReplaysReasoningContent(t *testing.T) {

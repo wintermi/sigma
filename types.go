@@ -275,6 +275,7 @@ type OpenAICompletionsCompat struct {
 	SupportsStore                               OpenAICompatSupport                 `json:"supportsStore,omitempty"`
 	SupportsDeveloperRole                       OpenAICompatSupport                 `json:"supportsDeveloperRole,omitempty"`
 	ReasoningFormat                             OpenAICompletionsReasoningFormat    `json:"reasoningFormat,omitempty"`
+	SupportsReasoningEffort                     OpenAICompatSupport                 `json:"supportsReasoningEffort,omitempty"`
 	SupportsStreamingUsage                      OpenAICompatSupport                 `json:"supportsStreamingUsage,omitempty"`
 	SupportsStrictTools                         OpenAICompatSupport                 `json:"supportsStrictTools,omitempty"`
 	SupportsToolStream                          OpenAICompatSupport                 `json:"supportsToolStream,omitempty"`

@@ -121,8 +121,25 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if !openCode.SupportsTools || !openCode.SupportsImages() || !openCode.SupportsReasoning() {
 		t.Fatalf("OpenCode Zen model capabilities were not generated: %+v", openCode)
 	}
+	if openCode.OpenAICompletionsCompat == nil ||
+		openCode.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		openCode.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Zen Kimi compat = %#v, want deepseek reasoning without effort", openCode.OpenAICompletionsCompat)
+	}
 	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
 	assertMetadataStrings(t, openCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+
+	grokBuild, ok := registry.Model(ProviderOpenCode, "grok-build-0.1")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Zen Grok Build model")
+	}
+	if grokBuild.API != APIOpenAICompletions || !grokBuild.SupportsTools || !grokBuild.SupportsImages() || !grokBuild.SupportsReasoning() {
+		t.Fatalf("OpenCode Zen Grok Build model was not generated as an image-capable completions model: %+v", grokBuild)
+	}
+	if grokBuild.OpenAICompletionsCompat == nil ||
+		grokBuild.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Zen Grok Build compat = %#v, want no reasoning effort", grokBuild.OpenAICompletionsCompat)
+	}
 
 	openCodeGo, ok := registry.Model(ProviderOpenCodeGo, "deepseek-v4-flash")
 	if !ok {
@@ -141,6 +158,16 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
 	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+
+	openCodeGoKimi, ok := registry.Model(ProviderOpenCodeGo, "kimi-k2.6")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Go Kimi model")
+	}
+	if openCodeGoKimi.OpenAICompletionsCompat == nil ||
+		openCodeGoKimi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		openCodeGoKimi.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Go Kimi compat = %#v, want deepseek reasoning without effort", openCodeGoKimi.OpenAICompletionsCompat)
+	}
 
 	image, ok := registry.ImageModel(ProviderOpenAI, "gpt-image-1")
 	if !ok {

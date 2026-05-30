@@ -173,6 +173,7 @@ func writeOpenAICompatField(b *bytes.Buffer, compat *modeldata.OpenAICompletions
 	writeStringField(b, "SupportsStore", "OpenAICompatSupport", compat.SupportsStore)
 	writeStringField(b, "SupportsDeveloperRole", "OpenAICompatSupport", compat.SupportsDeveloperRole)
 	writeStringField(b, "ReasoningFormat", "OpenAICompletionsReasoningFormat", compat.ReasoningFormat)
+	writeStringField(b, "SupportsReasoningEffort", "OpenAICompatSupport", compat.SupportsReasoningEffort)
 	writeStringField(b, "SupportsStreamingUsage", "OpenAICompatSupport", compat.SupportsStreamingUsage)
 	writeStringField(b, "SupportsStrictTools", "OpenAICompatSupport", compat.SupportsStrictTools)
 	writeStringField(b, "SupportsToolStream", "OpenAICompatSupport", compat.SupportsToolStream)

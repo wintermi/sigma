@@ -74,7 +74,8 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - OpenAI Responses tool-result replay can keep image blocks inside
   `function_call_output` for image-capable models.
 - OpenAI-compatible Chat Completions compatibility metadata now supports
-  Anthropic-style cache markers and opt-in `tool_stream` payloads.
+  Anthropic-style cache markers, opt-in `tool_stream` payloads, and
+  model-specific suppression of explicit `reasoning_effort`.
 - Anthropic Messages compatibility metadata for Anthropic-compatible endpoints,
   including eager tool input streaming, cache/session-affinity support, empty
   thinking-signature replay, and budget/adaptive thinking formats.
@@ -85,6 +86,10 @@ See [release notes](docs/release-notes-v0.2.0.md).
   deltas are partial.
 - Provider parity and image-generation docs now mark `openai-images` as a
   generation-only preview adapter instead of metadata-only.
+- OpenCode Zen and OpenCode Go metadata now cover the promoted
+  OpenAI-compatible `kimi-k2.6` and `grok-build-0.1` gaps, with deterministic
+  payload fixtures for Kimi thinking and Grok Build reasoning-effort
+  suppression.
 
 ### Known limitations
 
@@ -116,4 +121,4 @@ See [release notes](docs/release-notes-v0.2.0.md).
   independent provider-quality claims still need fixtures.
 - No live provider calls are required or expected for release validation.
 - The release should not be tagged until maintainers accept the verification
-  results and the [release notes](docs/release-notes-v0.1.0.md).
+  results and the [release notes](docs/release-notes-v0.2.0.md).
