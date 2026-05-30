@@ -40,6 +40,8 @@ const (
 	providerOptionTopPGo                  = "topP"
 	providerOptionTopK                    = "top_k"
 	providerOptionTopKGo                  = "topK"
+	providerOptionToolSchemaFormat        = "tool_schema_format"
+	providerOptionToolSchemaFormatGo      = "toolSchemaFormat"
 )
 
 func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
@@ -55,7 +57,7 @@ func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options)
 		return nil, err
 	}
 
-	contents, err := googleContents(transformed)
+	contents, err := googleContents(model, transformed)
 	if err != nil {
 		return nil, err
 	}
@@ -77,54 +79,82 @@ func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options)
 		payload["generationConfig"] = generationConfig
 	}
 	if len(transformed.Tools) > 0 {
-		tools, err := googleTools(transformed.Tools)
+		tools, err := googleTools(model.Provider, transformed.Tools, opts)
 		if err != nil {
 			return nil, err
 		}
 		payload["tools"] = tools
 	}
-	addGoogleProviderOptions(payload, model.Provider, opts)
+	addGoogleProviderOptions(payload, model.Provider, opts, len(transformed.Tools) > 0)
 	return payload, nil
 }
 
-func googleContents(req sigma.Request) ([]map[string]any, error) {
+func googleContents(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
 	contents := make([]map[string]any, 0, len(req.Messages))
 	for _, message := range req.Messages {
-		converted, err := googleContent(message)
+		converted, err := googleContent(model, message)
 		if err != nil {
 			return nil, err
 		}
-		contents = append(contents, converted)
+		if len(converted) > 0 && len(contents) > 0 && mergeFunctionResponseContent(contents[len(contents)-1], converted[0]) {
+			converted = converted[1:]
+		}
+		contents = append(contents, converted...)
 	}
 	return contents, nil
 }
 
-func googleContent(message sigma.Message) (map[string]any, error) {
+func googleContent(model sigma.Model, message sigma.Message) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		parts, err := googleInputParts(message.Content)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"role": "user", "parts": parts}, nil
+		return []map[string]any{{"role": "user", "parts": parts}}, nil
 	case sigma.RoleAssistant:
-		parts, err := googleAssistantParts(message.Content)
+		parts, err := googleAssistantParts(model, message)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"role": "model", "parts": parts}, nil
+		return []map[string]any{{"role": "model", "parts": parts}}, nil
 	case sigma.RoleTool:
-		part := map[string]any{
-			"functionResponse": map[string]any{
-				"name":     message.ToolName,
-				"id":       message.ToolCallID,
-				"response": googleToolResponse(message),
-			},
-		}
-		return map[string]any{"role": "user", "parts": []map[string]any{part}}, nil
+		return googleToolResultContents(model, message)
 	default:
 		return nil, fmt.Errorf("google generative ai: unsupported message role %q", message.Role)
 	}
+}
+
+func isFunctionResponseContent(content map[string]any) bool {
+	if content["role"] != "user" {
+		return false
+	}
+	parts, ok := content["parts"].([]map[string]any)
+	if !ok || len(parts) == 0 {
+		return false
+	}
+	for _, part := range parts {
+		if _, ok := part["functionResponse"]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func mergeFunctionResponseContent(target map[string]any, source map[string]any) bool {
+	if !isFunctionResponseContent(target) || !isFunctionResponseContent(source) {
+		return false
+	}
+	targetParts, ok := target["parts"].([]map[string]any)
+	if !ok {
+		return false
+	}
+	sourceParts, ok := source["parts"].([]map[string]any)
+	if !ok {
+		return false
+	}
+	target["parts"] = append(targetParts, sourceParts...)
+	return true
 }
 
 func googleInputParts(blocks []sigma.ContentBlock) ([]map[string]any, error) {
@@ -149,20 +179,20 @@ func googleInputParts(blocks []sigma.ContentBlock) ([]map[string]any, error) {
 	return parts, nil
 }
 
-func googleAssistantParts(blocks []sigma.ContentBlock) ([]map[string]any, error) {
-	parts := make([]map[string]any, 0, len(blocks))
-	for _, block := range blocks {
+func googleAssistantParts(model sigma.Model, message sigma.Message) ([]map[string]any, error) {
+	parts := make([]map[string]any, 0, len(message.Content))
+	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			part := map[string]any{"text": block.Text}
-			addThoughtSignature(part, block.ProviderSignature)
+			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
 			parts = append(parts, part)
 		case sigma.ContentBlockThinking:
 			part := map[string]any{
 				"text":    block.ThinkingText,
 				"thought": true,
 			}
-			addThoughtSignature(part, block.ProviderSignature)
+			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
 			parts = append(parts, part)
 		case sigma.ContentBlockToolCall:
 			args, err := jsonValue(block.ToolArguments)
@@ -180,7 +210,7 @@ func googleAssistantParts(blocks []sigma.ContentBlock) ([]map[string]any, error)
 				call["id"] = block.ToolCallID
 			}
 			part := map[string]any{"functionCall": call}
-			addThoughtSignature(part, block.ProviderSignature)
+			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
 			parts = append(parts, part)
 		default:
 			return nil, fmt.Errorf("google generative ai: unsupported assistant content block %q", block.Type)
@@ -189,12 +219,62 @@ func googleAssistantParts(blocks []sigma.ContentBlock) ([]map[string]any, error)
 	return parts, nil
 }
 
-func googleToolResponse(message sigma.Message) map[string]any {
-	response := map[string]any{"output": textContent(message.Content)}
-	if message.IsError {
-		response["error"] = true
+func googleToolResultContents(model sigma.Model, message sigma.Message) ([]map[string]any, error) {
+	text, images, err := googleToolResultContent(message.Content)
+	if err != nil {
+		return nil, err
 	}
-	return response
+	response := map[string]any{"output": text}
+	if message.IsError {
+		response = map[string]any{"error": text}
+	}
+	if text == "" && len(images) > 0 {
+		if message.IsError {
+			response["error"] = "(see attached image)"
+		} else {
+			response["output"] = "(see attached image)"
+		}
+	}
+	functionResponse := map[string]any{
+		"name":     message.ToolName,
+		"id":       message.ToolCallID,
+		"response": response,
+	}
+	if len(images) > 0 && supportsGoogleMultimodalFunctionResponse(model.ID) {
+		functionResponse["parts"] = images
+	}
+	part := map[string]any{"functionResponse": functionResponse}
+	contents := []map[string]any{{"role": "user", "parts": []map[string]any{part}}}
+	if len(images) > 0 && !supportsGoogleMultimodalFunctionResponse(model.ID) {
+		sidecar := make([]map[string]any, 0, 1+len(images))
+		sidecar = append(sidecar, map[string]any{"text": "Tool result image:"})
+		sidecar = append(sidecar, images...)
+		contents = append(contents, map[string]any{"role": "user", "parts": sidecar})
+	}
+	return contents, nil
+}
+
+func googleToolResultContent(blocks []sigma.ContentBlock) (string, []map[string]any, error) {
+	var text string
+	var images []map[string]any
+	for _, block := range blocks {
+		switch block.Type {
+		case sigma.ContentBlockText:
+			if text != "" {
+				text += "\n"
+			}
+			text += block.Text
+		case sigma.ContentBlockImage:
+			image, err := googleImage(block)
+			if err != nil {
+				return "", nil, err
+			}
+			images = append(images, image)
+		default:
+			return "", nil, fmt.Errorf("google generative ai: unsupported tool result content block %q", block.Type)
+		}
+	}
+	return text, images, nil
 }
 
 func googleImage(block sigma.ContentBlock) (map[string]any, error) {
@@ -235,9 +315,13 @@ func googleImage(block sigma.ContentBlock) (map[string]any, error) {
 	}
 }
 
-func googleTools(tools []sigma.Tool) ([]map[string]any, error) {
+func googleTools(provider sigma.ProviderID, tools []sigma.Tool, opts sigma.Options) ([]map[string]any, error) {
 	declarations := make([]map[string]any, 0, len(tools))
 	providerTools := make([]map[string]any, 0, len(tools))
+	useParameters, err := googleUseLegacyToolParameters(provider, opts)
+	if err != nil {
+		return nil, err
+	}
 	for _, tool := range tools {
 		if tool.ProviderDefinedType != "" {
 			providerTools = append(providerTools, googleProviderTool(tool))
@@ -250,11 +334,16 @@ func googleTools(tools []sigma.Tool) ([]map[string]any, error) {
 		if parameters == nil {
 			parameters = map[string]any{"type": "object"}
 		}
-		declarations = append(declarations, map[string]any{
+		declaration := map[string]any{
 			"name":        tool.Name,
 			"description": tool.Description,
-			"parameters":  parameters,
-		})
+		}
+		if useParameters {
+			declaration["parameters"] = sanitizeForOpenAPI(parameters)
+		} else {
+			declaration["parametersJsonSchema"] = parameters
+		}
+		declarations = append(declarations, declaration)
 	}
 	converted := make([]map[string]any, 0, 1+len(providerTools))
 	if len(declarations) > 0 {
@@ -262,6 +351,27 @@ func googleTools(tools []sigma.Tool) ([]map[string]any, error) {
 	}
 	converted = append(converted, providerTools...)
 	return converted, nil
+}
+
+func googleUseLegacyToolParameters(provider sigma.ProviderID, opts sigma.Options) (bool, error) {
+	options := providerOptions(opts, provider)
+	value, _ := stringOption(options, providerOptionToolSchemaFormat)
+	if value == "" {
+		value, _ = stringOption(options, providerOptionToolSchemaFormatGo)
+	}
+	switch value {
+	case "", "parameters_json_schema", "parametersJsonSchema":
+		return false, nil
+	case "parameters":
+		return true, nil
+	default:
+		return false, &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  fmt.Sprintf("google tool schema format %q is not supported", value),
+			Provider: provider,
+			Err:      sigma.ErrInvalidOptions,
+		}
+	}
 }
 
 func googleProviderTool(tool sigma.Tool) map[string]any {
@@ -321,6 +431,9 @@ func googleThinkingConfig(model sigma.Model, opts sigma.Options) (map[string]any
 		}
 		return thinking, nil
 	}
+	if googleThinkingDisabled(opts) {
+		return googleDisabledThinkingConfig(model), nil
+	}
 	if opts.ThinkingBudgetTokens != nil {
 		thinking["thinkingBudget"] = *opts.ThinkingBudgetTokens
 		if _, ok := thinking["includeThoughts"]; !ok {
@@ -362,6 +475,24 @@ func googleThinkingConfig(model sigma.Model, opts sigma.Options) (map[string]any
 	return thinking, nil
 }
 
+func googleThinkingDisabled(opts sigma.Options) bool {
+	if opts.GoogleOptions != nil && opts.GoogleOptions.DisableThinking != nil {
+		return *opts.GoogleOptions.DisableThinking
+	}
+	return opts.ReasoningLevel == sigma.ThinkingLevelOff
+}
+
+func googleDisabledThinkingConfig(model sigma.Model) map[string]any {
+	switch {
+	case isGemini3ProModel(model.ID):
+		return map[string]any{"thinkingLevel": "LOW"}
+	case isGemini3FlashModel(model.ID), isGemma4Model(model.ID):
+		return map[string]any{"thinkingLevel": "MINIMAL"}
+	default:
+		return map[string]any{"thinkingBudget": 0}
+	}
+}
+
 func googleThinkingLevel(value string) (string, bool) {
 	switch strings.ToUpper(strings.ReplaceAll(value, "-", "_")) {
 	case "MINIMAL":
@@ -391,16 +522,10 @@ func addGenerationConfigProviderOptions(config map[string]any, provider sigma.Pr
 	copyOption(config, options, providerOptionTopKGo, "topK")
 }
 
-func addGoogleProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
+func addGoogleProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options, hasTools bool) {
 	options := providerOptions(opts, provider)
-	if value, ok := options[providerOptionToolConfig]; ok {
+	if value, ok := googleToolConfig(options, opts, hasTools); ok {
 		payload["toolConfig"] = value
-	} else if value, ok := options[providerOptionToolConfigGo]; ok {
-		payload["toolConfig"] = value
-	} else if value, ok := options[providerOptionFunctionCallingConfig]; ok {
-		payload["toolConfig"] = map[string]any{"functionCallingConfig": value}
-	} else if value, ok := options[providerOptionFunctionCallingConfigGo]; ok {
-		payload["toolConfig"] = map[string]any{"functionCallingConfig": value}
 	}
 	if value, ok := options[providerOptionSafetySettings]; ok {
 		payload["safetySettings"] = value
@@ -412,20 +537,146 @@ func addGoogleProviderOptions(payload map[string]any, provider sigma.ProviderID,
 	}
 }
 
+func googleToolConfig(options map[string]any, opts sigma.Options, hasTools bool) (any, bool) {
+	if value, ok := options[providerOptionToolConfig]; ok {
+		return value, true
+	}
+	if value, ok := options[providerOptionToolConfigGo]; ok {
+		return value, true
+	}
+	if value, ok := options[providerOptionFunctionCallingConfig]; ok {
+		return map[string]any{"functionCallingConfig": value}, true
+	}
+	if value, ok := options[providerOptionFunctionCallingConfigGo]; ok {
+		return map[string]any{"functionCallingConfig": value}, true
+	}
+	if !hasTools || opts.GoogleOptions == nil || opts.GoogleOptions.ToolChoice == "" {
+		return nil, false
+	}
+	mode, err := googleToolChoiceMode(opts.GoogleOptions.ToolChoice)
+	if err != nil {
+		return nil, false
+	}
+	return map[string]any{"functionCallingConfig": map[string]any{"mode": mode}}, true
+}
+
+func googleToolChoiceMode(choice string) (string, error) {
+	switch strings.ToLower(choice) {
+	case "auto":
+		return "AUTO", nil
+	case "none":
+		return "NONE", nil
+	case "any":
+		return "ANY", nil
+	default:
+		return "", &sigma.Error{
+			Code:    sigma.ErrorInvalidOptions,
+			Message: fmt.Sprintf("google tool choice %q is not supported", choice),
+			Err:     sigma.ErrInvalidOptions,
+		}
+	}
+}
+
 func addThoughtSignature(part map[string]any, signature string) {
 	if signature != "" {
 		part["thoughtSignature"] = signature
 	}
 }
 
-func textContent(blocks []sigma.ContentBlock) string {
-	var text string
-	for _, block := range blocks {
-		if block.Type == sigma.ContentBlockText {
-			text += block.Text
+func replayThoughtSignature(model sigma.Model, message sigma.Message, signature string) string {
+	if message.Provider != model.Provider || message.API != model.API || message.Model != model.ID {
+		return ""
+	}
+	if !validThoughtSignature(signature) {
+		return ""
+	}
+	return signature
+}
+
+func validThoughtSignature(signature string) bool {
+	if signature == "" || len(signature)%4 != 0 {
+		return false
+	}
+	_, err := base64.StdEncoding.DecodeString(signature)
+	return err == nil
+}
+
+func sanitizeForOpenAPI(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, nested := range v {
+			if isJSONSchemaMetaDeclaration(key) {
+				continue
+			}
+			out[key] = sanitizeForOpenAPI(nested)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for index, nested := range v {
+			out[index] = sanitizeForOpenAPI(nested)
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func isJSONSchemaMetaDeclaration(key string) bool {
+	switch key {
+	case "$schema", "$id", "$anchor", "$dynamicAnchor", "$vocabulary", "$comment", "$defs", "definitions":
+		return true
+	default:
+		return false
+	}
+}
+
+func supportsGoogleMultimodalFunctionResponse(modelID sigma.ModelID) bool {
+	major, ok := geminiMajorVersion(modelID)
+	if !ok {
+		return true
+	}
+	return major >= 3
+}
+
+func geminiMajorVersion(modelID sigma.ModelID) (int, bool) {
+	id := strings.ToLower(string(modelID))
+	found := false
+	for _, prefix := range []string{"gemini-live-", "gemini-"} {
+		if strings.HasPrefix(id, prefix) {
+			id = strings.TrimPrefix(id, prefix)
+			found = true
+			break
 		}
 	}
-	return text
+	if !found {
+		return 0, false
+	}
+	dot := strings.IndexAny(id, ".-")
+	if dot >= 0 {
+		id = id[:dot]
+	}
+	major, err := strconv.Atoi(id)
+	if err != nil {
+		return 0, false
+	}
+	return major, true
+}
+
+func isGemini3ProModel(modelID sigma.ModelID) bool {
+	id := strings.ToLower(string(modelID))
+	return strings.HasPrefix(id, "gemini-3") && strings.Contains(id, "-pro")
+}
+
+func isGemini3FlashModel(modelID sigma.ModelID) bool {
+	id := strings.ToLower(string(modelID))
+	return strings.HasPrefix(id, "gemini-3") && strings.Contains(id, "-flash")
+}
+
+func isGemma4Model(modelID sigma.ModelID) bool {
+	id := strings.ToLower(string(modelID))
+	return strings.Contains(id, "gemma-4") || strings.Contains(id, "gemma4")
 }
 
 func providerOptions(opts sigma.Options, provider sigma.ProviderID) map[string]any {

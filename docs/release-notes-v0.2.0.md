@@ -51,6 +51,12 @@ request-scoped routing can override generated routing metadata, expanded
 routing fields are represented in typed metadata, and cache-write token usage
 is reported separately from cache reads.
 
+Google preview adapters also get targeted compatibility fixes. Gemini API and
+Vertex requests now have typed tool-choice and disabled-thinking controls,
+safer thought-signature replay, JSON Schema function declarations by default,
+image-capable tool-result replay, stable fallback tool-call IDs, and corrected
+cached/thinking-token accounting.
+
 ## Added
 
 - `provider/openai` now exposes `NewImagesProvider`, `RegisterImages`, and
@@ -103,6 +109,16 @@ is reported separately from cache reads.
 - Generated metadata now seeds representative entries for the remaining exposed
   provider IDs, including current OpenAI-compatible, Anthropic-compatible, and
   Vertex compatibility metadata.
+- Google Generative AI and Vertex AI now support typed Google request controls
+  for tool choice and explicit disabled thinking.
+- Google payloads now use `parametersJsonSchema` for function tools by default,
+  retain only same-provider/API/model base64 thought signatures, group
+  consecutive function responses, and replay image tool results for
+  image-capable Gemini routes.
+- Google streaming now synthesizes stable tool-call IDs when Google omits or
+  duplicates IDs, maps additional safety finish reasons, and separates cached
+  prompt tokens from ordinary input tokens while including thinking tokens in
+  output token accounting.
 - Native Anthropic generated metadata now includes current Claude Haiku, Sonnet,
   and Opus Messages rows, with adaptive-thinking metadata on supported models.
 - Mistral Conversations now maps adjustable-reasoning models to
@@ -137,12 +153,15 @@ is reported separately from cache reads.
 
 No persisted request JSON shapes changed. Public API additions are limited to
 new registration helpers in `provider/openai`, new `OpenAIOptions` fields, new
+`GoogleOptions` fields for Google tool choice and disabled thinking, new
 OpenAI-compatible compatibility metadata values including
 `OpenAICompletionsCompat.SupportsReasoningEffort`, and new Anthropic Messages
 compatibility metadata on `sigma.Model`.
 
 Typed OpenAI structured-output and logprob controls fail locally with
 `ErrorInvalidOptions` when requested for unsupported API families.
+Typed Google tool choice fails locally with `ErrorInvalidOptions` when the
+choice is not `auto`, `none`, or `any`.
 
 Applications still need to register providers explicitly. Built-in image model
 metadata remains metadata-only until a registry has a matching image provider:
@@ -172,6 +191,8 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
   behavior and curated representative metadata are in scope for this tag.
 - Mistral Conversations image input, built-in connectors, append/restart, and
   broad Mistral catalog expansion.
+- Live Google Gemini API and Vertex AI validation; deterministic fixtures remain
+  the release evidence for Google preview adapter behaviour.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization.
 - GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing.
@@ -194,3 +215,6 @@ requires `FIREWORKS_API_KEY`.
 Mistral Conversations reasoning, thinking-stream, session-affinity, and
 tool-call replay compatibility are covered by deterministic `httptest` fixtures
 and golden request payloads.
+Google Gemini API and Vertex AI request controls, thought-signature replay,
+image tool-result replay, fallback tool-call IDs, and usage accounting are
+covered by deterministic `httptest` fixtures and golden request payloads.

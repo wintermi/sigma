@@ -39,6 +39,8 @@ type AnthropicOptions struct {
 // package without importing provider adapters.
 type GoogleOptions struct {
 	ThinkingBudgetTokens *int
+	ToolChoice           string
+	DisableThinking      *bool
 }
 
 // Options configures a single provider request.
@@ -360,6 +362,7 @@ func cloneGoogleOptions(options *GoogleOptions) *GoogleOptions {
 	}
 	copied := *options
 	copied.ThinkingBudgetTokens = cloneIntPtr(options.ThinkingBudgetTokens)
+	copied.DisableThinking = cloneBoolPtr(options.DisableThinking)
 	return &copied
 }
 

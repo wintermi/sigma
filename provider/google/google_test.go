@@ -7,6 +7,7 @@ package google_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -165,6 +166,306 @@ func TestCompleteSendsProviderDefinedToolsPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/google/generative/provider_defined_tools_payload.json")
 }
 
+func TestCompleteSendsTypedGoogleToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeGoogleSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-tool-choice-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Pick a tool.")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup records",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.WithGoogleOptions(sigma.GoogleOptions{ToolChoice: "any"}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+	toolConfig := payload["toolConfig"].(map[string]any)
+	functionCalling := toolConfig["functionCallingConfig"].(map[string]any)
+	if got, want := functionCalling["mode"], "ANY"; got != want {
+		t.Fatalf("tool choice mode = %v, want %v", got, want)
+	}
+}
+
+func TestInvalidGoogleToolChoiceFailsBeforeNetwork(t *testing.T) {
+	t.Parallel()
+
+	providerID := sigma.ProviderID("google-invalid-tool-choice-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, "https://example.invalid")
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithGoogleOptions(sigma.GoogleOptions{ToolChoice: "required"}),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("error = %v, want ErrInvalidOptions", err)
+	}
+}
+
+func TestDisabledThinkingPayloadsForGeminiFamilies(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		modelID   sigma.ModelID
+		wantKey   string
+		wantValue any
+	}{
+		{name: "gemini 2", modelID: "gemini-2.5-flash", wantKey: "thinkingBudget", wantValue: float64(0)},
+		{name: "gemini 3 pro", modelID: "gemini-3.1-pro", wantKey: "thinkingLevel", wantValue: "LOW"},
+		{name: "gemini 3 flash", modelID: "gemini-3-flash", wantKey: "thinkingLevel", wantValue: "MINIMAL"},
+		{name: "gemma 4", modelID: "gemma-4-preview", wantKey: "thinkingLevel", wantValue: "MINIMAL"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeGoogleSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("google-disable-thinking-test-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := googleTestModel(providerID)
+			model.ID = tt.modelID
+			client := googleTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithReasoningLevel(sigma.ThinkingLevelOff),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+			generation := payload["generationConfig"].(map[string]any)
+			thinking := generation["thinkingConfig"].(map[string]any)
+			if got := thinking[tt.wantKey]; got != tt.wantValue {
+				t.Fatalf("thinking %s = %v, want %v", tt.wantKey, got, tt.wantValue)
+			}
+			if _, ok := thinking["includeThoughts"]; ok {
+				t.Fatalf("includeThoughts = %v, want omitted", thinking["includeThoughts"])
+			}
+		})
+	}
+}
+
+func TestAssistantReplayOnlyKeepsSameModelBase64ThoughtSignatures(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeGoogleSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-signature-replay-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+	validSignature := "AAAAAAAAAAAAAAAAAAAAAA=="
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			{
+				Role:     sigma.RoleAssistant,
+				Provider: providerID,
+				API:      sigma.APIGoogleGenerativeAI,
+				Model:    model.ID,
+				Content: []sigma.ContentBlock{
+					withProviderSignature(sigma.Text("same model"), validSignature),
+					withProviderSignature(sigma.Text("invalid signature"), "not_base64"),
+				},
+			},
+			{
+				Role:     sigma.RoleAssistant,
+				Provider: sigma.ProviderAnthropic,
+				API:      sigma.APIAnthropicMessages,
+				Model:    "claude-sonnet",
+				Content:  []sigma.ContentBlock{withProviderSignature(sigma.Text("other provider"), validSignature)},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	if got, want := strings.Count(string(data), "thoughtSignature"), 1; got != want {
+		t.Fatalf("thoughtSignature count = %d, want %d\n%s", got, want, data)
+	}
+}
+
+func TestToolResultsMergeAndRouteImagesByGeminiVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		modelID       sigma.ModelID
+		wantContents  int
+		wantNested    bool
+		wantSidecar   bool
+		wantResponses int
+	}{
+		{name: "gemini 2 sidecar", modelID: "gemini-2.5-flash", wantContents: 5, wantSidecar: true, wantResponses: 2},
+		{name: "gemini 3 nested", modelID: "gemini-3-pro", wantContents: 3, wantNested: true, wantResponses: 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeGoogleSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("google-image-tool-result-test-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := googleTestModel(providerID)
+			model.ID = tt.modelID
+			client := googleTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{
+					sigma.UserText("read files"),
+					{
+						Role: sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{
+							sigma.ToolCallBlock("call_a", "read", map[string]any{"path": "a.txt"}),
+							sigma.ToolCallBlock("call_img", "read", map[string]any{"path": "image.png"}),
+							sigma.ToolCallBlock("call_b", "read", map[string]any{"path": "b.txt"}),
+						},
+					},
+					{Role: sigma.RoleTool, ToolCallID: "call_a", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("alpha")}},
+					{Role: sigma.RoleTool, ToolCallID: "call_img", ToolName: "read", Content: []sigma.ContentBlock{sigma.ImageBase64("image/png", "aW1hZ2U=")}},
+					{Role: sigma.RoleTool, ToolCallID: "call_b", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("beta")}},
+				},
+			})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+			contents := payload["contents"].([]any)
+			if got := len(contents); got != tt.wantContents {
+				t.Fatalf("contents = %d, want %d", got, tt.wantContents)
+			}
+			toolTurn := contents[2].(map[string]any)
+			parts := toolTurn["parts"].([]any)
+			if got := len(parts); got != tt.wantResponses {
+				t.Fatalf("function responses = %d, want %d", got, tt.wantResponses)
+			}
+			imageResponse := parts[1].(map[string]any)["functionResponse"].(map[string]any)
+			if _, ok := imageResponse["parts"]; ok != tt.wantNested {
+				t.Fatalf("nested image parts present = %v, want %v", ok, tt.wantNested)
+			}
+			if tt.wantSidecar {
+				sidecar := contents[3].(map[string]any)
+				sidecarParts := sidecar["parts"].([]any)
+				if got, want := sidecarParts[0].(map[string]any)["text"], "Tool result image:"; got != want {
+					t.Fatalf("sidecar text = %v, want %v", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestLegacyGoogleToolSchemaFormatSanitizesJSONSchemaMeta(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeGoogleSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-legacy-schema-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("lookup")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup records",
+				InputSchema: sigma.Schema{
+					"$schema": "https://json-schema.org/draft/2020-12/schema",
+					"$defs":   map[string]any{"unused": map[string]any{"type": "string"}},
+					"type":    "object",
+					"properties": map[string]any{
+						"query": map[string]any{
+							"$id":  "urn:query",
+							"type": "string",
+						},
+					},
+				},
+			}},
+		},
+		sigma.WithProviderOptions(providerID, map[string]any{"tool_schema_format": "parameters"}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+	declaration := payload["tools"].([]any)[0].(map[string]any)["functionDeclarations"].([]any)[0].(map[string]any)
+	if _, ok := declaration["parametersJsonSchema"]; ok {
+		t.Fatal("parametersJsonSchema present, want legacy parameters")
+	}
+	parameters := declaration["parameters"].(map[string]any)
+	if _, ok := parameters["$schema"]; ok {
+		t.Fatal("$schema was not removed")
+	}
+	if _, ok := parameters["$defs"]; ok {
+		t.Fatal("$defs was not removed")
+	}
+	property := parameters["properties"].(map[string]any)["query"].(map[string]any)
+	if _, ok := property["$id"]; ok {
+		t.Fatal("nested $id was not removed")
+	}
+	if got, want := property["type"], "string"; got != want {
+		t.Fatalf("property type = %v, want %v", got, want)
+	}
+}
+
 func TestImagePayloadUsesGooglePartShapes(t *testing.T) {
 	t.Parallel()
 
@@ -256,6 +557,12 @@ data: {"candidates":[{"content":{"role":"model","parts":[{"text":"","thoughtSign
 	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
 		t.Fatalf("cache read tokens = %d, want %d", got, want)
 	}
+	if got, want := final.Usage.InputTokens, 7; got != want {
+		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.OutputTokens, 10; got != want {
+		t.Fatalf("output tokens = %d, want %d", got, want)
+	}
 	if got, want := final.Usage.ThinkingTokens, 2; got != want {
 		t.Fatalf("thinking tokens = %d, want %d", got, want)
 	}
@@ -315,6 +622,40 @@ func TestCompleteFunctionCallArgumentsEmitToolCallEvents(t *testing.T) {
 	}
 	if got, want := final.Content[0].ProviderSignature, "tool_sig"; got != want {
 		t.Fatalf("tool signature = %q, want %q", got, want)
+	}
+}
+
+func TestFunctionCallArgumentsGenerateSyntheticIDsWhenMissingOrDuplicate(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeGoogleSSE(t, w, `data: {"candidates":[{"content":{"role":"model","parts":[{"functionCall":{"name":"lookup","args":{"query":"one"}}},{"functionCall":{"id":"call_existing","name":"lookup","args":{"query":"two"}}},{"functionCall":{"id":"call_existing","name":"lookup","args":{"query":"three"}}}]},"finishReason":"STOP"}]}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-synthetic-tool-id-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("lookup")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := len(final.Content), 3; got != want {
+		t.Fatalf("tool calls = %d, want %d", got, want)
+	}
+	if got, want := final.Content[0].ToolCallID, "google_tool_call_1"; got != want {
+		t.Fatalf("first tool call id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].ToolCallID, "call_existing"; got != want {
+		t.Fatalf("second tool call id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[2].ToolCallID, "google_tool_call_2"; got != want {
+		t.Fatalf("third tool call id = %q, want %q", got, want)
 	}
 }
 
@@ -639,6 +980,21 @@ func assertHeader(t *testing.T, headers http.Header, key string, want string) {
 	if got := headers.Get(key); got != want {
 		t.Fatalf("%s header = %q, want %q", key, got, want)
 	}
+}
+
+func decodeRequestPayload(t *testing.T, body string) map[string]any {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("decode request payload: %v", err)
+	}
+	return payload
+}
+
+func withProviderSignature(block sigma.ContentBlock, signature string) sigma.ContentBlock {
+	block.ProviderSignature = signature
+	return block
 }
 
 func intPtr(value int) *int {

@@ -65,18 +65,20 @@ type googleAPIError struct {
 }
 
 type streamParser struct {
-	writer         sigma.StreamWriter
-	model          sigma.Model
-	final          sigma.AssistantMessage
-	started        bool
-	blocks         []*googleBlockState
-	currentText    *googleBlockState
-	currentThink   *googleBlockState
-	usage          *sigma.Usage
-	stopReason     sigma.StopReason
-	responseID     string
-	modelVersion   string
-	promptFeedback map[string]any
+	writer          sigma.StreamWriter
+	model           sigma.Model
+	final           sigma.AssistantMessage
+	started         bool
+	blocks          []*googleBlockState
+	currentText     *googleBlockState
+	currentThink    *googleBlockState
+	usage           *sigma.Usage
+	stopReason      sigma.StopReason
+	responseID      string
+	modelVersion    string
+	promptFeedback  map[string]any
+	toolCallIDs     map[string]struct{}
+	toolCallCounter int
 }
 
 type googleBlockState struct {
@@ -239,7 +241,7 @@ func (p *streamParser) emitThinking(ctx context.Context, part googlePart) error 
 func (p *streamParser) emitToolCall(ctx context.Context, part googlePart) error {
 	state := p.newBlock(sigma.ContentBlockToolCall)
 	state.signature = part.ThoughtSignature
-	state.tool.SetID(part.FunctionCall.ID)
+	state.tool.SetID(p.googleToolCallID(part.FunctionCall.ID))
 	state.tool.SetName(part.FunctionCall.Name)
 	state.tool.ProviderSignature = state.signature
 	arguments, err := json.Marshal(part.FunctionCall.Args)
@@ -264,6 +266,26 @@ func (p *streamParser) emitToolCall(ctx context.Context, part googlePart) error 
 		ContentIndex:    intPtr(state.contentIndex),
 		PartialToolCall: partial,
 	})
+}
+
+func (p *streamParser) googleToolCallID(id string) string {
+	if p.toolCallIDs == nil {
+		p.toolCallIDs = make(map[string]struct{})
+	}
+	if id != "" {
+		if _, exists := p.toolCallIDs[id]; !exists {
+			p.toolCallIDs[id] = struct{}{}
+			return id
+		}
+	}
+	for {
+		p.toolCallCounter++
+		synthetic := fmt.Sprintf("google_tool_call_%d", p.toolCallCounter)
+		if _, exists := p.toolCallIDs[synthetic]; !exists {
+			p.toolCallIDs[synthetic] = struct{}{}
+			return synthetic
+		}
+	}
 }
 
 func (p *streamParser) attachSignature(signature string) {
@@ -402,8 +424,8 @@ func (s *googleBlockState) contentBlock() sigma.ContentBlock {
 
 func (u googleUsageMetadata) sigmaUsage() sigma.Usage {
 	return sigma.Usage{
-		InputTokens:          u.PromptTokenCount,
-		OutputTokens:         u.CandidatesTokenCount,
+		InputTokens:          max(0, u.PromptTokenCount-u.CachedContentTokenCount),
+		OutputTokens:         u.CandidatesTokenCount + u.ThoughtsTokenCount,
 		TotalTokens:          u.TotalTokenCount,
 		CacheReadInputTokens: u.CachedContentTokenCount,
 		ThinkingTokens:       u.ThoughtsTokenCount,
@@ -416,7 +438,9 @@ func googleStopReason(reason string) sigma.StopReason {
 		return sigma.StopReasonEndTurn
 	case "MAX_TOKENS":
 		return sigma.StopReasonMaxTokens
-	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII":
+	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII",
+		"IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER",
+		"LANGUAGE", "NO_IMAGE":
 		return sigma.StopReasonContentFilter
 	case "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL":
 		return sigma.StopReasonToolCalls

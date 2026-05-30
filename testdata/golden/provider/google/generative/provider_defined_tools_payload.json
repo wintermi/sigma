@@ -15,7 +15,7 @@
         {
           "description": "Lookup local records",
           "name": "lookup",
-          "parameters": {
+          "parametersJsonSchema": {
             "properties": {
               "query": {
                 "type": "string"

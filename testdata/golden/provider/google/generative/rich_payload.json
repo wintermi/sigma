@@ -32,13 +32,11 @@
     {
       "parts": [
         {
-          "text": "Earlier answer.",
-          "thoughtSignature": "text_previous_sig"
+          "text": "Earlier answer."
         },
         {
           "text": "Internal summary.",
-          "thought": true,
-          "thoughtSignature": "think_previous_sig"
+          "thought": true
         },
         {
           "functionCall": {
@@ -47,8 +45,7 @@
             },
             "id": "call_prev",
             "name": "lookup"
-          },
-          "thoughtSignature": "tool_previous_sig"
+          }
         }
       ],
       "role": "model"
@@ -98,7 +95,7 @@
         {
           "description": "Get weather",
           "name": "weather",
-          "parameters": {
+          "parametersJsonSchema": {
             "additionalProperties": false,
             "properties": {
               "city": {

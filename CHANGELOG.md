@@ -117,6 +117,20 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Generated text metadata now includes representative metadata-only entries for
   every exposed non-custom provider ID, aligned with current compatibility
   metadata and generated base URL/header handling.
+- Google Generative AI and Vertex AI now expose typed Google request controls
+  for tool choice and explicit disabled thinking, with deterministic validation
+  for unsupported tool-choice values.
+- Google payload conversion now replays thought signatures only when they come
+  from the same provider/API/model and are valid Google base64 signatures,
+  sends JSON Schema tools through `parametersJsonSchema` by default, and keeps
+  a legacy sanitized `parameters` escape hatch for compatible endpoints.
+- Google tool-result replay now groups consecutive function responses and can
+  carry image tool results for image-capable models, nesting images for Gemini
+  3+ and using a sidecar image turn for older Gemini routes.
+- Google stream parsing now synthesizes stable tool-call IDs when responses omit
+  or duplicate IDs, maps additional Google safety finish reasons, and separates
+  cached prompt tokens from ordinary input tokens while counting thinking tokens
+  as billable output.
 - Native Anthropic metadata now includes current Claude Haiku, Sonnet, and Opus
   Messages rows, including adaptive-thinking metadata for supported models.
 - Mistral Conversations now supports provider-neutral reasoning controls,
@@ -154,6 +168,8 @@ See [release notes](docs/release-notes-v0.2.0.md).
 - Mistral Conversations image input, built-in connectors, append/restart, and
   broad catalog expansion remain deferred until their request shapes are covered
   by deterministic fixtures.
+- Live Google Gemini API and Vertex AI validation remains deferred; deterministic
+  fixtures are the release evidence for the Google preview adapters.
 - The Go package targets server/CLI use; browser-specific behavior is out of
   scope for the MVP.
 - Agent runtime orchestration and cross-provider context handoff (with

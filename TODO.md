@@ -103,6 +103,16 @@ evidence bar.
 - [ ] Promote additional Fireworks metadata only after matching deterministic
       modeldata, payload, error, and compatibility coverage exists.
 
+## Google parity
+
+- [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
+      use credential-gated probes only for manual compatibility investigation.
+- [ ] Add broader Vertex-specific fixtures only when Vertex behavior diverges
+      from the shared Google payload or stream parser.
+- [ ] Expand Google and Vertex catalog coverage only through the catalog refresh
+      workflow, with deterministic modeldata, payload, error, and compatibility
+      coverage for promoted rows.
+
 ## Mistral parity
 
 - [ ] Add Mistral Conversations image input only after the Conversations request

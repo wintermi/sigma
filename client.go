@@ -390,6 +390,11 @@ func validateOptions(model Model, options Options) error {
 		*options.GoogleOptions.ThinkingBudgetTokens < 0 {
 		return invalidOptionsError(model, "google thinking budget tokens must be non-negative")
 	}
+	if options.GoogleOptions != nil &&
+		options.GoogleOptions.ToolChoice != "" &&
+		!validGoogleToolChoice(options.GoogleOptions.ToolChoice) {
+		return invalidOptionsError(model, "google tool choice must be auto, none, or any")
+	}
 	if options.OpenAIOptions != nil {
 		api := effectiveTextAPI(model)
 		if options.OpenAIOptions.TopLogprobs < 0 {
@@ -403,6 +408,15 @@ func validateOptions(model Model, options Options) error {
 		}
 	}
 	return nil
+}
+
+func validGoogleToolChoice(choice string) bool {
+	switch choice {
+	case "auto", "none", "any", "AUTO", "NONE", "ANY":
+		return true
+	default:
+		return false
+	}
 }
 
 func effectiveTextAPI(model Model) API {
