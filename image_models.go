@@ -13,6 +13,15 @@ const (
 )
 
 const (
+	// ImageOperationGenerate requests text-to-image generation.
+	ImageOperationGenerate ImageOperation = "generate"
+	// ImageOperationEdit requests reference-image editing.
+	ImageOperationEdit ImageOperation = "edit"
+	// ImageOperationVariation requests a variation of one source image.
+	ImageOperationVariation ImageOperation = "variation"
+)
+
+const (
 	// ImageInputText identifies text input for image APIs.
 	ImageInputText = "text"
 	// ImageInputImage identifies image input or output for image APIs.
@@ -21,6 +30,8 @@ const (
 	ImageSourceBase64 = "base64"
 	// ImageSourceURL identifies URL-backed image data.
 	ImageSourceURL = "url"
+	// ImageSourceFileID identifies an already-uploaded provider file reference.
+	ImageSourceFileID = "file_id"
 )
 
 // ImageText constructs a text input for image APIs.
@@ -53,5 +64,14 @@ func ImageOutputURL(mimeType string, url string) ImageInput {
 		MIMEType: mimeType,
 		Source:   ImageSourceURL,
 		URL:      url,
+	}
+}
+
+// ImageFileID constructs a provider file reference for image APIs.
+func ImageFileID(id string) ImageInput {
+	return ImageInput{
+		Type:   ImageInputImage,
+		Source: ImageSourceFileID,
+		Data:   id,
 	}
 }

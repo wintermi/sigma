@@ -23,8 +23,17 @@ See [release notes](docs/release-notes-v0.3.0.md).
   `call_id|item_id` tool-call identifiers before sending Chat Completions
   history.
 - OpenAI-compatible Chat Completions can carry image tool results forward as a
-  follow-up user image message for image-capable models, while preserving the
-  ordinary text or placeholder tool-result message.
+  single batched follow-up user image message after consecutive tool results
+  for image-capable models, while preserving the ordinary text or placeholder
+  tool-result messages.
+- OpenAI Images now supports reference-image edits through
+  `ImageRequest.Inputs`, explicit `ImageOperationVariation` requests for
+  `dall-e-2`, and `ImageRequest.Mask` for edit masks.
+- Image providers can expose streaming through `Client.StreamImages`, and the
+  OpenAI Images adapter can request partial image events with `stream` and
+  `partial_images` while still supporting `GenerateImages`.
+- OpenAI Responses image-generation tool output is parsed into assistant image
+  content blocks, including partial image events during streaming.
 - OpenAI-compatible stream parsing now recognizes Chat Completions
   `reasoning_text` deltas and Responses/Codex refusal and reasoning-text
   events.
@@ -57,8 +66,8 @@ See [release notes](docs/release-notes-v0.3.0.md).
 
 - Default registry entries are metadata-only; applications must import provider
   packages and call their `Register` functions before runtime dispatch.
-- OpenAI Images is generation-only. Reference-image edits, variations,
-  streaming partial images, and Responses image-tool generation remain deferred.
+- OpenAI image generation remains preview. Live image validation is
+  credential-gated and outside deterministic CI.
 - Preview providers are not part of the first release gate and may change before
   `v1.0.0`.
 - OAuth token persistence is caller-owned. OpenAI Codex Responses includes

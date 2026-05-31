@@ -60,8 +60,7 @@ out of the box. Sigma's Go design is intentionally explicit:
   OpenAI Responses, Azure OpenAI Responses, OpenAI Codex Responses, Anthropic
   Messages, Google Generative AI, Google Vertex, Mistral Conversations, and
   Amazon Bedrock Converse Stream.
-- Image generation currently has an OpenRouter adapter. OpenAI Images has
-  generated model metadata, but no runnable provider adapter yet.
+- Image generation currently has OpenRouter and OpenAI Images adapters.
 - Provider IDs such as DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot,
   Fireworks, OpenCode Zen, OpenCode Go, Kimi, Xiaomi, and `custom` exist for
   compatible models, but generated default model coverage and fixture coverage
@@ -371,10 +370,10 @@ for _, image := range images.Images {
 }
 ```
 
-Current provider readiness is intentionally uneven: OpenRouter image generation
-is implemented, while OpenAI Images has generated metadata but no runnable
-provider adapter yet. Treat [provider-parity.md](provider-parity.md) as the
-source of truth before relying on image workflows.
+Current provider readiness is intentionally uneven: OpenRouter and OpenAI
+Images have runnable adapters, while other image-provider routes may remain
+metadata-only. Treat [provider-parity.md](provider-parity.md) as the source of
+truth before relying on image workflows.
 
 ## Thinking And Reasoning
 
@@ -642,7 +641,6 @@ parity:
 
 - Keep `provider-parity.md` updated when image generation, OAuth-backed
   providers, or cross-provider replay behavior changes.
-- Revisit this guide when OpenAI Images has a runnable provider adapter.
 - Revisit custom-provider examples as more OpenAI-compatible compatibility flags
   are promoted or renamed.
 - Add dedicated examples for provider-specific OAuth token providers if those

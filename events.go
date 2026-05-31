@@ -29,6 +29,12 @@ const (
 	EventKindToolCallDelta EventKind = "toolcall_delta"
 	// EventKindToolCallEnd marks the end of a tool-call content block.
 	EventKindToolCallEnd EventKind = "toolcall_end"
+	// EventKindImageStart marks the beginning of an image content block.
+	EventKindImageStart EventKind = "image_start"
+	// EventKindImageDelta carries partial image content.
+	EventKindImageDelta EventKind = "image_delta"
+	// EventKindImageEnd marks the end of an image content block.
+	EventKindImageEnd EventKind = "image_end"
 	// EventKindDone marks the successful end of a stream.
 	EventKindDone EventKind = "done"
 	// EventKindError marks a stream error.
@@ -66,6 +72,8 @@ type Event struct {
 	DeltaText       string            `json:"deltaText,omitempty"`
 	Text            string            `json:"text,omitempty"`
 	Thinking        string            `json:"thinking,omitempty"`
+	Image           *ContentBlock     `json:"image,omitempty"`
+	PartialImage    *ContentBlock     `json:"partialImage,omitempty"`
 	ToolCall        *ToolCall         `json:"toolCall,omitempty"`
 	PartialToolCall *PartialToolCall  `json:"partialToolCall,omitempty"`
 	PartialMessage  *AssistantMessage `json:"partialMessage,omitempty"`
@@ -83,7 +91,7 @@ func (kind EventKind) IsTerminal() bool {
 // IsDelta reports whether kind carries an incremental content update.
 func (kind EventKind) IsDelta() bool {
 	switch kind {
-	case EventKindTextDelta, EventKindThinkingDelta, EventKindToolCallDelta:
+	case EventKindTextDelta, EventKindThinkingDelta, EventKindToolCallDelta, EventKindImageDelta:
 		return true
 	default:
 		return false
@@ -93,7 +101,7 @@ func (kind EventKind) IsDelta() bool {
 // IsStart reports whether kind starts a stream or content block.
 func (kind EventKind) IsStart() bool {
 	switch kind {
-	case EventKindStart, EventKindTextStart, EventKindThinkingStart, EventKindToolCallStart:
+	case EventKindStart, EventKindTextStart, EventKindThinkingStart, EventKindToolCallStart, EventKindImageStart:
 		return true
 	default:
 		return false

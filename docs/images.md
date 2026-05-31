@@ -84,7 +84,8 @@ than a direct xAI image provider.
 
 ## OpenAI Images
 
-`ImageAPIOpenAIImages` uses OpenAI's dedicated image generation endpoint.
+`ImageAPIOpenAIImages` uses OpenAI's dedicated image generation, edit, and
+variation endpoints.
 
 ```go
 registry := sigma.NewRegistry()
@@ -94,9 +95,11 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 Environment: `OPENAI_API_KEY`.
 
-The adapter implements generation-only requests through `ImageRequest.Prompt`.
-Reference-image editing through `ImageRequest.Inputs`, variations, streaming
-partial images, and Responses image-tool generation are deferred.
+The adapter supports generation through `ImageRequest.Prompt`, edits through
+`ImageRequest.Inputs`, edit masks through `ImageRequest.Mask`, explicit
+`dall-e-2` variations through `ImageOperationVariation`, and streaming partial
+images through `Client.StreamImages`. OpenAI Responses image-generation tool
+output is represented as assistant image content in text streams.
 
 ## Examples
 

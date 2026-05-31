@@ -29,6 +29,9 @@ func TestEventKindStringValues(t *testing.T) {
 		{kind: sigma.EventKindToolCallStart, want: "toolcall_start"},
 		{kind: sigma.EventKindToolCallDelta, want: "toolcall_delta"},
 		{kind: sigma.EventKindToolCallEnd, want: "toolcall_end"},
+		{kind: sigma.EventKindImageStart, want: "image_start"},
+		{kind: sigma.EventKindImageDelta, want: "image_delta"},
+		{kind: sigma.EventKindImageEnd, want: "image_end"},
 		{kind: sigma.EventKindDone, want: "done"},
 		{kind: sigma.EventKindError, want: "error"},
 	}
@@ -71,6 +74,9 @@ func TestEventTerminalDetection(t *testing.T) {
 		sigma.EventKindToolCallStart,
 		sigma.EventKindToolCallDelta,
 		sigma.EventKindToolCallEnd,
+		sigma.EventKindImageStart,
+		sigma.EventKindImageDelta,
+		sigma.EventKindImageEnd,
 		sigma.EventKindDone,
 		sigma.EventKindError,
 	} {
@@ -102,9 +108,11 @@ func TestEventKindHelpers(t *testing.T) {
 		{name: "text start", event: sigma.Event{Kind: sigma.EventKindTextStart}, wantStart: true},
 		{name: "thinking start", event: sigma.Event{Kind: sigma.EventKindThinkingStart}, wantStart: true},
 		{name: "tool call start", event: sigma.Event{Kind: sigma.EventKindToolCallStart}, wantStart: true},
+		{name: "image start", event: sigma.Event{Kind: sigma.EventKindImageStart}, wantStart: true},
 		{name: "text delta", event: sigma.Event{Kind: sigma.EventKindTextDelta}, wantDelta: true},
 		{name: "thinking delta", event: sigma.Event{Kind: sigma.EventKindThinkingDelta}, wantDelta: true},
 		{name: "tool call delta", event: sigma.Event{Kind: sigma.EventKindToolCallDelta}, wantDelta: true},
+		{name: "image delta", event: sigma.Event{Kind: sigma.EventKindImageDelta}, wantDelta: true},
 		{name: "done", event: sigma.Event{Kind: sigma.EventKindDone}},
 	}
 

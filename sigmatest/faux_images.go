@@ -210,6 +210,7 @@ func cloneImageModel(model sigma.ImageModel) sigma.ImageModel {
 
 func cloneImageRequest(req sigma.ImageRequest) sigma.ImageRequest {
 	req.Inputs = cloneImageInputs(req.Inputs)
+	req.Mask = cloneImageInputPtr(req.Mask)
 	req.ProviderMetadata = cloneMap(req.ProviderMetadata)
 	return req
 }
@@ -228,4 +229,12 @@ func cloneAssistantImages(response sigma.AssistantImages) sigma.AssistantImages 
 
 func cloneImageInputs(inputs []sigma.ImageInput) []sigma.ImageInput {
 	return append([]sigma.ImageInput(nil), inputs...)
+}
+
+func cloneImageInputPtr(input *sigma.ImageInput) *sigma.ImageInput {
+	if input == nil {
+		return nil
+	}
+	copied := *input
+	return &copied
 }

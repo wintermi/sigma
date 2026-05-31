@@ -1,0 +1,7 @@
+{
+  "model": "gpt-image-1",
+  "partial_images": 1,
+  "prompt": "draw",
+  "output_format": "png",
+  "stream": true
+}

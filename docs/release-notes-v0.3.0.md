@@ -11,8 +11,10 @@ v0.3.0 extends Sigma's generated image metadata with an OpenRouter-routed Grok
 Imagine image model, tightens the OpenAI-compatible preview adapters around
 prompt caching, replay, stream parsing, and Codex OAuth, and adds typed
 provider error classification for safer caller retry and recovery decisions.
-Direct xAI/Grok support remains focused on the preview Chat Completions
-adapter.
+It also broadens the OpenAI image preview surface with edit, variation,
+streaming partial-image, and Responses image-generation tool coverage backed by
+deterministic fixtures. Direct xAI/Grok support remains focused on the preview
+Chat Completions adapter.
 
 ## Added
 
@@ -25,8 +27,16 @@ adapter.
 - Long-lived OpenAI prompt-cache retention maps to `24h` retention unless a
   request supplies an explicit OpenAI provider option.
 - Chat Completions replay normalizes prior Responses-style
-  `call_id|item_id` tool-call identifiers and preserves image tool results for
-  image-capable models.
+  `call_id|item_id` tool-call identifiers and batches image tool results after
+  consecutive tool-result messages for image-capable models.
+- OpenAI Images supports generation, reference-image edits through
+  `ImageRequest.Inputs`, edit masks through `ImageRequest.Mask`, and explicit
+  `dall-e-2` variation requests.
+- `Client.StreamImages` adds optional image-provider streaming, and OpenAI
+  Images can surface partial image events while preserving `GenerateImages` for
+  final-result workflows.
+- OpenAI Responses image-generation tool output is mapped to assistant image
+  content blocks, including partial image events during streaming.
 - OpenAI-compatible stream parsing recognizes Chat Completions
   `reasoning_text` deltas plus Responses/Codex refusal and reasoning-text
   events.
@@ -58,11 +68,16 @@ adapter.
 - OpenAI Codex Responses remains SSE-only. OAuth credential persistence remains
   caller-owned; Sigma exposes device-code login, refresh, and token-provider
   helpers but does not write tokens to disk.
+- OpenAI image variations are intentionally limited to explicit `dall-e-2`
+  requests. Other OpenAI image models use generation or edit operations.
 
 ## Deferred work
 
 - Direct xAI/Grok image-provider semantics remain deferred until the request
   and response shape is covered by deterministic fixtures.
+- Live OpenAI image validation remains deferred to opt-in probes; deterministic
+  fixtures are the release evidence for image generation, edits, variations,
+  streaming, and Responses image-generation tool output.
 - Codex WebSocket transport, WebSocket session caching/fallback, browser
   callback OAuth login, token persistence, Copilot dynamic headers, and
   Cloudflare OpenAI-compatible auth rewriting remain deferred.
@@ -72,6 +87,6 @@ adapter.
 
 This release should use the validation process in [RELEASING.md](../RELEASING.md).
 No live xAI or OpenRouter provider calls are required for release validation.
-OpenAI provider changes, Codex OAuth flows, and typed provider error
-classification are covered by deterministic request, response, OAuth, and SSE
-fixtures.
+OpenAI provider changes, image generation/edit/variation/streaming behavior,
+Codex OAuth flows, and typed provider error classification are covered by
+deterministic request, response, OAuth, and SSE fixtures.

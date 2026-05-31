@@ -6,9 +6,12 @@
 package openai_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -228,14 +231,14 @@ func TestGenerateImagesValidatesBeforeNetwork(t *testing.T) {
 			want: "prompt is required",
 		},
 		{
-			name: "image inputs",
+			name: "variation without explicit operation",
 			req: sigma.ImageRequest{
-				Prompt: "edit this",
 				Inputs: []sigma.ImageInput{
 					sigma.ImageData("image/png", "aW5wdXQ="),
 				},
+				Operation: sigma.ImageOperationVariation,
 			},
-			want: "edits endpoint",
+			want: "dall-e-2",
 		},
 		{
 			name: "unsupported mime",
@@ -260,6 +263,138 @@ func TestGenerateImagesValidatesBeforeNetwork(t *testing.T) {
 	if called {
 		t.Fatal("server was called for locally invalid request")
 	}
+}
+
+func TestGenerateImagesSendsEditMultipartPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[{"b64_json":"ZWRpdA=="}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	client := openAIImagesTestClient(t, server.URL)
+	_, err := client.GenerateImages(
+		context.Background(),
+		openAIImageModel(),
+		sigma.ImageRequest{
+			Prompt:   "keep the product, change the background",
+			Inputs:   []sigma.ImageInput{sigma.ImageData("image/png", "aW5wdXQ="), sigma.ImageFileID("file_123")},
+			Mask:     imageInputPtr(sigma.ImageData("image/png", "bWFzaw==")),
+			Size:     string(sigma.ImageSize1024x1024),
+			Quality:  string(sigma.ImageQualityMedium),
+			MIMEType: "image/png",
+			Count:    1,
+		},
+	)
+	if err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/images/edits"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	form := parseMultipartRequest(t, request)
+	if got, want := form.Value["prompt"], []string{"keep the product, change the background"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("prompt = %#v, want %#v", got, want)
+	}
+	if got, want := form.Value["model"], []string{"gpt-image-1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("model = %#v, want %#v", got, want)
+	}
+	if got, want := form.Value["image_file_id"], []string{"file_123"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("image_file_id = %#v, want %#v", got, want)
+	}
+	if got, want := len(form.File["image"]), 1; got != want {
+		t.Fatalf("image file count = %d, want %d", got, want)
+	}
+	if got, want := len(form.File["mask"]), 1; got != want {
+		t.Fatalf("mask file count = %d, want %d", got, want)
+	}
+}
+
+func TestGenerateImagesSendsVariationMultipartPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[{"url":"https://example.test/variation.png"}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	client := openAIImagesTestClient(t, server.URL)
+	_, err := client.GenerateImages(
+		context.Background(),
+		openAIImageModel(),
+		sigma.ImageRequest{
+			Model:     "dall-e-2",
+			Operation: sigma.ImageOperationVariation,
+			Inputs:    []sigma.ImageInput{sigma.ImageData("image/png", "aW5wdXQ=")},
+			Size:      string(sigma.ImageSize1024x1024),
+			Count:     1,
+		},
+	)
+	if err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/images/variations"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	form := parseMultipartRequest(t, request)
+	if got, want := form.Value["model"], []string{"dall-e-2"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("model = %#v, want %#v", got, want)
+	}
+	if got, want := len(form.File["image"]), 1; got != want {
+		t.Fatalf("image file count = %d, want %d", got, want)
+	}
+}
+
+func TestStreamImagesSendsStreamingPayloadAndCollectsEvents(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"type":"image_generation.partial_image","partial_image_index":0,"b64_json":"cGFydGlhbA=="}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"type":"image_generation.completed","data":[{"b64_json":"ZmluYWw="}],"usage":{"input_tokens":2,"output_tokens":3,"total_tokens":5}}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	client := openAIImagesTestClient(t, server.URL)
+	stream := client.StreamImages(
+		context.Background(),
+		openAIImageModel(),
+		sigma.ImageRequest{Prompt: "draw", MIMEType: "image/png"},
+		sigma.WithImageProviderOption(sigma.ProviderOpenAI, "partial_images", 1),
+	)
+	var events []sigma.ImageEvent
+	for event := range stream.Events() {
+		events = append(events, event)
+	}
+	final, err := sigma.CollectImages(context.Background(), stream)
+	if err != nil {
+		t.Fatalf("CollectImages returned error: %v", err)
+	}
+	if got, want := imageEventKinds(events), []sigma.ImageEventKind{
+		sigma.ImageEventKindStart,
+		sigma.ImageEventKindPartial,
+		sigma.ImageEventKindImage,
+		sigma.ImageEventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("events = %v, want %v", got, want)
+	}
+	if got, want := final.Images, []sigma.ImageInput{sigma.ImageOutputData("image/png", "ZmluYWw=")}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("images = %#v, want %#v", got, want)
+	}
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/openai/images/stream_payload.json")
 }
 
 func TestGenerateImagesRejectsInvalidBaseURL(t *testing.T) {
@@ -375,4 +510,35 @@ func openAIImageModel() sigma.ImageModel {
 			},
 		},
 	}
+}
+
+func parseMultipartRequest(t *testing.T, request capturedRequest) *multipart.Form {
+	t.Helper()
+
+	mediaType, params, err := mime.ParseMediaType(request.Headers.Get("Content-Type"))
+	if err != nil {
+		t.Fatalf("ParseMediaType returned error: %v", err)
+	}
+	if mediaType != "multipart/form-data" {
+		t.Fatalf("content type = %q, want multipart/form-data", mediaType)
+	}
+	reader := multipart.NewReader(bytes.NewReader(request.Body), params["boundary"])
+	form, err := reader.ReadForm(1 << 20)
+	if err != nil {
+		t.Fatalf("ReadForm returned error: %v", err)
+	}
+	t.Cleanup(func() { _ = form.RemoveAll() })
+	return form
+}
+
+func imageInputPtr(input sigma.ImageInput) *sigma.ImageInput {
+	return &input
+}
+
+func imageEventKinds(events []sigma.ImageEvent) []sigma.ImageEventKind {
+	kinds := make([]sigma.ImageEventKind, len(events))
+	for i, event := range events {
+		kinds[i] = event.Kind
+	}
+	return kinds
 }

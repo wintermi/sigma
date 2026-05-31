@@ -199,6 +199,7 @@ type partialBlock struct {
 	kind       ContentBlockType
 	text       string
 	thinking   string
+	image      *ContentBlock
 	toolID     string
 	toolName   string
 	arguments  string
@@ -259,6 +260,22 @@ func (a *partialAccumulator) apply(event Event) {
 			block.toolName = event.ToolCall.Name
 			block.argument = event.ToolCall.Arguments
 			block.hasArg = true
+			block.hasContent = true
+		}
+	case EventKindImageStart:
+		a.block(index, ContentBlockImage)
+	case EventKindImageDelta:
+		block := a.block(index, ContentBlockImage)
+		if event.PartialImage != nil {
+			image := *event.PartialImage
+			block.image = &image
+			block.hasContent = true
+		}
+	case EventKindImageEnd:
+		block := a.block(index, ContentBlockImage)
+		if event.Image != nil {
+			image := *event.Image
+			block.image = &image
 			block.hasContent = true
 		}
 	}
@@ -350,6 +367,11 @@ func (b *partialBlock) contentBlock() ContentBlock {
 	switch b.kind {
 	case ContentBlockThinking:
 		return Thinking(b.thinking, "")
+	case ContentBlockImage:
+		if b.image != nil {
+			return *b.image
+		}
+		return ContentBlock{Type: ContentBlockImage}
 	case ContentBlockToolCall:
 		return ToolCallBlock(b.toolID, b.toolName, b.toolArguments())
 	default:

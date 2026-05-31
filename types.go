@@ -14,6 +14,9 @@ type API string
 // ImageAPI identifies an image generation provider API surface.
 type ImageAPI string
 
+// ImageOperation identifies the requested provider-neutral image operation.
+type ImageOperation string
+
 // ModelID identifies a provider-specific model.
 type ModelID string
 

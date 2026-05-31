@@ -145,26 +145,51 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 		messages = append(messages, message)
 	}
 	toolNames := make(map[string]string)
-	for _, message := range req.Messages {
+	for index := 0; index < len(req.Messages); index++ {
+		message := req.Messages[index]
+		if message.Role == sigma.RoleTool {
+			nextIndex, err := appendToolRunMessages(&messages, req.Messages, index, model, retention, compat, toolNames)
+			if err != nil {
+				return nil, err
+			}
+			index = nextIndex
+			continue
+		}
 		converted, err := chatMessage(message, retention, compat, toolNames)
 		if err != nil {
 			return nil, err
 		}
 		messages = append(messages, converted)
-		if message.Role == sigma.RoleTool && model.SupportsImages() {
-			imageMessage, err := toolResultImageMessage(message)
-			if err != nil {
-				return nil, err
-			}
-			if imageMessage != nil {
-				messages = append(messages, imageMessage)
-			}
-		}
 		if message.Role == sigma.RoleAssistant {
 			recordToolNames(toolNames, message.Content)
 		}
 	}
 	return repairMessages(messages, compat), nil
+}
+
+func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (int, error) {
+	var imageParts []map[string]any
+	index := start
+	for ; index < len(input) && input[index].Role == sigma.RoleTool; index++ {
+		toolMessage := input[index]
+		converted, err := chatMessage(toolMessage, retention, compat, toolNames)
+		if err != nil {
+			return start, err
+		}
+		*messages = append(*messages, converted)
+		if !model.SupportsImages() {
+			continue
+		}
+		parts, err := toolResultImageParts(toolMessage)
+		if err != nil {
+			return start, err
+		}
+		imageParts = append(imageParts, parts...)
+	}
+	if len(imageParts) > 0 {
+		*messages = append(*messages, toolResultImageMessage(imageParts))
+	}
+	return index - 1, nil
 }
 
 func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (map[string]any, error) {
@@ -373,11 +398,8 @@ func hasImageContent(blocks []sigma.ContentBlock) bool {
 	return false
 }
 
-func toolResultImageMessage(message sigma.Message) (map[string]any, error) {
-	parts := []map[string]any{{
-		"type": "text",
-		"text": "Attached image(s) from tool result:",
-	}}
+func toolResultImageParts(message sigma.Message) ([]map[string]any, error) {
+	var parts []map[string]any
 	for _, block := range message.Content {
 		if block.Type != sigma.ContentBlockImage {
 			continue
@@ -393,13 +415,20 @@ func toolResultImageMessage(message sigma.Message) (map[string]any, error) {
 			},
 		})
 	}
-	if len(parts) == 1 {
-		return nil, nil
-	}
+	return parts, nil
+}
+
+func toolResultImageMessage(imageParts []map[string]any) map[string]any {
+	parts := make([]map[string]any, 0, 1+len(imageParts))
+	parts = append(parts, map[string]any{
+		"type": "text",
+		"text": "Attached image(s) from tool result:",
+	})
+	parts = append(parts, imageParts...)
 	return map[string]any{
 		"role":    "user",
 		"content": parts,
-	}, nil
+	}
 }
 
 func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat) ([]map[string]any, error) {

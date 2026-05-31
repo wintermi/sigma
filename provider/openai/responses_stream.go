@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/sse"
@@ -28,6 +29,9 @@ type responsesEvent struct {
 	Delta        string               `json:"delta"`
 	Text         string               `json:"text"`
 	Arguments    string               `json:"arguments"`
+	B64JSON      string               `json:"b64_json"`
+	PartialImage string               `json:"partial_image_b64"`
+	ImageURL     string               `json:"image_url"`
 	Item         responsesOutputItem  `json:"item"`
 	Part         responsesContentPart `json:"part"`
 	Response     responsesResponse    `json:"response"`
@@ -55,6 +59,9 @@ type responsesOutputItem struct {
 	CallID           string                 `json:"call_id"`
 	Name             string                 `json:"name"`
 	Arguments        string                 `json:"arguments"`
+	Result           string                 `json:"result"`
+	B64JSON          string                 `json:"b64_json"`
+	ImageURL         string                 `json:"image_url"`
 	EncryptedContent string                 `json:"encrypted_content"`
 	Signature        string                 `json:"signature"`
 }
@@ -107,6 +114,7 @@ type responsesStreamParser struct {
 	nextBlock     int
 	text          map[int]*responsesTextState
 	thinking      map[int]*responsesThinkingState
+	images        map[int]*responsesImageState
 	toolCalls     map[int]*streamblocks.ToolCall
 	toolItemIDs   map[int]string
 	responseID    string
@@ -127,12 +135,22 @@ type responsesThinkingState struct {
 	itemID string
 }
 
+type responsesImageState struct {
+	ContentIndex int
+	itemID       string
+	status       string
+	image        sigma.ContentBlock
+	Started      bool
+	Closed       bool
+}
+
 func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
 	parser := responsesStreamParser{
 		writer:      writer,
 		model:       model,
 		text:        make(map[int]*responsesTextState),
 		thinking:    make(map[int]*responsesThinkingState),
+		images:      make(map[int]*responsesImageState),
 		toolCalls:   make(map[int]*streamblocks.ToolCall),
 		toolItemIDs: make(map[int]string),
 		final: sigma.AssistantMessage{
@@ -233,6 +251,11 @@ func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event
 			state.SetArguments(parsed.Arguments)
 		}
 		return nil
+	case "response.image_generation_call.partial_image":
+		if err := p.emitStart(ctx); err != nil {
+			return err
+		}
+		return p.emitImage(ctx, parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.PartialImage, parsed.B64JSON, parsed.Delta, parsed.ImageURL), true)
 	default:
 		// The Responses API emits lifecycle, content-part, refusal, and tool
 		// progress events that carry no additional public sigma content.
@@ -337,10 +360,16 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 		if item.Arguments != "" {
 			state.SetArguments(item.Arguments)
 		}
+	case "image_generation_call":
+		p.finishImage(outputIndex, item.ID, item.Status, firstNonEmpty(item.Result, item.B64JSON, item.ImageURL))
 	}
 }
 
 func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event responsesEvent) error {
+	if event.Item.Type == "image_generation_call" {
+		p.captureOutputItem(event.OutputIndex, event.Item)
+		return p.emitImage(ctx, event.OutputIndex, event.Item.ID, firstNonEmpty(event.Item.Result, event.Item.B64JSON, event.Item.ImageURL), true)
+	}
 	if event.Item.Type != "function_call" {
 		p.captureOutputItem(event.OutputIndex, event.Item)
 		return nil
@@ -418,6 +447,37 @@ func (p *responsesStreamParser) emitThinking(ctx context.Context, outputIndex in
 	})
 }
 
+func (p *responsesStreamParser) emitImage(ctx context.Context, outputIndex int, itemID string, value string, partial bool) error {
+	state := p.imageState(outputIndex)
+	state.itemID = firstNonEmpty(state.itemID, itemID)
+	if !state.Started {
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:         sigma.EventKindImageStart,
+			ContentIndex: intPtr(state.ContentIndex),
+		}); err != nil {
+			return err
+		}
+		state.Started = true
+	}
+	if value == "" {
+		return nil
+	}
+	image := responseImageBlock(value)
+	image.ProviderMetadata = responsesMetadata(state.itemID, "", "")
+	state.image = image
+	event := sigma.Event{
+		Kind:         sigma.EventKindImageDelta,
+		ContentIndex: intPtr(state.ContentIndex),
+		PartialImage: &image,
+	}
+	if !partial {
+		event.Kind = sigma.EventKindImageEnd
+		event.Image = &image
+		state.Closed = true
+	}
+	return p.writer.Emit(ctx, event)
+}
+
 func (p *responsesStreamParser) emitToolCall(ctx context.Context, outputIndex int, delta streamToolCallDelta) error {
 	state := p.toolCallState(outputIndex)
 	state.SetID(delta.ID)
@@ -457,6 +517,23 @@ func (p *responsesStreamParser) finishThinking(outputIndex int, itemID string, t
 	}
 }
 
+func (p *responsesStreamParser) finishImage(outputIndex int, itemID string, status string, value string) {
+	state := p.imageState(outputIndex)
+	state.itemID = firstNonEmpty(state.itemID, itemID)
+	state.status = firstNonEmpty(state.status, status)
+	if value != "" {
+		image := responseImageBlock(value)
+		image.ProviderMetadata = responsesMetadata(state.itemID, "", "")
+		if state.status != "" {
+			if image.ProviderMetadata == nil {
+				image.ProviderMetadata = make(map[string]any)
+			}
+			image.ProviderMetadata["status"] = state.status
+		}
+		state.image = image
+	}
+}
+
 func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	contentByIndex := make(map[int]sigma.ContentBlock)
 	for _, state := range p.sortedText() {
@@ -469,6 +546,22 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		block := sigma.Thinking(state.String(), state.Signature)
 		block.ProviderSignature = state.ProviderSignature
 		block.ProviderMetadata = responsesMetadata(state.itemID, "", "")
+		contentByIndex[state.ContentIndex] = block
+	}
+	for _, state := range p.sortedImages() {
+		block := state.image
+		if block.Type == "" {
+			block = sigma.ContentBlock{Type: sigma.ContentBlockImage}
+		}
+		if block.ProviderMetadata == nil {
+			block.ProviderMetadata = responsesMetadata(state.itemID, "", "")
+		}
+		if state.status != "" {
+			if block.ProviderMetadata == nil {
+				block.ProviderMetadata = make(map[string]any)
+			}
+			block.ProviderMetadata["status"] = state.status
+		}
 		contentByIndex[state.ContentIndex] = block
 	}
 	for _, state := range p.sortedToolCalls() {
@@ -511,7 +604,7 @@ func (p *responsesStreamParser) emitEndEvents(ctx context.Context) {
 	events := make([]struct {
 		index int
 		emit  func()
-	}, 0, len(p.text)+len(p.thinking)+len(p.toolCalls))
+	}, 0, len(p.text)+len(p.thinking)+len(p.images)+len(p.toolCalls))
 	for _, state := range p.text {
 		state := state
 		if state.Started && !state.Closed {
@@ -561,6 +654,26 @@ func (p *responsesStreamParser) emitEndEvents(ctx context.Context) {
 			}})
 		}
 	}
+	for _, state := range p.images {
+		state := state
+		if state.Started && !state.Closed {
+			events = append(events, struct {
+				index int
+				emit  func()
+			}{index: state.ContentIndex, emit: func() {
+				image := state.image
+				if image.Type == "" {
+					image = sigma.ContentBlock{Type: sigma.ContentBlockImage}
+				}
+				_ = p.writer.Emit(ctx, sigma.Event{
+					Kind:         sigma.EventKindImageEnd,
+					ContentIndex: intPtr(state.ContentIndex),
+					Image:        &image,
+				})
+				state.Closed = true
+			}})
+		}
+	}
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].index < events[j].index
 	})
@@ -592,6 +705,15 @@ func (p *responsesStreamParser) toolCallState(outputIndex int) *streamblocks.Too
 	if state == nil {
 		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
 		p.toolCalls[outputIndex] = state
+	}
+	return state
+}
+
+func (p *responsesStreamParser) imageState(outputIndex int) *responsesImageState {
+	state := p.images[outputIndex]
+	if state == nil {
+		state = &responsesImageState{ContentIndex: p.nextContentIndex()}
+		p.images[outputIndex] = state
 	}
 	return state
 }
@@ -633,6 +755,28 @@ func (p *responsesStreamParser) sortedToolCalls() []*streamblocks.ToolCall {
 		return states[i].ContentIndex < states[j].ContentIndex
 	})
 	return states
+}
+
+func (p *responsesStreamParser) sortedImages() []*responsesImageState {
+	states := make([]*responsesImageState, 0, len(p.images))
+	for _, state := range p.images {
+		states = append(states, state)
+	}
+	sort.Slice(states, func(i, j int) bool {
+		return states[i].ContentIndex < states[j].ContentIndex
+	})
+	return states
+}
+
+func responseImageBlock(value string) sigma.ContentBlock {
+	if before, after, ok := strings.Cut(value, ","); ok && strings.Contains(before, "base64") {
+		mimeType := strings.TrimPrefix(strings.TrimSuffix(before, ";base64"), "data:")
+		return sigma.ImageBase64(mimeType, after)
+	}
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		return sigma.ImageURL("", value)
+	}
+	return sigma.ImageBase64("image/png", value)
 }
 
 func (p *responsesStreamParser) toolItemID(state *streamblocks.ToolCall) string {

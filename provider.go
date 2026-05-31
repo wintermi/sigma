@@ -18,3 +18,10 @@ type ImageProvider interface {
 	API() ImageAPI
 	Generate(context.Context, ImageModel, ImageRequest, Options) (AssistantImages, error)
 }
+
+// StreamingImageProvider optionally adapts a provider API into sigma's
+// streaming image interface.
+type StreamingImageProvider interface {
+	ImageProvider
+	StreamImages(context.Context, ImageModel, ImageRequest, Options) *ImageStream
+}

@@ -158,8 +158,10 @@ type ImageModel struct {
 type ImageRequest struct {
 	Model            ModelID        `json:"model,omitempty"`
 	Provider         ProviderID     `json:"provider,omitempty"`
+	Operation        ImageOperation `json:"operation,omitempty"`
 	Prompt           string         `json:"prompt,omitempty"`
 	Inputs           []ImageInput   `json:"inputs,omitempty"`
+	Mask             *ImageInput    `json:"mask,omitempty"`
 	Size             string         `json:"size,omitempty"`
 	Quality          string         `json:"quality,omitempty"`
 	MIMEType         string         `json:"mimeType,omitempty"`

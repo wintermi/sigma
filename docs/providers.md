@@ -226,8 +226,8 @@ _ = openrouter.Register(registry)
 Environment: `OPENROUTER_API_KEY`.
 
 OpenRouter image generation is non-streaming and uses image-capable Chat
-Completions responses. OpenAI Images model metadata exists, but the OpenAI
-Images provider adapter is not implemented yet.
+Completions responses. OpenAI Images uses the dedicated OpenAI Images adapter
+for generation, edits, variations, and streaming partial image events.
 
 ## Provider Options
 

@@ -8,15 +8,18 @@ package openai
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/sse"
 )
 
 const maxImagesResponseBytes = 64 << 20
@@ -49,7 +52,7 @@ func (p *ImagesProvider) API() sigma.ImageAPI {
 	return sigma.ImageAPIOpenAIImages
 }
 
-// Generate sends req to OpenAI's non-streaming image generation endpoint.
+// Generate sends req to OpenAI's non-streaming image endpoint.
 func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
@@ -88,17 +91,75 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	return decodeImagesResponse(body, model, req)
 }
 
+// StreamImages sends req to OpenAI's streaming image endpoint.
+func (p *ImagesProvider) StreamImages(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) *sigma.ImageStream {
+	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
+	stream, writer := sigma.NewImageStream(ctx)
+	go func() {
+		defer cancel()
+		resp, err := sigma.DoHTTPWithRetry(
+			ctx,
+			p.base.httpClient(opts),
+			opts,
+			func(ctx context.Context) (*http.Request, error) {
+				return p.newStreamRequest(ctx, model, req, opts)
+			},
+			func(resp *http.Response) *sigma.ProviderError {
+				return imagesResponseError(resp, model)
+			},
+			sigma.ImageResponseDebugHTTPHook(ctx, opts, model.Provider, sigma.ImageAPIOpenAIImages, model.ID),
+		)
+		if err != nil {
+			final := sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+				final.StopReason = sigma.StopReasonAborted
+				_ = writer.Error(ctx, contextError(ctx, err), final)
+				return
+			}
+			_ = writer.Error(ctx, err, final)
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+			_ = writer.Error(ctx, imagesProviderError(resp, model, body, nil), sigma.AssistantImages{
+				Model:      model.ID,
+				Provider:   model.Provider,
+				StopReason: sigma.StopReasonError,
+			})
+			return
+		}
+		final, err := parseImagesStream(ctx, resp.Body, writer, model, req)
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+				final.StopReason = sigma.StopReasonAborted
+				_ = writer.Error(ctx, contextError(ctx, err), final)
+				return
+			}
+			final.StopReason = sigma.StopReasonError
+			_ = writer.Error(ctx, err, final)
+			return
+		}
+		_ = writer.Done(ctx, final)
+	}()
+	return stream
+}
+
 func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
-	payload, err := imagesPayload(model, req, opts)
+	return p.newRequestWithStream(ctx, model, req, opts, false)
+}
+
+func (p *ImagesProvider) newStreamRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
+	return p.newRequestWithStream(ctx, model, req, opts, true)
+}
+
+func (p *ImagesProvider) newRequestWithStream(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) (*http.Request, error) {
+	body, contentType, err := imagesRequestBody(model, req, opts, stream)
 	if err != nil {
 		return nil, err
 	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("openai images: encode request: %w", err)
-	}
 
-	endpoint, err := p.endpoint(model, opts)
+	endpoint, err := p.endpoint(model, req, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +167,7 @@ func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel,
 	if err != nil {
 		return nil, err
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", contentType)
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", "sigma/openai-images")
 
@@ -127,12 +188,31 @@ func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel,
 	return httpReq, nil
 }
 
-func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (map[string]any, error) {
+func imagesRequestBody(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) ([]byte, string, error) {
+	operation := imageOperation(req)
+	if stream && operation == sigma.ImageOperationVariation {
+		return nil, "", fmt.Errorf("openai images: variations do not support streaming")
+	}
+	if operation == sigma.ImageOperationGenerate {
+		payload, err := imagesPayload(model, req, opts, stream)
+		if err != nil {
+			return nil, "", err
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, "", fmt.Errorf("openai images: encode request: %w", err)
+		}
+		return body, "application/json", nil
+	}
+	return multipartImagesPayload(model, req, opts, operation, stream)
+}
+
+func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) (map[string]any, error) {
 	if strings.TrimSpace(req.Prompt) == "" {
 		return nil, fmt.Errorf("openai images: prompt is required")
 	}
 	if len(req.Inputs) > 0 {
-		return nil, fmt.Errorf("openai images: image inputs require the edits endpoint, which is not implemented")
+		return nil, fmt.Errorf("openai images: image inputs require the edits endpoint")
 	}
 
 	payload := map[string]any{
@@ -155,10 +235,219 @@ func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Op
 		}
 		payload["output_format"] = format
 	}
+	if stream {
+		payload["stream"] = true
+		addPartialImages(payload, opts, model.Provider)
+	}
 	for key, value := range extraBody(opts, model.Provider) {
 		payload[key] = value
 	}
 	return payload, nil
+}
+
+func multipartImagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, operation sigma.ImageOperation, stream bool) ([]byte, string, error) {
+	if err := validateMultipartImageRequest(model, req, operation); err != nil {
+		return nil, "", err
+	}
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writeCommonImageFields(writer, model, req, opts, stream); err != nil {
+		return nil, "", err
+	}
+	switch operation { //nolint:exhaustive
+	case sigma.ImageOperationEdit:
+		if err := writeEditImageFields(writer, req); err != nil {
+			return nil, "", err
+		}
+	case sigma.ImageOperationVariation:
+		if err := writeVariationImageFields(writer, req); err != nil {
+			return nil, "", err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, "", fmt.Errorf("openai images: encode multipart request: %w", err)
+	}
+	return body.Bytes(), writer.FormDataContentType(), nil
+}
+
+func validateMultipartImageRequest(model sigma.ImageModel, req sigma.ImageRequest, operation sigma.ImageOperation) error {
+	switch operation {
+	case sigma.ImageOperationEdit:
+		if strings.TrimSpace(req.Prompt) == "" {
+			return fmt.Errorf("openai images: prompt is required")
+		}
+		if len(req.Inputs) == 0 {
+			return fmt.Errorf("openai images: edit requires image inputs")
+		}
+	case sigma.ImageOperationVariation:
+		if imageModelID(model, req) != "dall-e-2" {
+			return fmt.Errorf("openai images: variations require dall-e-2")
+		}
+		if strings.TrimSpace(req.Prompt) != "" {
+			return fmt.Errorf("openai images: variations do not support prompt")
+		}
+		if len(req.Inputs) != 1 {
+			return fmt.Errorf("openai images: variations require exactly one image input")
+		}
+		input := req.Inputs[0]
+		if input.Type != sigma.ImageInputImage || input.Source != sigma.ImageSourceBase64 {
+			return fmt.Errorf("openai images: variations require one base64 PNG image input")
+		}
+		if strings.ToLower(strings.TrimSpace(input.MIMEType)) != "image/png" {
+			return fmt.Errorf("openai images: variations require image/png input")
+		}
+	default:
+		return fmt.Errorf("openai images: unsupported operation %q", operation)
+	}
+	return nil
+}
+
+func writeCommonImageFields(writer *multipart.Writer, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) error {
+	fields := map[string]string{
+		"model": string(imageModelID(model, req)),
+	}
+	if req.Prompt != "" {
+		fields["prompt"] = req.Prompt
+	}
+	if req.Count > 0 {
+		fields["n"] = fmt.Sprint(req.Count)
+	}
+	if req.Size != "" {
+		fields["size"] = req.Size
+	}
+	if req.Quality != "" {
+		fields["quality"] = req.Quality
+	}
+	if req.MIMEType != "" {
+		format, err := outputFormat(req.MIMEType)
+		if err != nil {
+			return err
+		}
+		fields["output_format"] = format
+	}
+	if stream {
+		fields["stream"] = "true"
+		if partialImages, ok := partialImagesOption(opts, model.Provider); ok {
+			fields["partial_images"] = fmt.Sprint(partialImages)
+		}
+	}
+	for key, value := range extraBody(opts, model.Provider) {
+		fields[key] = fmt.Sprint(value)
+	}
+	for key, value := range fields {
+		if err := writer.WriteField(key, value); err != nil {
+			return fmt.Errorf("openai images: write field %q: %w", key, err)
+		}
+	}
+	return nil
+}
+
+func writeEditImageFields(writer *multipart.Writer, req sigma.ImageRequest) error {
+	for index, input := range req.Inputs {
+		if err := writeImageInputField(writer, "image", index, input); err != nil {
+			return err
+		}
+	}
+	if req.Mask != nil {
+		if err := writeImageInputField(writer, "mask", 0, *req.Mask); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeVariationImageFields(writer *multipart.Writer, req sigma.ImageRequest) error {
+	return writeImageInputField(writer, "image", 0, req.Inputs[0])
+}
+
+func writeImageInputField(writer *multipart.Writer, field string, index int, input sigma.ImageInput) error {
+	switch input.Type {
+	case sigma.ImageInputText:
+		if err := writer.WriteField(field+"_text", input.Text); err != nil {
+			return fmt.Errorf("openai images: write %s text field: %w", field, err)
+		}
+		return nil
+	case sigma.ImageInputImage:
+	default:
+		return fmt.Errorf("openai images: unsupported image input type %q", input.Type)
+	}
+	switch input.Source {
+	case sigma.ImageSourceBase64:
+		data, err := base64.StdEncoding.DecodeString(input.Data)
+		if err != nil {
+			return fmt.Errorf("openai images: image input data must be base64: %w", err)
+		}
+		part, err := writer.CreateFormFile(field, imageInputFilename(field, index, input.MIMEType))
+		if err != nil {
+			return fmt.Errorf("openai images: create %s file field: %w", field, err)
+		}
+		if _, err := part.Write(data); err != nil {
+			return fmt.Errorf("openai images: write %s file field: %w", field, err)
+		}
+	case sigma.ImageSourceURL:
+		if input.URL == "" {
+			return fmt.Errorf("openai images: image input URL is required")
+		}
+		if err := writer.WriteField(field+"_url", input.URL); err != nil {
+			return fmt.Errorf("openai images: write %s URL field: %w", field, err)
+		}
+	case sigma.ImageSourceFileID:
+		if input.Data == "" {
+			return fmt.Errorf("openai images: image file ID is required")
+		}
+		if err := writer.WriteField(field+"_file_id", input.Data); err != nil {
+			return fmt.Errorf("openai images: write %s file ID field: %w", field, err)
+		}
+	default:
+		return fmt.Errorf("openai images: unsupported image input source %q", input.Source)
+	}
+	return nil
+}
+
+func imageInputFilename(field string, index int, mimeType string) string {
+	extension := "png"
+	switch strings.ToLower(strings.TrimSpace(mimeType)) {
+	case "image/jpeg", "image/jpg":
+		extension = "jpg"
+	case "image/webp":
+		extension = "webp"
+	}
+	return fmt.Sprintf("%s_%d.%s", field, index, extension)
+}
+
+func imageOperation(req sigma.ImageRequest) sigma.ImageOperation {
+	if req.Operation != "" {
+		return req.Operation
+	}
+	if len(req.Inputs) > 0 || req.Mask != nil {
+		return sigma.ImageOperationEdit
+	}
+	return sigma.ImageOperationGenerate
+}
+
+func addPartialImages(payload map[string]any, opts sigma.Options, provider sigma.ProviderID) {
+	if partialImages, ok := partialImagesOption(opts, provider); ok {
+		payload["partial_images"] = partialImages
+	}
+}
+
+func partialImagesOption(opts sigma.Options, provider sigma.ProviderID) (int, bool) {
+	options := providerOptions(opts, provider)
+	value, ok := options["partial_images"]
+	if !ok {
+		value, ok = options["partialImages"]
+	}
+	if !ok {
+		return 0, false
+	}
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case float64:
+		return int(typed), true
+	default:
+		return 0, false
+	}
 }
 
 func imageModelID(model sigma.ImageModel, req sigma.ImageRequest) sigma.ModelID {
@@ -235,7 +524,7 @@ func imageAuthModel(model sigma.ImageModel) sigma.Model {
 	}
 }
 
-func (p *ImagesProvider) endpoint(model sigma.ImageModel, opts sigma.Options) (string, error) {
+func (p *ImagesProvider) endpoint(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (string, error) {
 	options := providerOptions(opts, model.Provider)
 	if endpoint, ok := stringOption(options, providerOptionEndpoint); ok {
 		if err := validateImagesEndpoint(endpoint); err != nil {
@@ -249,7 +538,14 @@ func (p *ImagesProvider) endpoint(model sigma.ImageModel, opts sigma.Options) (s
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("openai images: invalid base URL %q", baseURL)
 	}
-	return baseURL + "/images/generations", nil
+	switch imageOperation(req) {
+	case sigma.ImageOperationEdit:
+		return baseURL + "/images/edits", nil
+	case sigma.ImageOperationVariation:
+		return baseURL + "/images/variations", nil
+	default:
+		return baseURL + "/images/generations", nil
+	}
 }
 
 func validateImagesEndpoint(endpoint string) error {
@@ -325,6 +621,19 @@ type imageData struct {
 	RevisedPrompt string `json:"revised_prompt"`
 }
 
+type imagesStreamEvent struct {
+	Type              string          `json:"type"`
+	B64JSON           string          `json:"b64_json"`
+	PartialImageB64   string          `json:"partial_image_b64"`
+	URL               string          `json:"url"`
+	OutputIndex       *int            `json:"output_index"`
+	PartialImageIndex *int            `json:"partial_image_index"`
+	Data              []imageData     `json:"data"`
+	Response          *imagesResponse `json:"response"`
+	Usage             *imagesUsage    `json:"usage"`
+	Error             *imagesAPIError `json:"error"`
+}
+
 type imagesAPIError struct {
 	Code    any    `json:"code"`
 	Message string `json:"message"`
@@ -384,6 +693,115 @@ func decodeImagesResponse(body []byte, model sigma.ImageModel, req sigma.ImageRe
 		images.Usage = &usage
 	}
 	return images, nil
+}
+
+func parseImagesStream(ctx context.Context, body io.Reader, writer sigma.ImageStreamWriter, model sigma.ImageModel, req sigma.ImageRequest) (sigma.AssistantImages, error) {
+	final := sigma.AssistantImages{
+		Model:      model.ID,
+		Provider:   model.Provider,
+		StopReason: sigma.StopReasonEndTurn,
+	}
+	started := false
+	emitStart := func() error {
+		if started {
+			return nil
+		}
+		started = true
+		return writer.Emit(ctx, sigma.ImageEvent{Kind: sigma.ImageEventKindStart})
+	}
+	err := sse.Parse(ctx, body, func(event sse.Event) error {
+		if event.Done {
+			return sse.ErrStop
+		}
+		var decoded imagesStreamEvent
+		if err := json.Unmarshal([]byte(event.Data), &decoded); err != nil {
+			return fmt.Errorf("openai images: decode stream event: %w", err)
+		}
+		if decoded.Error != nil {
+			body, _ := json.Marshal(map[string]any{"error": decoded.Error})
+			return sigma.NewProviderError(model.Provider, sigma.API(sigma.ImageAPIOpenAIImages), model.ID, 0, "", 0, body, sigma.ErrProviderResponse)
+		}
+		if decoded.Response != nil {
+			response, err := decoded.Response.assistantImages(model, req)
+			if err != nil {
+				return err
+			}
+			final = response
+		}
+		if decoded.Usage != nil {
+			usage := decoded.Usage.sigmaUsage()
+			final.Usage = &usage
+		}
+		images := decoded.outputImages(req)
+		if len(images) == 0 {
+			return nil
+		}
+		if err := emitStart(); err != nil {
+			return err
+		}
+		for index := range images {
+			image := images[index]
+			sequence := index
+			if decoded.PartialImageIndex != nil {
+				sequence = *decoded.PartialImageIndex
+			} else if decoded.OutputIndex != nil {
+				sequence = *decoded.OutputIndex
+			}
+			kind := sigma.ImageEventKindImage
+			if strings.Contains(decoded.Type, "partial") {
+				kind = sigma.ImageEventKindPartial
+			} else {
+				final.Images = append(final.Images, image)
+			}
+			event := sigma.ImageEvent{Kind: kind, SequenceIndex: &sequence}
+			if kind == sigma.ImageEventKindPartial {
+				event.PartialImage = &image
+			} else {
+				event.Image = &image
+			}
+			if err := writer.Emit(ctx, event); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if errors.Is(err, sse.ErrStop) {
+		err = nil
+	}
+	return final, err
+}
+
+func (event imagesStreamEvent) outputImages(req sigma.ImageRequest) []sigma.ImageInput {
+	if len(event.Data) > 0 {
+		mimeType := outputMIMEType("", req.MIMEType)
+		images := make([]sigma.ImageInput, 0, len(event.Data))
+		for _, item := range event.Data {
+			if item.B64JSON != "" {
+				images = append(images, sigma.ImageOutputData(mimeType, item.B64JSON))
+			}
+			if item.URL != "" {
+				images = append(images, sigma.ImageOutputURL("", item.URL))
+			}
+		}
+		return images
+	}
+	mimeType := outputMIMEType("", req.MIMEType)
+	b64 := firstNonEmpty(event.B64JSON, event.PartialImageB64)
+	if b64 != "" {
+		return []sigma.ImageInput{sigma.ImageOutputData(mimeType, b64)}
+	}
+	if event.URL != "" {
+		return []sigma.ImageInput{sigma.ImageOutputURL("", event.URL)}
+	}
+	return nil
+}
+
+func (decoded imagesResponse) assistantImages(model sigma.ImageModel, req sigma.ImageRequest) (sigma.AssistantImages, error) {
+	body, err := json.Marshal(decoded)
+	if err != nil {
+		return sigma.AssistantImages{}, err
+	}
+	return decodeImagesResponse(body, model, req)
 }
 
 func imagesProviderMetadata(decoded imagesResponse) map[string]any {

@@ -325,6 +325,69 @@ func TestChatCompletionsNormalizesReplayToolIDsAndCarriesToolResultImages(t *tes
 	}
 }
 
+func TestChatCompletionsBatchesConsecutiveToolResultImages(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-batched-tool-images-test")
+	model := openAITestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage}
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("inspect both"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("call_1", "lookup", map[string]any{"path": "one.png"}),
+					sigma.ToolCallBlock("call_2", "lookup", map[string]any{"path": "two.png"}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_1",
+				Content:    []sigma.ContentBlock{sigma.Text("one"), sigma.ImageBase64("image/png", "b25l")},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_2",
+				Content:    []sigma.ContentBlock{sigma.Text("two"), sigma.ImageBase64("image/png", "dHdv")},
+			},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	roles := make([]any, len(payload.Messages))
+	for i, message := range payload.Messages {
+		roles[i] = message["role"]
+	}
+	if want := []any{"user", "assistant", "tool", "tool", "user"}; !reflect.DeepEqual(roles, want) {
+		t.Fatalf("roles = %#v, want %#v", roles, want)
+	}
+	sidecar := payload.Messages[4]
+	parts, ok := sidecar["content"].([]any)
+	if !ok || len(parts) != 3 {
+		t.Fatalf("sidecar content = %#v, want text plus two images", sidecar["content"])
+	}
+}
+
 func TestChatCompletionsStreamingParsesReasoningText(t *testing.T) {
 	t.Parallel()
 

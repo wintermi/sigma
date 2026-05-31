@@ -648,6 +648,62 @@ data: {"type":"response.completed","response":{"id":"resp_tool","status":"comple
 	}
 }
 
+func TestResponsesStreamingParsesImageGenerationOutput(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w,
+			`data: {"type":"response.created","response":{"id":"resp_image","status":"in_progress"}}
+
+data: {"type":"response.output_item.added","response_id":"resp_image","output_index":0,"item":{"type":"image_generation_call","id":"ig_1","status":"in_progress"}}
+
+data: {"type":"response.image_generation_call.partial_image","response_id":"resp_image","item_id":"ig_1","output_index":0,"partial_image_b64":"cGFydGlhbA=="}
+
+data: {"type":"response.output_item.done","response_id":"resp_image","output_index":0,"item":{"type":"image_generation_call","id":"ig_1","status":"completed","result":"ZmluYWw="}}
+
+data: {"type":"response.completed","response":{"id":"resp_image","status":"completed","output":[{"type":"image_generation_call","id":"ig_1","status":"completed","result":"ZmluYWw="}]}}
+`,
+		)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-image-generation-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("draw")},
+		Tools:    []sigma.Tool{openai.Tools.ImageGeneration(openai.WithPartialImages(1))},
+	})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindImageStart,
+		sigma.EventKindImageDelta,
+		sigma.EventKindImageEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if len(final.Content) != 1 || final.Content[0].Type != sigma.ContentBlockImage {
+		t.Fatalf("content = %#v, want one image block", final.Content)
+	}
+	if got, want := final.Content[0].Data, "ZmluYWw="; got != want {
+		t.Fatalf("image data = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].ProviderMetadata["id"], "ig_1"; got != want {
+		t.Fatalf("image id metadata = %v, want %q", got, want)
+	}
+}
+
 func TestResponsesProviderErrorIsTypedAndRedacted(t *testing.T) {
 	t.Parallel()
 

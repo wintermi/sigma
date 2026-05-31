@@ -339,6 +339,18 @@ func cloneEvents(events []sigma.Event) []sigma.Event {
 
 func cloneEvent(event sigma.Event) sigma.Event {
 	event.ContentIndex = ptrCopy(event.ContentIndex)
+	if event.Image != nil {
+		image := *event.Image
+		image.ToolArguments = cloneAny(image.ToolArguments)
+		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
+		event.Image = &image
+	}
+	if event.PartialImage != nil {
+		image := *event.PartialImage
+		image.ToolArguments = cloneAny(image.ToolArguments)
+		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
+		event.PartialImage = &image
+	}
 	if event.ToolCall != nil {
 		toolCall := *event.ToolCall
 		toolCall.Arguments = cloneAny(toolCall.Arguments)

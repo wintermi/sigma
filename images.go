@@ -165,9 +165,78 @@ func (c *Client) GenerateImages(ctx context.Context, model ImageModel, req Image
 	return images, nil
 }
 
+// StreamImages starts a streaming image provider call for model.
+func (c *Client) StreamImages(ctx context.Context, model ImageModel, req ImageRequest, opts ...ImageOption) *ImageStream {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if c == nil {
+		c = NewClient()
+	}
+	if err := ValidateModelRef(ModelRef{Provider: model.Provider, ID: model.ID}); err != nil {
+		return errorImageStream(ctx, err, AssistantImages{Model: model.ID, Provider: model.Provider})
+	}
+
+	registered, ok := c.GetImageModel(model.Provider, model.ID)
+	if !ok {
+		return errorImageStream(ctx, modelNotFoundError(model.Provider, model.ID), AssistantImages{Model: model.ID, Provider: model.Provider})
+	}
+	if model.API == "" {
+		model = registered
+	}
+
+	provider, ok := c.registry.ImageProvider(model.Provider)
+	if !ok {
+		return errorImageStream(ctx, imageProviderNotFoundError(model.Provider, model.ID), AssistantImages{Model: model.ID, Provider: model.Provider})
+	}
+
+	options := c.imageRequestOptions(opts)
+	if err := validateImageOptions(model, options); err != nil {
+		return errorImageStream(ctx, err, AssistantImages{Model: model.ID, Provider: model.Provider})
+	}
+	if err := ctx.Err(); err != nil {
+		return errorImageStream(ctx, imageAbortedError(err), AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: StopReasonAborted})
+	}
+
+	if streaming, ok := provider.(StreamingImageProvider); ok {
+		return streaming.StreamImages(ctx, model, req, options)
+	}
+	return c.generateImagesAsStream(ctx, model, req, provider, options)
+}
+
+func (c *Client) generateImagesAsStream(ctx context.Context, model ImageModel, req ImageRequest, provider ImageProvider, options Options) *ImageStream {
+	stream, writer := NewImageStream(ctx)
+	go func() {
+		images, err := provider.Generate(ctx, model, req, options)
+		images = finalImages(model, images, err)
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				_ = writer.Error(ctx, imageAbortedError(err), images)
+				return
+			}
+			_ = writer.Error(ctx, err, images)
+			return
+		}
+		for index := range images.Images {
+			image := images.Images[index]
+			sequence := index
+			if err := writer.Emit(ctx, ImageEvent{Kind: ImageEventKindImage, Image: &image, SequenceIndex: &sequence}); err != nil {
+				return
+			}
+		}
+		_ = writer.Done(ctx, images)
+	}()
+	return stream
+}
+
 // GenerateImages calls the registered image provider using the default registry.
 func GenerateImages(ctx context.Context, model ImageModel, req ImageRequest, opts ...ImageOption) (AssistantImages, error) {
 	return defaultClient().GenerateImages(ctx, model, req, opts...)
+}
+
+// StreamImages starts a streaming image provider call using the default registry.
+func StreamImages(ctx context.Context, model ImageModel, req ImageRequest, opts ...ImageOption) *ImageStream {
+	return defaultClient().StreamImages(ctx, model, req, opts...)
 }
 
 // GetImageModel returns an image model by provider and model id.
