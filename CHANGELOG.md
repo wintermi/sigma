@@ -26,9 +26,13 @@ See [release notes](docs/release-notes-v0.3.0.md).
   single batched follow-up user image message after consecutive tool results
   for image-capable models, while preserving the ordinary text or placeholder
   tool-result messages.
+- OpenAI Responses now emits explicit automatic image detail on user image
+  inputs and image-capable `function_call_output` image parts.
 - OpenAI Images now supports reference-image edits through
   `ImageRequest.Inputs`, explicit `ImageOperationVariation` requests for
   `dall-e-2`, and `ImageRequest.Mask` for edit masks.
+- OpenAI Images edits can send URL and file-ID image references through JSON
+  request bodies when no binary image upload is required.
 - Image providers can expose streaming through `Client.StreamImages`, and the
   OpenAI Images adapter can request partial image events with `stream` and
   `partial_images` while still supporting `GenerateImages`.

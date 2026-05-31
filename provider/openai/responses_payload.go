@@ -131,6 +131,7 @@ func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
 				return nil, err
 			}
 			parts = append(parts, map[string]any{
+				"detail":    "auto",
 				"type":      "input_image",
 				"image_url": url,
 			})
@@ -461,6 +462,7 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 				return nil, err
 			}
 			parts = append(parts, map[string]any{
+				"detail":    "auto",
 				"type":      "input_image",
 				"image_url": url,
 			})

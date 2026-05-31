@@ -204,6 +204,17 @@ func imagesRequestBody(model sigma.ImageModel, req sigma.ImageRequest, opts sigm
 		}
 		return body, "application/json", nil
 	}
+	if operation == sigma.ImageOperationEdit && referenceOnlyEditRequest(req) {
+		payload, err := imagesEditPayload(model, req, opts, stream)
+		if err != nil {
+			return nil, "", err
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, "", fmt.Errorf("openai images: encode edit request: %w", err)
+		}
+		return body, "application/json", nil
+	}
 	return multipartImagesPayload(model, req, opts, operation, stream)
 }
 
@@ -215,9 +226,48 @@ func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Op
 		return nil, fmt.Errorf("openai images: image inputs require the edits endpoint")
 	}
 
-	payload := map[string]any{
-		"model":  string(imageModelID(model, req)),
-		"prompt": req.Prompt,
+	payload := make(map[string]any)
+	if err := addCommonImagePayloadFields(payload, model, req, opts, stream); err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
+func imagesEditPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) (map[string]any, error) {
+	if strings.TrimSpace(req.Prompt) == "" {
+		return nil, fmt.Errorf("openai images: prompt is required")
+	}
+	if len(req.Inputs) == 0 {
+		return nil, fmt.Errorf("openai images: edit requires image inputs")
+	}
+
+	images := make([]map[string]any, 0, len(req.Inputs))
+	for _, input := range req.Inputs {
+		reference, err := imageReference(input)
+		if err != nil {
+			return nil, err
+		}
+		images = append(images, reference)
+	}
+
+	payload := map[string]any{"images": images}
+	if req.Mask != nil {
+		mask, err := imageReference(*req.Mask)
+		if err != nil {
+			return nil, err
+		}
+		payload["mask"] = mask
+	}
+	if err := addCommonImagePayloadFields(payload, model, req, opts, stream); err != nil {
+		return nil, err
+	}
+	return payload, nil
+}
+
+func addCommonImagePayloadFields(payload map[string]any, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) error {
+	payload["model"] = string(imageModelID(model, req))
+	if req.Prompt != "" {
+		payload["prompt"] = req.Prompt
 	}
 	if req.Count > 0 {
 		payload["n"] = req.Count
@@ -231,7 +281,7 @@ func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Op
 	if req.MIMEType != "" {
 		format, err := outputFormat(req.MIMEType)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		payload["output_format"] = format
 	}
@@ -242,7 +292,43 @@ func imagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Op
 	for key, value := range extraBody(opts, model.Provider) {
 		payload[key] = value
 	}
-	return payload, nil
+	return nil
+}
+
+func referenceOnlyEditRequest(req sigma.ImageRequest) bool {
+	if len(req.Inputs) == 0 {
+		return false
+	}
+	for _, input := range req.Inputs {
+		if !isImageReference(input) {
+			return false
+		}
+	}
+	return req.Mask == nil || isImageReference(*req.Mask)
+}
+
+func isImageReference(input sigma.ImageInput) bool {
+	return input.Type == sigma.ImageInputImage && (input.Source == sigma.ImageSourceURL || input.Source == sigma.ImageSourceFileID)
+}
+
+func imageReference(input sigma.ImageInput) (map[string]any, error) {
+	if input.Type != sigma.ImageInputImage {
+		return nil, fmt.Errorf("openai images: unsupported image input type %q", input.Type)
+	}
+	switch input.Source {
+	case sigma.ImageSourceURL:
+		if input.URL == "" {
+			return nil, fmt.Errorf("openai images: image input URL is required")
+		}
+		return map[string]any{"image_url": input.URL}, nil
+	case sigma.ImageSourceFileID:
+		if input.Data == "" {
+			return nil, fmt.Errorf("openai images: image file ID is required")
+		}
+		return map[string]any{"file_id": input.Data}, nil
+	default:
+		return nil, fmt.Errorf("openai images: unsupported image input source %q", input.Source)
+	}
 }
 
 func multipartImagesPayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, operation sigma.ImageOperation, stream bool) ([]byte, string, error) {

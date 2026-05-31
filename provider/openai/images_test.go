@@ -8,6 +8,7 @@ package openai_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -312,6 +313,71 @@ func TestGenerateImagesSendsEditMultipartPayload(t *testing.T) {
 	}
 	if got, want := len(form.File["mask"]), 1; got != want {
 		t.Fatalf("mask file count = %d, want %d", got, want)
+	}
+}
+
+func TestGenerateImagesSendsReferenceEditJSONPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[{"b64_json":"cmVmZXJlbmNl"}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	client := openAIImagesTestClient(t, server.URL)
+	_, err := client.GenerateImages(
+		context.Background(),
+		openAIImageModel(),
+		sigma.ImageRequest{
+			Prompt: "change the background",
+			Inputs: []sigma.ImageInput{
+				sigma.ImageOutputURL("image/png", "https://example.test/input.png"),
+				sigma.ImageFileID("file_123"),
+			},
+			Mask:     imageInputPtr(sigma.ImageOutputURL("image/png", "https://example.test/mask.png")),
+			Size:     string(sigma.ImageSize1024x1536),
+			Quality:  string(sigma.ImageQualityHigh),
+			MIMEType: "image/webp",
+			Count:    2,
+		},
+		sigma.WithImageProviderOptions(sigma.ProviderOpenAI, map[string]any{
+			"extra_body": map[string]any{
+				"background":     "transparent",
+				"input_fidelity": "high",
+			},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/images/edits"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	if got, want := request.Headers.Get("Content-Type"), "application/json"; got != want {
+		t.Fatalf("content type = %q, want %q", got, want)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(request.Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	want := map[string]any{
+		"model":          "gpt-image-1",
+		"prompt":         "change the background",
+		"images":         []any{map[string]any{"image_url": "https://example.test/input.png"}, map[string]any{"file_id": "file_123"}},
+		"mask":           map[string]any{"image_url": "https://example.test/mask.png"},
+		"size":           string(sigma.ImageSize1024x1536),
+		"quality":        string(sigma.ImageQualityHigh),
+		"output_format":  "webp",
+		"n":              float64(2),
+		"background":     "transparent",
+		"input_fidelity": "high",
+	}
+	if !reflect.DeepEqual(payload, want) {
+		t.Fatalf("payload = %#v, want %#v", payload, want)
 	}
 }
 

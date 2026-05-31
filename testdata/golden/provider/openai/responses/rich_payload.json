@@ -19,10 +19,12 @@
           "type": "input_text"
         },
         {
+          "detail": "auto",
           "image_url": "https://example.test/cat.png",
           "type": "input_image"
         },
         {
+          "detail": "auto",
           "image_url": "data:image/png;base64,aGk=",
           "type": "input_image"
         }
@@ -69,6 +71,7 @@
           "type": "input_text"
         },
         {
+          "detail": "auto",
           "image_url": "data:image/png;base64,aGk=",
           "type": "input_image"
         }

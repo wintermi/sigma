@@ -29,9 +29,13 @@ Chat Completions adapter.
 - Chat Completions replay normalizes prior Responses-style
   `call_id|item_id` tool-call identifiers and batches image tool results after
   consecutive tool-result messages for image-capable models.
+- OpenAI Responses emits explicit automatic image detail on user image inputs
+  and image-capable `function_call_output` image parts.
 - OpenAI Images supports generation, reference-image edits through
   `ImageRequest.Inputs`, edit masks through `ImageRequest.Mask`, and explicit
   `dall-e-2` variation requests.
+- OpenAI Images edits can send URL and file-ID image references through JSON
+  request bodies when no binary image upload is required.
 - `Client.StreamImages` adds optional image-provider streaming, and OpenAI
   Images can surface partial image events while preserving `GenerateImages` for
   final-result workflows.
@@ -76,8 +80,9 @@ Chat Completions adapter.
 - Direct xAI/Grok image-provider semantics remain deferred until the request
   and response shape is covered by deterministic fixtures.
 - Live OpenAI image validation remains deferred to opt-in probes; deterministic
-  fixtures are the release evidence for image generation, edits, variations,
-  streaming, and Responses image-generation tool output.
+  fixtures are the release evidence for image generation, multipart edits,
+  reference-only JSON edits, variations, streaming, and Responses
+  image-generation tool output.
 - Codex WebSocket transport, WebSocket session caching/fallback, browser
   callback OAuth login, token persistence, Copilot dynamic headers, and
   Cloudflare OpenAI-compatible auth rewriting remain deferred.

@@ -11,8 +11,9 @@ cancellation/error coverage (see the coverage standards in
 - [ ] Decide whether image generation graduates from preview into the MVP
       boundary and update release docs accordingly.
 - [ ] Add live OpenAI image validation probes for generation, edits,
-      variations, streaming partial images, and Responses image-generation tool
-      output without making live provider calls part of `mise run ci`.
+      reference-only JSON edits, variations, streaming partial images, and
+      Responses image-generation tool output without making live provider calls
+      part of `mise run ci`.
 
 ## OpenAI-compatible parity
 
