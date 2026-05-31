@@ -45,23 +45,45 @@ type probeCase struct {
 }
 
 type probeResult struct {
-	Route   string `json:"route"`
-	Model   string `json:"model"`
-	Case    string `json:"case"`
+	Route          string          `json:"route"`
+	Model          string          `json:"model"`
+	Case           string          `json:"case"`
+	Attempt        string          `json:"attempt"`
+	Outcome        string          `json:"outcome"`
+	Error          string          `json:"error,omitempty"`
+	OriginalError  string          `json:"originalError,omitempty"`
+	FailedAttempts []failedAttempt `json:"failedAttempts,omitempty"`
+	Hint           string          `json:"hint,omitempty"`
+}
+
+type failedAttempt struct {
 	Attempt string `json:"attempt"`
-	Outcome string `json:"outcome"`
-	Error   string `json:"error,omitempty"`
+	Error   string `json:"error"`
+}
+
+type probeRecommendation struct {
+	Route    string `json:"route"`
+	Model    string `json:"model"`
+	Case     string `json:"case"`
+	Hint     string `json:"hint"`
+	Evidence string `json:"evidence"`
+}
+
+type probeReport struct {
+	Summary         summary               `json:"summary"`
+	Recommendations []probeRecommendation `json:"recommendations,omitempty"`
 }
 
 type summary struct {
-	Total                   int `json:"total"`
-	OK                      int `json:"ok"`
-	Skipped                 int `json:"skipped"`
-	SigmaRequestShape       int `json:"sigmaRequestShape"`
-	ProviderCapabilityLimit int `json:"providerCapabilityLimit"`
-	UpstreamAvailability    int `json:"upstreamAvailability"`
-	NoWorkingAttempt        int `json:"noWorkingAttempt"`
-	FixedByRepairVariant    int `json:"fixedByRepairVariant"`
+	Total                      int `json:"total"`
+	OK                         int `json:"ok"`
+	Skipped                    int `json:"skipped"`
+	SigmaRequestShape          int `json:"sigmaRequestShape"`
+	ProviderCapabilityLimit    int `json:"providerCapabilityLimit"`
+	UpstreamAvailability       int `json:"upstreamAvailability"`
+	NoWorkingAttempt           int `json:"noWorkingAttempt"`
+	FixedByRepairVariant       int `json:"fixedByRepairVariant"`
+	AvailabilityOKAfterFailure int `json:"availabilityOKAfterFailure"`
 }
 
 type config struct {
@@ -135,6 +157,7 @@ func main() {
 	}()
 
 	var totals summary
+	var recommendations []probeRecommendation
 	for _, routeName := range cfg.routes {
 		route, ok := routes[routeName]
 		if !ok {
@@ -152,13 +175,18 @@ func main() {
 			if len(cfg.models) > 0 && !cfg.models[modelID] {
 				continue
 			}
-			for _, result := range probeModel(ctx, route, modelID, apiKey, cfg) {
+			probeModelEach(ctx, route, modelID, apiKey, cfg, func(result probeResult) {
 				totals.add(result)
+				if recommendation, ok := recommendationFor(result); ok {
+					recommendations = append(recommendations, recommendation)
+				}
 				writeResult(writer, result)
-			}
+				_ = writer.Flush()
+			})
 		}
 	}
-	writeSummary(writer, totals)
+	writeSummary(writer, totals, recommendations)
+	_ = writer.Flush()
 }
 
 func parseConfig() config {
@@ -257,39 +285,58 @@ func parseModelIDs(body []byte) ([]string, error) {
 	return ids, nil
 }
 
-func probeModel(ctx context.Context, route routeSpec, modelID string, apiKey string, cfg config) []probeResult {
+func probeModelEach(ctx context.Context, route routeSpec, modelID string, apiKey string, cfg config, emit func(probeResult)) {
 	if !cfg.includeUnavailable && knownUnavailable(route.Name, modelID) {
-		return []probeResult{{
+		emit(probeResult{
 			Route:   route.Name,
 			Model:   modelID,
 			Case:    "all",
 			Attempt: "skip_known_unavailable",
 			Outcome: "skipped",
-		}}
+		})
+		return
 	}
 
 	client := probeClient(route, modelID)
 	model := route.Model(route, modelID)
 	cases := route.Cases(route)
-	results := make([]probeResult, 0, len(cases))
 	for _, testCase := range cases {
 		result := runCase(ctx, route, client, model, testCase, apiKey, testCase.Name)
 		if result.Outcome == "ok" || !cfg.repair {
-			results = append(results, result)
+			emit(result)
 			continue
 		}
 		repaired := result
+		repairedByVariant := false
+		availability := probeResult{}
+		failedAttempts := []failedAttempt{{Attempt: result.Attempt, Error: result.Error}}
 		for _, variant := range repairVariants(route, testCase) {
 			attempt := runCase(ctx, route, client, model, variant, apiKey, variant.Name)
 			if attempt.Outcome == "ok" {
+				attempt.Case = testCase.Name
+				attempt.OriginalError = result.Error
+				attempt.FailedAttempts = append([]failedAttempt(nil), failedAttempts...)
+				attempt.Hint = repairHint(testCase.Name, attempt.Attempt)
+				if attempt.Attempt == "minimal_basic_text" {
+					attempt.Outcome = "availability_ok_after_failure"
+					availability = attempt
+					continue
+				}
 				attempt.Outcome = "fixed_by_repair_variant"
 				repaired = attempt
+				repairedByVariant = true
 				break
 			}
+			failedAttempts = append(failedAttempts, failedAttempt{Attempt: attempt.Attempt, Error: attempt.Error})
+			if availability.Outcome != "" {
+				availability.FailedAttempts = append([]failedAttempt(nil), failedAttempts...)
+			}
 		}
-		results = append(results, repaired)
+		if !repairedByVariant && availability.Outcome != "" {
+			repaired = availability
+		}
+		emit(repaired)
 	}
-	return results
 }
 
 func probeClient(route routeSpec, modelID string) *sigma.Client {
@@ -526,6 +573,13 @@ func imageRequest() sigma.Request {
 	)}}
 }
 
+func imageURLRequest() sigma.Request {
+	return sigma.Request{Messages: []sigma.Message{sigma.UserContent(
+		sigma.Text("Answer with one short colour word."),
+		sigma.ImageURL("image/png", "https://upload.wikimedia.org/wikipedia/commons/7/70/Example.png"),
+	)}}
+}
+
 func toolCase(name string, description string, choice any) probeCase {
 	return probeCase{
 		Name:        name,
@@ -564,6 +618,7 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 	case "image_input":
 		variants = append(variants,
 			singleTurnCase("image_more_tokens", "image with larger output cap", imageRequest(), []sigma.Option{sigma.WithMaxTokens(2048)}),
+			singleTurnCase("image_url_fallback", "same image task with an HTTPS image URL", imageURLRequest(), []sigma.Option{sigma.WithMaxTokens(512)}),
 			singleTurnCase("text_only_fallback", "same task without image input", basicRequest("Answer with one short colour word: red."), []sigma.Option{sigma.WithMaxTokens(64)}),
 		)
 	case "thinking_string_none", "thinking_bool_false", "thinking_object_disabled", "enable_thinking_false":
@@ -683,6 +738,7 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		return "provider_capability_limit"
 	case strings.Contains(message, "free promotion has ended"),
 		strings.Contains(message, "model_not_found"),
+		strings.Contains(message, "path not found"),
 		strings.Contains(message, "no provider available"):
 		return "upstream_availability"
 	case strings.Contains(message, "unknown parameter"),
@@ -717,6 +773,60 @@ func uniqueCases(cases []probeCase) []probeCase {
 	return unique
 }
 
+func repairHint(caseName string, attempt string) string {
+	switch {
+	case attempt == "minimal_basic_text":
+		return "minimal_text_available_after_failure"
+	case caseName == "image_input" && attempt == "image_url_fallback":
+		return "base64_image_rejected_url_image_ok"
+	case caseName == "image_input" && attempt == "text_only_fallback":
+		return "image_input_rejected_text_only_ok"
+	case caseName == "image_input" && attempt == "image_more_tokens":
+		return "image_input_needs_larger_output_budget"
+	case strings.HasPrefix(caseName, "thinking_") && attempt == "thinking_object_disabled_repair":
+		return "use_thinking_object_disabled"
+	case caseName == "enable_thinking_false" && attempt == "thinking_object_disabled_repair":
+		return "use_thinking_object_disabled"
+	case strings.HasPrefix(caseName, "reasoning_effort_") && strings.HasPrefix(attempt, "typed_reasoning_effort_"):
+		return "use_typed_reasoning_effort_option"
+	case strings.HasPrefix(caseName, "reasoning_effort_") && attempt == "no_reasoning_control":
+		return "omit_reasoning_control"
+	case caseName == "cache_ephemeral" && strings.HasPrefix(attempt, "cache_none"):
+		return "cache_marker_rejected"
+	case caseName == "json_schema" && attempt == "json_object_fallback":
+		return "json_schema_rejected_json_object_ok"
+	case caseName == "json_schema" && attempt == "manual_json":
+		return "structured_output_rejected_prompt_json_ok"
+	case caseName == "json_schema" && attempt == "json_schema_more_tokens":
+		return "json_schema_needs_larger_output_budget"
+	case caseName == "logprobs" && attempt == "no_logprobs_more_tokens":
+		return "logprobs_rejected"
+	case strings.HasPrefix(caseName, "tool_") && attempt == "tool_auto_more_turns":
+		return "auto_tool_choice_with_larger_budget_ok"
+	case caseName == "strict_tool_required_write" && attempt == "tool_auto_more_turns":
+		return "auto_tool_choice_with_larger_budget_ok"
+	case caseName == "three_turn_file_update" && attempt == "three_turn_more_tokens":
+		return "multi_turn_tool_flow_needs_larger_output_budget"
+	case caseName == "basic_text" && attempt == "basic_text_more_tokens":
+		return "basic_text_needs_larger_output_budget"
+	default:
+		return ""
+	}
+}
+
+func recommendationFor(result probeResult) (probeRecommendation, bool) {
+	if result.Hint == "" {
+		return probeRecommendation{}, false
+	}
+	return probeRecommendation{
+		Route:    result.Route,
+		Model:    result.Model,
+		Case:     result.Case,
+		Hint:     result.Hint,
+		Evidence: fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt),
+	}, true
+}
+
 func (s *summary) add(result probeResult) {
 	s.Total++
 	switch result.Outcome {
@@ -732,6 +842,8 @@ func (s *summary) add(result probeResult) {
 		s.UpstreamAvailability++
 	case "fixed_by_repair_variant":
 		s.FixedByRepairVariant++
+	case "availability_ok_after_failure":
+		s.AvailabilityOKAfterFailure++
 	default:
 		s.NoWorkingAttempt++
 	}
@@ -743,8 +855,8 @@ func writeResult(writer *bufio.Writer, result probeResult) {
 	_ = writer.WriteByte('\n')
 }
 
-func writeSummary(writer *bufio.Writer, totals summary) {
-	encoded, _ := json.Marshal(map[string]any{"summary": totals})
+func writeSummary(writer *bufio.Writer, totals summary, recommendations []probeRecommendation) {
+	encoded, _ := json.Marshal(probeReport{Summary: totals, Recommendations: recommendations})
 	_, _ = writer.Write(encoded)
 	_ = writer.WriteByte('\n')
 }

@@ -660,7 +660,9 @@
         "maxTokensField": "max_tokens"
       },
       "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
         "firepass": true,
+        "imageInputSources": ["url"],
         "modelFamily": "kimi",
         "router": true
       }

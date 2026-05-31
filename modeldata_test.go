@@ -58,7 +58,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		t.Fatalf("Fireworks firepass metadata = %#v, want true", fireworks.ProviderMetadata["firepass"])
 	}
 	assertMetadataString(t, fireworks.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
+	assertMetadataString(t, fireworks.ProviderMetadata, "disabledThinkingFormat", "object-disabled")
 	assertMetadataStrings(t, fireworks.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
+	assertMetadataStrings(t, fireworks.ProviderMetadata, "imageInputSources", []string{"url"})
 
 	anthropic, ok := registry.Model(ProviderAnthropic, "claude-3-5-sonnet-20241022")
 	if !ok {

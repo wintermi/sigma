@@ -15,6 +15,14 @@ import (
 	"github.com/wintermi/sigma/sigmatest"
 )
 
+func collectProbeModel(ctx context.Context, route routeSpec, modelID string, apiKey string, cfg config) []probeResult {
+	results := make([]probeResult, 0, len(route.Cases(route)))
+	probeModelEach(ctx, route, modelID, apiKey, cfg, func(result probeResult) {
+		results = append(results, result)
+	})
+	return results
+}
+
 func TestOpenCodeRouteAPI(t *testing.T) {
 	t.Parallel()
 
@@ -203,6 +211,109 @@ func TestRunCaseKeepsDistinctRouteNames(t *testing.T) {
 	}
 }
 
+func TestProbeModelEachEmitsEachCompletedCase(t *testing.T) {
+	t.Parallel()
+
+	route := sigmatestProbeRouteWithCases(t, []probeCase{
+		singleTurnCase("first", "first case", basicRequest("first"), nil),
+		singleTurnCase("second", "second case", basicRequest("second"), nil),
+	}, sigmatest.Script{}, sigmatest.Script{})
+
+	var emitted []probeResult
+	probeModelEach(context.Background(), route, "model", "key", config{}, func(result probeResult) {
+		emitted = append(emitted, result)
+	})
+	if len(emitted) != 2 {
+		t.Fatalf("emitted length = %d, want 2", len(emitted))
+	}
+	if got, want := emitted[0].Case, "first"; got != want {
+		t.Fatalf("first emitted case = %q, want %q", got, want)
+	}
+	if got, want := emitted[1].Case, "second"; got != want {
+		t.Fatalf("second emitted case = %q, want %q", got, want)
+	}
+}
+
+func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
+	t.Parallel()
+
+	route := sigmatestProbeRoute(
+		t,
+		sigmatest.Script{Err: errors.New("strict schema failed")},
+		sigmatest.Script{},
+		sigmatest.Script{},
+	)
+	results := collectProbeModel(context.Background(), route, "model", "key", config{repair: true})
+	if len(results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(results))
+	}
+	if got, want := results[0].Case, "json_schema"; got != want {
+		t.Fatalf("case = %q, want %q", got, want)
+	}
+	if got, want := results[0].Attempt, "json_schema_more_tokens"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if got, want := results[0].Outcome, "fixed_by_repair_variant"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if got, want := results[0].OriginalError, "strict schema failed"; got != want {
+		t.Fatalf("original error = %q, want %q", got, want)
+	}
+	if got, want := results[0].Hint, "json_schema_needs_larger_output_budget"; got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
+		{Attempt: "json_schema", Error: "strict schema failed"},
+	})
+	recommendation, ok := recommendationFor(results[0])
+	if !ok {
+		t.Fatal("recommendationFor returned false")
+	}
+	if recommendation.Route != "sigmatest" || recommendation.Model != "model" ||
+		recommendation.Case != "json_schema" || recommendation.Hint != "json_schema_needs_larger_output_budget" ||
+		recommendation.Evidence != "json_schema repaired by json_schema_more_tokens" {
+		t.Fatalf("recommendation = %+v", recommendation)
+	}
+}
+
+func TestProbeModelReportsAvailabilityCheckSeparately(t *testing.T) {
+	t.Parallel()
+
+	route := sigmatestProbeRoute(
+		t,
+		sigmatest.Script{Err: errors.New("strict schema failed")},
+		sigmatest.Script{},
+		sigmatest.Script{Err: errors.New("larger schema failed")},
+		sigmatest.Script{Err: errors.New("json object failed")},
+		sigmatest.Script{Err: errors.New("manual json failed")},
+	)
+	results := collectProbeModel(context.Background(), route, "model", "key", config{repair: true})
+	if len(results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(results))
+	}
+	if got, want := results[0].Case, "json_schema"; got != want {
+		t.Fatalf("case = %q, want %q", got, want)
+	}
+	if got, want := results[0].Attempt, "minimal_basic_text"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if got, want := results[0].Outcome, "availability_ok_after_failure"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if got, want := results[0].OriginalError, "strict schema failed"; got != want {
+		t.Fatalf("original error = %q, want %q", got, want)
+	}
+	if got, want := results[0].Hint, "minimal_text_available_after_failure"; got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
+		{Attempt: "json_schema", Error: "strict schema failed"},
+		{Attempt: "json_schema_more_tokens", Error: "larger schema failed"},
+		{Attempt: "json_object_fallback", Error: "json object failed"},
+		{Attempt: "manual_json", Error: "manual json failed"},
+	})
+}
+
 func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 	t.Parallel()
 
@@ -232,6 +343,30 @@ func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 	}
 }
 
+func TestImageRepairVariantsTryURLBeforeTextOnly(t *testing.T) {
+	t.Parallel()
+
+	var imageURLIndex int
+	var textOnlyIndex int
+	for i, variant := range repairVariants(routes["xai"], probeCase{Name: "image_input"}) {
+		switch variant.Name {
+		case "image_url_fallback":
+			imageURLIndex = i
+		case "text_only_fallback":
+			textOnlyIndex = i
+		}
+	}
+	if imageURLIndex == 0 {
+		t.Fatal("image_url_fallback missing from image repair variants")
+	}
+	if textOnlyIndex == 0 {
+		t.Fatal("text_only_fallback missing from image repair variants")
+	}
+	if imageURLIndex > textOnlyIndex {
+		t.Fatalf("image_url_fallback index = %d, text_only_fallback index = %d; want URL fallback first", imageURLIndex, textOnlyIndex)
+	}
+}
+
 func TestClassifyFailure(t *testing.T) {
 	t.Parallel()
 
@@ -247,6 +382,10 @@ func TestClassifyFailure(t *testing.T) {
 	if got := classifyFailure(route, model, errors.New("No provider available")); got != "upstream_availability" {
 		t.Fatalf("availability classification = %q", got)
 	}
+	model.ID = "accounts/fireworks/routers/kimi-k2p6-turbo"
+	if got := classifyFailure(routes["fireworks-anthropic"], model, errors.New("status=404 body={\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Path not found: /messages\"}}")); got != "upstream_availability" {
+		t.Fatalf("path-not-found classification = %q", got)
+	}
 }
 
 func TestSummaryCounts(t *testing.T) {
@@ -260,13 +399,15 @@ func TestSummaryCounts(t *testing.T) {
 		"provider_capability_limit",
 		"upstream_availability",
 		"fixed_by_repair_variant",
+		"availability_ok_after_failure",
 		"other",
 	} {
 		totals.add(probeResult{Outcome: outcome})
 	}
-	if totals.Total != 7 || totals.OK != 1 || totals.Skipped != 1 ||
+	if totals.Total != 8 || totals.OK != 1 || totals.Skipped != 1 ||
 		totals.SigmaRequestShape != 1 || totals.ProviderCapabilityLimit != 1 ||
 		totals.UpstreamAvailability != 1 || totals.FixedByRepairVariant != 1 ||
+		totals.AvailabilityOKAfterFailure != 1 ||
 		totals.NoWorkingAttempt != 1 {
 		t.Fatalf("summary = %+v", totals)
 	}
@@ -314,6 +455,45 @@ func applyProbeOptions(opts []sigma.Option) sigma.Options {
 		opt(&options)
 	}
 	return options
+}
+
+func assertFailedAttempts(t *testing.T, got []failedAttempt, want []failedAttempt) {
+	t.Helper()
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed attempts = %#v, want %#v", got, want)
+	}
+}
+
+func sigmatestProbeRoute(t *testing.T, scripts ...sigmatest.Script) routeSpec {
+	t.Helper()
+
+	return sigmatestProbeRouteWithCases(t, []probeCase{
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), nil),
+	}, scripts...)
+}
+
+func sigmatestProbeRouteWithCases(t *testing.T, cases []probeCase, scripts ...sigmatest.Script) routeSpec {
+	t.Helper()
+
+	provider := sigmatest.NewFauxProvider(scripts...)
+	return routeSpec{
+		Name:      "sigmatest",
+		Provider:  sigmatest.ProviderID,
+		BaseURL:   "https://example.test",
+		APIKeyEnv: "SIGMATEST_API_KEY",
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
+		},
+		Model: func(_ routeSpec, id string) sigma.Model {
+			model := sigmatest.TextModel()
+			model.ID = sigma.ModelID(id)
+			return model
+		},
+		Cases: func(routeSpec) []probeCase {
+			return cases
+		},
+	}
 }
 
 func assertMetadataString(t *testing.T, metadata map[string]any, key string, want string) {

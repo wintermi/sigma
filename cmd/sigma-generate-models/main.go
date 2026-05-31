@@ -372,6 +372,10 @@ func writeAny(b *bytes.Buffer, value any) {
 	case []string:
 		writeStringSliceValue(b, v)
 	case []any:
+		if strings, ok := stringSliceValue(v); ok {
+			writeStringSliceValue(b, strings)
+			return
+		}
 		b.WriteString("[]any{")
 		for i, item := range v {
 			if i > 0 {
@@ -389,6 +393,18 @@ func writeAny(b *bytes.Buffer, value any) {
 	default:
 		panic(fmt.Sprintf("unsupported metadata value %T", value))
 	}
+}
+
+func stringSliceValue(values []any) ([]string, bool) {
+	strings := make([]string, len(values))
+	for i, value := range values {
+		stringValue, ok := value.(string)
+		if !ok {
+			return nil, false
+		}
+		strings[i] = stringValue
+	}
+	return strings, true
 }
 
 func writeStringSliceValue(b *bytes.Buffer, values []string) {
