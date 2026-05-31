@@ -50,6 +50,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
+	addOpenAIPromptCache(payload, opts)
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}

@@ -7,6 +7,7 @@ package openai_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -77,6 +78,47 @@ func TestCodexResponsesInjectsBearerTokenAndUsesCodexModelName(t *testing.T) {
 	assertHeader(t, request.Headers, "Authorization", "Bearer codex-oauth-token")
 	assertHeader(t, request.Headers, "X-Client", "client")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/codex_responses/basic_payload.json")
+}
+
+func TestCodexResponsesDerivesPromptCacheKey(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-cache-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := strings.Repeat("x", 70)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID(sessionID),
+		sigma.WithCacheRetention(sigma.CacheRetentionPersistent),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["prompt_cache_key"], strings.Repeat("x", 64); got != want {
+		t.Fatalf("prompt_cache_key = %v, want %q", got, want)
+	}
+	if got, want := payload["prompt_cache_retention"], "24h"; got != want {
+		t.Fatalf("prompt_cache_retention = %v, want %q", got, want)
+	}
+	if got, want := payload["previous_response_id"], sessionID; got != want {
+		t.Fatalf("previous_response_id = %v, want session id", got)
+	}
 }
 
 func TestCodexResponsesMissingOAuthProviderFailsBeforeNetwork(t *testing.T) {

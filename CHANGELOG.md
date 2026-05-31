@@ -15,12 +15,28 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Generated image metadata now includes the OpenRouter-routed Grok Imagine
   image-quality model, marked with xAI routing metadata and `OPENROUTER_API_KEY`
   credential discovery.
+- OpenAI Chat Completions, Responses, and Codex Responses now derive bounded
+  `prompt_cache_key` values from `sigma.WithSessionID` when prompt caching is
+  enabled, and map long-lived cache retention to OpenAI's `24h` retention where
+  supported.
+- OpenAI-compatible Chat Completions replay now normalizes prior Responses-style
+  `call_id|item_id` tool-call identifiers before sending Chat Completions
+  history.
+- OpenAI-compatible Chat Completions can carry image tool results forward as a
+  follow-up user image message for image-capable models, while preserving the
+  ordinary text or placeholder tool-result message.
+- OpenAI-compatible stream parsing now recognizes Chat Completions
+  `reasoning_text` deltas and Responses/Codex refusal and reasoning-text
+  events.
 
 ### Compatibility
 
 - The direct xAI/Grok provider remains a preview Chat Completions adapter.
   Grok image generation is represented through OpenRouter image metadata rather
   than a direct xAI image provider.
+- Anthropic-style OpenAI-compatible cache markers continue to use their
+  endpoint-specific `cache_control` format rather than OpenAI-native prompt
+  cache fields.
 
 ### Known limitations
 

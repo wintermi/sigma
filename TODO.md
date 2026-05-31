@@ -19,6 +19,22 @@ cancellation/error coverage (see the coverage standards in
 - [ ] Decide whether image generation graduates from preview into the MVP
       boundary and update release docs accordingly.
 
+## OpenAI-compatible parity
+
+OpenAI Chat Completions, Responses, and Codex Responses now cover the focused
+v0.3 prompt-cache, replay, and stream-shape gaps with deterministic fixtures.
+Broader provider-specific integrations remain future work until they have the
+same local evidence bar.
+
+- [ ] Keep Codex WebSocket transport, session caching, cleanup, and SSE fallback
+      deferred until Sigma adopts WebSocket transport semantics.
+- [ ] Keep OpenAI Codex interactive OAuth login and token persistence deferred;
+      the current provider path uses caller-supplied OAuth token providers.
+- [ ] Evaluate GitHub Copilot dynamic headers before making Copilot a
+      first-class OpenAI-compatible row.
+- [ ] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
+      first-class Cloudflare OpenAI-compatible row.
+
 ## First-class provider rows
 
 Provider IDs and compatibility routing may already exist, but each needs
@@ -34,10 +50,6 @@ metadata-only and backed by compatibility checks.
 - [ ] GitHub Copilot — promote to a first-class provider row with fixtures.
 - [ ] Kimi — promote to a first-class provider row with fixtures.
 - [ ] Xiaomi — promote to a first-class provider row with fixtures.
-- [ ] Evaluate GitHub Copilot dynamic headers before making Copilot a
-      first-class OpenAI-compatible row.
-- [ ] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
-      first-class Cloudflare OpenAI-compatible row.
 - [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
       and cancellation coverage.
 

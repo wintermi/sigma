@@ -40,6 +40,7 @@ type streamDelta struct {
 	Content          json.RawMessage       `json:"content"`
 	ReasoningContent *string               `json:"reasoning_content"`
 	Reasoning        *string               `json:"reasoning"`
+	ReasoningText    *string               `json:"reasoning_text"`
 	Thinking         *string               `json:"thinking"`
 	ToolCalls        []streamToolCallDelta `json:"tool_calls"`
 	Annotations      []streamAnnotation    `json:"annotations"`
@@ -190,6 +191,11 @@ func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDe
 	}
 	if delta.Reasoning != nil {
 		if err := p.emitThinking(ctx, *delta.Reasoning); err != nil {
+			return err
+		}
+	}
+	if delta.ReasoningText != nil {
+		if err := p.emitThinking(ctx, *delta.ReasoningText); err != nil {
 			return err
 		}
 	}

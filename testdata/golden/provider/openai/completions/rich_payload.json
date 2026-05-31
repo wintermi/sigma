@@ -64,6 +64,7 @@
   },
   "model": "gpt-test",
   "parallel_tool_calls": false,
+  "prompt_cache_key": "session-123",
   "reasoning_effort": "high",
   "service_tier": "default",
   "stream": true,

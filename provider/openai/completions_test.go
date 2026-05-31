@@ -178,6 +178,181 @@ func TestChatCompletionsSendsTypedResponseFormatAndLogprobs(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsDerivesPromptCacheFields(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-cache-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	sessionID := strings.Repeat("x", 70)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID(sessionID),
+		sigma.WithCacheRetention(sigma.CacheRetentionPersistent),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["prompt_cache_key"], strings.Repeat("x", 64); got != want {
+		t.Fatalf("prompt_cache_key = %v, want %q", got, want)
+	}
+	if got, want := payload["prompt_cache_retention"], "24h"; got != want {
+		t.Fatalf("prompt_cache_retention = %v, want %q", got, want)
+	}
+}
+
+func TestChatCompletionsNormalizesReplayToolIDsAndCarriesToolResultImages(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		inputs      []sigma.ContentBlockType
+		wantSidecar bool
+	}{
+		{
+			name: "image capable",
+			inputs: []sigma.ContentBlockType{
+				sigma.ContentBlockText,
+				sigma.ContentBlockImage,
+			},
+			wantSidecar: true,
+		},
+		{
+			name:        "text only",
+			inputs:      []sigma.ContentBlockType{sigma.ContentBlockText},
+			wantSidecar: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-replay-test-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			model.SupportedInputs = tt.inputs
+			client := openAITestClient(t, providerID, model, server.URL)
+			toolCallID := "call/with+bad|fc_item_with_provider_suffix"
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{
+					sigma.UserText("inspect"),
+					{
+						Role: sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{
+							sigma.ToolCallBlock(toolCallID, "lookup", map[string]any{"query": "weather"}),
+						},
+					},
+					{
+						Role:       sigma.RoleTool,
+						ToolCallID: toolCallID,
+						Content: []sigma.ContentBlock{
+							sigma.Text("Sunny"),
+							sigma.ImageBase64("image/png", "aGk="),
+						},
+					},
+				}},
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload struct {
+				Messages []map[string]any `json:"messages"`
+			}
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			assistant := payload.Messages[1]
+			toolCalls, ok := assistant["tool_calls"].([]any)
+			if !ok || len(toolCalls) != 1 {
+				t.Fatalf("tool_calls = %#v, want one call", assistant["tool_calls"])
+			}
+			toolCall := toolCalls[0].(map[string]any)
+			if got, want := toolCall["id"], "call_with_bad"; got != want {
+				t.Fatalf("assistant tool id = %v, want %q", got, want)
+			}
+			toolResult := payload.Messages[2]
+			if got, want := toolResult["tool_call_id"], "call_with_bad"; got != want {
+				t.Fatalf("tool result id = %v, want %q", got, want)
+			}
+			if !tt.wantSidecar {
+				if got, want := len(payload.Messages), 3; got != want {
+					t.Fatalf("message count = %d, want %d", got, want)
+				}
+				return
+			}
+			if got, want := len(payload.Messages), 4; got != want {
+				t.Fatalf("message count = %d, want %d", got, want)
+			}
+			sidecar := payload.Messages[3]
+			if got, want := sidecar["role"], "user"; got != want {
+				t.Fatalf("sidecar role = %v, want %q", got, want)
+			}
+			parts, ok := sidecar["content"].([]any)
+			if !ok || len(parts) != 2 {
+				t.Fatalf("sidecar content = %#v, want text plus image", sidecar["content"])
+			}
+			image := parts[1].(map[string]any)
+			if got, want := image["type"], "image_url"; got != want {
+				t.Fatalf("sidecar image type = %v, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsStreamingParsesReasoningText(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"reasoning_text":"Check "},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"reasoning_text":"constraints."},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"content":"Done"},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-reasoning-text-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].ThinkingText, "Check constraints."; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "Done"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+}
+
 func TestChatCompletionsRejectsProviderDefinedTools(t *testing.T) {
 	t.Parallel()
 

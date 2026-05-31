@@ -15,6 +15,8 @@ import (
 )
 
 const (
+	openAIPromptCacheKeyMaxLength = 64
+
 	providerOptionBaseURL         = "base_url"
 	providerOptionBaseURLCamel    = "baseURL"
 	providerOptionEndpoint        = "endpoint"
@@ -29,7 +31,7 @@ const (
 )
 
 func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]any, error) {
-	messages, err := chatMessages(req, opts.CacheRetention, compat)
+	messages, err := chatMessages(model, req, opts.CacheRetention, compat)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +55,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
+	addChatPromptCache(payload, opts, compat)
 	addReasoning(payload, model, opts, compat)
 	addChatOpenAIOptions(payload, opts, compat)
 	if len(req.Tools) > 0 {
@@ -79,6 +82,33 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	return payload, nil
 }
 
+func addChatPromptCache(payload map[string]any, opts sigma.Options, compat completionsCompat) {
+	if compat.cacheControlFormat == sigma.OpenAICompletionsCacheControlAnthropic {
+		return
+	}
+	addOpenAIPromptCache(payload, opts)
+}
+
+func addOpenAIPromptCache(payload map[string]any, opts sigma.Options) {
+	if key := openAIPromptCacheKey(opts); key != "" {
+		payload["prompt_cache_key"] = key
+	}
+	if opts.CacheRetention.CacheLongLived() && (opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") {
+		payload["prompt_cache_retention"] = "24h"
+	}
+}
+
+func openAIPromptCacheKey(opts sigma.Options) string {
+	if opts.SessionID == "" || !opts.CacheRetention.CacheEnabled() {
+		return ""
+	}
+	runes := []rune(opts.SessionID)
+	if len(runes) > openAIPromptCacheKeyMaxLength {
+		runes = runes[:openAIPromptCacheKeyMaxLength]
+	}
+	return string(runes)
+}
+
 func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat completionsCompat) {
 	if opts.OpenAIOptions == nil {
 		return
@@ -99,9 +129,12 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 	if opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
+	if opts.OpenAIOptions.PromptCacheRetention != "" {
+		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
+	}
 }
 
-func chatMessages(req sigma.Request, retention sigma.CacheRetention, compat completionsCompat) ([]map[string]any, error) {
+func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages)+1)
 	if req.SystemPrompt != "" {
 		message := map[string]any{
@@ -118,6 +151,15 @@ func chatMessages(req sigma.Request, retention sigma.CacheRetention, compat comp
 			return nil, err
 		}
 		messages = append(messages, converted)
+		if message.Role == sigma.RoleTool && model.SupportsImages() {
+			imageMessage, err := toolResultImageMessage(message)
+			if err != nil {
+				return nil, err
+			}
+			if imageMessage != nil {
+				messages = append(messages, imageMessage)
+			}
+		}
 		if message.Role == sigma.RoleAssistant {
 			recordToolNames(toolNames, message.Content)
 		}
@@ -159,10 +201,14 @@ func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat c
 		}
 		return converted, nil
 	case sigma.RoleTool:
+		content := textContent(message.Content)
+		if content == "" && hasImageContent(message.Content) {
+			content = "(see attached image)"
+		}
 		converted := map[string]any{
 			"role":         "tool",
-			"tool_call_id": message.ToolCallID,
-			"content":      textContent(message.Content),
+			"tool_call_id": chatToolCallID(message.ToolCallID),
+			"content":      content,
 		}
 		if compat.requiresToolResultName {
 			name := message.ToolName
@@ -263,7 +309,7 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 				return "", "", nil, err
 			}
 			toolCalls = append(toolCalls, map[string]any{
-				"id":   block.ToolCallID,
+				"id":   chatToolCallID(block.ToolCallID),
 				"type": "function",
 				"function": map[string]any{
 					"name":      block.ToolName,
@@ -275,6 +321,30 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 		}
 	}
 	return text.String(), reasoningContent.String(), toolCalls, nil
+}
+
+func chatToolCallID(raw string) string {
+	callID, _, _ := strings.Cut(raw, "|")
+	var out strings.Builder
+	for _, r := range callID {
+		switch {
+		case r >= 'a' && r <= 'z':
+			out.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			out.WriteRune(r)
+		case r >= '0' && r <= '9':
+			out.WriteRune(r)
+		case r == '_' || r == '-':
+			out.WriteRune(r)
+		default:
+			out.WriteByte('_')
+		}
+	}
+	id := strings.Trim(out.String(), "_-")
+	if len(id) > 40 {
+		id = id[:40]
+	}
+	return id
 }
 
 func appendContent(builder *strings.Builder, text string) {
@@ -292,6 +362,44 @@ func textContent(blocks []sigma.ContentBlock) string {
 		}
 	}
 	return text.String()
+}
+
+func hasImageContent(blocks []sigma.ContentBlock) bool {
+	for _, block := range blocks {
+		if block.Type == sigma.ContentBlockImage {
+			return true
+		}
+	}
+	return false
+}
+
+func toolResultImageMessage(message sigma.Message) (map[string]any, error) {
+	parts := []map[string]any{{
+		"type": "text",
+		"text": "Attached image(s) from tool result:",
+	}}
+	for _, block := range message.Content {
+		if block.Type != sigma.ContentBlockImage {
+			continue
+		}
+		url, err := imageURL(block)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, map[string]any{
+			"type": "image_url",
+			"image_url": map[string]any{
+				"url": url,
+			},
+		})
+	}
+	if len(parts) == 1 {
+		return nil, nil
+	}
+	return map[string]any{
+		"role":    "user",
+		"content": parts,
+	}, nil
 }
 
 func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat) ([]map[string]any, error) {

@@ -100,6 +100,47 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesDerivesPromptCacheKeyWithoutOverridingProviderOption(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-cache-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID(strings.Repeat("x", 70)),
+		sigma.WithCacheRetention(sigma.CacheRetentionLong),
+		sigma.WithProviderOption(providerID, "prompt_cache_key", "explicit-cache-key"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["prompt_cache_key"], "explicit-cache-key"; got != want {
+		t.Fatalf("prompt_cache_key = %v, want %q", got, want)
+	}
+	if got, want := payload["prompt_cache_retention"], "24h"; got != want {
+		t.Fatalf("prompt_cache_retention = %v, want %q", got, want)
+	}
+	if got, want := payload["previous_response_id"], strings.Repeat("x", 70); got != want {
+		t.Fatalf("previous_response_id = %v, want session id", got)
+	}
+}
+
 func TestResponsesSendsTypedResponseFormatAsTextFormat(t *testing.T) {
 	t.Parallel()
 
@@ -499,6 +540,50 @@ data: {"type":"response.completed","response":{"id":"resp_stream","model":"gpt-t
 	}
 	if got, want := final.Usage.ThinkingTokens, 2; got != want {
 		t.Fatalf("thinking tokens = %d, want %d", got, want)
+	}
+}
+
+func TestResponsesStreamingParsesReasoningTextAndRefusal(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w,
+			`data: {"type":"response.output_item.added","response_id":"resp_refusal","output_index":0,"item":{"type":"reasoning","id":"rs_1"}}
+
+data: {"type":"response.reasoning_text.delta","response_id":"resp_refusal","item_id":"rs_1","output_index":0,"delta":"Check "}
+
+data: {"type":"response.reasoning_text.delta","response_id":"resp_refusal","item_id":"rs_1","output_index":0,"delta":"policy."}
+
+data: {"type":"response.output_item.added","response_id":"resp_refusal","output_index":1,"item":{"type":"message","id":"msg_1","role":"assistant","content":[]}}
+
+data: {"type":"response.content_part.added","response_id":"resp_refusal","item_id":"msg_1","output_index":1,"content_index":0,"part":{"type":"refusal","id":"refusal_1","refusal":""}}
+
+data: {"type":"response.refusal.delta","response_id":"resp_refusal","item_id":"msg_1","output_index":1,"content_index":0,"delta":"I cannot"}
+
+data: {"type":"response.refusal.delta","response_id":"resp_refusal","item_id":"msg_1","output_index":1,"content_index":0,"delta":" help."}
+
+data: {"type":"response.completed","response":{"id":"resp_refusal","status":"completed","output":[{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"Check policy."}]},{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"refusal","id":"refusal_1","refusal":"I cannot help."}]}]}}
+`,
+		)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-refusal-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].ThinkingText, "Check policy."; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "I cannot help."; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].ProviderMetadata["content_id"], "refusal_1"; got != want {
+		t.Fatalf("refusal content id = %v, want %q", got, want)
 	}
 }
 

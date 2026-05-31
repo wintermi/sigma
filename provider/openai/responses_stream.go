@@ -18,20 +18,21 @@ import (
 )
 
 type responsesEvent struct {
-	Type         string              `json:"type"`
-	ResponseID   string              `json:"response_id"`
-	Model        string              `json:"model"`
-	ItemID       string              `json:"item_id"`
-	OutputIndex  int                 `json:"output_index"`
-	ContentIndex int                 `json:"content_index"`
-	SummaryIndex int                 `json:"summary_index"`
-	Delta        string              `json:"delta"`
-	Text         string              `json:"text"`
-	Arguments    string              `json:"arguments"`
-	Item         responsesOutputItem `json:"item"`
-	Response     responsesResponse   `json:"response"`
-	Error        *responsesError     `json:"error"`
-	Sequence     int                 `json:"sequence_number"`
+	Type         string               `json:"type"`
+	ResponseID   string               `json:"response_id"`
+	Model        string               `json:"model"`
+	ItemID       string               `json:"item_id"`
+	OutputIndex  int                  `json:"output_index"`
+	ContentIndex int                  `json:"content_index"`
+	SummaryIndex int                  `json:"summary_index"`
+	Delta        string               `json:"delta"`
+	Text         string               `json:"text"`
+	Arguments    string               `json:"arguments"`
+	Item         responsesOutputItem  `json:"item"`
+	Part         responsesContentPart `json:"part"`
+	Response     responsesResponse    `json:"response"`
+	Error        *responsesError      `json:"error"`
+	Sequence     int                  `json:"sequence_number"`
 }
 
 type responsesResponse struct {
@@ -62,6 +63,7 @@ type responsesContentPart struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	Text      string `json:"text"`
+	Refusal   string `json:"refusal"`
 	Signature string `json:"signature"`
 }
 
@@ -190,10 +192,25 @@ func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event
 			return err
 		}
 		return p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
+	case "response.refusal.delta":
+		if err := p.emitStart(ctx); err != nil {
+			return err
+		}
+		return p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
 	case "response.output_text.done":
 		p.finishText(parsed.OutputIndex, parsed.ItemID, parsed.Text)
 		return nil
+	case "response.content_part.added":
+		if parsed.Part.Type == "output_text" || parsed.Part.Type == "refusal" {
+			p.finishText(parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.Part.Text, parsed.Part.Refusal))
+		}
+		return nil
 	case "response.reasoning_summary_text.delta":
+		if err := p.emitStart(ctx); err != nil {
+			return err
+		}
+		return p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, parsed.Delta)
+	case "response.reasoning_text.delta":
 		if err := p.emitStart(ctx); err != nil {
 			return err
 		}
@@ -255,15 +272,15 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 	switch item.Type {
 	case "message":
 		for _, part := range item.Content {
-			if part.Type != "output_text" {
+			if part.Type != "output_text" && part.Type != "refusal" {
 				continue
 			}
 			state := p.textState(outputIndex)
 			state.itemID = firstNonEmpty(state.itemID, item.ID)
 			state.partID = firstNonEmpty(state.partID, part.ID)
 			state.signature = firstNonEmpty(state.signature, part.Signature)
-			if part.Text != "" {
-				state.Set(part.Text)
+			if text := firstNonEmpty(part.Text, part.Refusal); text != "" {
+				state.Set(text)
 			}
 		}
 	case "reasoning":
