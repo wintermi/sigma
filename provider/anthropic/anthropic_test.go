@@ -897,6 +897,16 @@ data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}
 	if got, want := final.StopReason, sigma.StopReasonError; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if got, want := classification.ProviderCode, "overloaded_error"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
 	if !strings.Contains(err.Error(), "overloaded_error") {
 		t.Fatalf("error = %v, want overloaded_error", err)
 	}

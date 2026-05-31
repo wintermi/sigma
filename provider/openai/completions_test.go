@@ -570,6 +570,41 @@ func TestProviderErrorResponseEndsStreamWithProviderError(t *testing.T) {
 	if got, want := final.Diagnostics[0].StatusCode, http.StatusTooManyRequests; got != want {
 		t.Fatalf("diagnostic status = %d, want %d", got, want)
 	}
+	if got, want := sigma.ClassifyError(err).Class, sigma.ErrorClassRateLimited; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+}
+
+func TestStreamErrorEventIsTypedProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"error":{"type":"server_error","message":"overloaded"}}`+"\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-stream-error-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if got, want := classification.ProviderCode, "server_error"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
 }
 
 func TestCancellationBeforeRequestSendDoesNotReachServer(t *testing.T) {

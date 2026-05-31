@@ -140,7 +140,7 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 		return fmt.Errorf("openai completions: decode stream chunk: %w", err)
 	}
 	if chunk.Error != nil {
-		return fmt.Errorf("openai completions: stream error: %s", chunk.Error.Message)
+		return openAIStreamProviderError(p.model, sigma.APIOpenAICompletions, chunk.Error)
 	}
 	if chunk.Model != "" {
 		p.providerModel = chunk.Model
@@ -181,6 +181,24 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 		}
 	}
 	return nil
+}
+
+func openAIStreamProviderError(model sigma.Model, api sigma.API, err *streamError) *sigma.ProviderError {
+	body, _ := json.Marshal(map[string]any{"error": err})
+	cause := sigma.ErrProviderResponse
+	if contextOverflowCause(body) != nil {
+		cause = sigma.ErrContextOverflow
+	}
+	return sigma.NewProviderError(
+		model.Provider,
+		api,
+		model.ID,
+		0,
+		"",
+		0,
+		body,
+		cause,
+	)
 }
 
 func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDelta) error {

@@ -171,12 +171,12 @@ func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event
 	case "response.failed", "response.incomplete":
 		p.captureResponse(parsed.Response)
 		if parsed.Response.Error != nil {
-			return fmt.Errorf("openai responses: stream error: %s", parsed.Response.Error.Message)
+			return openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
 		}
 		return fmt.Errorf("openai responses: stream ended with status %q", parsed.Response.Status)
 	case "error":
 		if parsed.Error != nil {
-			return fmt.Errorf("openai responses: stream error: %s", parsed.Error.Message)
+			return openAIResponsesStreamProviderError(p.model, parsed.Error)
 		}
 		return fmt.Errorf("openai responses: stream error")
 	case "response.output_item.added":
@@ -238,6 +238,28 @@ func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event
 		// progress events that carry no additional public sigma content.
 		return nil
 	}
+}
+
+func openAIResponsesStreamProviderError(model sigma.Model, err *responsesError) *sigma.ProviderError {
+	body, _ := json.Marshal(map[string]any{"error": err})
+	cause := sigma.ErrProviderResponse
+	if contextOverflowCause(body) != nil {
+		cause = sigma.ErrContextOverflow
+	}
+	api := model.API
+	if api == "" {
+		api = sigma.APIOpenAIResponses
+	}
+	return sigma.NewProviderError(
+		model.Provider,
+		api,
+		model.ID,
+		0,
+		"",
+		0,
+		body,
+		cause,
+	)
 }
 
 func (p *responsesStreamParser) captureEventMetadata(event responsesEvent) {

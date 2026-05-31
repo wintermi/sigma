@@ -675,8 +675,45 @@ func TestResponsesProviderErrorIsTypedAndRedacted(t *testing.T) {
 	if got, want := final.Diagnostics[0].API, sigma.APIOpenAIResponses; got != want {
 		t.Fatalf("diagnostic API = %q, want %q", got, want)
 	}
+	if got, want := sigma.ClassifyError(err).Class, sigma.ErrorClassAuth; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
 	if errorsContains(err, "sk-secret123") {
 		t.Fatalf("error leaked secret: %v", err)
+	}
+}
+
+func TestResponsesStreamErrorEventIsTypedProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `event: error
+data: {"type":"error","error":{"code":"rate_limit_exceeded","message":"rate limited"}}
+
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-stream-error-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassRateLimited; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if got, want := classification.ProviderCode, "rate_limit_exceeded"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
 	}
 }
 

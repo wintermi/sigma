@@ -8,9 +8,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 ## Release summary
 
 v0.3.0 extends Sigma's generated image metadata with an OpenRouter-routed Grok
-Imagine image model and tightens the OpenAI-compatible preview adapters around
-prompt caching, replay, and stream parsing. Direct xAI/Grok support remains
-focused on the preview Chat Completions adapter.
+Imagine image model, tightens the OpenAI-compatible preview adapters around
+prompt caching, replay, and stream parsing, and adds typed provider error
+classification for safer caller retry and recovery decisions. Direct xAI/Grok
+support remains focused on the preview Chat Completions adapter.
 
 ## Added
 
@@ -28,6 +29,10 @@ focused on the preview Chat Completions adapter.
 - OpenAI-compatible stream parsing recognizes Chat Completions
   `reasoning_text` deltas plus Responses/Codex refusal and reasoning-text
   events.
+- `sigma.ClassifyError` exposes stable provider error classes for auth, quota,
+  billing, context overflow, rate limits, transient failures, invalid requests,
+  provider failures, and unknown errors, including provider retry-after hints
+  where available.
 
 ## Compatibility
 
@@ -55,4 +60,5 @@ focused on the preview Chat Completions adapter.
 
 This release should use the validation process in [RELEASING.md](../RELEASING.md).
 No live xAI or OpenRouter provider calls are required for release validation.
-OpenAI provider changes are covered by deterministic request and SSE fixtures.
+OpenAI provider changes and typed provider error classification are covered by
+deterministic request, response, and SSE fixtures.

@@ -18,6 +18,8 @@ type Diagnostic struct {
 	Model               ModelID    `json:"model,omitempty"`
 	StatusCode          int        `json:"statusCode,omitempty"`
 	RequestID           string     `json:"requestID,omitempty"`
+	ProviderCode        string     `json:"providerCode,omitempty"`
+	ProviderMessage     string     `json:"providerMessage,omitempty"`
 	RetryAfterMillis    int64      `json:"retryAfterMillis,omitempty"`
 	MaxRetryDelayMillis int64      `json:"maxRetryDelayMillis,omitempty"`
 	BodyPreview         string     `json:"bodyPreview,omitempty"`
@@ -38,6 +40,8 @@ func (e *ProviderError) Diagnostic() Diagnostic {
 		Model:               e.Model,
 		StatusCode:          e.StatusCode,
 		RequestID:           redact.String(e.RequestID),
+		ProviderCode:        redact.String(e.ProviderCode),
+		ProviderMessage:     redact.String(e.ProviderMessage),
 		RetryAfterMillis:    e.RetryAfter.Milliseconds(),
 		MaxRetryDelayMillis: e.MaxRetryDelay.Milliseconds(),
 		BodyPreview:         redact.Preview(e.BodyPreview, 2048),

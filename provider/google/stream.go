@@ -119,7 +119,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		return fmt.Errorf("google generative ai: decode stream event: %w", err)
 	}
 	if response.Error != nil {
-		return streamError(response.Error)
+		return streamError(p.model, response.Error)
 	}
 	p.captureResponse(response)
 	if len(response.Candidates) == 0 {
@@ -449,14 +449,16 @@ func googleStopReason(reason string) sigma.StopReason {
 	}
 }
 
-func streamError(err *googleAPIError) error {
+func streamError(model sigma.Model, err *googleAPIError) error {
 	if err == nil {
-		return fmt.Errorf("google generative ai: stream error")
+		return sigma.NewProviderError(model.Provider, model.API, model.ID, 0, "", 0, []byte(`{"error":{"message":"stream error"}}`), sigma.ErrProviderResponse)
 	}
-	if err.Status != "" {
-		return fmt.Errorf("google generative ai: stream error: %s: %s", err.Status, err.Message)
+	body, _ := json.Marshal(map[string]any{"error": err})
+	cause := sigma.ErrProviderResponse
+	if contextOverflowCause(body) != nil {
+		cause = sigma.ErrContextOverflow
 	}
-	return fmt.Errorf("google generative ai: stream error: %s", err.Message)
+	return sigma.NewProviderError(model.Provider, model.API, model.ID, 0, "", 0, body, cause)
 }
 
 func intPtr(value int) *int {

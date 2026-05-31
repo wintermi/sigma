@@ -115,6 +115,146 @@ func TestProviderErrorRedactsBodyCauseAndDiagnostics(t *testing.T) {
 	}
 }
 
+func TestClassifyError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		err       error
+		class     ErrorClass
+		retryable bool
+		after     time.Duration
+		code      string
+	}{
+		{
+			name:  "nil",
+			class: ErrorClassUnknown,
+		},
+		{
+			name:  "invalid options",
+			err:   &Error{Code: ErrorInvalidOptions, Message: "bad option"},
+			class: ErrorClassInvalidRequest,
+		},
+		{
+			name:  "unsupported",
+			err:   &Error{Code: ErrorUnsupported, Message: "unsupported"},
+			class: ErrorClassInvalidRequest,
+		},
+		{
+			name:  "credential unavailable",
+			err:   &Error{Message: "missing key", Err: ErrCredentialUnavailable},
+			class: ErrorClassAuth,
+		},
+		{
+			name:  "wrapped provider",
+			err:   &GenerationError{Err: NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 401, "req_1", 0, []byte(`{"error":{"code":"unauthorized","message":"bad key"}}`), ErrProviderResponse)},
+			class: ErrorClassAuth,
+			code:  "unauthorized",
+		},
+		{
+			name:  "quota",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 429, "", 0, []byte(`{"error":{"code":"insufficient_quota","message":"quota exceeded"}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "insufficient_quota",
+		},
+		{
+			name:  "billing",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 429, "", 0, []byte(`{"error":{"code":"usage_not_included","message":"upgrade your plan"}}`), ErrProviderResponse),
+			class: ErrorClassBilling,
+			code:  "usage_not_included",
+		},
+		{
+			name:      "rate limited",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 429, "", 2*time.Second, []byte(`{"error":{"message":"slow down"}}`), ErrProviderResponse),
+			class:     ErrorClassRateLimited,
+			retryable: true,
+			after:     2 * time.Second,
+		},
+		{
+			name:      "transient",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 503, "", 0, []byte(`{"error":{"message":"try later"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:  "context overflow",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"code":"context_length_exceeded","message":"too many tokens"}}`), ErrContextOverflow),
+			class: ErrorClassContextOverflow,
+			code:  "context_length_exceeded",
+		},
+		{
+			name:  "invalid request",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 422, "", 0, []byte(`{"error":{"message":"bad request"}}`), ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+		},
+		{
+			name:  "provider",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 418, "", 0, []byte(`{"error":{"message":"teapot"}}`), ErrProviderResponse),
+			class: ErrorClassProvider,
+		},
+		{
+			name:      "rate limit text wins over token overflow text on 429",
+			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 429, "", 0, []byte(`{"error":{"message":"Throttling error: Too many tokens, please wait before trying again."}}`), ErrProviderResponse),
+			class:     ErrorClassRateLimited,
+			retryable: true,
+		},
+		{
+			name:  "generic plan wording is not billing",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 0, "", 0, []byte(`{"error":{"message":"invalid execution plan"}}`), ErrProviderResponse),
+			class: ErrorClassUnknown,
+		},
+		{
+			name:  "structured code wins over status",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"code":"usage_not_included","message":"upgrade required"}}`), ErrProviderResponse),
+			class: ErrorClassBilling,
+			code:  "usage_not_included",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			classification := ClassifyError(tt.err)
+			if classification.Class != tt.class {
+				t.Fatalf("class = %q, want %q", classification.Class, tt.class)
+			}
+			if classification.RetryHint.Retryable != tt.retryable {
+				t.Fatalf("retryable = %v, want %v", classification.RetryHint.Retryable, tt.retryable)
+			}
+			if classification.RetryHint.After != tt.after {
+				t.Fatalf("retry after = %v, want %v", classification.RetryHint.After, tt.after)
+			}
+			if classification.ProviderCode != tt.code {
+				t.Fatalf("provider code = %q, want %q", classification.ProviderCode, tt.code)
+			}
+		})
+	}
+}
+
+func TestProviderErrorClassificationRedactsParsedFields(t *testing.T) {
+	t.Parallel()
+
+	err := NewProviderError(
+		ProviderOpenAI,
+		APIOpenAIResponses,
+		"gpt-test",
+		401,
+		"req_secret",
+		0,
+		[]byte(`{"error":{"code":"unauthorized","message":"bad key sk-live-jsonsecret"}}`),
+		ErrProviderResponse,
+	)
+
+	assertNoSecrets(t, err.ProviderMessage)
+	assertNoSecrets(t, err.Error())
+	classification := ClassifyError(err)
+	assertNoSecrets(t, classification.Message)
+	if classification.Class != ErrorClassAuth {
+		t.Fatalf("class = %q, want %q", classification.Class, ErrorClassAuth)
+	}
+}
+
 func TestRedactionCoversHeadersQueriesJSONAndMultilineBodies(t *testing.T) {
 	t.Parallel()
 

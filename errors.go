@@ -6,6 +6,7 @@
 package sigma
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -102,28 +103,33 @@ func (e *Error) Is(target error) bool {
 // and finish text streams with StopReasonError. Request cancellation should map to
 // ErrAborted and StopReasonAborted instead of ProviderError.
 type ProviderError struct {
-	Provider      ProviderID
-	API           API
-	Model         ModelID
-	StatusCode    int
-	RequestID     string
-	RetryAfter    time.Duration
-	MaxRetryDelay time.Duration
-	BodyPreview   string
-	Err           error
+	Provider        ProviderID
+	API             API
+	Model           ModelID
+	StatusCode      int
+	RequestID       string
+	ProviderCode    string
+	ProviderMessage string
+	RetryAfter      time.Duration
+	MaxRetryDelay   time.Duration
+	BodyPreview     string
+	Err             error
 }
 
 // NewProviderError builds a provider response error with a redacted body preview.
 func NewProviderError(provider ProviderID, api API, model ModelID, statusCode int, requestID string, retryAfter time.Duration, body []byte, err error) *ProviderError {
+	code, message := providerErrorDetails(body)
 	return &ProviderError{
-		Provider:    provider,
-		API:         api,
-		Model:       model,
-		StatusCode:  statusCode,
-		RequestID:   requestID,
-		RetryAfter:  retryAfter,
-		BodyPreview: redact.Preview(string(body), 2048),
-		Err:         err,
+		Provider:        provider,
+		API:             api,
+		Model:           model,
+		StatusCode:      statusCode,
+		RequestID:       requestID,
+		ProviderCode:    redact.String(code),
+		ProviderMessage: redact.String(message),
+		RetryAfter:      retryAfter,
+		BodyPreview:     redact.Preview(string(body), 2048),
+		Err:             err,
 	}
 }
 
@@ -146,6 +152,12 @@ func (e *ProviderError) Error() string {
 	}
 	if e.RequestID != "" {
 		parts = append(parts, "request_id="+redact.String(e.RequestID))
+	}
+	if e.ProviderCode != "" {
+		parts = append(parts, "provider_code="+redact.String(e.ProviderCode))
+	}
+	if e.ProviderMessage != "" {
+		parts = append(parts, "provider_message="+redact.String(e.ProviderMessage))
 	}
 	if e.RetryAfter > 0 {
 		parts = append(parts, "retry_after="+e.RetryAfter.String())
@@ -260,5 +272,66 @@ func sentinelForCode(code ErrorCode) error {
 		return ErrInvalidOptions
 	default:
 		return nil
+	}
+}
+
+func providerErrorDetails(body []byte) (string, string) {
+	if len(body) == 0 {
+		return "", ""
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", ""
+	}
+
+	code, message := errorObjectDetails(payload["error"])
+	if code == "" {
+		code = stringValue(payload["code"])
+	}
+	if code == "" {
+		code = stringValue(payload["type"])
+	}
+	if code == "" {
+		code = stringValue(payload["status"])
+	}
+	if message == "" {
+		message = stringValue(payload["message"])
+	}
+	if message == "" {
+		message = stringValue(payload["error_description"])
+	}
+	return code, message
+}
+
+func errorObjectDetails(value any) (string, string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		code := stringValue(typed["code"])
+		if code == "" {
+			code = stringValue(typed["type"])
+		}
+		if code == "" {
+			code = stringValue(typed["status"])
+		}
+		message := stringValue(typed["message"])
+		if message == "" {
+			message = stringValue(typed["error_description"])
+		}
+		return code, message
+	case string:
+		return typed, ""
+	default:
+		return "", ""
+	}
+}
+
+func stringValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	case json.Number:
+		return typed.String()
+	default:
+		return ""
 	}
 }

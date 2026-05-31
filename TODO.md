@@ -50,8 +50,8 @@ metadata-only and backed by compatibility checks.
 - [ ] GitHub Copilot — promote to a first-class provider row with fixtures.
 - [ ] Kimi — promote to a first-class provider row with fixtures.
 - [ ] Xiaomi — promote to a first-class provider row with fixtures.
-- [ ] For each promoted provider, add streaming, tools, usage, error, redaction,
-      and cancellation coverage.
+- [ ] For each promoted provider, add streaming, tools, usage, typed error
+      classification, redaction, and cancellation coverage.
 
 ## xAI/Grok parity
 

@@ -122,6 +122,18 @@ func TestParseRetryAfter(t *testing.T) {
 	}
 }
 
+func TestRetryAfterPrefersMillisecondHeader(t *testing.T) {
+	t.Parallel()
+
+	header := http.Header{}
+	header.Set("Retry-After", "3")
+	header.Set("Retry-After-Ms", "250")
+
+	if got, want := RetryAfter(header), 250*time.Millisecond; got != want {
+		t.Fatalf("RetryAfter = %v, want %v", got, want)
+	}
+}
+
 func TestDoHTTPWithRetryReturnsProviderErrorWhenRetryAfterExceedsCap(t *testing.T) {
 	t.Parallel()
 

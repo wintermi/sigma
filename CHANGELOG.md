@@ -28,6 +28,9 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - OpenAI-compatible stream parsing now recognizes Chat Completions
   `reasoning_text` deltas and Responses/Codex refusal and reasoning-text
   events.
+- Provider execution errors now expose typed `sigma.ClassifyError` results with
+  stable auth, quota, billing, context-overflow, rate-limit, transient,
+  invalid-request, provider, and unknown classes plus retry-after hints.
 
 ### Compatibility
 

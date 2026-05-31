@@ -730,6 +730,16 @@ func TestStreamErrorEventEndsWithError(t *testing.T) {
 	if got, want := final.StopReason, sigma.StopReasonError; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if got, want := classification.ProviderCode, "INTERNAL"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
 	if !strings.Contains(err.Error(), "INTERNAL") {
 		t.Fatalf("error = %v, want INTERNAL", err)
 	}

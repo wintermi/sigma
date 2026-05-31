@@ -168,9 +168,9 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		return nil
 	case "error":
 		if parsed.Error != nil {
-			return streamError(parsed.Error)
+			return streamError(p.model, parsed.Error)
 		}
-		return fmt.Errorf("anthropic messages: stream error")
+		return streamError(p.model, nil)
 	default:
 		return nil
 	}
@@ -723,21 +723,15 @@ func anthropicStopReason(reason string) sigma.StopReason {
 	}
 }
 
-func streamError(err *streamAPIError) error {
+func streamError(model sigma.Model, err *streamAPIError) error {
 	if err == nil {
-		return fmt.Errorf("anthropic messages: stream error")
+		return sigma.NewProviderError(model.Provider, sigma.APIAnthropicMessages, model.ID, 0, "", 0, []byte(`{"error":{"message":"stream error"}}`), sigma.ErrProviderResponse)
 	}
+	body, _ := json.Marshal(map[string]any{"error": err})
 	if err.Type == "invalid_request_error" && contextOverflowCause([]byte(err.Message)) != nil {
-		return &sigma.Error{
-			Code:    sigma.ErrorContextOverflow,
-			Message: err.Message,
-			Err:     sigma.ErrContextOverflow,
-		}
+		return sigma.NewProviderError(model.Provider, sigma.APIAnthropicMessages, model.ID, 0, "", 0, body, sigma.ErrContextOverflow)
 	}
-	if err.Type != "" {
-		return fmt.Errorf("anthropic messages: stream error: %s: %s", err.Type, err.Message)
-	}
-	return fmt.Errorf("anthropic messages: stream error: %s", err.Message)
+	return sigma.NewProviderError(model.Provider, sigma.APIAnthropicMessages, model.ID, 0, "", 0, body, sigma.ErrProviderResponse)
 }
 
 func responseMetadata(responseID string, providerModel string, modelID sigma.ModelID) map[string]any {

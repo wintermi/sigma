@@ -42,6 +42,40 @@ if errors.As(err, &providerErr) {
 shapes before formatting. `ProviderError.Diagnostic` returns safe-to-log context
 for an assistant message that ended with `StopReasonError`.
 
+## Classified Provider Errors
+
+Use `sigma.ClassifyError` when an application needs stable retry or recovery
+decisions without parsing provider-specific error strings:
+
+```go
+classification := sigma.ClassifyError(err)
+switch classification.Class {
+case sigma.ErrorClassContextOverflow:
+	// Compact context and retry once.
+case sigma.ErrorClassRateLimited, sigma.ErrorClassTransient:
+	if classification.RetryHint.Retryable {
+		time.Sleep(classification.RetryHint.After)
+	}
+case sigma.ErrorClassAuth, sigma.ErrorClassQuota, sigma.ErrorClassBilling:
+	// Surface an account or credential action to the caller.
+}
+```
+
+The classifier unwraps `*sigma.GenerationError`, `*sigma.Error`, and
+`*sigma.ProviderError`. It preserves the ordinary Go inspection path, so callers
+can combine it with sentinel and typed-error checks:
+
+```go
+if errors.Is(err, sigma.ErrContextOverflow) {
+	// Same signal as ErrorClassContextOverflow.
+}
+
+var providerErr *sigma.ProviderError
+if errors.As(err, &providerErr) {
+	log.Println(providerErr.Provider, providerErr.StatusCode, providerErr.ProviderCode)
+}
+```
+
 ## Stream Errors
 
 Stream terminal errors are wrapped in `*sigma.GenerationError`, which preserves

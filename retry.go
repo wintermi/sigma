@@ -154,6 +154,9 @@ func RetryAfter(header http.Header) time.Duration {
 	if header == nil {
 		return 0
 	}
+	if delay := parseRetryAfterMillis(header.Get("Retry-After-Ms")); delay > 0 {
+		return delay
+	}
 	return ParseRetryAfter(header.Get("Retry-After"), time.Now())
 }
 
@@ -175,6 +178,17 @@ func ParseRetryAfter(value string, now time.Time) time.Duration {
 		}
 	}
 	return 0
+}
+
+func parseRetryAfterMillis(value string) time.Duration {
+	if value == "" {
+		return 0
+	}
+	millis, err := strconv.Atoi(value)
+	if err != nil || millis <= 0 {
+		return 0
+	}
+	return time.Duration(millis) * time.Millisecond
 }
 
 func retryPolicyFromOptions(opts Options) retryPolicy {
