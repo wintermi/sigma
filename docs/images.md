@@ -78,7 +78,9 @@ Environment: `OPENROUTER_API_KEY`.
 
 OpenRouter maps `Size`, `Quality`, and provider-specific routing values to
 OpenRouter request fields where possible. Support depends on the routed upstream
-model.
+model. Generated metadata includes a Grok Imagine route through OpenRouter; it
+uses `OPENROUTER_API_KEY` and the existing `openrouter-images` adapter rather
+than a direct xAI image provider.
 
 ## OpenAI Images
 

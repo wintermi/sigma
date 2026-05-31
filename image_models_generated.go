@@ -55,6 +55,24 @@ var builtinImageModels = []ImageModel{
 			"routedProvider":      "google",
 		},
 	},
+	{
+		ID:               ModelID("x-ai/grok-imagine-image-quality"),
+		Provider:         ProviderID("openrouter"),
+		API:              ImageAPI("openrouter-images"),
+		Name:             "xAI Grok Imagine Image Quality via OpenRouter",
+		MaxWidth:         1024,
+		MaxHeight:        1024,
+		SupportedSizes:   []string{"1024x1024"},
+		SupportedFormats: []string{"image/png"},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"OPENROUTER_API_KEY"},
+			"baseURL":             "https://openrouter.ai/api/v1",
+			"cost":                map[string]any{"currency": "USD", "unit": "image", "values": map[string]float64{"image": 0}},
+			"headers":             map[string]string{"HTTP-Referer": "", "X-Title": ""},
+			"modelFamily":         "grok",
+			"routedProvider":      "xai",
+		},
+	},
 }
 
 func registerBuiltinImageModels(registry *Registry) error {

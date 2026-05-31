@@ -2039,6 +2039,33 @@
         "modelFamily": "gemini",
         "routedProvider": "google"
       }
+    },
+    {
+      "id": "x-ai/grok-imagine-image-quality",
+      "name": "xAI Grok Imagine Image Quality via OpenRouter",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": ["1024x1024"],
+      "supportedFormats": ["image/png"],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": ["OPENROUTER_API_KEY"],
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "routedProvider": "xai"
+      }
     }
   ]
 }

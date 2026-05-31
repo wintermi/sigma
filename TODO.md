@@ -50,8 +50,12 @@ promoted only with deterministic request-shape evidence.
 
 - [ ] Keep future xAI/Grok generated metadata refreshes tied to deterministic
       modeldata, payload, error, and compatibility coverage.
+- [x] Add OpenRouter-routed Grok Imagine image metadata without introducing a
+      direct xAI image provider.
 - [x] Add opt-in live xAI/Grok surface probes only as diagnostics, keeping live
       provider calls out of `mise run ci`.
+- [ ] Evaluate direct xAI/Grok image-provider semantics only after the API
+      shape is backed by deterministic request and response fixtures.
 
 ## Model registry generation
 

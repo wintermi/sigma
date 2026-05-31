@@ -10,7 +10,17 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 See [release notes](docs/release-notes-v0.3.0.md).
 
-Changes will be recorded here as they land.
+### Added
+
+- Generated image metadata now includes the OpenRouter-routed Grok Imagine
+  image-quality model, marked with xAI routing metadata and `OPENROUTER_API_KEY`
+  credential discovery.
+
+### Compatibility
+
+- The direct xAI/Grok provider remains a preview Chat Completions adapter.
+  Grok image generation is represented through OpenRouter image metadata rather
+  than a direct xAI image provider.
 
 ### Known limitations
 

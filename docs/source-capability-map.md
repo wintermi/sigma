@@ -35,7 +35,7 @@ packages and metadata fields. It should be read with
 | Google Gemini API | `google` | `google-generative-ai` | Generated metadata includes Gemini text. |
 | Google Vertex AI | `google-vertex` | `google-vertex` | Generated metadata includes a representative Gemini Vertex route; callers still supply project/location routing. |
 | Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text plus representative adjustable and native reasoning models. |
-| OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and one image route. |
+| OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and image routes for Gemini and Grok Imagine routed models. |
 | OpenCode Zen, OpenCode Go | `opencode`, `opencode-go` | `openai-completions` | Generated metadata includes curated OpenAI-compatible text routes. Register the shared OpenAI-compatible provider under these IDs to make requests. |
 | xAI/Grok | `xai` | `openai-completions` | Use [provider/xai](../provider/xai) for Grok Chat Completions requests. Generated metadata includes curated Grok text, image-input, and reasoning-capable routes with `XAI_API_KEY` credential metadata. |
 | DeepSeek, Groq, Cerebras, Together, GitHub Copilot | `deepseek`, `groq`, `cerebras`, `together`, `github-copilot` | `openai-completions` or `openai-responses` when caller registers compatible providers | Generated metadata includes representative metadata-only routes, but first-class provider parity still needs fixtures. |

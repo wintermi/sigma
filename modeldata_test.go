@@ -254,6 +254,16 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if cost, ok := image.ProviderMetadata["cost"].(map[string]any); !ok || cost["currency"] != "USD" {
 		t.Fatalf("image cost metadata = %#v, want USD cost map", image.ProviderMetadata["cost"])
 	}
+
+	grokImage, ok := registry.ImageModel(ProviderOpenRouter, "x-ai/grok-imagine-image-quality")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenRouter Grok image model")
+	}
+	if grokImage.API != ImageAPIOpenRouterImages {
+		t.Fatalf("Grok image API = %q, want %q", grokImage.API, ImageAPIOpenRouterImages)
+	}
+	assertMetadataString(t, grokImage.ProviderMetadata, "routedProvider", "xai")
+	assertMetadataStrings(t, grokImage.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
 }
 
 func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Registry) {
