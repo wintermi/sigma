@@ -91,7 +91,7 @@ func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options)
 
 func googleContents(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
 	contents := make([]map[string]any, 0, len(req.Messages))
-	ids := newGoogleToolCallIDNormalizer(model.ID)
+	ids := newGoogleToolCallIDNormalizer(model)
 	for _, message := range req.Messages {
 		converted, err := googleContent(model, message, ids)
 		if err != nil {
@@ -644,20 +644,25 @@ func supportsGoogleMultimodalFunctionResponse(modelID sigma.ModelID) bool {
 }
 
 type googleToolCallIDNormalizer struct {
+	emit     bool
 	required bool
 	ids      map[string]string
 	used     map[string]string
 }
 
-func newGoogleToolCallIDNormalizer(modelID sigma.ModelID) *googleToolCallIDNormalizer {
+func newGoogleToolCallIDNormalizer(model sigma.Model) *googleToolCallIDNormalizer {
 	return &googleToolCallIDNormalizer{
-		required: requiresGoogleToolCallID(modelID),
+		emit:     model.API != sigma.APIGoogleVertex,
+		required: requiresGoogleToolCallID(model),
 		ids:      make(map[string]string),
 		used:     make(map[string]string),
 	}
 }
 
 func (n *googleToolCallIDNormalizer) normalize(id string) string {
+	if !n.emit {
+		return ""
+	}
 	if id == "" {
 		return ""
 	}
@@ -705,8 +710,11 @@ func googleSafeToolCallID(id string) string {
 	return out.String()
 }
 
-func requiresGoogleToolCallID(modelID sigma.ModelID) bool {
-	id := strings.ToLower(string(modelID))
+func requiresGoogleToolCallID(model sigma.Model) bool {
+	if model.API == sigma.APIGoogleVertex {
+		return false
+	}
+	id := strings.ToLower(string(model.ID))
 	return strings.HasPrefix(id, "claude-") || strings.HasPrefix(id, "gpt-oss-")
 }
 

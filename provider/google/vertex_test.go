@@ -7,6 +7,7 @@ package google
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -117,6 +118,68 @@ func TestVertexCompleteSendsAPIKeyRequest(t *testing.T) {
 		t.Fatalf("authorization header = %q, want empty", got)
 	}
 	goldentest.AssertJSON(t, request.Body, "provider/google/vertex/basic_payload.json")
+}
+
+func TestVertexOmitsFunctionCallIDs(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedVertexRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureVertexRequest(t, requests, r)
+		writeVertexSSE(t, w, vertexCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := vertexTestModel()
+	model.ID = "gemini-3.5-flash"
+	client := vertexTestClientWithModel(
+		t,
+		model,
+		vertexAPIKeyResolver("vertex-api-key"),
+		WithVertexConfig(VertexConfig{
+			ProjectID:  "test-project",
+			Location:   "us-central1",
+			APIVersion: "v1",
+		}),
+		WithVertexBaseURL(server.URL+"/v1"),
+	)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserText("read"),
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_prev", "read", map[string]any{"path": "a.txt"})},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_prev",
+				ToolName:   "read",
+				Content:    []sigma.ContentBlock{sigma.Text("alpha")},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(receiveVertexRequest(t, requests).Body), &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	contents := payload["contents"].([]any)
+	modelTurn := contents[1].(map[string]any)
+	modelParts := modelTurn["parts"].([]any)
+	call := modelParts[0].(map[string]any)["functionCall"].(map[string]any)
+	if _, ok := call["id"]; ok {
+		t.Fatalf("function call id = %v, want omitted", call["id"])
+	}
+	toolTurn := contents[2].(map[string]any)
+	toolParts := toolTurn["parts"].([]any)
+	response := toolParts[0].(map[string]any)["functionResponse"].(map[string]any)
+	if _, ok := response["id"]; ok {
+		t.Fatalf("function response id = %v, want omitted", response["id"])
+	}
 }
 
 func TestVertexTokenModeUsesTokenProvider(t *testing.T) {
