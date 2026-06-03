@@ -6,6 +6,7 @@
 package openai
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -644,6 +645,15 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 		Provider:         sigma.ProviderOpenCode,
 		API:              sigma.APIOpenAICompletions,
 		SupportsThinking: true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
+			sigma.ThinkingLevelHigh: "high",
+		},
+		UnsupportedThinkingLevels: []sigma.ThinkingLevel{
+			sigma.ThinkingLevelOff,
+			sigma.ThinkingLevelMinimal,
+			sigma.ThinkingLevelLow,
+			sigma.ThinkingLevelMedium,
+		},
 		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
 			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
 		},
@@ -659,6 +669,25 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 		t.Fatalf("chatCompletionsPayload for OpenCode Zen Grok Build reasoning returned error: %v", err)
 	}
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_grok_build_reasoning_unsupported.json")
+
+	for _, level := range []sigma.ThinkingLevel{
+		sigma.ThinkingLevelOff,
+		sigma.ThinkingLevelMedium,
+	} {
+		_, err = chatCompletionsPayload(
+			grokBuild,
+			sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			sigma.Options{ReasoningLevel: level},
+			openAICompletionsCompat(grokBuild, "https://opencode.ai/zen/v1"),
+		)
+		if err == nil {
+			t.Fatalf("chatCompletionsPayload for unsupported Grok Build level %q returned nil error", level)
+		}
+		var sigmaErr *sigma.Error
+		if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorInvalidOptions {
+			t.Fatalf("unsupported Grok Build level %q error = %T %[2]v, want invalid options", level, err)
+		}
+	}
 }
 
 func TestOpenAICompletionsCompatReplaysReasoningContent(t *testing.T) {

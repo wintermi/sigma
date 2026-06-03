@@ -236,10 +236,13 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 
 	registry := sigma.NewRegistry()
 	model := sigma.Model{
-		ID:               "gpt-custom",
-		Provider:         sigma.ProviderOpenAI,
-		API:              sigma.APIOpenAIResponses,
-		ThinkingLevels:   []sigma.ThinkingLevel{sigma.ThinkingLevelLow},
+		ID:             "gpt-custom",
+		Provider:       sigma.ProviderOpenAI,
+		API:            sigma.APIOpenAIResponses,
+		ThinkingLevels: []sigma.ThinkingLevel{sigma.ThinkingLevelLow},
+		UnsupportedThinkingLevels: []sigma.ThinkingLevel{
+			sigma.ThinkingLevelOff,
+		},
 		ProviderMetadata: map[string]any{"family": "gpt"},
 	}
 	if err := registry.RegisterModel(model, sigma.WithMetadataOnly()); err != nil {
@@ -248,6 +251,7 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 
 	listed := registry.ListModels()
 	listed[0].ThinkingLevels[0] = sigma.ThinkingLevelHigh
+	listed[0].UnsupportedThinkingLevels[0] = sigma.ThinkingLevelMedium
 	listed[0].ProviderMetadata["family"] = "mutated"
 
 	got, ok := registry.Model(sigma.ProviderOpenAI, "gpt-custom")
@@ -256,6 +260,9 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	if got.ThinkingLevels[0] != sigma.ThinkingLevelLow {
 		t.Fatalf("thinking level = %q, want %q", got.ThinkingLevels[0], sigma.ThinkingLevelLow)
+	}
+	if got.UnsupportedThinkingLevels[0] != sigma.ThinkingLevelOff {
+		t.Fatalf("unsupported thinking level = %q, want %q", got.UnsupportedThinkingLevels[0], sigma.ThinkingLevelOff)
 	}
 	if got.ProviderMetadata["family"] != "gpt" {
 		t.Fatalf("provider metadata family = %q, want %q", got.ProviderMetadata["family"], "gpt")

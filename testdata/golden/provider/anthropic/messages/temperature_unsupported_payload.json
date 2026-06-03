@@ -1,0 +1,19 @@
+{
+  "max_tokens": 1024,
+  "messages": [
+    {
+      "content": [
+        {
+          "text": "hi",
+          "type": "text"
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "model": "claude-test",
+  "stream": true,
+  "thinking": {
+    "type": "disabled"
+  }
+}

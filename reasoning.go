@@ -36,6 +36,9 @@ func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 	if level == "" {
 		return false
 	}
+	if model.unsupportedThinkingLevel(level) {
+		return false
+	}
 	if level == ThinkingLevelOff {
 		return true
 	}
@@ -52,6 +55,15 @@ func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 		return false
 	}
 	return model.SupportsThinking
+}
+
+func (model Model) unsupportedThinkingLevel(level ThinkingLevel) bool {
+	for _, unsupported := range model.UnsupportedThinkingLevels {
+		if unsupported == level {
+			return true
+		}
+	}
+	return false
 }
 
 // ProviderThinkingLevel returns the provider-specific value for level.

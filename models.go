@@ -20,6 +20,7 @@ type Model struct {
 	SupportsThinking              bool                     `json:"supportsThinking,omitempty"`
 	ThinkingLevels                []ThinkingLevel          `json:"thinkingLevels,omitempty"`
 	ThinkingLevelMap              map[ThinkingLevel]string `json:"thinkingLevelMap,omitempty"`
+	UnsupportedThinkingLevels     []ThinkingLevel          `json:"unsupportedThinkingLevels,omitempty"`
 	InputCostPerMillion           float64                  `json:"inputCostPerMillion,omitempty"`
 	OutputCostPerMillion          float64                  `json:"outputCostPerMillion,omitempty"`
 	CacheReadInputCostPerMillion  float64                  `json:"cacheReadInputCostPerMillion,omitempty"`
@@ -67,6 +68,7 @@ type OpenAICompatibleModelConfig struct {
 	SupportsThinking              bool
 	ThinkingLevels                []ThinkingLevel
 	ThinkingLevelMap              map[ThinkingLevel]string
+	UnsupportedThinkingLevels     []ThinkingLevel
 	InputCostPerMillion           float64
 	OutputCostPerMillion          float64
 	CacheReadInputCostPerMillion  float64
@@ -106,6 +108,7 @@ func OpenAICompatibleModel(config OpenAICompatibleModelConfig) Model {
 		SupportsThinking:              config.SupportsThinking,
 		ThinkingLevels:                append([]ThinkingLevel(nil), config.ThinkingLevels...),
 		ThinkingLevelMap:              copyThinkingLevelStringMap(config.ThinkingLevelMap),
+		UnsupportedThinkingLevels:     append([]ThinkingLevel(nil), config.UnsupportedThinkingLevels...),
 		InputCostPerMillion:           config.InputCostPerMillion,
 		OutputCostPerMillion:          config.OutputCostPerMillion,
 		CacheReadInputCostPerMillion:  config.CacheReadInputCostPerMillion,
@@ -196,6 +199,7 @@ func cloneModel(model Model) Model {
 	model.SupportedInputs = append([]ContentBlockType(nil), model.SupportedInputs...)
 	model.ThinkingLevels = append([]ThinkingLevel(nil), model.ThinkingLevels...)
 	model.ThinkingLevelMap = copyThinkingLevelStringMap(model.ThinkingLevelMap)
+	model.UnsupportedThinkingLevels = append([]ThinkingLevel(nil), model.UnsupportedThinkingLevels...)
 	model.OpenAICompletionsCompat = cloneOpenAICompletionsCompat(model.OpenAICompletionsCompat)
 	model.AnthropicMessagesCompat = cloneAnthropicMessagesCompat(model.AnthropicMessagesCompat)
 	model.AzureOpenAIResponses = cloneAzureOpenAIResponsesConfig(model.AzureOpenAIResponses)

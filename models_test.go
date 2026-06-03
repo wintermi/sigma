@@ -24,7 +24,13 @@ func TestModelMetadataJSONRoundTrip(t *testing.T) {
 		SupportsTools:    true,
 		SupportsThinking: true,
 		ThinkingLevels:   []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelHigh},
+		UnsupportedThinkingLevels: []sigma.ThinkingLevel{
+			sigma.ThinkingLevelOff,
+		},
 		DefaultTransport: sigma.TransportSSE,
+		AnthropicMessagesCompat: &sigma.AnthropicMessagesCompat{
+			SupportsTemperature: sigma.AnthropicCompatUnsupported,
+		},
 		ProviderMetadata: map[string]any{
 			"family": "gpt",
 		},
@@ -33,6 +39,13 @@ func TestModelMetadataJSONRoundTrip(t *testing.T) {
 	roundTripped := assertJSONRoundTrip(t, model)
 	if roundTripped.Provider != sigma.ProviderOpenAI {
 		t.Fatalf("provider changed after round trip: got %q", roundTripped.Provider)
+	}
+	if len(roundTripped.UnsupportedThinkingLevels) != 1 || roundTripped.UnsupportedThinkingLevels[0] != sigma.ThinkingLevelOff {
+		t.Fatalf("unsupported thinking levels changed after round trip: %#v", roundTripped.UnsupportedThinkingLevels)
+	}
+	if roundTripped.AnthropicMessagesCompat == nil ||
+		roundTripped.AnthropicMessagesCompat.SupportsTemperature != sigma.AnthropicCompatUnsupported {
+		t.Fatalf("anthropic compat changed after round trip: %#v", roundTripped.AnthropicMessagesCompat)
 	}
 }
 

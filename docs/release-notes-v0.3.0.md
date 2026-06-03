@@ -27,6 +27,11 @@ Chat Completions adapter.
 - Curated generated text metadata for current OpenAI, Anthropic, Google,
   Vertex AI, Mistral, Bedrock, OpenCode, and OpenAI-compatible model rows while
   keeping default registry entries metadata-only until providers are registered.
+- OpenCode Zen and OpenCode Go metadata now includes the promoted DeepSeek V4
+  Flash and MiniMax M3 routed rows, stricter unsupported thinking-level
+  metadata for known reasoning models, adaptive Anthropic thinking metadata for
+  selected Claude routes, and temperature suppression for OpenCode Claude
+  models that reject temperature.
 - Generated OpenRouter image metadata for the stable Gemini image route and
   additional current image-generation routes through the existing
   `openrouter-images` provider path.
@@ -118,6 +123,9 @@ Chat Completions adapter.
 - Broader Google Gemini API and Vertex AI catalog coverage remains deferred to
   the catalog refresh workflow with deterministic modeldata, payload, error,
   and compatibility coverage.
+- Broader OpenCode catalog expansion and live OpenCode surface validation
+  remain deferred to the catalog refresh workflow and opt-in credential-gated
+  probes.
 - Broad OpenRouter text expansion, Bedrock regional aliases, and automated
   catalog ingestion remain deferred to the catalog refresh workflow.
 - Anthropic-compatible Fireworks model routing remains deferred; the built-in
@@ -140,5 +148,6 @@ This release should use the validation process in [RELEASING.md](../RELEASING.md
 No live xAI or OpenRouter provider calls are required for release validation.
 OpenAI provider changes, image generation/edit/variation/streaming behavior,
 Codex OAuth and WebSocket flows, typed provider error classification, and
-generated catalog metadata are covered by deterministic request, response,
-OAuth, SSE/WebSocket, checksum, and registry fixtures.
+generated catalog metadata, including strict OpenCode thinking and routed model
+metadata, are covered by deterministic request, response, OAuth, SSE/WebSocket,
+checksum, and registry fixtures.

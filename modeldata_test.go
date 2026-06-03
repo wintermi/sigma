@@ -229,6 +229,31 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "qwen3.6-plus", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.1-codex", APIOpenAIResponses)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.4", APIOpenAIResponses)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "minimax-m3-free", APIAnthropicMessages)
+
+	openCodeDeepSeek, ok := registry.Model(ProviderOpenCode, "deepseek-v4-flash")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Zen DeepSeek V4 Flash model")
+	}
+	if openCodeDeepSeek.OpenAICompletionsCompat == nil ||
+		openCodeDeepSeek.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		openCodeDeepSeek.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("OpenCode Zen DeepSeek compat = %#v, want deepseek reasoning content replay", openCodeDeepSeek.OpenAICompletionsCompat)
+	}
+	if !openCodeDeepSeek.SupportsThinkingLevel(ThinkingLevelOff) ||
+		openCodeDeepSeek.SupportsThinkingLevel(ThinkingLevelMedium) {
+		t.Fatalf("OpenCode Zen DeepSeek thinking level support = %+v / %+v, want off without medium", openCodeDeepSeek.ThinkingLevelMap, openCodeDeepSeek.UnsupportedThinkingLevels)
+	}
+
+	openCodeClaude, ok := registry.Model(ProviderOpenCode, "claude-opus-4-8")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Zen Claude Opus model")
+	}
+	if openCodeClaude.AnthropicMessagesCompat == nil ||
+		openCodeClaude.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
+		openCodeClaude.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
+		t.Fatalf("OpenCode Zen Claude compat = %#v, want adaptive thinking without temperature", openCodeClaude.AnthropicMessagesCompat)
+	}
 
 	grokBuild, ok := registry.Model(ProviderOpenCode, "grok-build-0.1")
 	if !ok {
@@ -240,6 +265,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if grokBuild.OpenAICompletionsCompat == nil ||
 		grokBuild.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
 		t.Fatalf("OpenCode Zen Grok Build compat = %#v, want no reasoning effort", grokBuild.OpenAICompletionsCompat)
+	}
+	if grokBuild.SupportsThinkingLevel(ThinkingLevelOff) ||
+		grokBuild.SupportsThinkingLevel(ThinkingLevelMedium) ||
+		!grokBuild.SupportsThinkingLevel(ThinkingLevelHigh) {
+		t.Fatalf("OpenCode Zen Grok Build thinking support = %+v / %+v, want high only", grokBuild.ThinkingLevelMap, grokBuild.UnsupportedThinkingLevels)
 	}
 
 	openCodeGo, ok := registry.Model(ProviderOpenCodeGo, "deepseek-v4-flash")
@@ -257,9 +287,14 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("OpenCode Go xhigh level = %q, %v; want max, true", got, ok)
 	}
+	if !openCodeGo.SupportsThinkingLevel(ThinkingLevelOff) ||
+		openCodeGo.SupportsThinkingLevel(ThinkingLevelLow) {
+		t.Fatalf("OpenCode Go DeepSeek thinking support = %+v / %+v, want off without low", openCodeGo.ThinkingLevelMap, openCodeGo.UnsupportedThinkingLevels)
+	}
 	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
 	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m3", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)
 
 	openCodeGoKimi, ok := registry.Model(ProviderOpenCodeGo, "kimi-k2.6")
@@ -270,6 +305,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		openCodeGoKimi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
 		openCodeGoKimi.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
 		t.Fatalf("OpenCode Go Kimi compat = %#v, want deepseek reasoning without effort", openCodeGoKimi.OpenAICompletionsCompat)
+	}
+	if !openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelOff) ||
+		!openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelHigh) ||
+		openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelMedium) {
+		t.Fatalf("OpenCode Go Kimi thinking support = %+v / %+v, want off and high only", openCodeGoKimi.ThinkingLevelMap, openCodeGoKimi.UnsupportedThinkingLevels)
 	}
 
 	assertProviderConstantsHaveGeneratedTextMetadata(t, registry)

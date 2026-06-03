@@ -305,6 +305,66 @@ func TestAdaptiveThinkingPayloadUsesOutputConfigEffort(t *testing.T) {
 	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
 }
 
+func TestModelCompatSuppressesUnsupportedTemperature(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-temperature-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsTemperature: sigma.AnthropicCompatUnsupported,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithTemperature(0.1),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/temperature_unsupported_payload.json")
+	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
+}
+
+func TestSupportedTemperatureStillEmitsTemperature(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-temperature-control-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithTemperature(0.1),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/temperature_supported_payload.json")
+}
+
 func TestToolResultsAreGroupedAndEmptyThinkingSignatureFallsBackToText(t *testing.T) {
 	t.Parallel()
 

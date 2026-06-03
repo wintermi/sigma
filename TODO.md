@@ -121,6 +121,10 @@ still be promoted only with deterministic evidence.
 - [x] Evaluate and fixture selected OpenCode-routed OpenAI Responses,
       Anthropic Messages, and Google API models before promoting them to
       built-in metadata.
+- [x] Promote strict OpenCode Zen/Go metadata for the covered DeepSeek V4,
+      MiniMax M3, Grok Build, Kimi K2.6, and Claude adaptive-thinking rows,
+      including unsupported thinking-level and temperature compatibility
+      metadata.
 - [ ] Cover each promoted OpenCode addition with deterministic modeldata and
       golden payload tests; no live OpenCode calls should be required.
 - [ ] Keep `cmd/sigma-surface-probe` as an opt-in live diagnostic tool for

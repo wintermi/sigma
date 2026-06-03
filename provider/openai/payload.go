@@ -35,6 +35,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	if err != nil {
 		return nil, err
 	}
+	if err := validateReasoningLevel(model, opts); err != nil {
+		return nil, err
+	}
 
 	payload := map[string]any{
 		"model":    string(model.ID),
@@ -80,6 +83,22 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addRouting(payload, opts, model.Provider, compat)
 	return payload, nil
+}
+
+func validateReasoningLevel(model sigma.Model, opts sigma.Options) error {
+	if opts.ReasoningLevel == "" {
+		return nil
+	}
+	if model.SupportsThinkingLevel(opts.ReasoningLevel) {
+		return nil
+	}
+	return &sigma.Error{
+		Code:     sigma.ErrorInvalidOptions,
+		Message:  fmt.Sprintf("thinking level %q is not supported by model metadata", opts.ReasoningLevel),
+		Provider: model.Provider,
+		Model:    model.ID,
+		Err:      sigma.ErrInvalidOptions,
+	}
 }
 
 func addChatPromptCache(payload map[string]any, opts sigma.Options, compat completionsCompat) {

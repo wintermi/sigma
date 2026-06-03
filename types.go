@@ -301,6 +301,7 @@ type AnthropicMessagesCompat struct {
 	SupportsSessionAffinity         AnthropicCompatSupport  `json:"supportsSessionAffinity,omitempty"`
 	SupportsCacheControlOnTools     AnthropicCompatSupport  `json:"supportsCacheControlOnTools,omitempty"`
 	SupportsEmptyThinkingSignature  AnthropicCompatSupport  `json:"supportsEmptyThinkingSignature,omitempty"`
+	SupportsTemperature             AnthropicCompatSupport  `json:"supportsTemperature,omitempty"`
 	ThinkingFormat                  AnthropicThinkingFormat `json:"thinkingFormat,omitempty"`
 }
 

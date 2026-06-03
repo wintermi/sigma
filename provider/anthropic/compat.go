@@ -31,6 +31,7 @@ type messagesCompat struct {
 	cacheControlOnTools     bool
 	adaptiveThinking        bool
 	emptyThinkingSignature  bool
+	supportsTemperature     bool
 	thinkingFormat          sigma.AnthropicThinkingFormat
 }
 
@@ -58,28 +59,35 @@ func detectedMessagesCompat(provider sigma.ProviderID, baseURL string) messagesC
 			eagerToolInputStreaming: true,
 			longCacheRetention:      true,
 			cacheControlOnTools:     true,
+			supportsTemperature:     true,
 			thinkingFormat:          sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderFireworks || strings.Contains(host, "fireworks.ai"):
 		return messagesCompat{
 			sessionAffinityHeaders: true,
 			adaptiveThinking:       true,
+			supportsTemperature:    true,
 			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderKimi || strings.Contains(providerText, "kimi") || strings.Contains(host, "moonshot") || strings.Contains(host, "kimi"):
 		return messagesCompat{
 			sessionAffinityHeaders: true,
 			adaptiveThinking:       true,
+			supportsTemperature:    true,
 			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	case provider == sigma.ProviderXiaomi || strings.Contains(host, "xiaomi"):
 		return messagesCompat{
 			sessionAffinityHeaders: true,
 			adaptiveThinking:       true,
+			supportsTemperature:    true,
 			thinkingFormat:         sigma.AnthropicThinkingBudget,
 		}
 	default:
-		return messagesCompat{thinkingFormat: sigma.AnthropicThinkingBudget}
+		return messagesCompat{
+			supportsTemperature: true,
+			thinkingFormat:      sigma.AnthropicThinkingBudget,
+		}
 	}
 }
 
@@ -101,6 +109,9 @@ func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMe
 	}
 	if value, ok := anthropicCompatBool(override.SupportsEmptyThinkingSignature); ok {
 		compat.emptyThinkingSignature = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsTemperature); ok {
+		compat.supportsTemperature = value
 	}
 	if override.ThinkingFormat != "" {
 		compat.thinkingFormat = override.ThinkingFormat

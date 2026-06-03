@@ -116,6 +116,7 @@ func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
 	writeBoolField(b, "SupportsThinking", model.SupportsThinking)
 	writeStringSliceField(b, "ThinkingLevels", "ThinkingLevel", model.ThinkingLevels)
 	writeThinkingLevelMapField(b, model.ThinkingLevelMap)
+	writeStringSliceField(b, "UnsupportedThinkingLevels", "ThinkingLevel", model.UnsupportedThinkingLevels)
 	writeFloatField(b, "InputCostPerMillion", model.Cost.InputPerMillion)
 	writeFloatField(b, "OutputCostPerMillion", model.Cost.OutputPerMillion)
 	writeFloatField(b, "CacheReadInputCostPerMillion", model.Cost.CacheReadInputPerMillion)
@@ -198,6 +199,7 @@ func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessa
 	writeStringField(b, "SupportsSessionAffinity", "AnthropicCompatSupport", compat.SupportsSessionAffinity)
 	writeStringField(b, "SupportsCacheControlOnTools", "AnthropicCompatSupport", compat.SupportsCacheControlOnTools)
 	writeStringField(b, "SupportsEmptyThinkingSignature", "AnthropicCompatSupport", compat.SupportsEmptyThinkingSignature)
+	writeStringField(b, "SupportsTemperature", "AnthropicCompatSupport", compat.SupportsTemperature)
 	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
 	b.WriteString("\t\t},\n")
 }

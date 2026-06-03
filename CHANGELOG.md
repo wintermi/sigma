@@ -19,6 +19,11 @@ See [release notes](docs/release-notes-v0.3.0.md).
   rows for the supported Sigma provider IDs, including broader OpenAI,
   Anthropic, Google, Vertex AI, Mistral, Bedrock, OpenCode, and metadata-only
   OpenAI-compatible model coverage.
+- OpenCode Zen and OpenCode Go generated metadata now includes the promoted
+  DeepSeek V4 Flash and MiniMax M3 routed rows, stricter unsupported thinking
+  levels for known OpenCode reasoning models, adaptive Anthropic thinking
+  metadata for selected Claude routes, and temperature suppression for
+  OpenCode Claude models that reject temperature.
 - Generated OpenRouter image metadata now includes the stable Gemini image route
   and additional current image-generation routes while keeping broad OpenRouter
   text expansion deferred to the catalog refresh workflow.

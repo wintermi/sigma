@@ -69,6 +69,34 @@ func TestModelThinkingLevelsRejectUnsupportedLevels(t *testing.T) {
 	}
 }
 
+func TestModelUnsupportedThinkingLevelsOverrideDefaults(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		SupportsThinking: true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
+			sigma.ThinkingLevelHigh: "high",
+		},
+		UnsupportedThinkingLevels: []sigma.ThinkingLevel{
+			sigma.ThinkingLevelOff,
+			sigma.ThinkingLevelLow,
+		},
+	}
+
+	if model.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
+		t.Fatal("off thinking level was supported despite unsupported metadata")
+	}
+	if model.SupportsThinkingLevel(sigma.ThinkingLevelLow) {
+		t.Fatal("low thinking level was supported despite unsupported metadata")
+	}
+	if !model.SupportsThinkingLevel(sigma.ThinkingLevelHigh) {
+		t.Fatal("high thinking level was not supported")
+	}
+	if value, ok := model.ProviderThinkingLevel(sigma.ThinkingLevelOff); ok || value != "" {
+		t.Fatalf("provider off thinking level = %q, %v; want empty, false", value, ok)
+	}
+}
+
 func TestModelInputCapabilities(t *testing.T) {
 	t.Parallel()
 

@@ -33,27 +33,28 @@ type Source struct {
 
 // TextModel is generator input for root-package sigma.Model metadata.
 type TextModel struct {
-	ID                      string                   `json:"id"`
-	Name                    string                   `json:"name"`
-	Provider                string                   `json:"provider"`
-	API                     string                   `json:"api"`
-	BaseURL                 string                   `json:"baseURL"`
-	SupportedInputs         []string                 `json:"supportedInputs"`
-	SupportsTools           bool                     `json:"supportsTools"`
-	SupportsThinking        bool                     `json:"supportsThinking"`
-	ThinkingLevels          []string                 `json:"thinkingLevels,omitempty"`
-	ThinkingLevelMap        map[string]string        `json:"thinkingLevelMap,omitempty"`
-	Cost                    Cost                     `json:"cost"`
-	ContextWindow           int                      `json:"contextWindow"`
-	MaxOutputTokens         int                      `json:"maxOutputTokens"`
-	Headers                 map[string]string        `json:"headers,omitempty"`
-	AuthEnvNames            []string                 `json:"authEnvNames"`
-	DefaultTransport        string                   `json:"defaultTransport"`
-	OpenAICompletionsCompat *OpenAICompletionsCompat `json:"openAICompletionsCompat,omitempty"`
-	AnthropicMessagesCompat *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
-	AzureOpenAIResponses    *AzureOpenAIResponses    `json:"azureOpenAIResponses,omitempty"`
-	OpenAICodexResponses    *OpenAICodexResponses    `json:"openAICodexResponses,omitempty"`
-	ProviderMetadata        map[string]any           `json:"providerMetadata,omitempty"`
+	ID                        string                   `json:"id"`
+	Name                      string                   `json:"name"`
+	Provider                  string                   `json:"provider"`
+	API                       string                   `json:"api"`
+	BaseURL                   string                   `json:"baseURL"`
+	SupportedInputs           []string                 `json:"supportedInputs"`
+	SupportsTools             bool                     `json:"supportsTools"`
+	SupportsThinking          bool                     `json:"supportsThinking"`
+	ThinkingLevels            []string                 `json:"thinkingLevels,omitempty"`
+	ThinkingLevelMap          map[string]string        `json:"thinkingLevelMap,omitempty"`
+	UnsupportedThinkingLevels []string                 `json:"unsupportedThinkingLevels,omitempty"`
+	Cost                      Cost                     `json:"cost"`
+	ContextWindow             int                      `json:"contextWindow"`
+	MaxOutputTokens           int                      `json:"maxOutputTokens"`
+	Headers                   map[string]string        `json:"headers,omitempty"`
+	AuthEnvNames              []string                 `json:"authEnvNames"`
+	DefaultTransport          string                   `json:"defaultTransport"`
+	OpenAICompletionsCompat   *OpenAICompletionsCompat `json:"openAICompletionsCompat,omitempty"`
+	AnthropicMessagesCompat   *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
+	AzureOpenAIResponses      *AzureOpenAIResponses    `json:"azureOpenAIResponses,omitempty"`
+	OpenAICodexResponses      *OpenAICodexResponses    `json:"openAICodexResponses,omitempty"`
+	ProviderMetadata          map[string]any           `json:"providerMetadata,omitempty"`
 }
 
 // ImageModel is generator input for root-package sigma.ImageModel metadata.
@@ -116,6 +117,7 @@ type AnthropicMessagesCompat struct {
 	SupportsSessionAffinity         string `json:"supportsSessionAffinity,omitempty"`
 	SupportsCacheControlOnTools     string `json:"supportsCacheControlOnTools,omitempty"`
 	SupportsEmptyThinkingSignature  string `json:"supportsEmptyThinkingSignature,omitempty"`
+	SupportsTemperature             string `json:"supportsTemperature,omitempty"`
 	ThinkingFormat                  string `json:"thinkingFormat,omitempty"`
 }
 

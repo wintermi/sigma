@@ -66,7 +66,7 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		payload["system"] = anthropicSystem(transformed.SystemPrompt, opts.CacheRetention, compat)
 	}
 	thinkingEnabled := addThinking(payload, model, opts, compat)
-	if opts.Temperature != nil && !thinkingEnabled {
+	if opts.Temperature != nil && !thinkingEnabled && compat.supportsTemperature {
 		payload["temperature"] = *opts.Temperature
 	}
 	if len(opts.Metadata) > 0 {

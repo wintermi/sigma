@@ -6225,6 +6225,11 @@
         "high": "high",
         "xhigh": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
@@ -6261,6 +6266,11 @@
         "high": "high",
         "xhigh": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
@@ -6382,6 +6392,11 @@
       "thinkingLevelMap": {
         "high": "high"
       },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
         "supportsReasoningEffort": "unsupported"
@@ -6499,6 +6514,36 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "minimax"
+      }
+    },
+    {
+      "id": "minimax-m3",
+      "name": "MiniMax M3",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.6,
+        "outputPerMillion": 2.4,
+        "cacheReadInputPerMillion": 0.12,
+        "currency": "USD"
+      },
+      "contextWindow": 512000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax",
+        "opencodeAPI": "anthropic-messages"
       }
     },
     {
@@ -6720,6 +6765,9 @@
         "medium": "medium",
         "high": "high",
         "xhigh": "max"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
       }
     },
     {
@@ -6758,6 +6806,10 @@
         "medium": "medium",
         "high": "high",
         "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsTemperature": "unsupported",
+        "thinkingFormat": "adaptive"
       }
     },
     {
@@ -6796,6 +6848,10 @@
         "medium": "medium",
         "high": "high",
         "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsTemperature": "unsupported",
+        "thinkingFormat": "adaptive"
       }
     },
     {
@@ -6889,6 +6945,50 @@
       "providerMetadata": {
         "modelFamily": "claude",
         "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.14,
+        "outputPerMillion": 0.28,
+        "cacheReadInputPerMillion": 0.03,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "thinkingLevelMap": {
+        "high": "high",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
       }
     },
     {
@@ -6921,6 +7021,11 @@
         "high": "high",
         "xhigh": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
@@ -7702,6 +7807,12 @@
       "thinkingLevelMap": {
         "high": "high"
       },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
         "supportsReasoningEffort": "unsupported"
       }
@@ -7850,6 +7961,35 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "minimax"
+      }
+    },
+    {
+      "id": "minimax-m3-free",
+      "name": "MiniMax M3 Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax",
+        "opencodeAPI": "anthropic-messages"
       }
     },
     {
