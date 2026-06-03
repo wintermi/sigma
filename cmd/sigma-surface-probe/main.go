@@ -805,7 +805,7 @@ func basicRequest(prompt string) sigma.Request {
 func imageRequest() sigma.Request {
 	return sigma.Request{Messages: []sigma.Message{sigma.UserContent(
 		sigma.Text("Answer with one short colour word."),
-		sigma.ImageBase64("image/png", "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKUlEQVR4nO3NMQEAAAgDINc/9K3hHBQg9E1m7zMAAAAAAAAAAIBrA5slAWED4YWrAAAAAElFTkSuQmCC"),
+		sigma.ImageBase64("image/png", "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAJ0lEQVR42u3NsQkAAAjAsP7/tF7hIASyp6lTCQQCgUAgEAgEgi/BAjLD/C5w/SM9AAAAAElFTkSuQmCC"),
 	)}}
 }
 

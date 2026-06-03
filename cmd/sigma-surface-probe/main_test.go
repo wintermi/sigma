@@ -6,11 +6,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
+	"image/png"
 	"os"
 	"reflect"
 	"strings"
@@ -285,6 +287,32 @@ func TestOpenAICodexProbeCasesUseURLImageInput(t *testing.T) {
 	}
 	if image.URL == "" {
 		t.Fatal("image URL was empty")
+	}
+}
+
+func TestImageRequestEmbedsValidVisiblePNG(t *testing.T) {
+	t.Parallel()
+
+	request := imageRequest()
+	image := request.Messages[0].Content[1]
+	if image.MIMEType != "image/png" || image.ImageSource != "base64" {
+		t.Fatalf("image block = %#v, want base64 PNG", image)
+	}
+	data, err := base64.StdEncoding.DecodeString(image.Data)
+	if err != nil {
+		t.Fatalf("decode base64 image: %v", err)
+	}
+	decoded, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("decode PNG image: %v", err)
+	}
+	bounds := decoded.Bounds()
+	if bounds.Dx() != 32 || bounds.Dy() != 32 {
+		t.Fatalf("image dimensions = %dx%d, want 32x32", bounds.Dx(), bounds.Dy())
+	}
+	r, g, b, a := decoded.At(bounds.Min.X+16, bounds.Min.Y+16).RGBA()
+	if a == 0 || r <= g || r <= b {
+		t.Fatalf("center pixel rgba = %x/%x/%x/%x, want visible red pixel", r, g, b, a)
 	}
 }
 
