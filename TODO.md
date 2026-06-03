@@ -18,12 +18,14 @@ cancellation/error coverage (see the coverage standards in
 ## OpenAI-compatible parity
 
 OpenAI Chat Completions, Responses, and Codex Responses now cover the focused
-v0.3 prompt-cache, replay, and stream-shape gaps with deterministic fixtures.
-Broader provider-specific integrations remain future work until they have the
-same local evidence bar.
+v0.3 prompt-cache, replay, stream-shape, cached-token accounting, and Codex
+WebSocket gaps with deterministic fixtures. Broader provider-specific
+integrations remain future work until they have the same local evidence bar.
 
-- [ ] Keep Codex WebSocket transport, session caching, cleanup, and SSE fallback
-      deferred until Sigma adopts WebSocket transport semantics.
+- [x] Add Codex WebSocket transport, session caching, cleanup helpers, and SSE
+      fallback while keeping the implementation stdlib-only.
+- [ ] Keep proxy-aware Codex WebSocket dialing deferred; proxy-constrained
+      environments should use SSE fallback.
 - [x] Add OpenAI Codex device-code OAuth login and refresh helpers while keeping
       token persistence caller-owned.
 - [x] Add OpenAI Codex browser callback OAuth login while keeping token
@@ -211,14 +213,17 @@ still come through the catalog refresh workflow.
 
 ## Transports
 
-- [ ] Add WebSocket transport support.
-- [ ] Add Codex WebSocket session caching, cleanup, and SSE fallback behavior if
-      Sigma adopts Codex WebSocket transport.
-- [ ] Ensure unsupported transport choices fail locally before any network call,
-      with tests asserting the early failure.
+- [x] Add Codex Responses WebSocket transport support.
+- [x] Add Codex WebSocket session caching, cleanup, and SSE fallback behavior.
+- [ ] Add WebSocket transport support for other provider routes only when their
+      route-specific wire protocols are covered by deterministic fixtures.
+- [ ] Ensure unsupported transport choices continue to fail locally before any
+      network call, with tests asserting the early failure.
 
 ## Usage and cost reporting
 
+- [x] Separate OpenAI Responses cached input tokens from ordinary input tokens
+      when provider usage includes cache-read details.
 - [ ] Add tokenizer-based token estimates as an alternative to provider-reported
       usage.
 - [ ] Reconcile tokenizer estimates against provider usage data and model

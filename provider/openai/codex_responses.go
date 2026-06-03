@@ -23,6 +23,7 @@ const (
 	codexOptionOAuthTokenProvider   = "oauth_token_provider"
 	codexOptionOAuthTokenProviderGo = "oauthTokenProvider"
 	codexDefaultInstructions        = "You are a helpful assistant."
+	codexResponsesWebSocketBeta     = "responses_websockets=2026-02-06"
 )
 
 // WithCodexResponsesOAuthTokenProvider supplies the OAuth bearer-token source
@@ -81,6 +82,11 @@ func (p *CodexResponsesProvider) run(ctx context.Context, writer sigma.StreamWri
 		Provider: model.Provider,
 	}
 
+	if opts.Transport == sigma.TransportWebSocket {
+		p.runWebSocket(ctx, writer, model, req, opts, final)
+		return
+	}
+
 	resp, err := p.do(ctx, model, req, opts)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
@@ -136,17 +142,9 @@ func (p *CodexResponsesProvider) newRequest(ctx context.Context, model sigma.Mod
 	if err := validateCodexResponsesTransport(model, opts.Transport); err != nil {
 		return nil, err
 	}
-	payload, err := responsesPayload(model, req, opts)
+	body, err := p.requestBody(model, req, opts)
 	if err != nil {
 		return nil, err
-	}
-	normalizeCodexResponsesPayload(payload)
-	if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.Model != "" {
-		payload["model"] = model.OpenAICodexResponses.Model
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("openai codex responses: encode request: %w", err)
 	}
 
 	endpoint, err := p.endpoint(model, opts)
@@ -184,10 +182,42 @@ func normalizeCodexResponsesPayload(payload map[string]any) {
 	payload["store"] = false
 	delete(payload, "max_output_tokens")
 	delete(payload, "previous_response_id")
+	if _, ok := payload["text"]; !ok {
+		payload["text"] = map[string]any{"verbosity": "low"}
+	} else if text, ok := payload["text"].(map[string]any); ok {
+		if _, hasVerbosity := text["verbosity"]; !hasVerbosity {
+			text["verbosity"] = "low"
+		}
+	}
+	if _, ok := payload["include"]; !ok {
+		payload["include"] = []string{"reasoning.encrypted_content"}
+	}
+	if _, ok := payload["tool_choice"]; !ok {
+		payload["tool_choice"] = "auto"
+	}
+	if _, ok := payload["parallel_tool_calls"]; !ok {
+		payload["parallel_tool_calls"] = true
+	}
 	if instructions, _ := payload["instructions"].(string); instructions != "" {
 		return
 	}
 	payload["instructions"] = codexDefaultInstructions
+}
+
+func (p *CodexResponsesProvider) requestBody(model sigma.Model, req sigma.Request, opts sigma.Options) ([]byte, error) {
+	payload, err := responsesPayload(model, req, opts)
+	if err != nil {
+		return nil, err
+	}
+	normalizeCodexResponsesPayload(payload)
+	if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.Model != "" {
+		payload["model"] = model.OpenAICodexResponses.Model
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("openai codex responses: encode request: %w", err)
+	}
+	return body, nil
 }
 
 func (p *CodexResponsesProvider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.Model, opts sigma.Options) error {
@@ -287,12 +317,10 @@ func codexResponsesOAuthTokenProvider(provider sigma.ProviderID, opts sigma.Opti
 
 func validateCodexResponsesTransport(model sigma.Model, transport sigma.Transport) error {
 	switch transport {
-	case "", sigma.TransportSSE:
+	case "", sigma.TransportSSE, sigma.TransportWebSocket:
 		return nil
 	case sigma.TransportHTTP:
 		return codexResponsesTransportError(model, `openai codex responses: transport "http" is not supported; use "sse" for streaming`)
-	case sigma.TransportWebSocket:
-		return codexResponsesTransportError(model, `openai codex responses: transport "websocket" is not implemented`)
 	default:
 		return codexResponsesTransportError(model, fmt.Sprintf("openai codex responses: unsupported transport %q", transport))
 	}

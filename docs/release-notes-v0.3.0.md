@@ -12,11 +12,12 @@ for supported provider IDs, including broader OpenAI, Anthropic, Google, Vertex
 AI, Mistral, Bedrock, OpenCode, and metadata-only OpenAI-compatible rows. It
 also extends generated image metadata with OpenRouter-routed Grok and Gemini
 image routes, tightens the OpenAI-compatible preview adapters around prompt
-caching, replay, stream parsing, and Codex OAuth, and adds typed provider error
-classification for safer caller retry and recovery decisions. The Google
-preview adapters now include the scoped provider hardening for Vertex
-credential fallback, model-scoped routing metadata, and replayed tool-call IDs.
-Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
+caching, replay, stream parsing, Codex OAuth, and Codex WebSocket session
+reuse, and adds typed provider error classification for safer caller retry and
+recovery decisions. The Google preview adapters now include the scoped provider
+hardening for Vertex credential fallback, model-scoped routing metadata, and
+replayed tool-call IDs. Direct xAI/Grok support remains focused on the preview
+Chat Completions adapter.
 
 ## Added
 
@@ -59,6 +60,11 @@ Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
   Responses SSE beta access, originator identity, and session-scoped request
   IDs, while normalizing request payloads for required instructions, disabled
   storage, unsupported output-token caps, and unsupported response replay IDs.
+- OpenAI Codex Responses supports stdlib-only direct WebSocket transport with
+  session caching, delta replay, explicit cleanup helpers, and SSE fallback
+  before stream output starts.
+- OpenAI Responses and Codex Responses usage accounting separates cached input
+  tokens from ordinary input tokens so cache reads flow into `sigma.Usage`.
 - `cmd/sigma-surface-probe` can run opt-in live OpenAI Responses probes and
   OpenAI Codex Responses probes, including browser callback and device-code
   OAuth for Codex plus a `gpt-5.3-codex` default for ChatGPT-backed Codex
@@ -85,9 +91,10 @@ Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
 - Anthropic-style OpenAI-compatible cache markers continue to use
   endpoint-specific `cache_control` payload markers. Sigma does not mix those
   payloads with OpenAI-native prompt-cache fields.
-- OpenAI Codex Responses remains SSE-only. OAuth credential persistence remains
-  caller-owned; Sigma exposes browser callback login, device-code login,
-  refresh, and token-provider helpers but does not write tokens to disk.
+- OpenAI Codex Responses supports SSE and direct WebSocket transport. OAuth
+  credential persistence remains caller-owned; Sigma exposes browser callback
+  login, device-code login, refresh, and token-provider helpers but does not
+  write tokens to disk.
 - OpenAI image variations are intentionally limited to explicit `dall-e-2`
   requests. Other OpenAI image models use generation or edit operations.
 
@@ -108,9 +115,8 @@ Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
   fixtures are the release evidence for image generation, multipart edits,
   reference-only JSON edits, variations, streaming, and Responses
   image-generation tool output.
-- Codex WebSocket transport, WebSocket session caching/fallback, token
-  persistence, Copilot dynamic headers, and Cloudflare OpenAI-compatible auth
-  rewriting remain deferred.
+- Proxy-aware Codex WebSocket dialing, token persistence, Copilot dynamic
+  headers, and Cloudflare OpenAI-compatible auth rewriting remain deferred.
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 
 ## Validation status
@@ -118,6 +124,6 @@ Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
 This release should use the validation process in [RELEASING.md](../RELEASING.md).
 No live xAI or OpenRouter provider calls are required for release validation.
 OpenAI provider changes, image generation/edit/variation/streaming behavior,
-Codex OAuth flows, typed provider error classification, and generated catalog
-metadata are covered by deterministic request, response, OAuth, SSE, checksum,
-and registry fixtures.
+Codex OAuth and WebSocket flows, typed provider error classification, and
+generated catalog metadata are covered by deterministic request, response,
+OAuth, SSE/WebSocket, checksum, and registry fixtures.

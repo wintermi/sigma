@@ -84,7 +84,10 @@ Release scope values:
   parallel tool calls, text verbosity, bounded replay IDs, and image-capable
   tool-result replay through fixture-tested payload coverage.
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
-- Codex Responses includes browser callback and device-code OAuth login, refresh helpers, and a caller-wrapped token provider. Token persistence and WebSocket transport are out of scope.
+- Codex Responses includes browser callback and device-code OAuth login, refresh
+  helpers, a caller-wrapped token provider, and fixture-tested direct
+  WebSocket transport with session caching and SSE fallback. Token persistence
+  and proxy-aware WebSocket dialing are out of scope.
 - Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers. Typed Bedrock request controls, custom non-reserved headers, retry behavior, and response debug hooks have deterministic fixture coverage.
 - The Anthropic-compatible routing in the Anthropic row title covers Kimi, Fireworks, and Xiaomi compat branches. Each branch has deterministic compatibility coverage in `provider/anthropic`; Fireworks is also exercised through the `openai-completions` path.
 - Mistral Conversations cache retention is marked `partial` because

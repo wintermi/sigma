@@ -56,6 +56,11 @@ See [release notes](docs/release-notes-v0.3.0.md).
   session-scoped request IDs, and aligns Codex payloads with ChatGPT backend
   requirements for required instructions, disabled storage, and unsupported
   output-token caps and response replay IDs.
+- OpenAI Codex Responses now supports stdlib-only direct WebSocket transport
+  with session caching, delta replay, cleanup helpers, and SSE fallback before
+  stream output starts.
+- OpenAI Responses and Codex Responses usage accounting now reports cached
+  input tokens as cache reads instead of ordinary input tokens.
 - `cmd/sigma-surface-probe` can run opt-in live OpenAI Responses probes with
   `OPENAI_API_KEY` and OpenAI Codex Responses probes with browser callback
   OAuth, device-code OAuth, or caller-supplied Codex OAuth tokens, defaulting
@@ -95,10 +100,11 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization are deferred with the broader OAuth/provider-specific
   compatibility work.
-- WebSocket transports are deferred; unsupported transport choices should fail
-  locally before network calls.
-- Codex WebSocket session caching/fallback remains deferred; Codex Responses
-  continues to use SSE with caller-supplied or helper-managed OAuth tokens.
+- WebSocket transport is currently implemented only for OpenAI Codex Responses;
+  unsupported transport choices for other routes should fail locally before
+  network calls.
+- Proxy-aware Codex WebSocket dialing remains deferred; proxy-constrained
+  environments should use SSE fallback.
 - Token usage and cost reporting come from provider usage data and model
   metadata; tokenizer-based token estimates are deferred.
 - Built-in model metadata is still refreshed through the curated checked-in

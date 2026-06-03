@@ -8,6 +8,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -145,7 +146,24 @@ type responsesImageState struct {
 }
 
 func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
-	parser := responsesStreamParser{
+	parser := newResponsesStreamParser(writer, model)
+	err := sse.Parse(ctx, r, func(event sse.Event) error {
+		if event.Done {
+			return sse.ErrStop
+		}
+		return parser.handleSSEEvent(ctx, event)
+	})
+	if errors.Is(err, sse.ErrStop) {
+		return parser.finalize(ctx), nil
+	}
+	if err != nil {
+		return parser.finalize(ctx), err
+	}
+	return parser.finalize(ctx), nil
+}
+
+func newResponsesStreamParser(writer sigma.StreamWriter, model sigma.Model) *responsesStreamParser {
+	return &responsesStreamParser{
 		writer:      writer,
 		model:       model,
 		text:        make(map[int]*responsesTextState),
@@ -158,89 +176,90 @@ func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamW
 			Provider: model.Provider,
 		},
 	}
-	err := sse.Parse(ctx, r, func(event sse.Event) error {
-		if event.Done {
-			return sse.ErrStop
-		}
-		return parser.handleEvent(ctx, event)
-	})
-	if err != nil {
-		return parser.finalize(ctx), err
-	}
-	return parser.finalize(ctx), nil
 }
 
-func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event) error {
+func (p *responsesStreamParser) handleSSEEvent(ctx context.Context, event sse.Event) error {
+	completed, err := p.handleEventData(ctx, event.Event, event.Data)
+	if err != nil {
+		return err
+	}
+	if completed {
+		return sse.ErrStop
+	}
+	return nil
+}
+
+func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName string, data string) (bool, error) {
 	var parsed responsesEvent
-	if err := json.Unmarshal([]byte(event.Data), &parsed); err != nil {
-		return fmt.Errorf("openai responses: decode stream event: %w", err)
+	if err := json.Unmarshal([]byte(data), &parsed); err != nil {
+		return false, fmt.Errorf("openai responses: decode stream event: %w", err)
 	}
 	if parsed.Type == "" {
-		parsed.Type = event.Event
+		parsed.Type = eventName
 	}
 	p.captureEventMetadata(parsed)
 	switch parsed.Type {
 	case "response.created", "response.in_progress":
 		p.captureResponse(parsed.Response)
-		return p.emitStart(ctx)
+		return false, p.emitStart(ctx)
 	case "response.completed":
 		p.captureResponse(parsed.Response)
-		return p.emitStart(ctx)
+		return true, p.emitStart(ctx)
 	case "response.failed", "response.incomplete":
 		p.captureResponse(parsed.Response)
 		if parsed.Response.Error != nil {
-			return openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
+			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
 		}
-		return fmt.Errorf("openai responses: stream ended with status %q", parsed.Response.Status)
+		return false, fmt.Errorf("openai responses: stream ended with status %q", parsed.Response.Status)
 	case "error":
 		if parsed.Error != nil {
-			return openAIResponsesStreamProviderError(p.model, parsed.Error)
+			return false, openAIResponsesStreamProviderError(p.model, parsed.Error)
 		}
-		return fmt.Errorf("openai responses: stream error")
+		return false, fmt.Errorf("openai responses: stream error")
 	case "response.output_item.added":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.handleOutputItemAdded(ctx, parsed)
+		return false, p.handleOutputItemAdded(ctx, parsed)
 	case "response.output_item.done":
 		p.captureOutputItem(parsed.OutputIndex, parsed.Item)
-		return nil
+		return false, nil
 	case "response.output_text.delta":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
+		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
 	case "response.refusal.delta":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
+		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
 	case "response.output_text.done":
 		p.finishText(parsed.OutputIndex, parsed.ItemID, parsed.Text)
-		return nil
+		return false, nil
 	case "response.content_part.added":
 		if parsed.Part.Type == "output_text" || parsed.Part.Type == "refusal" {
 			p.finishText(parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.Part.Text, parsed.Part.Refusal))
 		}
-		return nil
+		return false, nil
 	case "response.reasoning_summary_text.delta":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, parsed.Delta)
+		return false, p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, parsed.Delta)
 	case "response.reasoning_text.delta":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, parsed.Delta)
+		return false, p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, parsed.Delta)
 	case "response.reasoning_summary_text.done":
 		p.finishThinking(parsed.OutputIndex, parsed.ItemID, parsed.Text)
-		return nil
+		return false, nil
 	case "response.function_call_arguments.delta":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitToolCall(ctx, parsed.OutputIndex, streamToolCallDelta{
+		return false, p.emitToolCall(ctx, parsed.OutputIndex, streamToolCallDelta{
 			Function: streamFunctionDelta{
 				Arguments: parsed.Delta,
 			},
@@ -250,16 +269,16 @@ func (p *responsesStreamParser) handleEvent(ctx context.Context, event sse.Event
 		if parsed.Arguments != "" {
 			state.SetArguments(parsed.Arguments)
 		}
-		return nil
+		return false, nil
 	case "response.image_generation_call.partial_image":
 		if err := p.emitStart(ctx); err != nil {
-			return err
+			return false, err
 		}
-		return p.emitImage(ctx, parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.PartialImage, parsed.B64JSON, parsed.Delta, parsed.ImageURL), true)
+		return false, p.emitImage(ctx, parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.PartialImage, parsed.B64JSON, parsed.Delta, parsed.ImageURL), true)
 	default:
 		// The Responses API emits lifecycle, content-part, refusal, and tool
 		// progress events that carry no additional public sigma content.
-		return nil
+		return false, nil
 	}
 }
 
@@ -827,6 +846,7 @@ func (u responsesUsage) sigmaUsage() sigma.Usage {
 	}
 	if u.InputTokensDetails != nil {
 		usage.CacheReadInputTokens = u.InputTokensDetails.CachedTokens
+		usage.InputTokens = max(0, u.InputTokens-usage.CacheReadInputTokens)
 	}
 	if u.OutputTokensDetails != nil {
 		usage.ThinkingTokens = u.OutputTokensDetails.ReasoningTokens

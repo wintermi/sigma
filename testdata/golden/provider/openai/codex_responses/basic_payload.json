@@ -1,4 +1,7 @@
 {
+  "include": [
+    "reasoning.encrypted_content"
+  ],
   "input": [
     {
       "content": [
@@ -12,10 +15,12 @@
   ],
   "instructions": "You are a helpful assistant.",
   "model": "codex-mini-latest",
+  "parallel_tool_calls": true,
   "prompt_cache_retention": "24h",
   "store": false,
   "stream": true,
   "text": {
     "verbosity": "low"
-  }
+  },
+  "tool_choice": "auto"
 }
