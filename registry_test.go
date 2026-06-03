@@ -45,12 +45,25 @@ func (p testImageProvider) Generate(context.Context, sigma.ImageModel, sigma.Ima
 	return sigma.AssistantImages{}, nil
 }
 
+type testEmbeddingProvider struct {
+	api sigma.EmbeddingAPI
+}
+
+func (p testEmbeddingProvider) API() sigma.EmbeddingAPI {
+	return p.api
+}
+
+func (p testEmbeddingProvider) Embed(context.Context, sigma.EmbeddingModel, sigma.EmbeddingRequest, sigma.Options) (sigma.Embeddings, error) {
+	return sigma.Embeddings{}, nil
+}
+
 func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
 	t.Parallel()
 
 	registry := sigma.NewRegistry()
 	openAIText := testTextProvider{api: sigma.APIOpenAIResponses}
 	openAIImage := testImageProvider{api: "openai-images"}
+	openAIEmbedding := testEmbeddingProvider{api: sigma.EmbeddingAPIOpenAIEmbeddings}
 	mistralText := testTextProvider{api: sigma.APIMistralConversations}
 
 	if err := registry.RegisterTextProvider(sigma.ProviderOpenAI, openAIText); err != nil {
@@ -58,6 +71,9 @@ func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
 	}
 	if err := registry.RegisterImageProvider(sigma.ProviderOpenAI, openAIImage); err != nil {
 		t.Fatalf("RegisterImageProvider(openai) returned error: %v", err)
+	}
+	if err := registry.RegisterEmbeddingProvider(sigma.ProviderOpenAI, openAIEmbedding); err != nil {
+		t.Fatalf("RegisterEmbeddingProvider(openai) returned error: %v", err)
 	}
 	if err := registry.RegisterTextProvider(sigma.ProviderMistral, mistralText); err != nil {
 		t.Fatalf("RegisterTextProvider(mistral) returned error: %v", err)
@@ -86,6 +102,9 @@ func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
 	}
 	if got, want := providers[0].ImageAPI, sigma.ImageAPI("openai-images"); got != want {
 		t.Fatalf("openai image api = %q, want %q", got, want)
+	}
+	if got, want := providers[0].EmbeddingAPI, sigma.EmbeddingAPIOpenAIEmbeddings; got != want {
+		t.Fatalf("openai embedding api = %q, want %q", got, want)
 	}
 	if got, want := providers[1].ID, sigma.ProviderMistral; got != want {
 		t.Fatalf("second provider = %q, want %q", got, want)
@@ -231,6 +250,47 @@ func TestRegistryImageModelRegistration(t *testing.T) {
 	}
 }
 
+func TestRegistryEmbeddingModelRegistration(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	providerID := sigma.ProviderID("embedding-lab")
+	embeddingAPI := sigma.EmbeddingAPI("openai-embeddings")
+	if err := registry.RegisterEmbeddingProvider(providerID, testEmbeddingProvider{api: embeddingAPI}); err != nil {
+		t.Fatalf("RegisterEmbeddingProvider returned error: %v", err)
+	}
+	if err := registry.RegisterEmbeddingModel(sigma.EmbeddingModel{
+		ID:                  "embedding-custom",
+		Provider:            providerID,
+		API:                 embeddingAPI,
+		DefaultDimensions:   1536,
+		MaxInputTokens:      8192,
+		InputCostPerMillion: 0.02,
+		CostCurrency:        "USD",
+	}); err != nil {
+		t.Fatalf("RegisterEmbeddingModel returned error: %v", err)
+	}
+	if err := registry.RegisterEmbeddingModel(sigma.EmbeddingModel{
+		ID:       "wrong-embedding-api",
+		Provider: providerID,
+		API:      "other-embeddings",
+	}); err == nil {
+		t.Fatal("embedding model with mismatched api returned nil error")
+	}
+
+	model, ok := registry.EmbeddingModel(providerID, "embedding-custom")
+	if !ok {
+		t.Fatal("embedding model was not registered")
+	}
+	if got, want := model.DefaultDimensions, 1536; got != want {
+		t.Fatalf("default dimensions = %d, want %d", got, want)
+	}
+	snapshot := registry.Snapshot()
+	if got, want := len(snapshot.EmbeddingModels), 1; got != want {
+		t.Fatalf("snapshot embedding models = %d, want %d", got, want)
+	}
+}
+
 func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	t.Parallel()
 
@@ -312,6 +372,9 @@ func TestDefaultRegistryHasBuiltInMetadata(t *testing.T) {
 	}
 	if _, ok := registry.ImageModel(sigma.ProviderOpenAI, "gpt-image-1"); !ok {
 		t.Fatal("default registry missing built-in image model metadata")
+	}
+	if _, ok := registry.EmbeddingModel(sigma.ProviderOpenAI, "text-embedding-3-small"); !ok {
+		t.Fatal("default registry missing built-in embedding model metadata")
 	}
 
 	if err := registry.RegisterModel(sigma.Model{

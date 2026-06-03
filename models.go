@@ -153,6 +153,19 @@ type ImageModel struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
+// EmbeddingModel describes a provider embedding model available through sigma.
+type EmbeddingModel struct {
+	ID                  ModelID        `json:"id"`
+	Provider            ProviderID     `json:"provider"`
+	API                 EmbeddingAPI   `json:"api,omitempty"`
+	Name                string         `json:"name,omitempty"`
+	DefaultDimensions   int            `json:"defaultDimensions,omitempty"`
+	MaxInputTokens      int            `json:"maxInputTokens,omitempty"`
+	InputCostPerMillion float64        `json:"inputCostPerMillion,omitempty"`
+	CostCurrency        string         `json:"costCurrency,omitempty"`
+	ProviderMetadata    map[string]any `json:"providerMetadata,omitempty"`
+}
+
 // ImageRequest is the provider-neutral input for image generation.
 //
 // This is separate from image inputs in chat/completion requests. Chat image
@@ -195,6 +208,29 @@ type AssistantImages struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
+// EmbeddingRequest is the provider-neutral input for vector embeddings.
+type EmbeddingRequest struct {
+	Inputs           []string       `json:"inputs,omitempty"`
+	Dimensions       int            `json:"dimensions,omitempty"`
+	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
+}
+
+// Embedding is one provider-neutral embedding vector.
+type Embedding struct {
+	Index  int       `json:"index"`
+	Vector []float32 `json:"vector,omitempty"`
+}
+
+// Embeddings is provider-neutral embedding output plus request metadata.
+type Embeddings struct {
+	Vectors          []Embedding    `json:"vectors,omitempty"`
+	Usage            *Usage         `json:"usage,omitempty"`
+	Cost             *Cost          `json:"cost,omitempty"`
+	Model            ModelID        `json:"model,omitempty"`
+	Provider         ProviderID     `json:"provider,omitempty"`
+	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
+}
+
 func cloneModel(model Model) Model {
 	model.SupportedInputs = append([]ContentBlockType(nil), model.SupportedInputs...)
 	model.ThinkingLevels = append([]ThinkingLevel(nil), model.ThinkingLevels...)
@@ -211,6 +247,11 @@ func cloneModel(model Model) Model {
 func cloneImageModel(model ImageModel) ImageModel {
 	model.SupportedSizes = append([]string(nil), model.SupportedSizes...)
 	model.SupportedFormats = append([]string(nil), model.SupportedFormats...)
+	model.ProviderMetadata = copyStringAnyMap(model.ProviderMetadata)
+	return model
+}
+
+func cloneEmbeddingModel(model EmbeddingModel) EmbeddingModel {
 	model.ProviderMetadata = copyStringAnyMap(model.ProviderMetadata)
 	return model
 }

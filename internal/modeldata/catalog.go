@@ -18,11 +18,12 @@ import (
 
 // Catalog is the reviewable input used by cmd/sigma-generate-models.
 type Catalog struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	SnapshotDate  string       `json:"snapshotDate"`
-	Sources       []Source     `json:"sources"`
-	TextModels    []TextModel  `json:"textModels"`
-	ImageModels   []ImageModel `json:"imageModels"`
+	SchemaVersion   int              `json:"schemaVersion"`
+	SnapshotDate    string           `json:"snapshotDate"`
+	Sources         []Source         `json:"sources"`
+	TextModels      []TextModel      `json:"textModels"`
+	ImageModels     []ImageModel     `json:"imageModels"`
+	EmbeddingModels []EmbeddingModel `json:"embeddingModels"`
 }
 
 // Source records where the stored metadata snapshot came from.
@@ -72,6 +73,22 @@ type ImageModel struct {
 	Headers          map[string]string `json:"headers,omitempty"`
 	AuthEnvNames     []string          `json:"authEnvNames"`
 	ProviderMetadata map[string]any    `json:"providerMetadata,omitempty"`
+}
+
+// EmbeddingModel is generator input for root-package sigma.EmbeddingModel metadata.
+type EmbeddingModel struct {
+	ID                  string            `json:"id"`
+	Name                string            `json:"name"`
+	Provider            string            `json:"provider"`
+	API                 string            `json:"api"`
+	BaseURL             string            `json:"baseURL"`
+	DefaultDimensions   int               `json:"defaultDimensions"`
+	MaxInputTokens      int               `json:"maxInputTokens"`
+	InputCostPerMillion float64           `json:"inputCostPerMillion"`
+	Currency            string            `json:"currency"`
+	Headers             map[string]string `json:"headers,omitempty"`
+	AuthEnvNames        []string          `json:"authEnvNames"`
+	ProviderMetadata    map[string]any    `json:"providerMetadata,omitempty"`
 }
 
 // Cost records text model pricing in currency units per one million tokens.
@@ -198,6 +215,9 @@ func (c *Catalog) Sort() {
 	sort.SliceStable(c.ImageModels, func(i, j int) bool {
 		return imageLess(c.ImageModels[i], c.ImageModels[j])
 	})
+	sort.SliceStable(c.EmbeddingModels, func(i, j int) bool {
+		return embeddingLess(c.EmbeddingModels[i], c.EmbeddingModels[j])
+	})
 }
 
 // Validate reports clear generator failures for missing or duplicate metadata.
@@ -222,6 +242,9 @@ func (c Catalog) Validate() error {
 	if len(c.ImageModels) == 0 {
 		return fmt.Errorf("imageModels must contain at least one model")
 	}
+	if len(c.EmbeddingModels) == 0 {
+		return fmt.Errorf("embeddingModels must contain at least one model")
+	}
 
 	seenText := map[string]struct{}{}
 	for i, model := range c.TextModels {
@@ -245,6 +268,17 @@ func (c Catalog) Validate() error {
 			return fmt.Errorf("imageModels[%d] %q: duplicate provider/api/id", i, model.ID)
 		}
 		seenImages[key] = struct{}{}
+	}
+	seenEmbeddings := map[string]struct{}{}
+	for i, model := range c.EmbeddingModels {
+		if err := validateEmbeddingModel(model); err != nil {
+			return fmt.Errorf("embeddingModels[%d] %q: %w", i, model.ID, err)
+		}
+		key := model.Provider + "\x00" + model.API + "\x00" + model.ID
+		if _, ok := seenEmbeddings[key]; ok {
+			return fmt.Errorf("embeddingModels[%d] %q: duplicate provider/api/id", i, model.ID)
+		}
+		seenEmbeddings[key] = struct{}{}
 	}
 	return nil
 }
@@ -310,6 +344,25 @@ func validateImageModel(model ImageModel) error {
 	return nil
 }
 
+func validateEmbeddingModel(model EmbeddingModel) error {
+	if err := validateCommonModel(model.ID, model.Name, model.Provider, model.API, model.BaseURL, model.AuthEnvNames); err != nil {
+		return err
+	}
+	if model.DefaultDimensions <= 0 {
+		return fmt.Errorf("defaultDimensions must be positive")
+	}
+	if model.MaxInputTokens <= 0 {
+		return fmt.Errorf("maxInputTokens must be positive")
+	}
+	if model.InputCostPerMillion < 0 {
+		return fmt.Errorf("inputCostPerMillion must be non-negative")
+	}
+	if model.Currency == "" {
+		return fmt.Errorf("currency is required")
+	}
+	return nil
+}
+
 func validateCommonModel(id, name, provider, api, baseURL string, authEnvNames []string) error {
 	if id == "" {
 		return fmt.Errorf("id is required")
@@ -351,6 +404,16 @@ func textLess(a, b TextModel) bool {
 
 func imageLess(a, b ImageModel) bool {
 	return strings.Compare(sortKey(a.Provider, a.API, a.ID), sortKey(b.Provider, b.API, b.ID)) < 0
+}
+
+func embeddingLess(a, b EmbeddingModel) bool {
+	if a.Provider != b.Provider {
+		return a.Provider < b.Provider
+	}
+	if a.API != b.API {
+		return a.API < b.API
+	}
+	return a.ID < b.ID
 }
 
 func sortKey(provider, api, id string) string {

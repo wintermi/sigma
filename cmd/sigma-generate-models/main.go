@@ -31,10 +31,12 @@ func main() {
 	var inputPath string
 	var modelsPath string
 	var imageModelsPath string
+	var embeddingModelsPath string
 
 	flag.StringVar(&inputPath, "input", "internal/modeldata/catalog.json", "model metadata catalog JSON")
 	flag.StringVar(&modelsPath, "models", "models_generated.go", "generated text model Go file")
 	flag.StringVar(&imageModelsPath, "image-models", "image_models_generated.go", "generated image model Go file")
+	flag.StringVar(&embeddingModelsPath, "embedding-models", "embedding_models_generated.go", "generated embedding model Go file")
 	flag.Parse()
 
 	catalog, err := modeldata.Load(inputPath)
@@ -46,6 +48,9 @@ func main() {
 	}
 	if err := writeGoFile(imageModelsPath, renderImageModels(catalog)); err != nil {
 		fatalf("write image models: %v", err)
+	}
+	if err := writeGoFile(embeddingModelsPath, renderEmbeddingModels(catalog)); err != nil {
+		fatalf("write embedding models: %v", err)
 	}
 }
 
@@ -86,6 +91,27 @@ func renderImageModels(catalog modeldata.Catalog) []byte {
 	b.WriteString("func registerBuiltinImageModels(registry *Registry) error {\n")
 	b.WriteString("\tfor _, model := range builtinImageModels {\n")
 	b.WriteString("\t\tif err := registry.RegisterImageModel(model, WithMetadataOnly()); err != nil {\n")
+	b.WriteString("\t\t\treturn err\n")
+	b.WriteString("\t\t}\n")
+	b.WriteString("\t}\n")
+	b.WriteString("\treturn nil\n")
+	b.WriteString("}\n")
+	return b.Bytes()
+}
+
+func renderEmbeddingModels(catalog modeldata.Catalog) []byte {
+	var b bytes.Buffer
+	b.WriteString(generatedHeader)
+	writeSnapshotComment(&b, catalog)
+	b.WriteString("package sigma\n\n")
+	b.WriteString("var builtinEmbeddingModels = []EmbeddingModel{\n")
+	for _, model := range catalog.EmbeddingModels {
+		writeEmbeddingModel(&b, model)
+	}
+	b.WriteString("}\n\n")
+	b.WriteString("func registerBuiltinEmbeddingModels(registry *Registry) error {\n")
+	b.WriteString("\tfor _, model := range builtinEmbeddingModels {\n")
+	b.WriteString("\t\tif err := registry.RegisterEmbeddingModel(model, WithMetadataOnly()); err != nil {\n")
 	b.WriteString("\t\t\treturn err\n")
 	b.WriteString("\t\t}\n")
 	b.WriteString("\t}\n")
@@ -145,6 +171,20 @@ func writeImageModel(b *bytes.Buffer, model modeldata.ImageModel) {
 	b.WriteString("\t},\n")
 }
 
+func writeEmbeddingModel(b *bytes.Buffer, model modeldata.EmbeddingModel) {
+	b.WriteString("\t{\n")
+	writeStringField(b, "ID", "ModelID", model.ID)
+	writeStringField(b, "Provider", "ProviderID", model.Provider)
+	writeStringField(b, "API", "EmbeddingAPI", model.API)
+	writeStringField(b, "Name", "", model.Name)
+	writeIntField(b, "DefaultDimensions", model.DefaultDimensions)
+	writeIntField(b, "MaxInputTokens", model.MaxInputTokens)
+	writeFloatField(b, "InputCostPerMillion", model.InputCostPerMillion)
+	writeStringField(b, "CostCurrency", "", model.Currency)
+	writeProviderMetadataField(b, embeddingProviderMetadata(model))
+	b.WriteString("\t},\n")
+}
+
 func textProviderMetadata(model modeldata.TextModel) map[string]any {
 	metadata := cloneAnyMap(model.ProviderMetadata)
 	metadata["baseURL"] = model.BaseURL
@@ -163,6 +203,14 @@ func imageProviderMetadata(model modeldata.ImageModel) map[string]any {
 		"currency": model.Cost.Currency,
 		"values":   cloneFloatMap(model.Cost.Values),
 	}
+	return metadata
+}
+
+func embeddingProviderMetadata(model modeldata.EmbeddingModel) map[string]any {
+	metadata := cloneAnyMap(model.ProviderMetadata)
+	metadata["baseURL"] = model.BaseURL
+	metadata["headers"] = cloneStringMap(model.Headers)
+	metadata["apiKeyEnvVars"] = append([]string(nil), model.AuthEnvNames...)
 	return metadata
 }
 

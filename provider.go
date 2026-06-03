@@ -19,6 +19,12 @@ type ImageProvider interface {
 	Generate(context.Context, ImageModel, ImageRequest, Options) (AssistantImages, error)
 }
 
+// EmbeddingProvider adapts a provider API into sigma's vector embeddings interface.
+type EmbeddingProvider interface {
+	API() EmbeddingAPI
+	Embed(context.Context, EmbeddingModel, EmbeddingRequest, Options) (Embeddings, error)
+}
+
 // StreamingImageProvider optionally adapts a provider API into sigma's
 // streaming image interface.
 type StreamingImageProvider interface {

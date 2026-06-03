@@ -96,31 +96,33 @@ type BedrockOptions struct {
 // option functions that populate ProviderOptions without changing this root
 // package.
 type Options struct {
-	Temperature             *float64
-	MaxTokens               *int
-	APIKey                  string
-	HTTPClient              *http.Client
-	AuthResolver            AuthResolver
-	Transport               Transport
-	CacheRetention          CacheRetention
-	SessionID               string
-	Headers                 map[string]string
-	Timeout                 *time.Duration
-	MaxRetries              *int
-	MaxRetryDelay           *time.Duration
-	Metadata                map[string]any
-	ReasoningLevel          ThinkingLevel
-	ThinkingBudgetTokens    *int
-	ProviderOptions         map[ProviderID]map[string]any
-	ProviderAuthResolvers   map[ProviderID]AuthResolver
-	TextPayloadDebugHooks   []TextPayloadDebugHook
-	TextResponseDebugHooks  []TextResponseDebugHook
-	ImagePayloadDebugHooks  []ImagePayloadDebugHook
-	ImageResponseDebugHooks []ImageResponseDebugHook
-	OpenAIOptions           *OpenAIOptions
-	AnthropicOptions        *AnthropicOptions
-	GoogleOptions           *GoogleOptions
-	BedrockOptions          *BedrockOptions
+	Temperature                 *float64
+	MaxTokens                   *int
+	APIKey                      string
+	HTTPClient                  *http.Client
+	AuthResolver                AuthResolver
+	Transport                   Transport
+	CacheRetention              CacheRetention
+	SessionID                   string
+	Headers                     map[string]string
+	Timeout                     *time.Duration
+	MaxRetries                  *int
+	MaxRetryDelay               *time.Duration
+	Metadata                    map[string]any
+	ReasoningLevel              ThinkingLevel
+	ThinkingBudgetTokens        *int
+	ProviderOptions             map[ProviderID]map[string]any
+	ProviderAuthResolvers       map[ProviderID]AuthResolver
+	TextPayloadDebugHooks       []TextPayloadDebugHook
+	TextResponseDebugHooks      []TextResponseDebugHook
+	ImagePayloadDebugHooks      []ImagePayloadDebugHook
+	ImageResponseDebugHooks     []ImageResponseDebugHook
+	EmbeddingPayloadDebugHooks  []EmbeddingPayloadDebugHook
+	EmbeddingResponseDebugHooks []EmbeddingResponseDebugHook
+	OpenAIOptions               *OpenAIOptions
+	AnthropicOptions            *AnthropicOptions
+	GoogleOptions               *GoogleOptions
+	BedrockOptions              *BedrockOptions
 }
 
 // Option configures a single provider request.
@@ -342,31 +344,33 @@ func applyOptions(options Options, opts []Option) Options {
 
 func cloneOptions(options Options) Options {
 	return Options{
-		Temperature:             cloneFloat64Ptr(options.Temperature),
-		MaxTokens:               cloneIntPtr(options.MaxTokens),
-		APIKey:                  options.APIKey,
-		HTTPClient:              options.HTTPClient,
-		AuthResolver:            options.AuthResolver,
-		Transport:               options.Transport,
-		CacheRetention:          options.CacheRetention,
-		SessionID:               options.SessionID,
-		Headers:                 copyStringStringMap(options.Headers),
-		Timeout:                 cloneDurationPtr(options.Timeout),
-		MaxRetries:              cloneIntPtr(options.MaxRetries),
-		MaxRetryDelay:           cloneDurationPtr(options.MaxRetryDelay),
-		Metadata:                copyStringAnyMap(options.Metadata),
-		ReasoningLevel:          options.ReasoningLevel,
-		ThinkingBudgetTokens:    cloneIntPtr(options.ThinkingBudgetTokens),
-		ProviderOptions:         copyProviderOptions(options.ProviderOptions),
-		ProviderAuthResolvers:   copyProviderAuthResolvers(options.ProviderAuthResolvers),
-		TextPayloadDebugHooks:   append([]TextPayloadDebugHook(nil), options.TextPayloadDebugHooks...),
-		TextResponseDebugHooks:  append([]TextResponseDebugHook(nil), options.TextResponseDebugHooks...),
-		ImagePayloadDebugHooks:  append([]ImagePayloadDebugHook(nil), options.ImagePayloadDebugHooks...),
-		ImageResponseDebugHooks: append([]ImageResponseDebugHook(nil), options.ImageResponseDebugHooks...),
-		OpenAIOptions:           cloneOpenAIOptions(options.OpenAIOptions),
-		AnthropicOptions:        cloneAnthropicOptions(options.AnthropicOptions),
-		GoogleOptions:           cloneGoogleOptions(options.GoogleOptions),
-		BedrockOptions:          cloneBedrockOptions(options.BedrockOptions),
+		Temperature:                 cloneFloat64Ptr(options.Temperature),
+		MaxTokens:                   cloneIntPtr(options.MaxTokens),
+		APIKey:                      options.APIKey,
+		HTTPClient:                  options.HTTPClient,
+		AuthResolver:                options.AuthResolver,
+		Transport:                   options.Transport,
+		CacheRetention:              options.CacheRetention,
+		SessionID:                   options.SessionID,
+		Headers:                     copyStringStringMap(options.Headers),
+		Timeout:                     cloneDurationPtr(options.Timeout),
+		MaxRetries:                  cloneIntPtr(options.MaxRetries),
+		MaxRetryDelay:               cloneDurationPtr(options.MaxRetryDelay),
+		Metadata:                    copyStringAnyMap(options.Metadata),
+		ReasoningLevel:              options.ReasoningLevel,
+		ThinkingBudgetTokens:        cloneIntPtr(options.ThinkingBudgetTokens),
+		ProviderOptions:             copyProviderOptions(options.ProviderOptions),
+		ProviderAuthResolvers:       copyProviderAuthResolvers(options.ProviderAuthResolvers),
+		TextPayloadDebugHooks:       append([]TextPayloadDebugHook(nil), options.TextPayloadDebugHooks...),
+		TextResponseDebugHooks:      append([]TextResponseDebugHook(nil), options.TextResponseDebugHooks...),
+		ImagePayloadDebugHooks:      append([]ImagePayloadDebugHook(nil), options.ImagePayloadDebugHooks...),
+		ImageResponseDebugHooks:     append([]ImageResponseDebugHook(nil), options.ImageResponseDebugHooks...),
+		EmbeddingPayloadDebugHooks:  append([]EmbeddingPayloadDebugHook(nil), options.EmbeddingPayloadDebugHooks...),
+		EmbeddingResponseDebugHooks: append([]EmbeddingResponseDebugHook(nil), options.EmbeddingResponseDebugHooks...),
+		OpenAIOptions:               cloneOpenAIOptions(options.OpenAIOptions),
+		AnthropicOptions:            cloneAnthropicOptions(options.AnthropicOptions),
+		GoogleOptions:               cloneGoogleOptions(options.GoogleOptions),
+		BedrockOptions:              cloneBedrockOptions(options.BedrockOptions),
 	}
 }
 

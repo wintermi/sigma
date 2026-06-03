@@ -46,6 +46,16 @@ func CostForUsage(model Model, usage Usage) Cost {
 	}
 }
 
+// CostForEmbeddingUsage calculates deterministic embedding request cost from model rates.
+func CostForEmbeddingUsage(model EmbeddingModel, usage Usage) Cost {
+	inputCost := costForTokens(usage.InputTokens, model.InputCostPerMillion)
+	return Cost{
+		InputCost: inputCost,
+		TotalCost: inputCost,
+		Currency:  embeddingCostCurrency(model),
+	}
+}
+
 func costForTokens(tokens int, perMillion float64) float64 {
 	if tokens == 0 || perMillion == 0 {
 		return 0
@@ -54,6 +64,13 @@ func costForTokens(tokens int, perMillion float64) float64 {
 }
 
 func costCurrency(model Model) string {
+	if model.CostCurrency != "" {
+		return model.CostCurrency
+	}
+	return defaultCostCurrency
+}
+
+func embeddingCostCurrency(model EmbeddingModel) string {
 	if model.CostCurrency != "" {
 		return model.CostCurrency
 	}

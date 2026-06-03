@@ -47,6 +47,18 @@ type ImagePayloadDebugHook func(context.Context, ImagePayloadDebug) error
 // response body is consumed.
 type ImageResponseDebugHook func(context.Context, ImageResponseDebug) error
 
+// EmbeddingPayloadDebugHook inspects a redacted copy of an embedding provider payload.
+//
+// Hooks run after provider payload and headers are built and before the HTTP
+// request is sent. Payload replacement is intentionally unsupported: Payload is
+// a redacted copy for diagnostics, so mutating it cannot change the request body
+// or corrupt a later retry attempt.
+type EmbeddingPayloadDebugHook func(context.Context, EmbeddingPayloadDebug) error
+
+// EmbeddingResponseDebugHook inspects redacted embedding response metadata
+// before the response body is consumed.
+type EmbeddingResponseDebugHook func(context.Context, EmbeddingResponseDebug) error
+
 // TextPayloadDebug is the diagnostic view passed to text payload hooks.
 type TextPayloadDebug struct {
 	Provider       ProviderID
@@ -87,6 +99,26 @@ type ImageResponseDebug struct {
 	RequestID  string
 }
 
+// EmbeddingPayloadDebug is the diagnostic view passed to embedding payload hooks.
+type EmbeddingPayloadDebug struct {
+	Provider       ProviderID
+	API            EmbeddingAPI
+	Model          ModelID
+	Headers        http.Header
+	Payload        []byte
+	PayloadPreview string
+}
+
+// EmbeddingResponseDebug is the diagnostic view passed to embedding response hooks.
+type EmbeddingResponseDebug struct {
+	Provider   ProviderID
+	API        EmbeddingAPI
+	Model      ModelID
+	StatusCode int
+	Headers    http.Header
+	RequestID  string
+}
+
 // WithTextPayloadDebugHook adds a safe text request payload debug hook.
 func WithTextPayloadDebugHook(hook TextPayloadDebugHook) Option {
 	return func(options *Options) {
@@ -119,6 +151,24 @@ func WithImageResponseDebugHook(hook ImageResponseDebugHook) ImageOption {
 	return func(options *Options) {
 		if hook != nil {
 			options.ImageResponseDebugHooks = append(options.ImageResponseDebugHooks, hook)
+		}
+	}
+}
+
+// WithEmbeddingPayloadDebugHook adds a safe embedding request payload debug hook.
+func WithEmbeddingPayloadDebugHook(hook EmbeddingPayloadDebugHook) EmbeddingOption {
+	return func(options *Options) {
+		if hook != nil {
+			options.EmbeddingPayloadDebugHooks = append(options.EmbeddingPayloadDebugHooks, hook)
+		}
+	}
+}
+
+// WithEmbeddingResponseDebugHook adds a safe embedding response debug hook.
+func WithEmbeddingResponseDebugHook(hook EmbeddingResponseDebugHook) EmbeddingOption {
+	return func(options *Options) {
+		if hook != nil {
+			options.EmbeddingResponseDebugHooks = append(options.EmbeddingResponseDebugHooks, hook)
 		}
 	}
 }
@@ -166,6 +216,30 @@ func RunImagePayloadDebugHooks(ctx context.Context, opts Options, provider Provi
 		}
 		if err := hook(ctx, cloneImagePayloadDebug(debug)); err != nil {
 			return debugHookError("image payload", provider, model, err)
+		}
+	}
+	return nil
+}
+
+// RunEmbeddingPayloadDebugHooks runs embedding payload hooks with redacted copies.
+func RunEmbeddingPayloadDebugHooks(ctx context.Context, opts Options, provider ProviderID, api EmbeddingAPI, model ModelID, payload []byte, headers http.Header) error {
+	if len(opts.EmbeddingPayloadDebugHooks) == 0 {
+		return nil
+	}
+	debug := EmbeddingPayloadDebug{
+		Provider:       provider,
+		API:            api,
+		Model:          model,
+		Headers:        redactedHeaders(headers),
+		Payload:        redactedPayload(payload),
+		PayloadPreview: redact.Preview(string(payload), debugPayloadPreviewLimit),
+	}
+	for _, hook := range opts.EmbeddingPayloadDebugHooks {
+		if hook == nil {
+			continue
+		}
+		if err := hook(ctx, cloneEmbeddingPayloadDebug(debug)); err != nil {
+			return debugHookError("embedding payload", provider, model, err)
 		}
 	}
 	return nil
@@ -223,6 +297,32 @@ func ImageResponseDebugHTTPHook(ctx context.Context, opts Options, provider Prov
 	}
 }
 
+// EmbeddingResponseDebugHTTPHook adapts embedding response hooks to the shared retry helper.
+func EmbeddingResponseDebugHTTPHook(ctx context.Context, opts Options, provider ProviderID, api EmbeddingAPI, model ModelID) HTTPResponseHook {
+	if len(opts.EmbeddingResponseDebugHooks) == 0 {
+		return nil
+	}
+	return func(resp *http.Response) error {
+		debug := EmbeddingResponseDebug{
+			Provider:   provider,
+			API:        api,
+			Model:      model,
+			StatusCode: resp.StatusCode,
+			Headers:    redactedHeaders(resp.Header),
+			RequestID:  requestIDFromHeaders(resp.Header),
+		}
+		for _, hook := range opts.EmbeddingResponseDebugHooks {
+			if hook == nil {
+				continue
+			}
+			if err := hook(ctx, cloneEmbeddingResponseDebug(debug)); err != nil {
+				return debugHookError("embedding response", provider, model, err)
+			}
+		}
+		return nil
+	}
+}
+
 func debugHookError(stage string, provider ProviderID, model ModelID, err error) error {
 	return &Error{
 		Code:     ErrorDebugHook,
@@ -274,6 +374,17 @@ func cloneImagePayloadDebug(debug ImagePayloadDebug) ImagePayloadDebug {
 }
 
 func cloneImageResponseDebug(debug ImageResponseDebug) ImageResponseDebug {
+	debug.Headers = debug.Headers.Clone()
+	return debug
+}
+
+func cloneEmbeddingPayloadDebug(debug EmbeddingPayloadDebug) EmbeddingPayloadDebug {
+	debug.Headers = debug.Headers.Clone()
+	debug.Payload = cloneBytes(debug.Payload)
+	return debug
+}
+
+func cloneEmbeddingResponseDebug(debug EmbeddingResponseDebug) EmbeddingResponseDebug {
 	debug.Headers = debug.Headers.Clone()
 	return debug
 }

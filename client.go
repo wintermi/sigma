@@ -338,6 +338,12 @@ func mergeOptions(base Options, override Options) Options {
 	if len(override.ImageResponseDebugHooks) > 0 {
 		merged.ImageResponseDebugHooks = append(merged.ImageResponseDebugHooks, override.ImageResponseDebugHooks...)
 	}
+	if len(override.EmbeddingPayloadDebugHooks) > 0 {
+		merged.EmbeddingPayloadDebugHooks = append(merged.EmbeddingPayloadDebugHooks, override.EmbeddingPayloadDebugHooks...)
+	}
+	if len(override.EmbeddingResponseDebugHooks) > 0 {
+		merged.EmbeddingResponseDebugHooks = append(merged.EmbeddingResponseDebugHooks, override.EmbeddingResponseDebugHooks...)
+	}
 	if override.OpenAIOptions != nil {
 		merged.OpenAIOptions = cloneOpenAIOptions(override.OpenAIOptions)
 	}

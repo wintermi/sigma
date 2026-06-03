@@ -17,7 +17,8 @@ AI Gateway, and expanded GitHub Copilot routes. The release extends generated
 image metadata with OpenRouter-routed Grok and Gemini image routes, tightens
 the OpenAI-compatible preview adapters around prompt caching, replay, stream
 parsing, provider-specific reasoning formats, Codex OAuth, and Codex WebSocket
-session reuse, and adds typed provider error classification for safer caller
+session reuse, adds a provider-neutral embeddings surface for OpenAI text
+embedding models, and adds typed provider error classification for safer caller
 retry and recovery decisions. The Google preview adapters now include the
 scoped provider hardening for Vertex credential fallback, model-scoped routing
 metadata, and replayed tool-call IDs. Direct xAI/Grok support remains focused
@@ -111,6 +112,10 @@ on the preview Chat Completions adapter.
   OAuth/ADC token providers in auto credential mode.
 - Google replay normalizes tool-call IDs for Google-hosted model families that
   require explicit function IDs and omits empty Gemini function-response IDs.
+- Vector embeddings now have a provider-neutral API with embedding model
+  discovery, request-scoped embedding options, redacted embedding debug hooks,
+  OpenAI `/v1/embeddings` support, and generated metadata for
+  `text-embedding-3-small` and `text-embedding-3-large`.
 
 ## Compatibility
 
@@ -145,6 +150,9 @@ on the preview Chat Completions adapter.
   Fireworks row stays on the OpenAI-compatible Fire Pass route.
 - Mistral image input remains deferred until the Conversations request shape is
   covered by deterministic payload fixtures.
+- Embedding vector stores, text chunking, similarity/ranking helpers,
+  tokenizer-based input estimates, non-OpenAI embedding adapters, and live
+  embedding probes remain deferred.
 - Direct xAI/Grok image-provider semantics remain deferred until the request
   and response shape is covered by deterministic fixtures.
 - Live OpenAI image validation remains deferred to opt-in probes; deterministic
@@ -164,6 +172,6 @@ No live xAI or OpenRouter provider calls are required for release validation.
 OpenAI provider changes, image generation/edit/variation/streaming behavior,
 Codex OAuth and WebSocket flows, typed provider error classification, and
 generated catalog metadata, including strict OpenCode thinking and routed model
-metadata plus the focused provider-family registry refresh, are covered by
-deterministic request, response, OAuth, SSE/WebSocket, checksum, payload, and
-registry fixtures.
+metadata plus the focused provider-family registry refresh and OpenAI
+embedding support, are covered by deterministic request, response, OAuth,
+SSE/WebSocket, checksum, payload, and registry fixtures.

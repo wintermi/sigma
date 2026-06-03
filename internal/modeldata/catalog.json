@@ -16454,5 +16454,43 @@
         "routedProvider": "xai"
       }
     }
+  ],
+  "embeddingModels": [
+    {
+      "id": "text-embedding-3-large",
+      "name": "Text Embedding 3 Large",
+      "provider": "openai",
+      "api": "openai-embeddings",
+      "baseURL": "https://api.openai.com/v1",
+      "defaultDimensions": 3072,
+      "maxInputTokens": 8192,
+      "inputCostPerMillion": 0.13,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "text-embedding-3"
+      }
+    },
+    {
+      "id": "text-embedding-3-small",
+      "name": "Text Embedding 3 Small",
+      "provider": "openai",
+      "api": "openai-embeddings",
+      "baseURL": "https://api.openai.com/v1",
+      "defaultDimensions": 1536,
+      "maxInputTokens": 8192,
+      "inputCostPerMillion": 0.02,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "text-embedding-3"
+      }
+    }
   ]
 }

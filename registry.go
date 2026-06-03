@@ -39,25 +39,30 @@ func WithMetadataOnly() RegisterOption {
 
 // ProviderInfo is a copyable view of registered provider capabilities.
 type ProviderInfo struct {
-	ID       ProviderID `json:"id"`
-	TextAPI  API        `json:"textApi,omitempty"`
-	ImageAPI ImageAPI   `json:"imageApi,omitempty"`
+	ID           ProviderID   `json:"id"`
+	TextAPI      API          `json:"textApi,omitempty"`
+	ImageAPI     ImageAPI     `json:"imageApi,omitempty"`
+	EmbeddingAPI EmbeddingAPI `json:"embeddingApi,omitempty"`
 }
 
 // RegistrySnapshot is an immutable-by-convention copy of registry state.
 type RegistrySnapshot struct {
-	Providers   []ProviderInfo `json:"providers,omitempty"`
-	Models      []Model        `json:"models,omitempty"`
-	ImageModels []ImageModel   `json:"imageModels,omitempty"`
+	Providers       []ProviderInfo   `json:"providers,omitempty"`
+	Models          []Model          `json:"models,omitempty"`
+	ImageModels     []ImageModel     `json:"imageModels,omitempty"`
+	EmbeddingModels []EmbeddingModel `json:"embeddingModels,omitempty"`
 }
 
 type providerRegistration struct {
-	text     TextProvider
-	textAPI  API
-	image    ImageProvider
-	imageAPI ImageAPI
-	textSet  bool
-	imageSet bool
+	text         TextProvider
+	textAPI      API
+	image        ImageProvider
+	imageAPI     ImageAPI
+	embedding    EmbeddingProvider
+	embeddingAPI EmbeddingAPI
+	textSet      bool
+	imageSet     bool
+	embeddingSet bool
 }
 
 // Registry stores provider implementations and model metadata.
@@ -72,6 +77,9 @@ type Registry struct {
 
 	imageModels     map[ModelRef]ImageModel
 	imageModelOrder []ModelRef
+
+	embeddingModels     map[ModelRef]EmbeddingModel
+	embeddingModelOrder []ModelRef
 }
 
 var defaultRegistry = newDefaultRegistry()
@@ -96,6 +104,11 @@ func RegisterDefaultImageProvider(id ProviderID, provider ImageProvider, opts ..
 	return defaultRegistry.RegisterImageProvider(id, provider, opts...)
 }
 
+// RegisterDefaultEmbeddingProvider registers an embedding provider on the default registry.
+func RegisterDefaultEmbeddingProvider(id ProviderID, provider EmbeddingProvider, opts ...RegisterOption) error {
+	return defaultRegistry.RegisterEmbeddingProvider(id, provider, opts...)
+}
+
 // RegisterDefaultModel registers a text model on the default registry.
 func RegisterDefaultModel(model Model, opts ...RegisterOption) error {
 	return defaultRegistry.RegisterModel(model, opts...)
@@ -104,6 +117,11 @@ func RegisterDefaultModel(model Model, opts ...RegisterOption) error {
 // RegisterDefaultImageModel registers an image model on the default registry.
 func RegisterDefaultImageModel(model ImageModel, opts ...RegisterOption) error {
 	return defaultRegistry.RegisterImageModel(model, opts...)
+}
+
+// RegisterDefaultEmbeddingModel registers an embedding model on the default registry.
+func RegisterDefaultEmbeddingModel(model EmbeddingModel, opts ...RegisterOption) error {
+	return defaultRegistry.RegisterEmbeddingModel(model, opts...)
 }
 
 // RegisterProvider registers a text provider on registry.
@@ -120,6 +138,14 @@ func RegisterModel(registry *Registry, model Model, opts ...RegisterOption) erro
 		return registryError("registry is required")
 	}
 	return registry.RegisterModel(model, opts...)
+}
+
+// RegisterEmbeddingModel registers embedding model metadata on registry.
+func RegisterEmbeddingModel(registry *Registry, model EmbeddingModel, opts ...RegisterOption) error {
+	if registry == nil {
+		return registryError("registry is required")
+	}
+	return registry.RegisterEmbeddingModel(model, opts...)
 }
 
 // RegisterTextProvider registers the implementation for a provider's text API.
@@ -145,7 +171,7 @@ func (r *Registry) RegisterTextProvider(id ProviderID, provider TextProvider, op
 	if registration.textSet && !options.override {
 		return registryConflict("text provider already registered")
 	}
-	if !registration.textSet && !registration.imageSet {
+	if !registration.textSet && !registration.imageSet && !registration.embeddingSet {
 		r.providerOrder = append(r.providerOrder, id)
 	}
 	registration.text = provider
@@ -178,12 +204,45 @@ func (r *Registry) RegisterImageProvider(id ProviderID, provider ImageProvider, 
 	if registration.imageSet && !options.override {
 		return registryConflict("image provider already registered")
 	}
-	if !registration.textSet && !registration.imageSet {
+	if !registration.textSet && !registration.imageSet && !registration.embeddingSet {
 		r.providerOrder = append(r.providerOrder, id)
 	}
 	registration.image = provider
 	registration.imageAPI = api
 	registration.imageSet = true
+	r.providers[id] = registration
+	return nil
+}
+
+// RegisterEmbeddingProvider registers the implementation for a provider's embeddings API.
+func (r *Registry) RegisterEmbeddingProvider(id ProviderID, provider EmbeddingProvider, opts ...RegisterOption) error {
+	if id == "" {
+		return registryError("provider id is required")
+	}
+	if provider == nil {
+		return registryError("embedding provider is required")
+	}
+	api := provider.API()
+	if api == "" {
+		return registryError("embedding provider api is required")
+	}
+
+	options := applyRegisterOptions(opts)
+	r.ensure()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	registration := r.providers[id]
+	if registration.embeddingSet && !options.override {
+		return registryConflict("embedding provider already registered")
+	}
+	if !registration.textSet && !registration.imageSet && !registration.embeddingSet {
+		r.providerOrder = append(r.providerOrder, id)
+	}
+	registration.embedding = provider
+	registration.embeddingAPI = api
+	registration.embeddingSet = true
 	r.providers[id] = registration
 	return nil
 }
@@ -240,6 +299,32 @@ func (r *Registry) RegisterImageModel(model ImageModel, opts ...RegisterOption) 
 	return nil
 }
 
+// RegisterEmbeddingModel registers embedding model metadata.
+func (r *Registry) RegisterEmbeddingModel(model EmbeddingModel, opts ...RegisterOption) error {
+	if err := validateEmbeddingModel(model); err != nil {
+		return err
+	}
+
+	options := applyRegisterOptions(opts)
+	key := ModelRef{Provider: model.Provider, ID: model.ID}
+	r.ensure()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if err := r.validateEmbeddingModelProviderLocked(model, options.metadataOnly); err != nil {
+		return err
+	}
+	if _, ok := r.embeddingModels[key]; ok && !options.override {
+		return registryConflict("embedding model already registered")
+	}
+	if _, ok := r.embeddingModels[key]; !ok {
+		r.embeddingModelOrder = append(r.embeddingModelOrder, key)
+	}
+	r.embeddingModels[key] = cloneEmbeddingModel(model)
+	return nil
+}
+
 // TextProvider returns the registered text provider for id.
 func (r *Registry) TextProvider(id ProviderID) (TextProvider, bool) {
 	r.ensure()
@@ -262,6 +347,17 @@ func (r *Registry) ImageProvider(id ProviderID) (ImageProvider, bool) {
 	return registration.image, ok && registration.imageSet
 }
 
+// EmbeddingProvider returns the registered embedding provider for id.
+func (r *Registry) EmbeddingProvider(id ProviderID) (EmbeddingProvider, bool) {
+	r.ensure()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	registration, ok := r.providers[id]
+	return registration.embedding, ok && registration.embeddingSet
+}
+
 // ListProviders returns providers in first-registration order.
 func (r *Registry) ListProviders() []ProviderInfo {
 	r.ensure()
@@ -273,9 +369,10 @@ func (r *Registry) ListProviders() []ProviderInfo {
 	for _, id := range r.providerOrder {
 		registration := r.providers[id]
 		providers = append(providers, ProviderInfo{
-			ID:       id,
-			TextAPI:  registration.textAPI,
-			ImageAPI: registration.imageAPI,
+			ID:           id,
+			TextAPI:      registration.textAPI,
+			ImageAPI:     registration.imageAPI,
+			EmbeddingAPI: registration.embeddingAPI,
 		})
 	}
 	return providers
@@ -309,6 +406,20 @@ func (r *Registry) ListImageModels() []ImageModel {
 	return models
 }
 
+// ListEmbeddingModels returns embedding models in registration order.
+func (r *Registry) ListEmbeddingModels() []EmbeddingModel {
+	r.ensure()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	models := make([]EmbeddingModel, 0, len(r.embeddingModelOrder))
+	for _, key := range r.embeddingModelOrder {
+		models = append(models, cloneEmbeddingModel(r.embeddingModels[key]))
+	}
+	return models
+}
+
 // Model returns a text model by provider and model id.
 func (r *Registry) Model(provider ProviderID, id ModelID) (Model, bool) {
 	r.ensure()
@@ -337,6 +448,20 @@ func (r *Registry) ImageModel(provider ProviderID, id ModelID) (ImageModel, bool
 	return cloneImageModel(model), true
 }
 
+// EmbeddingModel returns an embedding model by provider and model id.
+func (r *Registry) EmbeddingModel(provider ProviderID, id ModelID) (EmbeddingModel, bool) {
+	r.ensure()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	model, ok := r.embeddingModels[ModelRef{Provider: provider, ID: id}]
+	if !ok {
+		return EmbeddingModel{}, false
+	}
+	return cloneEmbeddingModel(model), true
+}
+
 // Clone returns an isolated copy of the registry.
 func (r *Registry) Clone() *Registry {
 	r.ensure()
@@ -357,15 +482,20 @@ func (r *Registry) Clone() *Registry {
 	for key, model := range r.imageModels {
 		clone.imageModels[key] = cloneImageModel(model)
 	}
+	clone.embeddingModelOrder = append(clone.embeddingModelOrder, r.embeddingModelOrder...)
+	for key, model := range r.embeddingModels {
+		clone.embeddingModels[key] = cloneEmbeddingModel(model)
+	}
 	return clone
 }
 
 // Snapshot returns a copy of registry providers and model metadata.
 func (r *Registry) Snapshot() RegistrySnapshot {
 	return RegistrySnapshot{
-		Providers:   r.ListProviders(),
-		Models:      r.ListModels(),
-		ImageModels: r.ListImageModels(),
+		Providers:       r.ListProviders(),
+		Models:          r.ListModels(),
+		ImageModels:     r.ListImageModels(),
+		EmbeddingModels: r.ListEmbeddingModels(),
 	}
 }
 
@@ -373,14 +503,16 @@ func newDefaultRegistry() *Registry {
 	registry := NewRegistry()
 	_ = registerBuiltinTextModels(registry)
 	_ = registerBuiltinImageModels(registry)
+	_ = registerBuiltinEmbeddingModels(registry)
 	return registry
 }
 
 func newRegistry() *Registry {
 	return &Registry{
-		providers:   make(map[ProviderID]providerRegistration),
-		models:      make(map[ModelRef]Model),
-		imageModels: make(map[ModelRef]ImageModel),
+		providers:       make(map[ProviderID]providerRegistration),
+		models:          make(map[ModelRef]Model),
+		imageModels:     make(map[ModelRef]ImageModel),
+		embeddingModels: make(map[ModelRef]EmbeddingModel),
 	}
 }
 
@@ -400,6 +532,9 @@ func (r *Registry) ensure() {
 	}
 	if r.imageModels == nil {
 		r.imageModels = make(map[ModelRef]ImageModel)
+	}
+	if r.embeddingModels == nil {
+		r.embeddingModels = make(map[ModelRef]EmbeddingModel)
 	}
 }
 
@@ -427,6 +562,20 @@ func (r *Registry) validateImageModelProviderLocked(model ImageModel, metadataOn
 	}
 	if registration.imageAPI != model.API {
 		return registryError("image model api does not match registered provider")
+	}
+	return nil
+}
+
+func (r *Registry) validateEmbeddingModelProviderLocked(model EmbeddingModel, metadataOnly bool) error {
+	if model.API == "" || metadataOnly {
+		return nil
+	}
+	registration, ok := r.providers[model.Provider]
+	if !ok || !registration.embeddingSet {
+		return registryError("embedding provider must be registered before model")
+	}
+	if registration.embeddingAPI != model.API {
+		return registryError("embedding model api does not match registered provider")
 	}
 	return nil
 }
@@ -468,6 +617,25 @@ func validateModel(model Model) error {
 
 func validateImageModel(model ImageModel) error {
 	return ValidateModelRef(ModelRef{Provider: model.Provider, ID: model.ID})
+}
+
+func validateEmbeddingModel(model EmbeddingModel) error {
+	if err := ValidateModelRef(ModelRef{Provider: model.Provider, ID: model.ID}); err != nil {
+		return err
+	}
+	if model.API == "" {
+		return registryError("embedding model api is required")
+	}
+	if model.DefaultDimensions < 0 {
+		return registryError("embedding default dimensions must be non-negative")
+	}
+	if model.MaxInputTokens < 0 {
+		return registryError("embedding max input tokens must be non-negative")
+	}
+	if model.InputCostPerMillion < 0 {
+		return registryError("embedding input cost per million must be non-negative")
+	}
+	return nil
 }
 
 func registryError(message string) error {

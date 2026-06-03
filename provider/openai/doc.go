@@ -6,9 +6,9 @@
 // Package openai adapts OpenAI-compatible APIs to sigma.
 //
 // It includes providers for Chat Completions-compatible endpoints, OpenAI
-// Responses, Azure OpenAI Responses, OpenAI Codex Responses, and OpenAI Images.
-// Chat Completions-compatible registration is also the path for local endpoints
-// and routers described with sigma.OpenAICompatibleModel.
+// Responses, Azure OpenAI Responses, OpenAI Codex Responses, OpenAI Images, and
+// OpenAI Embeddings. Chat Completions-compatible registration is also the path
+// for local endpoints and routers described with sigma.OpenAICompatibleModel.
 //
 // Providers resolve credentials through sigma.Options.AuthResolver or explicit
 // token-provider options instead of reading environment variables directly.

@@ -14,6 +14,9 @@ type API string
 // ImageAPI identifies an image generation provider API surface.
 type ImageAPI string
 
+// EmbeddingAPI identifies a vector embedding provider API surface.
+type EmbeddingAPI string
+
 // ImageOperation identifies the requested provider-neutral image operation.
 type ImageOperation string
 

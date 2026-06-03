@@ -105,6 +105,10 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Google replay now normalizes tool-call IDs for Google-hosted model families
   that require explicit function IDs, and omits empty function-response IDs for
   native Gemini requests.
+- Sigma now exposes a provider-neutral vector embeddings API with embedding
+  model discovery, request-scoped embedding options, redacted embedding debug
+  hooks, OpenAI `/v1/embeddings` support, and generated metadata for
+  `text-embedding-3-small` and `text-embedding-3-large`.
 
 ### Compatibility
 
@@ -136,6 +140,9 @@ See [release notes](docs/release-notes-v0.3.0.md).
   environments should use SSE fallback.
 - Token usage and cost reporting come from provider usage data and model
   metadata; tokenizer-based token estimates are deferred.
+- Embeddings are currently limited to OpenAI text embedding models. Vector
+  stores, chunking, similarity/ranking helpers, tokenizer estimates, non-OpenAI
+  embedding adapters, and live embedding probes remain deferred.
 - Built-in model metadata is still refreshed through the curated checked-in
   catalog; automated `models.dev`/provider-catalog ingestion is deferred until
   it can preserve deterministic review and fixtures.

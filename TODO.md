@@ -15,6 +15,26 @@ cancellation/error coverage (see the coverage standards in
       Responses image-generation tool output without making live provider calls
       part of `mise run ci`.
 
+## Embeddings
+
+Sigma now has a first-class provider-neutral embeddings surface with OpenAI
+`/v1/embeddings` support and generated metadata for the current OpenAI text
+embedding models. Broader retrieval workflows remain future work until they
+have narrow APIs and deterministic tests.
+
+- [ ] Add vector-store integration only as an explicit new surface, not as part
+      of provider dispatch.
+- [ ] Add text chunking helpers only after settling chunk metadata, overlap, and
+      tokenizer-estimation semantics.
+- [ ] Add similarity/ranking helpers with deterministic numeric fixtures before
+      documenting them as reusable retrieval primitives.
+- [ ] Add tokenizer-based embedding input estimates without making provider
+      tokenizers a hidden runtime dependency.
+- [ ] Add non-OpenAI embedding adapters only after each provider has request,
+      response, usage, error, and cancellation fixtures.
+- [ ] Add opt-in live embedding probes without making live provider calls part
+      of `mise run ci`.
+
 ## OpenAI-compatible parity
 
 OpenAI Chat Completions, Responses, and Codex Responses now cover the focused
