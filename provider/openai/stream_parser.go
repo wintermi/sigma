@@ -136,7 +136,8 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 
 func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	var chunk streamChunk
-	if err := json.Unmarshal([]byte(event.Data), &chunk); err != nil {
+	data := providerText(event.Data)
+	if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 		return fmt.Errorf("openai completions: decode stream chunk: %w", err)
 	}
 	if chunk.Error != nil {
@@ -266,6 +267,7 @@ func (p *completionStreamParser) emitStart(ctx context.Context) error {
 }
 
 func (p *completionStreamParser) emitText(ctx context.Context, delta string) error {
+	delta = providerText(delta)
 	if p.text == nil {
 		p.text = &streamblocks.Text{ContentIndex: p.nextContentIndex()}
 		if err := p.writer.Emit(ctx, sigma.Event{
@@ -289,6 +291,7 @@ func (p *completionStreamParser) emitText(ctx context.Context, delta string) err
 }
 
 func (p *completionStreamParser) emitThinking(ctx context.Context, delta string) error {
+	delta = providerText(delta)
 	if p.thinking == nil {
 		p.thinking = &streamblocks.Thinking{ContentIndex: p.nextContentIndex()}
 		if err := p.writer.Emit(ctx, sigma.Event{

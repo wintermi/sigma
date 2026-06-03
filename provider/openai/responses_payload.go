@@ -39,7 +39,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 		"stream": true,
 	}
 	if req.SystemPrompt != "" {
-		payload["instructions"] = req.SystemPrompt
+		payload["instructions"] = providerText(req.SystemPrompt)
 	}
 	if opts.Temperature != nil {
 		payload["temperature"] = *opts.Temperature
@@ -120,7 +120,7 @@ func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
 		case sigma.ContentBlockText:
 			parts = append(parts, map[string]any{
 				"type":             "input_text",
-				providerOptionText: block.Text,
+				providerOptionText: providerText(block.Text),
 			})
 		case sigma.ContentBlockImage:
 			if message.Role != sigma.RoleUser {
@@ -171,7 +171,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			messageID = firstNonEmpty(messageID, providerID(block.ProviderMetadata))
 			part := map[string]any{
 				"type":             "output_text",
-				providerOptionText: block.Text,
+				providerOptionText: providerText(block.Text),
 			}
 			part["id"] = responsesBoundedID(
 				providerOptionText,
@@ -189,7 +189,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 				"type": "reasoning",
 				"summary": []map[string]any{{
 					"type":             "summary_text",
-					providerOptionText: block.ThinkingText,
+					providerOptionText: providerText(block.ThinkingText),
 				}},
 			}
 			item["id"] = responsesBoundedID("rs", providerID(block.ProviderMetadata), fmt.Sprintf("rs_sigma_%d", messageIndex))
@@ -461,7 +461,7 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 			if text.Len() > 0 {
 				text.WriteByte('\n')
 			}
-			text.WriteString(block.Text)
+			text.WriteString(providerText(block.Text))
 		case sigma.ContentBlockImage:
 			hasImage = true
 			if !model.SupportsImages() {

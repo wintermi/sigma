@@ -58,6 +58,14 @@ Chat Completions adapter.
 - OpenAI-compatible stream parsing recognizes Chat Completions
   `reasoning_text` deltas plus Responses/Codex refusal and reasoning-text
   events.
+- OpenAI-compatible Chat Completions and Responses normalize invalid UTF-8 text
+  at request, replay, and stream boundaries before provider dispatch or final
+  message persistence.
+- OpenAI-compatible GitHub Copilot routes add dynamic initiator, intent, and
+  vision request headers while preserving explicit caller header overrides.
+- OpenAI-compatible Cloudflare AI Gateway routes resolve environment-backed
+  base URL placeholders and send API keys through Cloudflare's gateway auth
+  header without broad catalog promotion.
 - OpenAI Codex Responses includes stdlib-only browser callback and device-code
   OAuth login, token refresh helpers, and an in-memory OAuth token provider for
   caller-managed credentials.
@@ -75,8 +83,7 @@ Chat Completions adapter.
   Codex request selects those tiers.
 - `cmd/sigma-surface-probe` can run opt-in live OpenAI Responses probes and
   OpenAI Codex Responses probes, including browser callback and device-code
-  OAuth for Codex plus a `gpt-5.3-codex` default for ChatGPT-backed Codex
-  probing.
+  OAuth for Codex plus a latest-supported ChatGPT Codex fallback for probing.
 - `sigma.ClassifyError` exposes stable provider error classes for auth, quota,
   billing, context overflow, rate limits, transient failures, invalid requests,
   provider failures, and unknown errors, including provider retry-after hints
@@ -123,8 +130,8 @@ Chat Completions adapter.
   fixtures are the release evidence for image generation, multipart edits,
   reference-only JSON edits, variations, streaming, and Responses
   image-generation tool output.
-- Proxy-aware Codex WebSocket dialing, token persistence, Copilot dynamic
-  headers, and Cloudflare OpenAI-compatible auth rewriting remain deferred.
+- Proxy-aware Codex WebSocket dialing, token persistence, and first-class
+  Copilot or Cloudflare provider-row promotion remain deferred.
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 
 ## Validation status

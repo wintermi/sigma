@@ -139,7 +139,7 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 	if req.SystemPrompt != "" {
 		message := map[string]any{
 			"role":    "system",
-			"content": req.SystemPrompt,
+			"content": providerText(req.SystemPrompt),
 		}
 		addCacheControl(message, retention, compat.cacheControlFormat)
 		messages = append(messages, message)
@@ -255,7 +255,7 @@ func inputContent(message sigma.Message) (any, error) {
 		return "", nil
 	}
 	if len(message.Content) == 1 && message.Content[0].Type == sigma.ContentBlockText {
-		return message.Content[0].Text, nil
+		return providerText(message.Content[0].Text), nil
 	}
 
 	parts := make([]map[string]any, 0, len(message.Content))
@@ -264,7 +264,7 @@ func inputContent(message sigma.Message) (any, error) {
 		case sigma.ContentBlockText:
 			parts = append(parts, map[string]any{
 				"type": "text", //nolint:goconst
-				"text": block.Text,
+				"text": providerText(block.Text),
 			})
 		case sigma.ContentBlockImage:
 			if message.Role != sigma.RoleUser {
@@ -318,15 +318,15 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			text.WriteString(block.Text)
+			text.WriteString(providerText(block.Text))
 		case sigma.ContentBlockThinking:
 			if block.ThinkingText == "" {
 				continue
 			}
 			if compat.requiresReasoningContentOnAssistantMessages {
-				appendContent(&reasoningContent, block.ThinkingText)
+				appendContent(&reasoningContent, providerText(block.ThinkingText))
 			} else {
-				appendContent(&text, block.ThinkingText)
+				appendContent(&text, providerText(block.ThinkingText))
 			}
 		case sigma.ContentBlockToolCall:
 			arguments, err := toolArgumentsString(block.ToolArguments)
@@ -373,6 +373,7 @@ func chatToolCallID(raw string) string {
 }
 
 func appendContent(builder *strings.Builder, text string) {
+	text = providerText(text)
 	if builder.Len() > 0 {
 		builder.WriteByte('\n')
 	}
@@ -383,7 +384,7 @@ func textContent(blocks []sigma.ContentBlock) string {
 	var text strings.Builder
 	for _, block := range blocks {
 		if block.Type == sigma.ContentBlockText {
-			text.WriteString(block.Text)
+			text.WriteString(providerText(block.Text))
 		}
 	}
 	return text.String()

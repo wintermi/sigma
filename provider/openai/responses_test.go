@@ -141,6 +141,195 @@ func TestResponsesDerivesPromptCacheKeyWithoutOverridingProviderOption(t *testin
 	}
 }
 
+func TestResponsesNormalizesProviderTextInPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-normalized-payload-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	invalid := invalidProviderText()
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			SystemPrompt: "system" + invalid,
+			Messages: []sigma.Message{
+				{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("developer" + invalid)}},
+				sigma.UserText("user" + invalid),
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.Text("assistant" + invalid),
+						sigma.Thinking("thinking"+invalid, ""),
+						sigma.ToolCallBlock("call_invalid", "lookup", map[string]any{"query": "weather"}),
+					},
+				},
+				sigma.ToolResult("call_invalid", "tool"+invalid),
+			},
+			Tools: []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Instructions string           `json:"instructions"`
+		Input        []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload.Instructions, "systemclean"; got != want {
+		t.Fatalf("instructions = %q, want %q", got, want)
+	}
+	assertResponsesInputText(t, payload.Input[0], "developerclean")
+	assertResponsesInputText(t, payload.Input[1], "userclean")
+	assertResponsesOutputText(t, payload.Input[2], "assistantclean")
+	assertResponsesReasoningText(t, payload.Input[3], "thinkingclean")
+	assertResponsesToolOutputText(t, payload.Input[5], "toolclean")
+}
+
+func TestResponsesStreamingNormalizesInvalidUTF8(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write(append([]byte(`data: {"type":"response.output_text.delta","response_id":"resp_bad","output_index":0,"item_id":"msg_bad","delta":"bad`), append([]byte{0xff}, []byte(`text"}`+"\n\n")...)...))
+		_, _ = w.Write(append([]byte(`data: {"type":"response.completed","response":{"id":"resp_bad","model":"gpt-test","status":"completed","output":[{"type":"message","id":"msg_bad","role":"assistant","content":[{"type":"output_text","id":"text_bad","text":"bad`), append([]byte{0xff}, []byte(`text"}]}]}}`+"\n\n")...)...))
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-normalized-stream-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "badtext"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+}
+
+func TestResponsesCopilotDynamicHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		request     sigma.Request
+		options     []sigma.Option
+		wantHeaders map[string]string
+		wantAbsent  []string
+	}{
+		{
+			name:    "user initiated",
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			wantHeaders: map[string]string{
+				"X-Initiator":   "user",
+				"Openai-Intent": "conversation-edits",
+			},
+			wantAbsent: []string{"Copilot-Vision-Request"},
+		},
+		{
+			name: "agent initiated with images",
+			request: sigma.Request{Messages: []sigma.Message{
+				sigma.UserText("inspect"),
+				{Role: sigma.RoleTool, ToolCallID: "call_1", Content: []sigma.ContentBlock{sigma.ImageBase64("image/png", "aGk=")}},
+			}},
+			wantHeaders: map[string]string{
+				"X-Initiator":            "agent",
+				"Openai-Intent":          "conversation-edits",
+				"Copilot-Vision-Request": "true",
+			},
+		},
+		{
+			name:    "caller override",
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			options: []sigma.Option{
+				sigma.WithHeader("X-Initiator", "override"),
+				sigma.WithHeader("Openai-Intent", "override-intent"),
+				sigma.WithHeader("Copilot-Vision-Request", "override-vision"),
+			},
+			wantHeaders: map[string]string{
+				"X-Initiator":            "override",
+				"Openai-Intent":          "override-intent",
+				"Copilot-Vision-Request": "override-vision",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			model := responsesTestModel(sigma.ProviderGitHubCopilot)
+			client := responsesTestClient(t, sigma.ProviderGitHubCopilot, model, server.URL)
+
+			_, err := client.Complete(context.Background(), model, tt.request, tt.options...)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			headers := receiveRequest(t, requests).Headers
+			for key, value := range tt.wantHeaders {
+				assertHeader(t, headers, key, value)
+			}
+			for _, key := range tt.wantAbsent {
+				assertHeaderAbsent(t, headers, key)
+			}
+		})
+	}
+}
+
+func TestResponsesCloudflareGatewayBaseURLAndAuthHeader(t *testing.T) {
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "openai")
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("cloudflare-ai-gateway")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL+"/{CLOUDFLARE_GATEWAY_ID}")
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithHeader("cf-aig-authorization", "Bearer override"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/openai/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer override")
+	assertHeaderAbsent(t, request.Headers, "Authorization")
+}
+
 func TestResponsesSessionAffinityHeaders(t *testing.T) {
 	t.Parallel()
 

@@ -191,6 +191,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 		httpReq.Header.Set(key, value)
 	}
 	addOpenAICompatibleModelHeaders(httpReq, model)
+	addCopilotDynamicHeaders(httpReq, model, req)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -217,6 +218,9 @@ func (p *Provider) addAuthHeader(ctx context.Context, req *http.Request, model s
 		return err
 	}
 	if credential.Value != "" {
+		if addCloudflareAuthHeader(req, model, credential) {
+			return nil
+		}
 		req.Header.Set("Authorization", "Bearer "+credential.Value)
 	}
 	return nil
@@ -250,6 +254,11 @@ func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, erro
 	}
 
 	baseURL := p.baseURLForModel(model, opts)
+	resolved, err := resolveCloudflareBaseURL(model.Provider, baseURL)
+	if err != nil {
+		return "", err
+	}
+	baseURL = resolved
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("openai completions: invalid base URL %q", baseURL)

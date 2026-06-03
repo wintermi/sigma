@@ -201,6 +201,7 @@ func (p *responsesStreamParser) handleSSEEvent(ctx context.Context, event sse.Ev
 
 func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName string, data string) (bool, error) {
 	var parsed responsesEvent
+	data = providerText(data)
 	if err := json.Unmarshal([]byte(data), &parsed); err != nil {
 		return false, fmt.Errorf("openai responses: decode stream event: %w", err)
 	}
@@ -357,7 +358,7 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 			state.partID = firstNonEmpty(state.partID, part.ID)
 			state.signature = firstNonEmpty(state.signature, part.Signature)
 			if text := firstNonEmpty(part.Text, part.Refusal); text != "" {
-				state.Set(text)
+				state.Set(providerText(text))
 			}
 		}
 	case "reasoning":
@@ -375,7 +376,7 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 			}
 		}
 		if summary != "" {
-			state.Set(summary)
+			state.Set(providerText(summary))
 		}
 	case "function_call":
 		state := p.toolCallState(outputIndex)
@@ -431,6 +432,7 @@ func (p *responsesStreamParser) emitStart(ctx context.Context) error {
 }
 
 func (p *responsesStreamParser) emitText(ctx context.Context, outputIndex int, itemID string, partID string, delta string) error {
+	delta = providerText(delta)
 	state := p.textState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
 	state.partID = firstNonEmpty(state.partID, partID)
@@ -456,6 +458,7 @@ func (p *responsesStreamParser) emitText(ctx context.Context, outputIndex int, i
 }
 
 func (p *responsesStreamParser) emitThinking(ctx context.Context, outputIndex int, itemID string, delta string) error {
+	delta = providerText(delta)
 	state := p.thinkingState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
 	if !state.Started {
@@ -537,7 +540,7 @@ func (p *responsesStreamParser) finishText(outputIndex int, itemID string, text 
 	state := p.textState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
 	if text != "" {
-		state.Set(text)
+		state.Set(providerText(text))
 	}
 }
 
@@ -545,7 +548,7 @@ func (p *responsesStreamParser) finishThinking(outputIndex int, itemID string, t
 	state := p.thinkingState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
 	if text != "" {
-		state.Set(text)
+		state.Set(providerText(text))
 	}
 }
 

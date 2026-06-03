@@ -38,9 +38,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add OpenAI Codex browser callback OAuth login while keeping token
       persistence caller-owned.
 - [ ] Keep OpenAI Codex token persistence deferred.
-- [ ] Evaluate GitHub Copilot dynamic headers before making Copilot a
+- [x] Evaluate GitHub Copilot dynamic headers before making Copilot a
       first-class OpenAI-compatible row.
-- [ ] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
+- [x] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
       first-class Cloudflare OpenAI-compatible row.
 
 ## First-class provider rows

@@ -147,6 +147,7 @@ func (p *ResponsesProvider) newRequest(ctx context.Context, model sigma.Model, r
 		httpReq.Header.Set(key, value)
 	}
 	addOpenAICompatibleModelHeaders(httpReq, model)
+	addCopilotDynamicHeaders(httpReq, model, req)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -183,6 +184,11 @@ func (p *ResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (str
 	}
 
 	baseURL := p.base.baseURLForModel(model, opts)
+	resolved, err := resolveCloudflareBaseURL(model.Provider, baseURL)
+	if err != nil {
+		return "", err
+	}
+	baseURL = resolved
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("openai responses: invalid base URL %q", baseURL)

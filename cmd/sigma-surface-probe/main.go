@@ -172,7 +172,7 @@ var routes = map[string]routeSpec{
 
 const (
 	jsonTypeKey                  = "type"
-	defaultOpenAICodexProbeModel = "gpt-5.3-codex"
+	defaultOpenAICodexProbeModel = "gpt-5.5"
 )
 
 func main() {

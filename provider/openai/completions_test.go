@@ -216,6 +216,191 @@ func TestChatCompletionsDerivesPromptCacheFields(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsNormalizesProviderTextInPayload(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-normalized-payload-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	invalid := invalidProviderText()
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			SystemPrompt: "system" + invalid,
+			Messages: []sigma.Message{
+				{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("developer" + invalid)}},
+				sigma.UserText("user" + invalid),
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.Text("assistant" + invalid),
+						sigma.Thinking("thinking"+invalid, ""),
+						sigma.ToolCallBlock("call_invalid", "lookup", map[string]any{"query": "weather"}),
+					},
+				},
+				sigma.ToolResult("call_invalid", "tool"+invalid),
+			},
+			Tools: []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	assertPayloadText(t, payload.Messages[0]["content"], "systemclean")
+	assertPayloadText(t, payload.Messages[1]["content"], "developerclean")
+	assertPayloadText(t, payload.Messages[2]["content"], "userclean")
+	assertPayloadText(t, payload.Messages[3]["content"], "assistantclean\nthinkingclean")
+	assertPayloadText(t, payload.Messages[4]["content"], "toolclean")
+}
+
+func TestChatCompletionsStreamingNormalizesInvalidUTF8(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write(append([]byte(`data: {"choices":[{"index":0,"delta":{"content":"bad`), append([]byte{0xff}, []byte(`text"},"finish_reason":"stop"}]}`+"\n\n")...)...))
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-normalized-stream-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "badtext"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+}
+
+func TestChatCompletionsCopilotDynamicHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		request     sigma.Request
+		options     []sigma.Option
+		wantHeaders map[string]string
+		wantAbsent  []string
+	}{
+		{
+			name:    "user initiated",
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			wantHeaders: map[string]string{
+				"X-Initiator":   "user",
+				"Openai-Intent": "conversation-edits",
+			},
+			wantAbsent: []string{"Copilot-Vision-Request"},
+		},
+		{
+			name: "agent initiated with images",
+			request: sigma.Request{Messages: []sigma.Message{
+				sigma.UserText("inspect"),
+				{Role: sigma.RoleTool, ToolCallID: "call_1", Content: []sigma.ContentBlock{sigma.ImageBase64("image/png", "aGk=")}},
+			}},
+			wantHeaders: map[string]string{
+				"X-Initiator":            "agent",
+				"Openai-Intent":          "conversation-edits",
+				"Copilot-Vision-Request": "true",
+			},
+		},
+		{
+			name:    "caller override",
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			options: []sigma.Option{
+				sigma.WithHeader("X-Initiator", "override"),
+				sigma.WithHeader("Openai-Intent", "override-intent"),
+				sigma.WithHeader("Copilot-Vision-Request", "override-vision"),
+			},
+			wantHeaders: map[string]string{
+				"X-Initiator":            "override",
+				"Openai-Intent":          "override-intent",
+				"Copilot-Vision-Request": "override-vision",
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			model := openAITestModel(sigma.ProviderGitHubCopilot)
+			client := openAITestClient(t, sigma.ProviderGitHubCopilot, model, server.URL)
+
+			_, err := client.Complete(context.Background(), model, tt.request, tt.options...)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			headers := receiveRequest(t, requests).Headers
+			for key, value := range tt.wantHeaders {
+				assertHeader(t, headers, key, value)
+			}
+			for _, key := range tt.wantAbsent {
+				assertHeaderAbsent(t, headers, key)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsCloudflareGatewayBaseURLAndAuthHeader(t *testing.T) {
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "compat")
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("cloudflare-ai-gateway")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL+"/{CLOUDFLARE_GATEWAY_ID}")
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithHeader("cf-aig-authorization", "Bearer override"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/compat/chat/completions"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer override")
+	assertHeaderAbsent(t, request.Headers, "Authorization")
+}
+
 func TestChatCompletionsSessionAffinityHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -1113,4 +1298,58 @@ func assertHeaderAbsent(t *testing.T, headers http.Header, key string) {
 	if got := headers.Get(key); got != "" {
 		t.Fatalf("header %q = %q, want absent", key, got)
 	}
+}
+
+func invalidProviderText() string {
+	return string([]byte{0xff}) + "clean"
+}
+
+func assertPayloadText(t *testing.T, value any, want string) {
+	t.Helper()
+
+	got, ok := value.(string)
+	if !ok {
+		t.Fatalf("payload text type = %T, want string", value)
+	}
+	if got != want {
+		t.Fatalf("payload text = %q, want %q", got, want)
+	}
+}
+
+func assertResponsesInputText(t *testing.T, item map[string]any, want string) {
+	t.Helper()
+
+	content, ok := item["content"].([]any)
+	if !ok || len(content) == 0 {
+		t.Fatalf("responses content = %#v, want content parts", item["content"])
+	}
+	part, ok := content[0].(map[string]any)
+	if !ok {
+		t.Fatalf("responses content part type = %T, want map", content[0])
+	}
+	assertPayloadText(t, part["text"], want)
+}
+
+func assertResponsesOutputText(t *testing.T, item map[string]any, want string) {
+	t.Helper()
+	assertResponsesInputText(t, item, want)
+}
+
+func assertResponsesReasoningText(t *testing.T, item map[string]any, want string) {
+	t.Helper()
+
+	summary, ok := item["summary"].([]any)
+	if !ok || len(summary) == 0 {
+		t.Fatalf("responses summary = %#v, want summary parts", item["summary"])
+	}
+	part, ok := summary[0].(map[string]any)
+	if !ok {
+		t.Fatalf("responses summary part type = %T, want map", summary[0])
+	}
+	assertPayloadText(t, part["text"], want)
+}
+
+func assertResponsesToolOutputText(t *testing.T, item map[string]any, want string) {
+	t.Helper()
+	assertPayloadText(t, item["output"], want)
 }

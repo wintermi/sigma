@@ -53,6 +53,14 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - OpenAI-compatible stream parsing now recognizes Chat Completions
   `reasoning_text` deltas and Responses/Codex refusal and reasoning-text
   events.
+- OpenAI-compatible Chat Completions and Responses now normalize invalid UTF-8
+  text at request, replay, and stream boundaries before provider dispatch or
+  final message persistence.
+- OpenAI-compatible GitHub Copilot routes now add dynamic initiator, intent,
+  and vision request headers while preserving explicit caller header overrides.
+- OpenAI-compatible Cloudflare AI Gateway routes now resolve environment-backed
+  base URL placeholders and send API keys through Cloudflare's gateway auth
+  header without broad catalog promotion.
 - OpenAI Codex Responses now has stdlib-only browser callback and device-code
   OAuth login, token refresh helpers, and an in-memory OAuth token provider that
   callers can wrap with their own credential persistence.
@@ -72,7 +80,7 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - `cmd/sigma-surface-probe` can run opt-in live OpenAI Responses probes with
   `OPENAI_API_KEY` and OpenAI Codex Responses probes with browser callback
   OAuth, device-code OAuth, or caller-supplied Codex OAuth tokens, defaulting
-  Codex live probes to `gpt-5.3-codex`.
+  Codex live probes to the latest ChatGPT-supported Codex fallback.
 - Provider execution errors now expose typed `sigma.ClassifyError` results with
   stable auth, quota, billing, context-overflow, rate-limit, transient,
   invalid-request, provider, and unknown classes plus retry-after hints.
@@ -133,7 +141,7 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Agent runtime orchestration and cross-provider context handoff with
   capability-loss reporting are deferred to later integration work; this release
   exposes only provider-neutral primitives.
-- DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Kimi, and Xiaomi are
+- DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare, Kimi, and Xiaomi are
   not yet first-class provider rows; generated metadata and routing may exist,
   but independent provider-quality claims still need fixtures.
 - Future xAI/Grok catalog refreshes and provider-specific Grok

@@ -33,7 +33,7 @@ Default routes are `zen,go`. All other routes must be requested explicitly.
 | Route | API shape | Credential | Default model behavior |
 | --- | --- | --- | --- |
 | `openai` | OpenAI Responses | `OPENAI_API_KEY` | Discovers OpenAI models |
-| `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.3-codex` unless `-models` is set |
+| `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.5` unless `-models` is set |
 | `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
 | `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
 | `fireworks-openai` | Fireworks OpenAI-compatible Chat Completions | `FIREWORKS_API_KEY` | Discovers Fireworks models |
@@ -101,7 +101,7 @@ Probe OpenAI Responses with a known model:
 ```bash
 OPENAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes openai \
-  -models gpt-5.1 \
+  -models gpt-5.5 \
   -repair
 ```
 
@@ -110,7 +110,7 @@ Probe OpenAI Codex Responses with device-code OAuth:
 ```bash
 mise run go:run -- ./cmd/sigma-surface-probe \
   -routes openai-codex \
-  -models gpt-5.3-codex \
+  -models gpt-5.5 \
   -codex-oauth \
   -repair
 ```

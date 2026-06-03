@@ -165,6 +165,9 @@ func TestModelsForRouteUsesSelectedModelsWithoutDiscovery(t *testing.T) {
 func TestModelsForRouteDefaultsOpenAICodexWithoutDiscovery(t *testing.T) {
 	t.Parallel()
 
+	if got, want := defaultOpenAICodexProbeModel, "gpt-5.5"; got != want {
+		t.Fatalf("defaultOpenAICodexProbeModel = %q, want %q", got, want)
+	}
 	models, err := modelsForRoute(context.Background(), routes["openai-codex"], routeCredential{apiKey: "token"}, nil)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
