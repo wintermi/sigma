@@ -45,7 +45,7 @@ have narrow APIs and deterministic tests.
       of provider dispatch.
 - [ ] Add general text chunking helpers only after settling chunk metadata,
       overlap, and tokenizer-estimation semantics.
-- [ ] Add similarity/ranking helpers with deterministic numeric fixtures before
+- [x] Add similarity/ranking helpers with deterministic numeric fixtures before
       documenting them as reusable retrieval primitives.
 - [ ] Add tokenizer-based embedding input estimates without making provider
       tokenizers a hidden runtime dependency.

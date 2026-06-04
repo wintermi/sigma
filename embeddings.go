@@ -53,6 +53,7 @@ type EmbeddingCacheKey struct {
 	API         EmbeddingAPI
 	Model       ModelID
 	Dimensions  int
+	InputType   EmbeddingInputType
 	InputSHA256 string
 }
 
@@ -214,6 +215,34 @@ func WithEmbeddingProviderOption(provider ProviderID, key string, value any) Emb
 // WithEmbeddingProviderAuthResolver configures a provider-specific embedding credential callback.
 func WithEmbeddingProviderAuthResolver(provider ProviderID, resolver AuthResolver) EmbeddingOption {
 	return embeddingOptionFromOption(WithProviderAuthResolver(provider, resolver))
+}
+
+// EmbeddingQuery builds an embedding request for one search-query input.
+func EmbeddingQuery(text string) EmbeddingRequest {
+	return EmbeddingRequest{
+		Inputs:    []string{text},
+		InputType: EmbeddingInputTypeQuery,
+	}
+}
+
+// EmbeddingDocuments builds an embedding request for document inputs.
+func EmbeddingDocuments(texts []string) EmbeddingRequest {
+	return EmbeddingRequest{
+		Inputs:    append([]string(nil), texts...),
+		InputType: EmbeddingInputTypeDocument,
+	}
+}
+
+// NormalizeEmbeddingNewlines returns a copy of inputs with newlines replaced by spaces.
+func NormalizeEmbeddingNewlines(inputs []string) []string {
+	if inputs == nil {
+		return nil
+	}
+	normalized := make([]string, len(inputs))
+	for i, input := range inputs {
+		normalized[i] = strings.ReplaceAll(input, "\n", " ")
+	}
+	return normalized
 }
 
 // Embed calls the registered embedding provider for model.
@@ -785,6 +814,7 @@ func (b *embeddingBatcher) cacheKey(text string) EmbeddingCacheKey {
 		API:         b.model.API,
 		Model:       b.model.ID,
 		Dimensions:  b.req.Dimensions,
+		InputType:   b.req.InputType,
 		InputSHA256: fmt.Sprintf("%x", sum),
 	}
 }
@@ -1110,6 +1140,9 @@ func validateEmbeddingOptions(model EmbeddingModel, req EmbeddingRequest, option
 	}
 	if req.Dimensions < 0 {
 		return invalidEmbeddingOptionsError(model, "embedding dimensions must be non-negative")
+	}
+	if req.InputType != "" && req.InputType != EmbeddingInputTypeQuery && req.InputType != EmbeddingInputTypeDocument {
+		return invalidEmbeddingOptionsError(model, "embedding input type must be query or document")
 	}
 	if options.Timeout != nil && *options.Timeout < 0 {
 		return invalidEmbeddingOptionsError(model, "timeout must be non-negative")

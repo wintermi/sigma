@@ -43,7 +43,7 @@ func TestGenerateEmbeddingsSendsPayloadAndMapsResponse(t *testing.T) {
 	got, err := client.Embed(
 		context.Background(),
 		openAIEmbeddingModel(),
-		sigma.EmbeddingRequest{Inputs: []string{"alpha", "beta"}, Dimensions: 128},
+		sigma.EmbeddingRequest{Inputs: []string{"alpha", "beta"}, Dimensions: 128, InputType: sigma.EmbeddingInputTypeDocument},
 		sigma.WithEmbeddingAPIKey("request-key"),
 		sigma.WithEmbeddingHeader("X-Custom", "custom"),
 		sigma.WithEmbeddingProviderOption(sigma.ProviderOpenAI, "organization", "org_123"),
@@ -93,6 +93,9 @@ func TestGenerateEmbeddingsSendsPayloadAndMapsResponse(t *testing.T) {
 	}
 	if !strings.Contains(body, `"input":["alpha","beta"]`) {
 		t.Fatalf("payload = %s, want input array", request.Body)
+	}
+	if strings.Contains(body, "inputType") || strings.Contains(body, "input_type") {
+		t.Fatalf("payload = %s, want OpenAI payload to ignore provider-neutral input type", request.Body)
 	}
 }
 

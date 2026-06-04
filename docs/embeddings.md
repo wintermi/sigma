@@ -70,6 +70,33 @@ Sigma validates that dimensions are non-negative. Dimension ranges are model
 metadata for discovery and routing; providers may still reject unsupported
 dimensions.
 
+## Query And Document Intent
+
+Use `EmbeddingQuery` and `EmbeddingDocuments` when your application needs to
+distinguish search queries from indexed documents:
+
+```go
+query := sigma.EmbeddingQuery("streaming support")
+documents := sigma.EmbeddingDocuments([]string{
+	"Sigma streams text responses.",
+	"Sigma generates vector embeddings.",
+})
+```
+
+The helpers set `EmbeddingRequest.InputType` to `query` or `document` and clone
+document input slices. Providers that support task-specific embedding modes can
+use the field; OpenAI's `/v1/embeddings` adapter intentionally ignores it
+because that endpoint does not accept a separate query/document field.
+
+Sigma does not silently alter input text. If you want newline normalization,
+apply it explicitly before embedding:
+
+```go
+req := sigma.EmbeddingDocuments(
+	sigma.NormalizeEmbeddingNewlines(rawDocuments),
+)
+```
+
 ## Attempt Metadata
 
 Embedding responses include SDK-level attempt metadata when the provider can
@@ -147,6 +174,27 @@ request IDs, attempts, trace events, usage, and cost. `Trace` records redacted
 batch execution events such as cache lookup/store, planned limit splits,
 provider attempts, and oversized-input splits without raw input text.
 
+## Vector Utilities
+
+Sigma includes deterministic helpers for the small amount of vector math that
+callers commonly need around embeddings:
+
+```go
+scores, err := sigma.RankEmbeddingsByCosine(queryVector, result.Vectors)
+if err != nil {
+	return err
+}
+for _, score := range scores {
+	fmt.Println(score.Embedding.Index, score.Score)
+}
+```
+
+`DotProduct`, `CosineSimilarity`, `NormalizeEmbeddingVector`,
+`CombineEmbeddingVectors`, and `RankEmbeddingsByCosine` return typed sentinel
+errors for mismatched dimensions, zero-norm vectors, weight mismatches, and
+zero total weight. These helpers are deterministic numeric utilities; they do
+not perform vector-store persistence, chunking, or provider token estimation.
+
 ## Current Scope
 
 The first embedding provider is OpenAI's `/v1/embeddings` API. Sigma includes
@@ -155,5 +203,5 @@ generated metadata for `text-embedding-3-small` and
 caller-registered OpenAI-compatible embedding endpoints.
 
 Vector stores, general text chunking, tokenizer-based estimates,
-similarity/ranking helpers, provider-selection fallback, and non-OpenAI
-embedding providers are intentionally outside this surface.
+provider-selection fallback, and non-OpenAI embedding providers are
+intentionally outside this surface.

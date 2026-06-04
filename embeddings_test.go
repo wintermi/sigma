@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -25,6 +26,7 @@ func TestEmbeddingJSONRoundTripPreservesFields(t *testing.T) {
 	req := sigma.EmbeddingRequest{
 		Inputs:     []string{"alpha", "beta"},
 		Dimensions: 128,
+		InputType:  sigma.EmbeddingInputTypeDocument,
 		ProviderMetadata: map[string]any{
 			"user": "test",
 		},
@@ -35,6 +37,9 @@ func TestEmbeddingJSONRoundTripPreservesFields(t *testing.T) {
 	}
 	if got, want := len(roundTrippedReq.Inputs), 2; got != want {
 		t.Fatalf("inputs = %d, want %d", got, want)
+	}
+	if got, want := roundTrippedReq.InputType, sigma.EmbeddingInputTypeDocument; got != want {
+		t.Fatalf("input type = %q, want %q", got, want)
 	}
 
 	response := sigma.Embeddings{
@@ -56,6 +61,35 @@ func TestEmbeddingJSONRoundTripPreservesFields(t *testing.T) {
 	}
 	if got, want := len(roundTrippedResponse.Vectors), 2; got != want {
 		t.Fatalf("vectors = %d, want %d", got, want)
+	}
+}
+
+func TestEmbeddingRequestHelpers(t *testing.T) {
+	t.Parallel()
+
+	query := sigma.EmbeddingQuery("find me")
+	if got, want := query.InputType, sigma.EmbeddingInputTypeQuery; got != want {
+		t.Fatalf("query input type = %q, want %q", got, want)
+	}
+	if !reflect.DeepEqual(query.Inputs, []string{"find me"}) {
+		t.Fatalf("query inputs = %#v, want single input", query.Inputs)
+	}
+
+	texts := []string{"doc 1", "doc 2"}
+	documents := sigma.EmbeddingDocuments(texts)
+	texts[0] = "mutated"
+	if got, want := documents.InputType, sigma.EmbeddingInputTypeDocument; got != want {
+		t.Fatalf("documents input type = %q, want %q", got, want)
+	}
+	if !reflect.DeepEqual(documents.Inputs, []string{"doc 1", "doc 2"}) {
+		t.Fatalf("documents inputs = %#v, want cloned inputs", documents.Inputs)
+	}
+
+	inputs := []string{"line\none", "unchanged"}
+	normalized := sigma.NormalizeEmbeddingNewlines(inputs)
+	inputs[0] = "mutated"
+	if !reflect.DeepEqual(normalized, []string{"line one", "unchanged"}) {
+		t.Fatalf("normalized inputs = %#v, want newline replacement copy", normalized)
 	}
 }
 
@@ -87,6 +121,7 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 	req := sigma.EmbeddingRequest{
 		Inputs:     []string{"alpha", "beta"},
 		Dimensions: 3,
+		InputType:  sigma.EmbeddingInputTypeDocument,
 	}
 	got, err := client.Embed(
 		context.Background(),
@@ -109,6 +144,9 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 	}
 	if got, want := capture.Request.Dimensions, 3; got != want {
 		t.Fatalf("captured dimensions = %d, want %d", got, want)
+	}
+	if got, want := capture.Request.InputType, sigma.EmbeddingInputTypeDocument; got != want {
+		t.Fatalf("captured input type = %q, want %q", got, want)
 	}
 	if got, want := capture.Options.Headers["x-default"], "default"; got != want {
 		t.Fatalf("default header = %q, want %q", got, want)
@@ -210,6 +248,9 @@ func TestEmbedBatchUsesExternalCacheAcrossCalls(t *testing.T) {
 		t.Fatal("cache recorded no keys")
 	}
 	for _, key := range cache.keys {
+		if got, want := key.InputType, sigma.EmbeddingInputType(""); got != want {
+			t.Fatalf("cache input type = %q, want zero value", got)
+		}
 		if got := key.InputSHA256; got != wantHash {
 			t.Fatalf("cache hash = %q, want %q", got, wantHash)
 		}
@@ -219,6 +260,50 @@ func TestEmbedBatchUsesExternalCacheAcrossCalls(t *testing.T) {
 	}
 	if !containsEmbeddingTracePhase(second.Summary.Trace, sigma.EmbeddingBatchPhaseCacheHit) {
 		t.Fatalf("trace = %#v, want cache hit", second.Summary.Trace)
+	}
+}
+
+func TestEmbedBatchCacheKeyIncludesInputType(t *testing.T) {
+	t.Parallel()
+
+	cache := newTestEmbeddingCache()
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{
+			Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}}},
+		},
+		sigmatest.EmbeddingScript{
+			Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{2}}}},
+		},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	config := sigma.EmbeddingBatchConfig{Cache: cache}
+
+	query, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), sigma.EmbeddingQuery("same text"), config)
+	if err != nil {
+		t.Fatalf("query EmbedBatch returned error: %v", err)
+	}
+	document, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), sigma.EmbeddingDocuments([]string{"same text"}), config)
+	if err != nil {
+		t.Fatalf("document EmbedBatch returned error: %v", err)
+	}
+	if got, want := len(provider.Requests()), 2; got != want {
+		t.Fatalf("provider requests = %d, want separate query and document requests", got)
+	}
+	if query.Embeddings.Vectors[0].Vector[0] == document.Embeddings.Vectors[0].Vector[0] {
+		t.Fatalf("vectors = %#v and %#v, want input-type-isolated cache", query.Embeddings.Vectors, document.Embeddings.Vectors)
+	}
+
+	var sawQuery, sawDocument bool
+	for _, key := range cache.keys {
+		sawQuery = sawQuery || key.InputType == sigma.EmbeddingInputTypeQuery
+		sawDocument = sawDocument || key.InputType == sigma.EmbeddingInputTypeDocument
+	}
+	if !sawQuery || !sawDocument {
+		t.Fatalf("cache keys = %#v, want query and document input types", cache.keys)
 	}
 }
 
@@ -772,6 +857,7 @@ func TestEmbedValidation(t *testing.T) {
 		{name: "missing inputs", req: sigma.EmbeddingRequest{}},
 		{name: "empty input", req: sigma.EmbeddingRequest{Inputs: []string{"   "}}},
 		{name: "negative dimensions", req: sigma.EmbeddingRequest{Inputs: []string{"ok"}, Dimensions: -1}},
+		{name: "invalid input type", req: sigma.EmbeddingRequest{Inputs: []string{"ok"}, InputType: "classification"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -782,6 +868,115 @@ func TestEmbedValidation(t *testing.T) {
 			}
 			if !errors.Is(err, sigma.ErrInvalidOptions) {
 				t.Fatalf("error = %v, want ErrInvalidOptions", err)
+			}
+		})
+	}
+}
+
+func TestEmbeddingVectorUtilities(t *testing.T) {
+	t.Parallel()
+
+	dot, err := sigma.DotProduct([]float32{1, 2, 3}, []float32{4, 5, 6})
+	if err != nil {
+		t.Fatalf("DotProduct returned error: %v", err)
+	}
+	if dot != 32 {
+		t.Fatalf("dot = %v, want 32", dot)
+	}
+
+	cosine, err := sigma.CosineSimilarity([]float32{1, 0}, []float32{0, 1})
+	if err != nil {
+		t.Fatalf("CosineSimilarity returned error: %v", err)
+	}
+	if math.Abs(cosine) > 1e-12 {
+		t.Fatalf("cosine = %v, want 0", cosine)
+	}
+
+	normalized, err := sigma.NormalizeEmbeddingVector([]float32{3, 4})
+	if err != nil {
+		t.Fatalf("NormalizeEmbeddingVector returned error: %v", err)
+	}
+	if math.Abs(float64(normalized[0])-0.6) > 1e-6 || math.Abs(float64(normalized[1])-0.8) > 1e-6 {
+		t.Fatalf("normalized = %#v, want unit vector", normalized)
+	}
+
+	combined, err := sigma.CombineEmbeddingVectors([][]float32{{1, 0}, {0, 1}}, []int{3, 1})
+	if err != nil {
+		t.Fatalf("CombineEmbeddingVectors returned error: %v", err)
+	}
+	if math.Abs(float64(combined[0])-0.9486833) > 1e-6 || math.Abs(float64(combined[1])-0.31622776) > 1e-6 {
+		t.Fatalf("combined = %#v, want normalized weighted average", combined)
+	}
+}
+
+func TestRankEmbeddingsByCosine(t *testing.T) {
+	t.Parallel()
+
+	ranked, err := sigma.RankEmbeddingsByCosine([]float32{1, 0}, []sigma.Embedding{
+		{Index: 2, Vector: []float32{1, 0}},
+		{Index: 1, Vector: []float32{1, 0}},
+		{Index: 3, Vector: []float32{0, 1}},
+	})
+	if err != nil {
+		t.Fatalf("RankEmbeddingsByCosine returned error: %v", err)
+	}
+	wantIndexes := []int{1, 2, 3}
+	for i, want := range wantIndexes {
+		if got := ranked[i].Embedding.Index; got != want {
+			t.Fatalf("ranked[%d].index = %d, want %d", i, got, want)
+		}
+	}
+	if ranked[0].Score < ranked[2].Score {
+		t.Fatalf("ranked scores = %#v, want descending", ranked)
+	}
+}
+
+func TestEmbeddingVectorUtilityErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{
+			name: "dimension mismatch",
+			err: func() error {
+				_, err := sigma.DotProduct([]float32{1}, []float32{1, 2})
+				return err
+			}(),
+			want: sigma.ErrEmbeddingVectorDimensionMismatch,
+		},
+		{
+			name: "zero norm",
+			err: func() error {
+				_, err := sigma.NormalizeEmbeddingVector([]float32{0, 0})
+				return err
+			}(),
+			want: sigma.ErrEmbeddingVectorZeroNorm,
+		},
+		{
+			name: "weight mismatch",
+			err: func() error {
+				_, err := sigma.CombineEmbeddingVectors([][]float32{{1}}, []int{})
+				return err
+			}(),
+			want: sigma.ErrEmbeddingVectorWeightMismatch,
+		},
+		{
+			name: "zero weight",
+			err: func() error {
+				_, err := sigma.CombineEmbeddingVectors([][]float32{{1}}, []int{0})
+				return err
+			}(),
+			want: sigma.ErrEmbeddingVectorZeroWeight,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if !errors.Is(tt.err, tt.want) {
+				t.Fatalf("error = %v, want %v", tt.err, tt.want)
 			}
 		})
 	}

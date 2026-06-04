@@ -231,6 +231,16 @@ type EmbeddingModel struct {
 	ProviderMetadata    map[string]any `json:"providerMetadata,omitempty"`
 }
 
+// EmbeddingInputType identifies the intended use for embedding inputs.
+type EmbeddingInputType string
+
+const (
+	// EmbeddingInputTypeQuery marks an embedding request as search-query input.
+	EmbeddingInputTypeQuery EmbeddingInputType = "query"
+	// EmbeddingInputTypeDocument marks an embedding request as document input.
+	EmbeddingInputTypeDocument EmbeddingInputType = "document"
+)
+
 // ImageRequest is the provider-neutral input for image generation.
 //
 // This is separate from image inputs in chat/completion requests. Chat image
@@ -275,9 +285,10 @@ type AssistantImages struct {
 
 // EmbeddingRequest is the provider-neutral input for vector embeddings.
 type EmbeddingRequest struct {
-	Inputs           []string       `json:"inputs,omitempty"`
-	Dimensions       int            `json:"dimensions,omitempty"`
-	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
+	Inputs           []string           `json:"inputs,omitempty"`
+	Dimensions       int                `json:"dimensions,omitempty"`
+	InputType        EmbeddingInputType `json:"inputType,omitempty"`
+	ProviderMetadata map[string]any     `json:"providerMetadata,omitempty"`
 }
 
 // Embedding is one provider-neutral embedding vector.
@@ -306,6 +317,12 @@ type Embeddings struct {
 	Provider         ProviderID         `json:"provider,omitempty"`
 	Attempts         []EmbeddingAttempt `json:"attempts,omitempty"`
 	ProviderMetadata map[string]any     `json:"providerMetadata,omitempty"`
+}
+
+// EmbeddingScore is a candidate embedding plus its similarity score.
+type EmbeddingScore struct {
+	Embedding Embedding `json:"embedding"`
+	Score     float64   `json:"score"`
 }
 
 func cloneModel(model Model) Model {
