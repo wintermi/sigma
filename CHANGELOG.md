@@ -130,6 +130,9 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Embedding requests now support provider-neutral query/document intent via
   `EmbeddingInputType`, `EmbeddingQuery`, and `EmbeddingDocuments`, with
   explicit newline normalization through `NormalizeEmbeddingNewlines`.
+- `sigma.NewEmbeddingEmbedder` now wraps a client and embedding model with
+  small query/document embedding helpers while preserving Sigma's explicit
+  newline-normalization policy.
 - Embedding vector utilities now provide deterministic dot product, cosine
   similarity, normalization, weighted vector combination, and cosine-ranking
   helpers with typed errors for numeric edge cases.

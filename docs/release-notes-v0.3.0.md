@@ -21,9 +21,10 @@ session reuse, adds a provider-neutral embeddings surface for OpenAI text
 embedding models plus typed embedding telemetry and custom OpenAI-compatible
 embedding metadata, hardens resilient embedding batches with limits, cache
 hooks, safer splitting, and trace metadata, adds query/document embedding
-intent plus deterministic vector scoring helpers and compact in-memory
-retrieval primitives, and adds typed provider error classification for safer
-caller retry and recovery decisions. The Google
+intent plus a compact query/document embedder helper, deterministic vector
+scoring helpers, and compact in-memory retrieval primitives, and adds typed
+provider error classification for safer caller retry and recovery decisions.
+The Google
 preview adapters now include the scoped provider hardening for Vertex
 credential fallback, model-scoped routing metadata, and replayed tool-call IDs.
 Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
@@ -147,6 +148,9 @@ Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
 - `NormalizeEmbeddingNewlines` gives callers explicit newline normalization
   without silently changing embedding inputs in `Client.Embed` or
   `Client.EmbedBatch`.
+- `sigma.NewEmbeddingEmbedder` wraps a client and embedding model with
+  query/document helper methods, routing documents through `Client.EmbedBatch`
+  and preserving explicit caller control over newline normalization.
 - Deterministic embedding vector utilities now cover dot product, cosine
   similarity, vector normalization, weighted vector combination, and
   cosine-based ranking with typed numeric error sentinels.
@@ -218,7 +222,8 @@ generated catalog metadata, including strict OpenCode thinking and routed model
 metadata plus the focused provider-family registry refresh and OpenAI
 embedding support, typed embedding telemetry, custom OpenAI-compatible
 embedding metadata, embedding capability metadata, and resilient embedding
-batch hardening plus query/document intent, newline normalization, vector
-scoring helpers, and in-memory retrieval primitives are covered by
+batch hardening plus query/document intent, embedder helper ergonomics,
+newline normalization, vector scoring helpers, and in-memory retrieval
+primitives are covered by
 deterministic request, response, OAuth, SSE/WebSocket, checksum, payload,
 registry, cache, split, trace, numeric, and retrieval fixtures.

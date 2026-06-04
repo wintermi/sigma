@@ -44,6 +44,8 @@ remain future work.
 - [x] Add explicit embedding dimension-range metadata for discovery and routing.
 - [x] Add retrieval document/chunk types, deterministic character-based
       splitting, and in-memory cosine search routed through `Client.EmbedBatch`.
+- [x] Add a compact query/document embedder helper around the provider-neutral
+      embedding API without adding another provider adapter.
 - [ ] Add external vector-store integration only as an explicit new surface,
       not as part of provider dispatch.
 - [ ] Add tokenizer-aware or format-specific text chunking without making
