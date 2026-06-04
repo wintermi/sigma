@@ -52,10 +52,11 @@ matching provider before runtime dispatch:
 _ = openai.RegisterEmbeddings(registry, sigma.ProviderOpenAI)
 ```
 
-`EmbeddingModel` records routing metadata for dimensions, input limits, and
-cost. `DefaultDimensions` is the provider default, `MinDimensions` and
-`MaxDimensions` describe the supported reduction range when known,
-`MaxInputTokens` records the provider input limit, and
+`EmbeddingModel` records routing metadata for dimensions, input limits, batch
+limits, and cost. `DefaultDimensions` is the provider default, `MinDimensions`
+and `MaxDimensions` describe the supported reduction range when known,
+`MaxInputTokens` records the provider input limit, `MaxBatchInputs` and
+`MaxBatchBytes` describe known provider batch caps, and
 `InputCostPerMillion` plus `CostCurrency` drive deterministic embedding cost
 calculation.
 
@@ -105,6 +106,8 @@ result, err := client.EmbedBatch(ctx, model, sigma.EmbeddingRequest{
 	Inputs: []string{"alpha", "beta", "alpha"},
 }, sigma.EmbeddingBatchConfig{
 	ReuseDuplicateInputs: true,
+	MaxBatchInputs:       256,
+	Cache:                cache,
 	MaxRetries:           2,
 	SplitOversized:       true,
 	Progress: func(progress sigma.EmbeddingBatchProgress) error {
@@ -124,10 +127,25 @@ for _, embedding := range result.Embeddings.Vectors {
 call returns. It does not replace `WithEmbeddingMaxRetries`, which still
 controls HTTP retry behaviour inside provider adapters.
 
+`MaxBatchInputs` and `MaxBatchBytes` split provider-bound work before dispatch.
+When left at zero, Sigma uses the selected `EmbeddingModel` limits when known.
+Byte limits count UTF-8 input bytes, not JSON payload bytes. Token-budget
+estimates remain caller-owned because provider tokenizers vary.
+
+Set `Cache` to reuse embeddings across separate `EmbedBatch` calls. Cache keys
+include provider, API, model, dimensions, and a SHA-256 hash of the input text;
+raw input text is not exposed to the cache key. `ReuseDuplicateInputs` remains
+the in-request duplicate coalescing option.
+
+Oversized singleton recovery uses `EmbeddingSplitPolicy` to choose safer split
+points. The zero-value policy prefers a nearby newline, then nearby whitespace,
+then a UTF-8-safe rune midpoint.
+
 `EmbeddingBatchSummary` keeps aggregate batch telemetry: successful provider
 result count, total request attempts, error count, vector count, status buckets,
-request IDs, attempts, usage, and cost. `RequestIDs` preserves attempt order and
-omits empty request IDs.
+request IDs, attempts, trace events, usage, and cost. `Trace` records redacted
+batch execution events such as cache lookup/store, planned limit splits,
+provider attempts, and oversized-input splits without raw input text.
 
 ## Current Scope
 

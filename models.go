@@ -133,6 +133,8 @@ type OpenAICompatibleEmbeddingModelConfig struct {
 	MinDimensions       int
 	MaxDimensions       int
 	MaxInputTokens      int
+	MaxBatchInputs      int
+	MaxBatchBytes       int
 	InputCostPerMillion float64
 	CostCurrency        string
 	ProviderMetadata    map[string]any
@@ -164,10 +166,19 @@ func OpenAICompatibleEmbeddingModel(config OpenAICompatibleEmbeddingModelConfig)
 		MinDimensions:       config.MinDimensions,
 		MaxDimensions:       config.MaxDimensions,
 		MaxInputTokens:      config.MaxInputTokens,
+		MaxBatchInputs:      openAICompatibleEmbeddingMaxBatchInputs(config.MaxBatchInputs),
+		MaxBatchBytes:       config.MaxBatchBytes,
 		InputCostPerMillion: config.InputCostPerMillion,
 		CostCurrency:        config.CostCurrency,
 		ProviderMetadata:    metadata,
 	}
+}
+
+func openAICompatibleEmbeddingMaxBatchInputs(value int) int {
+	if value == 0 {
+		return 1
+	}
+	return value
 }
 
 // AzureOpenAIResponsesConfig carries Azure-specific model metadata for the
@@ -213,6 +224,8 @@ type EmbeddingModel struct {
 	MinDimensions       int            `json:"minDimensions,omitempty"`
 	MaxDimensions       int            `json:"maxDimensions,omitempty"`
 	MaxInputTokens      int            `json:"maxInputTokens,omitempty"`
+	MaxBatchInputs      int            `json:"maxBatchInputs,omitempty"`
+	MaxBatchBytes       int            `json:"maxBatchBytes,omitempty"`
 	InputCostPerMillion float64        `json:"inputCostPerMillion,omitempty"`
 	CostCurrency        string         `json:"costCurrency,omitempty"`
 	ProviderMetadata    map[string]any `json:"providerMetadata,omitempty"`

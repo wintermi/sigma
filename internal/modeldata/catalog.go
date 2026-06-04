@@ -86,6 +86,8 @@ type EmbeddingModel struct {
 	MinDimensions       int               `json:"minDimensions"`
 	MaxDimensions       int               `json:"maxDimensions"`
 	MaxInputTokens      int               `json:"maxInputTokens"`
+	MaxBatchInputs      int               `json:"maxBatchInputs,omitempty"`
+	MaxBatchBytes       int               `json:"maxBatchBytes,omitempty"`
 	InputCostPerMillion float64           `json:"inputCostPerMillion"`
 	Currency            string            `json:"currency"`
 	Headers             map[string]string `json:"headers,omitempty"`
@@ -367,6 +369,12 @@ func validateEmbeddingModel(model EmbeddingModel) error {
 	}
 	if model.MaxInputTokens <= 0 {
 		return fmt.Errorf("maxInputTokens must be positive")
+	}
+	if model.MaxBatchInputs < 0 {
+		return fmt.Errorf("maxBatchInputs must be non-negative")
+	}
+	if model.MaxBatchBytes < 0 {
+		return fmt.Errorf("maxBatchBytes must be non-negative")
 	}
 	if model.InputCostPerMillion < 0 {
 		return fmt.Errorf("inputCostPerMillion must be non-negative")

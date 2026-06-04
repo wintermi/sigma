@@ -46,7 +46,10 @@ type ErrorClassification struct {
 	Message      string
 	RequestID    string
 	RetryHint    RetryHint
-	Err          error
+	// SplitRecoverable reports whether a smaller request may recover from the
+	// same error even though retrying the identical request is not useful.
+	SplitRecoverable bool
+	Err              error
 }
 
 // ClassifyError returns stable provider-neutral classification for err.
@@ -79,6 +82,7 @@ func ClassifyError(err error) ErrorClassification {
 		}
 		classification.Class = classifyProviderError(err, providerErr)
 		classification.RetryHint.Retryable = classRetryable(classification.Class)
+		classification.SplitRecoverable = classSplitRecoverable(classification.Class)
 		return classification
 	}
 
@@ -91,12 +95,14 @@ func ClassifyError(err error) ErrorClassification {
 		}
 		classification.Class = classifySigmaError(err, sigmaErr)
 		classification.RetryHint.Retryable = classRetryable(classification.Class)
+		classification.SplitRecoverable = classSplitRecoverable(classification.Class)
 		return classification
 	}
 
 	if errors.Is(err, ErrContextOverflow) {
 		classification.Class = ErrorClassContextOverflow
 		classification.RetryHint.Retryable = false
+		classification.SplitRecoverable = true
 	}
 	return classification
 }
@@ -134,12 +140,11 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 		return class
 	}
 
-	if class, ok := classForStatus(providerErr.StatusCode); ok {
-		return class
-	}
-
 	message := normalizedErrorText(firstNonEmpty(providerErr.ProviderMessage, providerErr.BodyPreview, err.Error()))
 	if class, ok := classForMessage(message); ok {
+		return class
+	}
+	if class, ok := classForStatus(providerErr.StatusCode); ok {
 		return class
 	}
 	if providerErr.StatusCode != 0 {
@@ -213,6 +218,10 @@ func classRetryable(class ErrorClass) bool {
 	return class == ErrorClassTransient || class == ErrorClassRateLimited
 }
 
+func classSplitRecoverable(class ErrorClass) bool {
+	return class == ErrorClassContextOverflow
+}
+
 func messageIndicatesAuth(message string) bool {
 	return strings.Contains(message, "invalid api key") ||
 		strings.Contains(message, "unauthorized") ||
@@ -256,8 +265,12 @@ func messageIndicatesContextOverflow(message string) bool {
 	}
 	return strings.Contains(message, "context_length_exceeded") ||
 		strings.Contains(message, "model_context_window_exceeded") ||
+		strings.Contains(message, "request_too_large") ||
+		strings.Contains(message, "request too large") ||
 		strings.Contains(message, "maximum prompt length") ||
 		strings.Contains(message, "token limit exceeded") ||
+		strings.Contains(message, "tokenizer") && strings.Contains(message, "eof") ||
+		strings.Contains(message, "tokenizer") && strings.Contains(message, "too large") ||
 		strings.Contains(message, "context") && (strings.Contains(message, "too long") || strings.Contains(message, "maximum") || strings.Contains(message, "exceed")) ||
 		strings.Contains(message, "prompt is too long") ||
 		strings.Contains(message, "input token count") && strings.Contains(message, "exceeds the maximum") ||

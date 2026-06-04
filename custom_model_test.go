@@ -144,6 +144,26 @@ func TestOpenAICompatibleEmbeddingModelValidation(t *testing.T) {
 			}),
 			want: "headers must be strings",
 		},
+		{
+			name: "negative max batch inputs",
+			model: sigma.OpenAICompatibleEmbeddingModel(sigma.OpenAICompatibleEmbeddingModelConfig{
+				ID:             "embed",
+				Provider:       "local",
+				BaseURL:        "http://localhost:11434/v1",
+				MaxBatchInputs: -1,
+			}),
+			want: "max batch inputs must be non-negative",
+		},
+		{
+			name: "negative max batch bytes",
+			model: sigma.OpenAICompatibleEmbeddingModel(sigma.OpenAICompatibleEmbeddingModelConfig{
+				ID:            "embed",
+				Provider:      "local",
+				BaseURL:       "http://localhost:11434/v1",
+				MaxBatchBytes: -1,
+			}),
+			want: "max batch bytes must be non-negative",
+		},
 	}
 
 	for _, tt := range tests {
@@ -185,6 +205,8 @@ func TestOpenAICompatibleEmbeddingModelUsesLocalEndpointMetadata(t *testing.T) {
 		MinDimensions:       1,
 		MaxDimensions:       1024,
 		MaxInputTokens:      8192,
+		MaxBatchInputs:      4,
+		MaxBatchBytes:       4096,
 		InputCostPerMillion: 0.01,
 		CostCurrency:        "USD",
 		ProviderMetadata:    metadata,
@@ -229,6 +251,28 @@ func TestOpenAICompatibleEmbeddingModelUsesLocalEndpointMetadata(t *testing.T) {
 	})
 	if got, want := model.ProviderMetadata["family"], "local"; got != want {
 		t.Fatalf("provider metadata family = %q, want %q", got, want)
+	}
+	if got, want := model.MaxBatchInputs, 4; got != want {
+		t.Fatalf("max batch inputs = %d, want %d", got, want)
+	}
+	if got, want := model.MaxBatchBytes, 4096; got != want {
+		t.Fatalf("max batch bytes = %d, want %d", got, want)
+	}
+}
+
+func TestOpenAICompatibleEmbeddingModelDefaultsToSingleInputBatches(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.OpenAICompatibleEmbeddingModel(sigma.OpenAICompatibleEmbeddingModelConfig{
+		ID:       "local-embed",
+		Provider: "local-openai-compatible-embeddings",
+		BaseURL:  "http://localhost:11434/v1",
+	})
+	if got, want := model.MaxBatchInputs, 1; got != want {
+		t.Fatalf("max batch inputs = %d, want %d", got, want)
+	}
+	if got := model.MaxBatchBytes; got != 0 {
+		t.Fatalf("max batch bytes = %d, want 0", got)
 	}
 }
 

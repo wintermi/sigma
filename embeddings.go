@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // EmbeddingOption configures a single embedding provider request.
@@ -25,9 +26,12 @@ type EmbeddingBatchPhase string
 
 const (
 	EmbeddingBatchPhaseCacheHit     EmbeddingBatchPhase = "cache_hit"
+	EmbeddingBatchPhaseCacheLookup  EmbeddingBatchPhase = "cache_lookup"
+	EmbeddingBatchPhaseCacheStore   EmbeddingBatchPhase = "cache_store"
 	EmbeddingBatchPhaseBatchStart   EmbeddingBatchPhase = "batch_start"
 	EmbeddingBatchPhaseBatchSuccess EmbeddingBatchPhase = "batch_success"
 	EmbeddingBatchPhaseBatchError   EmbeddingBatchPhase = "batch_error"
+	EmbeddingBatchPhaseLimitSplit   EmbeddingBatchPhase = "limit_split"
 	EmbeddingBatchPhaseSplit        EmbeddingBatchPhase = "split"
 )
 
@@ -42,13 +46,64 @@ type EmbeddingBatchProgress struct {
 	Err          error
 }
 
+// EmbeddingCacheKey identifies one cacheable embedding input without exposing
+// the raw input text.
+type EmbeddingCacheKey struct {
+	Provider    ProviderID
+	API         EmbeddingAPI
+	Model       ModelID
+	Dimensions  int
+	InputSHA256 string
+}
+
+// EmbeddingCache stores embeddings for reuse across EmbedBatch calls.
+type EmbeddingCache interface {
+	Get(EmbeddingCacheKey) (Embedding, bool, error)
+	Set(EmbeddingCacheKey, Embedding) error
+}
+
+// EmbeddingSplitPolicy configures oversized embedding input splitting.
+type EmbeddingSplitPolicy struct {
+	PreferNewline    bool
+	PreferWhitespace bool
+}
+
 // EmbeddingBatchConfig configures resilient embedding batch behaviour.
 type EmbeddingBatchConfig struct {
 	ReuseDuplicateInputs bool
 	MaxRetries           int
 	MaxParallelBatches   int
+	MaxBatchInputs       int
+	MaxBatchBytes        int
 	SplitOversized       bool
+	Cache                EmbeddingCache
+	SplitPolicy          EmbeddingSplitPolicy
 	Progress             func(EmbeddingBatchProgress) error
+}
+
+// EmbeddingBatchTraceEvent reports structured, redacted EmbedBatch execution
+// metadata. It never includes raw input text.
+type EmbeddingBatchTraceEvent struct {
+	Phase            EmbeddingBatchPhase
+	Attempt          int
+	BatchSize        int
+	BatchBytes       int
+	InputIndexes     []int
+	MaxBatchInputs   int
+	MaxBatchBytes    int
+	CacheKey         EmbeddingCacheKey
+	CacheHit         bool
+	SplitPart        int
+	SplitTotal       int
+	SplitReason      string
+	ErrorClass       ErrorClass
+	ErrorMessage     string
+	StatusCode       int
+	ProviderCode     string
+	RequestID        string
+	Retryable        bool
+	SplitRecoverable bool
+	ProviderAttempts []EmbeddingAttempt
 }
 
 // EmbeddingBatchSummary reports aggregate provider work from EmbedBatch.
@@ -60,6 +115,7 @@ type EmbeddingBatchSummary struct {
 	StatusBuckets     map[int]int
 	RequestIDs        []string
 	Attempts          []EmbeddingAttempt
+	Trace             []EmbeddingBatchTraceEvent
 	Usage             *Usage
 	Cost              *Cost
 }
@@ -84,7 +140,7 @@ type embeddingBatcher struct {
 	config EmbeddingBatchConfig
 	opts   []EmbeddingOption
 
-	cache map[string]Embedding
+	cache map[EmbeddingCacheKey]Embedding
 	sem   chan struct{}
 
 	mu      sync.Mutex
@@ -223,9 +279,18 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 	if config.MaxParallelBatches < 0 {
 		return EmbeddingBatchResult{Embeddings: Embeddings{Model: model.ID, Provider: model.Provider}}, invalidEmbeddingOptionsError(model, "embedding batch max parallel batches must be non-negative")
 	}
+	if config.MaxBatchInputs < 0 {
+		return EmbeddingBatchResult{Embeddings: Embeddings{Model: model.ID, Provider: model.Provider}}, invalidEmbeddingOptionsError(model, "embedding batch max inputs must be non-negative")
+	}
+	if config.MaxBatchBytes < 0 {
+		return EmbeddingBatchResult{Embeddings: Embeddings{Model: model.ID, Provider: model.Provider}}, invalidEmbeddingOptionsError(model, "embedding batch max bytes must be non-negative")
+	}
 	if len(req.Inputs) == 0 {
 		embeddings, err := c.Embed(ctx, model, req, opts...)
 		return EmbeddingBatchResult{Embeddings: embeddings}, err
+	}
+	if registered, ok := c.GetEmbeddingModel(model.Provider, model.ID); ok && model.API == "" {
+		model = registered
 	}
 
 	batcher := &embeddingBatcher{
@@ -237,7 +302,7 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 		opts:   append([]EmbeddingOption(nil), opts...),
 	}
 	if config.ReuseDuplicateInputs {
-		batcher.cache = make(map[string]Embedding)
+		batcher.cache = make(map[EmbeddingCacheKey]Embedding)
 	}
 	if config.MaxParallelBatches > 0 {
 		batcher.sem = make(chan struct{}, config.MaxParallelBatches)
@@ -319,7 +384,7 @@ func (b *embeddingBatcher) jobs(inputs []string) ([]embeddingBatchJob, []bool, e
 		return jobs, reused, nil
 	}
 
-	byKey := make(map[string]int)
+	byKey := make(map[EmbeddingCacheKey]int)
 	jobs := make([]embeddingBatchJob, 0, len(inputs))
 	for index, input := range inputs {
 		key := b.cacheKey(input)
@@ -344,10 +409,26 @@ func (b *embeddingBatcher) embedJobs(jobs []embeddingBatchJob, attempt int) ([]E
 	if len(jobs) == 0 {
 		return nil, nil
 	}
-	if b.config.ReuseDuplicateInputs {
-		if cached, ok := b.cachedEmbeddings(jobs); ok {
-			return cached, nil
+	cached, jobs, err := b.resolveCachedJobs(jobs)
+	if err != nil {
+		return nil, err
+	}
+	if len(jobs) == 0 {
+		return cached, nil
+	}
+	if len(jobs) == 1 && b.jobExceedsMaxBatchBytes(jobs[0]) {
+		vectors, err := b.embedOversizedSingleton(jobs[0], attempt, "max_batch_bytes")
+		if err != nil {
+			return nil, err
 		}
+		return appendEmbeddingSlices(cached, vectors), nil
+	}
+	if groups, ok := b.splitJobsByLimits(jobs); ok {
+		vectors, err := b.embedLimitSplitBatches(groups, attempt)
+		if err != nil {
+			return nil, err
+		}
+		return appendEmbeddingSlices(cached, vectors), nil
 	}
 
 	embeddings, err := b.callProvider(jobs, attempt)
@@ -357,13 +438,14 @@ func (b *embeddingBatcher) embedJobs(jobs []embeddingBatchJob, attempt int) ([]E
 			return nil, err
 		}
 		b.addResult(embeddings)
-		if b.config.ReuseDuplicateInputs {
-			b.storeCache(jobs, jobVectors)
+		if err := b.storeCache(jobs, jobVectors); err != nil {
+			return nil, err
 		}
-		return expandJobEmbeddings(jobs, jobVectors), nil
+		return appendEmbeddingSlices(cached, expandJobEmbeddings(jobs, jobVectors)), nil
 	}
 
 	b.addError(embeddings)
+	classification := ClassifyError(err)
 	if err := b.progress(EmbeddingBatchProgress{
 		Phase:        EmbeddingBatchPhaseBatchError,
 		Attempt:      attempt,
@@ -373,19 +455,34 @@ func (b *embeddingBatcher) embedJobs(jobs []embeddingBatchJob, attempt int) ([]E
 	}); err != nil {
 		return nil, err
 	}
+	b.addTrace(EmbeddingBatchTraceEvent{
+		Phase:            EmbeddingBatchPhaseBatchError,
+		Attempt:          attempt,
+		BatchSize:        len(jobs),
+		BatchBytes:       batchBytes(jobs),
+		InputIndexes:     indexesForJobs(jobs),
+		ErrorClass:       classification.Class,
+		ErrorMessage:     classification.Message,
+		StatusCode:       classification.StatusCode,
+		ProviderCode:     classification.ProviderCode,
+		RequestID:        classification.RequestID,
+		Retryable:        classification.RetryHint.Retryable,
+		SplitRecoverable: classification.SplitRecoverable,
+		ProviderAttempts: embeddings.Attempts,
+	})
 	if attempt >= b.config.MaxRetries {
 		return nil, err
 	}
 	if len(jobs) > 1 {
-		if !ClassifyError(err).RetryHint.Retryable {
+		if !classification.RetryHint.Retryable && !classification.SplitRecoverable {
 			return nil, err
 		}
 		return b.embedSplitBatches(jobs, attempt+1)
 	}
-	if !b.config.SplitOversized || ClassifyError(err).Class != ErrorClassContextOverflow {
+	if !b.config.SplitOversized || !classification.SplitRecoverable {
 		return nil, err
 	}
-	return b.embedOversizedSingleton(jobs[0], attempt+1)
+	return b.embedOversizedSingleton(jobs[0], attempt+1, "provider_error")
 }
 
 func (b *embeddingBatcher) callProvider(jobs []embeddingBatchJob, attempt int) (Embeddings, error) {
@@ -407,6 +504,13 @@ func (b *embeddingBatcher) callProvider(jobs []embeddingBatchJob, attempt int) (
 	}); err != nil {
 		return Embeddings{}, err
 	}
+	b.addTrace(EmbeddingBatchTraceEvent{
+		Phase:        EmbeddingBatchPhaseBatchStart,
+		Attempt:      attempt,
+		BatchSize:    len(jobs),
+		BatchBytes:   batchBytes(jobs),
+		InputIndexes: indexesForJobs(jobs),
+	})
 	embeddings, err := b.client.Embed(b.ctx, b.model, req, b.opts...)
 	if err != nil {
 		return embeddings, err
@@ -419,6 +523,14 @@ func (b *embeddingBatcher) callProvider(jobs []embeddingBatchJob, attempt int) (
 	}); err != nil {
 		return Embeddings{}, err
 	}
+	b.addTrace(EmbeddingBatchTraceEvent{
+		Phase:            EmbeddingBatchPhaseBatchSuccess,
+		Attempt:          attempt,
+		BatchSize:        len(jobs),
+		BatchBytes:       batchBytes(jobs),
+		InputIndexes:     indexesForJobs(jobs),
+		ProviderAttempts: embeddings.Attempts,
+	})
 	return embeddings, nil
 }
 
@@ -460,8 +572,8 @@ func (b *embeddingBatcher) embedSplitBatches(jobs []embeddingBatchJob, attempt i
 	return appendEmbeddingSlices(leftVectors, rightVectors), nil
 }
 
-func (b *embeddingBatcher) embedOversizedSingleton(job embeddingBatchJob, attempt int) ([]Embedding, error) {
-	parts := splitEmbeddingInput(job.text)
+func (b *embeddingBatcher) embedOversizedSingleton(job embeddingBatchJob, attempt int, reason string) ([]Embedding, error) {
+	parts := b.splitEmbeddingInput(job.text)
 	if len(parts) < 2 {
 		return nil, invalidEmbeddingOptionsError(b.model, "embedding input cannot be split further")
 	}
@@ -478,6 +590,16 @@ func (b *embeddingBatcher) embedOversizedSingleton(job embeddingBatchJob, attemp
 			return nil, err
 		}
 		partJobs = append(partJobs, embeddingBatchJob{text: part, indexes: []int{i}})
+		b.addTrace(EmbeddingBatchTraceEvent{
+			Phase:        EmbeddingBatchPhaseSplit,
+			Attempt:      attempt,
+			BatchSize:    1,
+			BatchBytes:   len(part),
+			InputIndexes: append([]int(nil), job.indexes...),
+			SplitPart:    i + 1,
+			SplitTotal:   len(parts),
+			SplitReason:  reason,
+		})
 	}
 	partVectors, err := b.embedJobs(partJobs, attempt)
 	if err != nil {
@@ -503,32 +625,191 @@ func (b *embeddingBatcher) progress(progress EmbeddingBatchProgress) error {
 	return b.config.Progress(progress)
 }
 
-func (b *embeddingBatcher) cachedEmbeddings(jobs []embeddingBatchJob) ([]Embedding, bool) {
-	out := make([]Embedding, 0, len(jobs))
-	for _, job := range jobs {
-		embedding, ok := b.cache[b.cacheKey(job.text)]
-		if !ok {
-			return nil, false
-		}
-		for _, index := range job.indexes {
-			out = append(out, Embedding{Index: index, Vector: append([]float32(nil), embedding.Vector...)})
-		}
-	}
-	return out, true
+func (b *embeddingBatcher) addTrace(event EmbeddingBatchTraceEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	event.InputIndexes = append([]int(nil), event.InputIndexes...)
+	event.ProviderAttempts = append([]EmbeddingAttempt(nil), event.ProviderAttempts...)
+	b.summary.Trace = append(b.summary.Trace, event)
 }
 
-func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Embedding) {
+func (b *embeddingBatcher) splitJobsByLimits(jobs []embeddingBatchJob) ([][]embeddingBatchJob, bool) {
+	maxInputs := b.maxBatchInputs()
+	maxBytes := b.maxBatchBytes()
+	if maxInputs == 0 && maxBytes == 0 {
+		return nil, false
+	}
+
+	var groups [][]embeddingBatchJob
+	var current []embeddingBatchJob
+	currentBytes := 0
+	for _, job := range jobs {
+		jobBytes := len(job.text)
+		overInputs := maxInputs > 0 && len(current) > 0 && len(current)+1 > maxInputs
+		overBytes := maxBytes > 0 && len(current) > 0 && currentBytes+jobBytes > maxBytes
+		if overInputs || overBytes {
+			groups = append(groups, current)
+			current = nil
+			currentBytes = 0
+		}
+		current = append(current, job)
+		currentBytes += jobBytes
+	}
+	if len(current) > 0 {
+		groups = append(groups, current)
+	}
+	if len(groups) < 2 {
+		return nil, false
+	}
+	b.addTrace(EmbeddingBatchTraceEvent{
+		Phase:          EmbeddingBatchPhaseLimitSplit,
+		BatchSize:      len(jobs),
+		BatchBytes:     batchBytes(jobs),
+		InputIndexes:   indexesForJobs(jobs),
+		MaxBatchInputs: maxInputs,
+		MaxBatchBytes:  maxBytes,
+		SplitTotal:     len(groups),
+		SplitReason:    "batch_limits",
+	})
+	return groups, true
+}
+
+func (b *embeddingBatcher) embedLimitSplitBatches(groups [][]embeddingBatchJob, attempt int) ([]Embedding, error) {
+	var out []Embedding
+	for i, group := range groups {
+		b.addTrace(EmbeddingBatchTraceEvent{
+			Phase:          EmbeddingBatchPhaseLimitSplit,
+			Attempt:        attempt,
+			BatchSize:      len(group),
+			BatchBytes:     batchBytes(group),
+			InputIndexes:   indexesForJobs(group),
+			MaxBatchInputs: b.maxBatchInputs(),
+			MaxBatchBytes:  b.maxBatchBytes(),
+			SplitPart:      i + 1,
+			SplitTotal:     len(groups),
+			SplitReason:    "batch_limits",
+		})
+		vectors, err := b.embedJobs(group, attempt)
+		if err != nil {
+			return nil, err
+		}
+		out = appendEmbeddingSlices(out, vectors)
+	}
+	return out, nil
+}
+
+func (b *embeddingBatcher) jobExceedsMaxBatchBytes(job embeddingBatchJob) bool {
+	maxBytes := b.maxBatchBytes()
+	return maxBytes > 0 && len(job.text) > maxBytes
+}
+
+func (b *embeddingBatcher) maxBatchInputs() int {
+	if b.config.MaxBatchInputs > 0 {
+		return b.config.MaxBatchInputs
+	}
+	return b.model.MaxBatchInputs
+}
+
+func (b *embeddingBatcher) maxBatchBytes() int {
+	if b.config.MaxBatchBytes > 0 {
+		return b.config.MaxBatchBytes
+	}
+	return b.model.MaxBatchBytes
+}
+
+func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedding, []embeddingBatchJob, error) {
+	if b.cache == nil && b.config.Cache == nil {
+		return nil, jobs, nil
+	}
+
+	cached := make([]Embedding, 0, len(jobs))
+	misses := make([]embeddingBatchJob, 0, len(jobs))
+	for _, job := range jobs {
+		key := b.cacheKey(job.text)
+		if b.cache != nil {
+			if embedding, ok := b.cache[key]; ok {
+				b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
+				cached = append(cached, expandCachedEmbedding(job, embedding)...)
+				continue
+			}
+		}
+		if b.config.Cache == nil {
+			misses = append(misses, job)
+			continue
+		}
+		b.addCacheTrace(EmbeddingBatchPhaseCacheLookup, job, key, false)
+		embedding, ok, err := b.config.Cache.Get(key)
+		if err != nil {
+			return nil, nil, fmt.Errorf("embedding batch cache get: %w", err)
+		}
+		if ok {
+			if b.cache != nil {
+				b.cache[key] = cloneCachedEmbedding(embedding)
+			}
+			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
+			cached = append(cached, expandCachedEmbedding(job, embedding)...)
+			continue
+		}
+		misses = append(misses, job)
+	}
+	return cached, misses, nil
+}
+
+func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Embedding) error {
+	if b.cache == nil && b.config.Cache == nil {
+		return nil
+	}
 	for i, job := range jobs {
-		b.cache[b.cacheKey(job.text)] = Embedding{
+		key := b.cacheKey(job.text)
+		embedding := Embedding{
 			Index:  0,
 			Vector: append([]float32(nil), embeddings[i].Vector...),
 		}
+		if b.cache != nil {
+			b.cache[key] = cloneCachedEmbedding(embedding)
+		}
+		if b.config.Cache != nil {
+			if err := b.config.Cache.Set(key, cloneCachedEmbedding(embedding)); err != nil {
+				return fmt.Errorf("embedding batch cache set: %w", err)
+			}
+			b.addCacheTrace(EmbeddingBatchPhaseCacheStore, job, key, false)
+		}
+	}
+	return nil
+}
+
+func (b *embeddingBatcher) cacheKey(text string) EmbeddingCacheKey {
+	sum := sha256.Sum256([]byte(text))
+	return EmbeddingCacheKey{
+		Provider:    b.model.Provider,
+		API:         b.model.API,
+		Model:       b.model.ID,
+		Dimensions:  b.req.Dimensions,
+		InputSHA256: fmt.Sprintf("%x", sum),
 	}
 }
 
-func (b *embeddingBatcher) cacheKey(text string) string {
-	sum := sha256.Sum256([]byte(text))
-	return fmt.Sprintf("%s\x00%s\x00%d\x00%x", b.model.Provider, b.model.ID, b.req.Dimensions, sum)
+func (b *embeddingBatcher) addCacheTrace(phase EmbeddingBatchPhase, job embeddingBatchJob, key EmbeddingCacheKey, hit bool) {
+	b.addTrace(EmbeddingBatchTraceEvent{
+		Phase:        phase,
+		BatchSize:    1,
+		BatchBytes:   len(job.text),
+		InputIndexes: append([]int(nil), job.indexes...),
+		CacheKey:     key,
+		CacheHit:     hit,
+	})
+}
+
+func expandCachedEmbedding(job embeddingBatchJob, embedding Embedding) []Embedding {
+	out := make([]Embedding, 0, len(job.indexes))
+	for _, index := range job.indexes {
+		out = append(out, Embedding{Index: index, Vector: append([]float32(nil), embedding.Vector...)})
+	}
+	return out
+}
+
+func cloneCachedEmbedding(embedding Embedding) Embedding {
+	return Embedding{Index: 0, Vector: append([]float32(nil), embedding.Vector...)}
 }
 
 func (b *embeddingBatcher) addResult(embeddings Embeddings) {
@@ -599,6 +880,7 @@ func (b *embeddingBatcher) batchSummary() EmbeddingBatchSummary {
 	}
 	summary.RequestIDs = append([]string(nil), summary.RequestIDs...)
 	summary.Attempts = append([]EmbeddingAttempt(nil), summary.Attempts...)
+	summary.Trace = cloneEmbeddingBatchTrace(summary.Trace)
 	if summary.Usage != nil {
 		usage := *summary.Usage
 		summary.Usage = &usage
@@ -608,6 +890,19 @@ func (b *embeddingBatcher) batchSummary() EmbeddingBatchSummary {
 		summary.Cost = &cost
 	}
 	return summary
+}
+
+func cloneEmbeddingBatchTrace(trace []EmbeddingBatchTraceEvent) []EmbeddingBatchTraceEvent {
+	if len(trace) == 0 {
+		return nil
+	}
+	out := make([]EmbeddingBatchTraceEvent, len(trace))
+	for i, event := range trace {
+		out[i] = event
+		out[i].InputIndexes = append([]int(nil), event.InputIndexes...)
+		out[i].ProviderAttempts = append([]EmbeddingAttempt(nil), event.ProviderAttempts...)
+	}
+	return out
 }
 
 func copyIntIntMap(values map[int]int) map[int]int {
@@ -627,6 +922,14 @@ func inputsForJobs(jobs []embeddingBatchJob) []string {
 		out = append(out, job.text)
 	}
 	return out
+}
+
+func batchBytes(jobs []embeddingBatchJob) int {
+	total := 0
+	for _, job := range jobs {
+		total += len(job.text)
+	}
+	return total
 }
 
 func indexesForJobs(jobs []embeddingBatchJob) []int {
@@ -689,13 +992,48 @@ func orderEmbeddingsByIndex(embeddings []Embedding) []Embedding {
 	return ordered
 }
 
-func splitEmbeddingInput(text string) []string {
+func (b *embeddingBatcher) splitEmbeddingInput(text string) []string {
 	runes := []rune(text)
 	if len(runes) < 2 {
 		return nil
 	}
-	mid := len(runes) / 2
+	mid := b.splitIndex(runes)
 	return []string{string(runes[:mid]), string(runes[mid:])}
+}
+
+func (b *embeddingBatcher) splitIndex(runes []rune) int {
+	mid := len(runes) / 2
+	preferNewline := b.config.SplitPolicy.PreferNewline
+	preferWhitespace := b.config.SplitPolicy.PreferWhitespace
+	if !preferNewline && !preferWhitespace {
+		preferNewline = true
+		preferWhitespace = true
+	}
+	if preferNewline {
+		if index, ok := nearestSplitRune(runes, mid, func(r rune) bool { return r == '\n' }); ok {
+			return index
+		}
+	}
+	if preferWhitespace {
+		if index, ok := nearestSplitRune(runes, mid, unicode.IsSpace); ok {
+			return index
+		}
+	}
+	return mid
+}
+
+func nearestSplitRune(runes []rune, mid int, match func(rune) bool) (int, bool) {
+	for offset := 0; offset < len(runes); offset++ {
+		left := mid - offset
+		if left > 0 && left < len(runes) && match(runes[left-1]) {
+			return left, true
+		}
+		right := mid + offset
+		if right > 0 && right < len(runes) && match(runes[right-1]) {
+			return right, true
+		}
+	}
+	return 0, false
 }
 
 func weightedAverageEmbedding(vectors []Embedding, weights []int) []float32 {

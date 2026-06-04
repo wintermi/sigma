@@ -7,7 +7,9 @@ package sigma_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -172,6 +174,112 @@ func TestEmbedBatchReusesDuplicateInputs(t *testing.T) {
 	}
 }
 
+func TestEmbedBatchUsesExternalCacheAcrossCalls(t *testing.T) {
+	t.Parallel()
+
+	cache := newTestEmbeddingCache()
+	provider := sigmatest.NewFauxEmbeddingProvider(sigmatest.EmbeddingScript{
+		Response: sigma.Embeddings{
+			Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{7}}},
+		},
+	})
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	req := sigma.EmbeddingRequest{Inputs: []string{"cache me"}, Dimensions: 3}
+	config := sigma.EmbeddingBatchConfig{Cache: cache}
+
+	first, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), req, config)
+	if err != nil {
+		t.Fatalf("first EmbedBatch returned error: %v", err)
+	}
+	second, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), req, config)
+	if err != nil {
+		t.Fatalf("second EmbedBatch returned error: %v", err)
+	}
+	if !reflect.DeepEqual(first.Embeddings.Vectors, second.Embeddings.Vectors) {
+		t.Fatalf("cached vectors = %#v, want %#v", second.Embeddings.Vectors, first.Embeddings.Vectors)
+	}
+	if len(provider.Requests()) != 1 {
+		t.Fatalf("provider requests = %d, want 1", len(provider.Requests()))
+	}
+	wantHash := fmt.Sprintf("%x", sha256.Sum256([]byte("cache me")))
+	if len(cache.keys) == 0 {
+		t.Fatal("cache recorded no keys")
+	}
+	for _, key := range cache.keys {
+		if got := key.InputSHA256; got != wantHash {
+			t.Fatalf("cache hash = %q, want %q", got, wantHash)
+		}
+		if strings.Contains(key.InputSHA256, "cache me") {
+			t.Fatalf("cache key leaked raw input: %#v", key)
+		}
+	}
+	if !containsEmbeddingTracePhase(second.Summary.Trace, sigma.EmbeddingBatchPhaseCacheHit) {
+		t.Fatalf("trace = %#v, want cache hit", second.Summary.Trace)
+	}
+}
+
+func TestEmbedBatchPropagatesExternalCacheErrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("get", func(t *testing.T) {
+		t.Parallel()
+
+		cache := newTestEmbeddingCache()
+		cache.getErr = errors.New("cache get failed")
+		provider := sigmatest.NewFauxEmbeddingProvider()
+		registry, err := sigmatest.EmbeddingRegistry(provider)
+		if err != nil {
+			t.Fatalf("EmbeddingRegistry returned error: %v", err)
+		}
+		client := sigma.NewClient(sigma.WithRegistry(registry))
+
+		_, err = client.EmbedBatch(
+			context.Background(),
+			sigmatest.EmbeddingModel(),
+			sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
+			sigma.EmbeddingBatchConfig{Cache: cache},
+		)
+		if err == nil || !strings.Contains(err.Error(), "cache get failed") {
+			t.Fatalf("error = %v, want cache get failure", err)
+		}
+		if len(provider.Requests()) != 0 {
+			t.Fatalf("provider requests = %d, want none", len(provider.Requests()))
+		}
+	})
+
+	t.Run("set", func(t *testing.T) {
+		t.Parallel()
+
+		cache := newTestEmbeddingCache()
+		cache.setErr = errors.New("cache set failed")
+		provider := sigmatest.NewFauxEmbeddingProvider(sigmatest.EmbeddingScript{
+			Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}}},
+		})
+		registry, err := sigmatest.EmbeddingRegistry(provider)
+		if err != nil {
+			t.Fatalf("EmbeddingRegistry returned error: %v", err)
+		}
+		client := sigma.NewClient(sigma.WithRegistry(registry))
+
+		_, err = client.EmbedBatch(
+			context.Background(),
+			sigmatest.EmbeddingModel(),
+			sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
+			sigma.EmbeddingBatchConfig{Cache: cache},
+		)
+		if err == nil || !strings.Contains(err.Error(), "cache set failed") {
+			t.Fatalf("error = %v, want cache set failure", err)
+		}
+		if len(provider.Requests()) != 1 {
+			t.Fatalf("provider requests = %d, want one before set failure", len(provider.Requests()))
+		}
+	})
+}
+
 func TestEmbedBatchSplitsRetryableBatchFailure(t *testing.T) {
 	t.Parallel()
 
@@ -255,6 +363,16 @@ func TestEmbedBatchSplitsRetryableBatchFailure(t *testing.T) {
 	if len(got.Summary.Attempts) != 3 || len(got.Embeddings.Attempts) != 3 {
 		t.Fatalf("attempts = summary:%#v embeddings:%#v, want aggregate attempts", got.Summary.Attempts, got.Embeddings.Attempts)
 	}
+	errorTrace, ok := firstEmbeddingTracePhase(got.Summary.Trace, sigma.EmbeddingBatchPhaseBatchError)
+	if !ok {
+		t.Fatalf("trace = %#v, want batch error event", got.Summary.Trace)
+	}
+	if errorTrace.ErrorClass != sigma.ErrorClassRateLimited || !errorTrace.Retryable {
+		t.Fatalf("error trace = %#v, want rate-limit retry metadata", errorTrace)
+	}
+	if len(errorTrace.ProviderAttempts) != 1 || errorTrace.ProviderAttempts[0].RequestID != "req_failed" {
+		t.Fatalf("provider attempts in error trace = %#v, want failed request attempt", errorTrace.ProviderAttempts)
+	}
 	if got.Summary.Usage == nil || got.Summary.Usage.InputTokens != 5 || got.Embeddings.Usage.InputTokens != 5 {
 		t.Fatalf("usage = summary:%#v embeddings:%#v, want aggregated input tokens", got.Summary.Usage, got.Embeddings.Usage)
 	}
@@ -269,6 +387,149 @@ func TestEmbedBatchSplitsRetryableBatchFailure(t *testing.T) {
 		!reflect.DeepEqual(requests[1].Request.Inputs, []string{"alpha"}) ||
 		!reflect.DeepEqual(requests[2].Request.Inputs, []string{"beta"}) {
 		t.Fatalf("requests = %#v, want original batch then split singleton calls", requests)
+	}
+}
+
+func TestEmbedBatchSplitsByConfiguredInputLimit(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}, {Index: 1, Vector: []float32{2}}}}},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{3}}, {Index: 1, Vector: []float32{4}}}}},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{5}}}}},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	got, err := client.EmbedBatch(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"a", "b", "c", "d", "e"}},
+		sigma.EmbeddingBatchConfig{MaxBatchInputs: 2},
+	)
+	if err != nil {
+		t.Fatalf("EmbedBatch returned error: %v", err)
+	}
+	want := []sigma.Embedding{
+		{Index: 0, Vector: []float32{1}},
+		{Index: 1, Vector: []float32{2}},
+		{Index: 2, Vector: []float32{3}},
+		{Index: 3, Vector: []float32{4}},
+		{Index: 4, Vector: []float32{5}},
+	}
+	if !reflect.DeepEqual(got.Embeddings.Vectors, want) {
+		t.Fatalf("vectors = %#v, want %#v", got.Embeddings.Vectors, want)
+	}
+	requests := provider.Requests()
+	if len(requests) != 3 {
+		t.Fatalf("requests = %d, want 3", len(requests))
+	}
+	if !reflect.DeepEqual(requests[0].Request.Inputs, []string{"a", "b"}) ||
+		!reflect.DeepEqual(requests[1].Request.Inputs, []string{"c", "d"}) ||
+		!reflect.DeepEqual(requests[2].Request.Inputs, []string{"e"}) {
+		t.Fatalf("requests = %#v, want input-limit batches", requests)
+	}
+	if !containsEmbeddingTracePhase(got.Summary.Trace, sigma.EmbeddingBatchPhaseLimitSplit) {
+		t.Fatalf("trace = %#v, want limit split event", got.Summary.Trace)
+	}
+}
+
+func TestEmbedBatchSplitsByByteLimit(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}, {Index: 1, Vector: []float32{2}}}}},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{3}}}}},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err = client.EmbedBatch(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"aa", "bb", "cc"}},
+		sigma.EmbeddingBatchConfig{MaxBatchBytes: 4},
+	)
+	if err != nil {
+		t.Fatalf("EmbedBatch returned error: %v", err)
+	}
+	requests := provider.Requests()
+	if len(requests) != 2 {
+		t.Fatalf("requests = %d, want 2", len(requests))
+	}
+	if !reflect.DeepEqual(requests[0].Request.Inputs, []string{"aa", "bb"}) ||
+		!reflect.DeepEqual(requests[1].Request.Inputs, []string{"cc"}) {
+		t.Fatalf("requests = %#v, want byte-limit batches", requests)
+	}
+}
+
+func TestEmbedBatchUsesModelLimitAndConfigOverride(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		modelLimit  int
+		configLimit int
+		wantBatches [][]string
+	}{
+		{
+			name:        "model limit",
+			modelLimit:  2,
+			wantBatches: [][]string{{"a", "b"}, {"c"}},
+		},
+		{
+			name:        "config override",
+			modelLimit:  2,
+			configLimit: 3,
+			wantBatches: [][]string{{"a", "b", "c"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			scripts := make([]sigmatest.EmbeddingScript, 0, len(tt.wantBatches))
+			for _, batch := range tt.wantBatches {
+				vectors := make([]sigma.Embedding, 0, len(batch))
+				for i := range batch {
+					vectors = append(vectors, sigma.Embedding{Index: i, Vector: []float32{float32(i + 1)}})
+				}
+				scripts = append(scripts, sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: vectors}})
+			}
+			provider := sigmatest.NewFauxEmbeddingProvider(scripts...)
+			model := sigmatest.EmbeddingModel()
+			model.MaxBatchInputs = tt.modelLimit
+			registry, err := sigmatest.EmbeddingRegistry(provider, model)
+			if err != nil {
+				t.Fatalf("EmbeddingRegistry returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+
+			_, err = client.EmbedBatch(
+				context.Background(),
+				sigma.EmbeddingModel{ID: model.ID, Provider: model.Provider},
+				sigma.EmbeddingRequest{Inputs: []string{"a", "b", "c"}},
+				sigma.EmbeddingBatchConfig{MaxBatchInputs: tt.configLimit},
+			)
+			if err != nil {
+				t.Fatalf("EmbedBatch returned error: %v", err)
+			}
+			requests := provider.Requests()
+			if len(requests) != len(tt.wantBatches) {
+				t.Fatalf("requests = %d, want %d", len(requests), len(tt.wantBatches))
+			}
+			for i, want := range tt.wantBatches {
+				if !reflect.DeepEqual(requests[i].Request.Inputs, want) {
+					t.Fatalf("request %d inputs = %#v, want %#v", i, requests[i].Request.Inputs, want)
+				}
+			}
+		})
 	}
 }
 
@@ -330,6 +591,107 @@ func TestEmbedBatchSplitsOversizedSingleton(t *testing.T) {
 	}
 	if !reflect.DeepEqual(requests[1].Request.Inputs, []string{"ab", "cd"}) {
 		t.Fatalf("split inputs = %#v, want rune midpoint split", requests[1].Request.Inputs)
+	}
+}
+
+func TestEmbedBatchSplitPolicyUsesSafeBoundaries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "newline",
+			input: "alpha\nbeta gamma",
+			want:  []string{"alpha\n", "beta gamma"},
+		},
+		{
+			name:  "whitespace",
+			input: "abcd efgh",
+			want:  []string{"abcd ", "efgh"},
+		},
+		{
+			name:  "rune fallback",
+			input: "åßç∂",
+			want:  []string{"åß", "ç∂"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			overflowErr := sigma.NewProviderError(
+				sigmatest.ProviderID,
+				sigma.API(sigmatest.EmbeddingAPI),
+				sigmatest.EmbeddingModelID,
+				400,
+				"",
+				0,
+				[]byte(`{"error":{"code":"request_too_large","message":"request too large"}}`),
+				sigma.ErrProviderResponse,
+			)
+			provider := sigmatest.NewFauxEmbeddingProvider(
+				sigmatest.EmbeddingScript{Err: overflowErr},
+				sigmatest.EmbeddingScript{Response: sigma.Embeddings{
+					Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}, {Index: 1, Vector: []float32{3}}},
+				}},
+			)
+			registry, err := sigmatest.EmbeddingRegistry(provider)
+			if err != nil {
+				t.Fatalf("EmbeddingRegistry returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+
+			_, err = client.EmbedBatch(
+				context.Background(),
+				sigmatest.EmbeddingModel(),
+				sigma.EmbeddingRequest{Inputs: []string{tt.input}},
+				sigma.EmbeddingBatchConfig{MaxRetries: 1, SplitOversized: true},
+			)
+			if err != nil {
+				t.Fatalf("EmbedBatch returned error: %v", err)
+			}
+			requests := provider.Requests()
+			if len(requests) != 2 {
+				t.Fatalf("requests = %d, want 2", len(requests))
+			}
+			if !reflect.DeepEqual(requests[1].Request.Inputs, tt.want) {
+				t.Fatalf("split inputs = %#v, want %#v", requests[1].Request.Inputs, tt.want)
+			}
+		})
+	}
+}
+
+func TestEmbedBatchRejectsUnsplittableOversizedInput(t *testing.T) {
+	t.Parallel()
+
+	overflowErr := sigma.NewProviderError(
+		sigmatest.ProviderID,
+		sigma.API(sigmatest.EmbeddingAPI),
+		sigmatest.EmbeddingModelID,
+		400,
+		"",
+		0,
+		[]byte(`{"error":{"code":"request_too_large","message":"request too large"}}`),
+		sigma.ErrProviderResponse,
+	)
+	provider := sigmatest.NewFauxEmbeddingProvider(sigmatest.EmbeddingScript{Err: overflowErr})
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err = client.EmbedBatch(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"x"}},
+		sigma.EmbeddingBatchConfig{MaxRetries: 1, SplitOversized: true},
+	)
+	if err == nil || !strings.Contains(err.Error(), "cannot be split further") {
+		t.Fatalf("error = %v, want unsplittable input error", err)
 	}
 }
 
@@ -478,4 +840,49 @@ func containsEmbeddingBatchPhase(phases []sigma.EmbeddingBatchPhase, want sigma.
 		}
 	}
 	return false
+}
+
+func containsEmbeddingTracePhase(trace []sigma.EmbeddingBatchTraceEvent, want sigma.EmbeddingBatchPhase) bool {
+	_, ok := firstEmbeddingTracePhase(trace, want)
+	return ok
+}
+
+func firstEmbeddingTracePhase(trace []sigma.EmbeddingBatchTraceEvent, want sigma.EmbeddingBatchPhase) (sigma.EmbeddingBatchTraceEvent, bool) {
+	for _, event := range trace {
+		if event.Phase == want {
+			return event, true
+		}
+	}
+	return sigma.EmbeddingBatchTraceEvent{}, false
+}
+
+type testEmbeddingCache struct {
+	values map[sigma.EmbeddingCacheKey]sigma.Embedding
+	keys   []sigma.EmbeddingCacheKey
+	getErr error
+	setErr error
+}
+
+func newTestEmbeddingCache() *testEmbeddingCache {
+	return &testEmbeddingCache{values: make(map[sigma.EmbeddingCacheKey]sigma.Embedding)}
+}
+
+func (c *testEmbeddingCache) Get(key sigma.EmbeddingCacheKey) (sigma.Embedding, bool, error) {
+	c.keys = append(c.keys, key)
+	if c.getErr != nil {
+		return sigma.Embedding{}, false, c.getErr
+	}
+	embedding, ok := c.values[key]
+	embedding.Vector = append([]float32(nil), embedding.Vector...)
+	return embedding, ok, nil
+}
+
+func (c *testEmbeddingCache) Set(key sigma.EmbeddingCacheKey, embedding sigma.Embedding) error {
+	c.keys = append(c.keys, key)
+	if c.setErr != nil {
+		return c.setErr
+	}
+	embedding.Vector = append([]float32(nil), embedding.Vector...)
+	c.values[key] = embedding
+	return nil
 }

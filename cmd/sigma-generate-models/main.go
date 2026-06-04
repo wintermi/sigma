@@ -181,6 +181,8 @@ func writeEmbeddingModel(b *bytes.Buffer, model modeldata.EmbeddingModel) {
 	writeIntField(b, "MinDimensions", model.MinDimensions)
 	writeIntField(b, "MaxDimensions", model.MaxDimensions)
 	writeIntField(b, "MaxInputTokens", model.MaxInputTokens)
+	writeIntField(b, "MaxBatchInputs", model.MaxBatchInputs)
+	writeIntField(b, "MaxBatchBytes", model.MaxBatchBytes)
 	writeFloatField(b, "InputCostPerMillion", model.InputCostPerMillion)
 	writeStringField(b, "CostCurrency", "", model.Currency)
 	writeProviderMetadataField(b, embeddingProviderMetadata(model))

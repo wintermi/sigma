@@ -647,6 +647,12 @@ func validateEmbeddingModel(model EmbeddingModel) error {
 	if model.MaxInputTokens < 0 {
 		return registryError("embedding max input tokens must be non-negative")
 	}
+	if model.MaxBatchInputs < 0 {
+		return registryError("embedding max batch inputs must be non-negative")
+	}
+	if model.MaxBatchBytes < 0 {
+		return registryError("embedding max batch bytes must be non-negative")
+	}
 	if model.InputCostPerMillion < 0 {
 		return registryError("embedding input cost per million must be non-negative")
 	}

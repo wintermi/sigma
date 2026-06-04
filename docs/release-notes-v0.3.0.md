@@ -16,14 +16,15 @@ Cloudflare Workers AI, NVIDIA NIM, Z.ai, Ant Ling, Moonshot AI, MiniMax, Vercel
 AI Gateway, and expanded GitHub Copilot routes. The release extends generated
 image metadata with OpenRouter-routed Grok and Gemini image routes, tightens
 the OpenAI-compatible preview adapters around prompt caching, replay, stream
-parsing, provider-specific reasoning formats, Codex OAuth, and Codex WebSocket
-session reuse, adds a provider-neutral embeddings surface for OpenAI text
-embedding models plus typed embedding telemetry and custom OpenAI-compatible
-embedding metadata, and adds typed provider error classification for safer
-caller retry and recovery decisions. The Google preview adapters now include the
-scoped provider hardening for Vertex credential fallback, model-scoped routing
-metadata, and replayed tool-call IDs. Direct xAI/Grok support remains focused
-on the preview Chat Completions adapter.
+  parsing, provider-specific reasoning formats, Codex OAuth, and Codex WebSocket
+  session reuse, adds a provider-neutral embeddings surface for OpenAI text
+  embedding models plus typed embedding telemetry and custom OpenAI-compatible
+  embedding metadata, hardens resilient embedding batches with limits, cache
+  hooks, safer splitting, and trace metadata, and adds typed provider error
+  classification for safer caller retry and recovery decisions. The Google
+  preview adapters now include the scoped provider hardening for Vertex
+  credential fallback, model-scoped routing metadata, and replayed tool-call IDs.
+  Direct xAI/Grok support remains focused on the preview Chat Completions adapter.
 
 ## Added
 
@@ -127,6 +128,17 @@ on the preview Chat Completions adapter.
 - `Client.EmbedBatch` adds resilient embedding batch execution with duplicate
   input reuse, retry-aware batch splitting, optional oversized-input splitting,
   progress callbacks, and aggregate status/request/usage/cost summaries.
+- Embedding model metadata now records known batch input and UTF-8 byte limits,
+  and built-in OpenAI embedding rows include the documented input-array cap.
+- `Client.EmbedBatch` now applies model/request batch limits before provider
+  dispatch, supports cross-call embedding caches keyed by SHA-256 input hashes,
+  and keeps token-budget estimation caller-owned.
+- Oversized embedding recovery now uses safer newline, whitespace, and
+  UTF-8-safe rune split boundaries, and local request-too-large/tokenizer EOF
+  failures classify as split-recoverable without becoming same-request retries.
+- `EmbeddingBatchSummary` now includes structured trace events for cache
+  lookups/stores, planned limit splits, provider attempts, errors, and
+  oversized-input splits without raw input text.
 
 ## Compatibility
 
@@ -182,9 +194,9 @@ This release should use the validation process in [RELEASING.md](../RELEASING.md
 No live xAI or OpenRouter provider calls are required for release validation.
 OpenAI provider changes, image generation/edit/variation/streaming behavior,
 Codex OAuth and WebSocket flows, typed provider error classification, and
-generated catalog metadata, including strict OpenCode thinking and routed model
-metadata plus the focused provider-family registry refresh and OpenAI
-embedding support, typed embedding telemetry, custom OpenAI-compatible
-embedding metadata, and embedding capability metadata, are covered by
-deterministic request, response, OAuth, SSE/WebSocket, checksum, payload, and
-registry fixtures.
+  generated catalog metadata, including strict OpenCode thinking and routed model
+  metadata plus the focused provider-family registry refresh and OpenAI
+  embedding support, typed embedding telemetry, custom OpenAI-compatible
+  embedding metadata, embedding capability metadata, and resilient embedding
+  batch hardening are covered by deterministic request, response, OAuth,
+  SSE/WebSocket, checksum, payload, registry, cache, split, and trace fixtures.

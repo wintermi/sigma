@@ -9,6 +9,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -123,6 +124,7 @@ func TestClassifyError(t *testing.T) {
 		err       error
 		class     ErrorClass
 		retryable bool
+		split     bool
 		after     time.Duration
 		code      string
 	}{
@@ -180,7 +182,33 @@ func TestClassifyError(t *testing.T) {
 			name:  "context overflow",
 			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"code":"context_length_exceeded","message":"too many tokens"}}`), ErrContextOverflow),
 			class: ErrorClassContextOverflow,
+			split: true,
 			code:  "context_length_exceeded",
+		},
+		{
+			name:  "request too large code",
+			err:   NewProviderError(ProviderOpenAI, API(EmbeddingAPIOpenAIEmbeddings), "embed-test", 400, "", 0, []byte(`{"error":{"code":"request_too_large","message":"request too large"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+			code:  "request_too_large",
+		},
+		{
+			name:  "http 413",
+			err:   NewProviderError(ProviderOpenAI, API(EmbeddingAPIOpenAIEmbeddings), "embed-test", 413, "", 0, []byte(`{"error":{"message":"payload too large"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "ollama tokenizer eof",
+			err:   NewProviderError(ProviderCustom, API(EmbeddingAPIOpenAIEmbeddings), "nomic-embed", 400, "", 0, []byte(`{"error":{"message":"tokenizer failed: EOF"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:      "plain eof",
+			err:       io.EOF,
+			class:     ErrorClassTransient,
+			retryable: true,
 		},
 		{
 			name:  "invalid request",
@@ -221,6 +249,9 @@ func TestClassifyError(t *testing.T) {
 			}
 			if classification.RetryHint.Retryable != tt.retryable {
 				t.Fatalf("retryable = %v, want %v", classification.RetryHint.Retryable, tt.retryable)
+			}
+			if classification.SplitRecoverable != tt.split {
+				t.Fatalf("split recoverable = %v, want %v", classification.SplitRecoverable, tt.split)
 			}
 			if classification.RetryHint.After != tt.after {
 				t.Fatalf("retry after = %v, want %v", classification.RetryHint.After, tt.after)

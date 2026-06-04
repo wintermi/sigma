@@ -30,6 +30,14 @@ have narrow APIs and deterministic tests.
       provider/API/model identity, retry attempts, and per-attempt latency.
 - [x] Add generic batch telemetry for total request attempts, status buckets,
       request IDs, attempts, usage, and cost.
+- [x] Add model/request-level embedding batch limits for input counts and UTF-8
+      byte budgets while keeping token-budget estimation caller-owned.
+- [x] Add cross-call embedding cache hooks with SHA-256 input keys and
+      deterministic fake-cache coverage.
+- [x] Add split-recoverable classification for embedding request-too-large and
+      local tokenizer EOF failures.
+- [x] Add safer oversized embedding split boundaries and structured batch trace
+      events for caller aggregation.
 - [x] Add OpenAI-compatible embedding model construction for caller-registered
       local or private embedding endpoints.
 - [x] Add explicit embedding dimension-range metadata for discovery and routing.

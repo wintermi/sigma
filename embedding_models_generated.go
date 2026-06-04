@@ -38,6 +38,7 @@ var builtinEmbeddingModels = []EmbeddingModel{
 		MinDimensions:       1,
 		MaxDimensions:       3072,
 		MaxInputTokens:      8192,
+		MaxBatchInputs:      2048,
 		InputCostPerMillion: 0.13,
 		CostCurrency:        "USD",
 		ProviderMetadata: map[string]any{
@@ -56,6 +57,7 @@ var builtinEmbeddingModels = []EmbeddingModel{
 		MinDimensions:       1,
 		MaxDimensions:       1536,
 		MaxInputTokens:      8192,
+		MaxBatchInputs:      2048,
 		InputCostPerMillion: 0.02,
 		CostCurrency:        "USD",
 		ProviderMetadata: map[string]any{

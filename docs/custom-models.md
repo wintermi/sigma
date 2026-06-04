@@ -113,6 +113,7 @@ model := sigma.OpenAICompatibleEmbeddingModel(sigma.OpenAICompatibleEmbeddingMod
 	MinDimensions:       1,
 	MaxDimensions:       1024,
 	MaxInputTokens:      8192,
+	MaxBatchInputs:      16,
 	InputCostPerMillion: 0.01,
 	CostCurrency:        "USD",
 })
@@ -125,7 +126,9 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 The embedding constructor uses the same model-scoped `BaseURL`, `Headers`, and
 provider metadata conventions as `OpenAICompatibleModel`, but returns an
-`EmbeddingModel` with the OpenAI embeddings API.
+`EmbeddingModel` with the OpenAI embeddings API. Local embedding endpoints
+default to one input per batch; set `MaxBatchInputs` after fixture-testing that
+the endpoint accepts larger input arrays.
 
 ## Metadata Only
 

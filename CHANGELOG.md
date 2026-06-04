@@ -120,6 +120,13 @@ See [release notes](docs/release-notes-v0.3.0.md).
   retry-aware batch splitting, optional oversized-input splitting, progress
   callbacks, and aggregate status/request/usage/cost summaries while preserving
   the existing provider-neutral embedding contracts.
+- `Client.EmbedBatch` now honors model and request-level embedding batch limits,
+  supports cross-call embedding caches keyed by provider/model/dimensions and
+  SHA-256 input hashes, uses safer UTF-8-aware split boundaries for oversized
+  inputs, and records structured batch trace events for caller aggregation.
+- Embedding error classification now marks context-overflow, request-too-large,
+  and local tokenizer EOF failures as split-recoverable without treating them as
+  same-request retries.
 
 ### Compatibility
 
