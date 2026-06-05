@@ -15,6 +15,8 @@
 // - Cloudflare Workers AI models: https://developers.cloudflare.com/workers-ai/models/
 // - Fireworks Fire Pass setup: https://docs.fireworks.ai/firepass
 // - Google Gemini models: https://ai.google.dev/gemini-api/docs/models
+// - Google Vertex AI Claude models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude
+// - Google Vertex AI Llama models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/llama/use-llama
 // - MiniMax models: https://platform.minimaxi.com/document/models
 // - Mistral models: https://docs.mistral.ai/getting-started/models/models_overview/
 // - Moonshot AI models: https://platform.moonshot.ai/docs/pricing/chat

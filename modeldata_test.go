@@ -373,6 +373,8 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 		ProviderGitHubCopilot,
 		ProviderGoogle,
 		ProviderGoogleVertex,
+		ProviderGoogleVertexAnthropic,
+		ProviderGoogleVertexOpenAI,
 		ProviderGroq,
 		ProviderKimi,
 		ProviderMistral,
@@ -623,6 +625,53 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		t.Fatalf("Vertex Gemini 3.1 Pro Preview metadata = %+v, want Vertex tools, images, and reasoning", vertexPro)
 	}
 	assertMetadataString(t, vertexPro.ProviderMetadata, "vertexPublisher", "google")
+
+	vertexClaude, ok := registry.Model(ProviderGoogleVertexAnthropic, "claude-sonnet-4@20250514")
+	if !ok {
+		t.Fatal("fresh registry missing generated Vertex Claude model")
+	}
+	if vertexClaude.API != APIAnthropicMessages || !vertexClaude.SupportsTools || !vertexClaude.SupportsImages() || !vertexClaude.SupportsReasoning() {
+		t.Fatalf("Vertex Claude metadata = %+v, want Anthropic Messages tools, images, and reasoning", vertexClaude)
+	}
+	if vertexClaude.AnthropicMessagesCompat == nil ||
+		vertexClaude.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingBudget {
+		t.Fatalf("Vertex Claude compat = %#v, want budget thinking", vertexClaude.AnthropicMessagesCompat)
+	}
+	assertMetadataString(t, vertexClaude.ProviderMetadata, "vertexPublisher", "anthropic")
+	assertMetadataStrings(t, vertexClaude.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
+
+	for _, modelID := range []ModelID{"claude-opus-4-8", "claude-sonnet-4-6"} {
+		latestClaude, ok := registry.Model(ProviderGoogleVertexAnthropic, modelID)
+		if !ok {
+			t.Fatalf("fresh registry missing latest generated Vertex Claude model %s", modelID)
+		}
+		if latestClaude.API != APIAnthropicMessages || !latestClaude.SupportsTools || !latestClaude.SupportsImages() || !latestClaude.SupportsReasoning() {
+			t.Fatalf("latest Vertex Claude metadata for %s = %+v, want Anthropic Messages tools, images, and reasoning", modelID, latestClaude)
+		}
+		if latestClaude.AnthropicMessagesCompat == nil ||
+			latestClaude.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+			t.Fatalf("latest Vertex Claude compat for %s = %#v, want adaptive thinking", modelID, latestClaude.AnthropicMessagesCompat)
+		}
+		assertMetadataString(t, latestClaude.ProviderMetadata, "vertexPublisher", "anthropic")
+		assertMetadataStrings(t, latestClaude.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
+	}
+
+	vertexLlama, ok := registry.Model(ProviderGoogleVertexOpenAI, "meta/llama-3.3-70b-instruct-maas")
+	if !ok {
+		t.Fatal("fresh registry missing generated Vertex Llama MaaS model")
+	}
+	if vertexLlama.API != APIOpenAICompletions || !vertexLlama.SupportsTools || vertexLlama.SupportsReasoning() {
+		t.Fatalf("Vertex Llama metadata = %+v, want OpenAI-compatible tools without reasoning", vertexLlama)
+	}
+	if vertexLlama.OpenAICompletionsCompat == nil ||
+		vertexLlama.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+		vertexLlama.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+		t.Fatalf("Vertex Llama compat = %#v, want conservative OpenAI-compatible overrides", vertexLlama.OpenAICompletionsCompat)
+	}
+	if got, ok := vertexLlama.ProviderMetadata["vertexOpenAICompatible"].(bool); !ok || !got {
+		t.Fatalf("vertexOpenAICompatible metadata = %v, %v; want true, true", got, ok)
+	}
+	assertMetadataStrings(t, vertexLlama.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
 }
 
 func TestGeneratedModelMetadataOrder(t *testing.T) {

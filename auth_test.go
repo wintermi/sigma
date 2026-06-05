@@ -80,6 +80,8 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "anthropic", provider: sigma.ProviderAnthropic, env: "ANTHROPIC_API_KEY"},
 		{name: "google", provider: sigma.ProviderGoogle, env: "GOOGLE_API_KEY"},
 		{name: "google cloud", provider: sigma.ProviderGoogleVertex, env: "GOOGLE_CLOUD_API_KEY"},
+		{name: "google vertex openai", provider: sigma.ProviderGoogleVertexOpenAI, env: "GOOGLE_CLOUD_API_KEY"},
+		{name: "google vertex anthropic", provider: sigma.ProviderGoogleVertexAnthropic, env: "GOOGLE_CLOUD_API_KEY"},
 		{name: "mistral", provider: sigma.ProviderMistral, env: "MISTRAL_API_KEY"},
 		{name: "openrouter", provider: sigma.ProviderOpenRouter, env: "OPENROUTER_API_KEY"},
 		{name: "xai", provider: sigma.ProviderXAI, env: "XAI_API_KEY"},

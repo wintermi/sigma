@@ -35,6 +35,14 @@
       "url": "https://ai.google.dev/gemini-api/docs/models"
     },
     {
+      "name": "Google Vertex AI Claude models",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude"
+    },
+    {
+      "name": "Google Vertex AI Llama models",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/llama/use-llama"
+    },
+    {
       "name": "MiniMax models",
       "url": "https://platform.minimaxi.com/document/models"
     },
@@ -7036,6 +7044,428 @@
         "minimal",
         "medium"
       ]
+    },
+    {
+      "id": "claude-opus-4",
+      "name": "Claude Opus 4 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 15,
+        "outputPerMillion": 75,
+        "cacheReadInputPerMillion": 1.5,
+        "cacheWriteInputPerMillion": 18.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "claude-opus-4-1",
+      "name": "Claude Opus 4.1 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 15,
+        "outputPerMillion": 75,
+        "cacheReadInputPerMillion": 1.5,
+        "cacheWriteInputPerMillion": 18.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "claude-opus-4-5",
+      "name": "Claude Opus 4.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "claude-opus-4-6",
+      "name": "Claude Opus 4.6 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "max"
+      }
+    },
+    {
+      "id": "claude-opus-4-7",
+      "name": "Claude Opus 4.7 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "claude-opus-4-8",
+      "name": "Claude Opus 4.8 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "claude-sonnet-4",
+      "name": "Claude Sonnet 4 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "name": "Claude Sonnet 4.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "claude-sonnet-4@20250514",
+      "name": "Claude Sonnet 4 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "meta/llama-3.3-70b-instruct-maas",
+      "name": "Llama 3.3 70B Instruct MaaS (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama",
+        "vertexOpenAICompatible": true
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
     },
     {
       "id": "gemini-2.0-flash",

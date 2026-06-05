@@ -9,8 +9,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 `sigma` v0.4.0 is open for development. The first compatibility fixes tighten
 structured-output request shaping, OpenAI Responses reasoning replay defaults,
-OpenAI-compatible Chat Completions history replay for stricter routes, and the
-documented Google Vertex explicit-routing contract.
+OpenAI-compatible Chat Completions history replay for stricter routes, and
+Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
 
 ## Added
 
@@ -27,6 +27,13 @@ documented Google Vertex explicit-routing contract.
 - Google Vertex AI keeps project/location routing explicit through
   `VertexConfig` or provider options and continues to use caller-supplied
   `WithVertexTokenProvider` sources for ADC/OAuth tokens.
+- Vertex AI now has focused non-Gemini text support through
+  `google-vertex-openai` for OpenAI-compatible MaaS Chat Completions and
+  `google-vertex-anthropic` for Anthropic Claude `streamRawPredict`, both using
+  shared Vertex endpoint construction and Google auth handling.
+- Generated model metadata now includes representative Vertex MaaS rows for
+  Llama and Claude routes while keeping broad MaaS catalog expansion out of the
+  default registry refresh.
 
 ## Compatibility
 
@@ -42,12 +49,23 @@ documented Google Vertex explicit-routing contract.
 - Google Vertex AI does not read ambient project/location routing or load ADC
   tokens itself; applications should resolve those inputs before registering or
   calling the provider.
+- Vertex OpenAI-compatible MaaS models use the Chat Completions API surface but
+  route through Vertex's `endpoints/openapi/chat/completions` endpoint and
+  Google `X-Goog-Api-Key` or OAuth Bearer auth.
+- Vertex Anthropic models use the Anthropic Messages API surface but send
+  `anthropic_version` in the request body and route through Vertex
+  `streamRawPredict`, not the direct Anthropic `/messages` endpoint.
 
 ## Deferred work
 
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 - Ambient Vertex project/location fallback and built-in ADC token discovery
   remain deferred pending a broader provider credential-loading policy.
+- Mistral-on-Vertex remains deferred until its `rawPredict` and
+  `streamRawPredict` Chat Completions-shaped payloads have deterministic
+  fixtures.
+- Broad Vertex MaaS catalog expansion and live Vertex MaaS probes remain
+  opt-in future work and are not part of `mise run ci`.
 
 ## Validation status
 

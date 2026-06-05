@@ -25,6 +25,10 @@ See [release notes](docs/release-notes-v0.4.0.md).
   project/location through `VertexConfig` or provider options and supply
   ADC/OAuth tokens with `WithVertexTokenProvider`, while ambient routing and
   built-in ADC discovery remain deferred.
+- Vertex AI now has first-class non-Gemini provider registrations for
+  OpenAI-compatible MaaS routes and Anthropic Claude `streamRawPredict` routes,
+  including shared Vertex project/location routing, API-key or OAuth token auth,
+  placeholder credential fallback, and representative generated metadata.
 
 ## [0.3.0] - 2026-06-05
 

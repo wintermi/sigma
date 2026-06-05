@@ -97,6 +97,28 @@ integrations remain future work until they have the same local evidence bar.
       routes so JSON object and strict JSON Schema support can be refreshed
       from live evidence without making provider calls part of `mise run ci`.
 
+## Vertex MaaS
+
+Sigma now has focused non-Gemini Vertex support for OpenAI-compatible MaaS
+routes and Anthropic Claude `streamRawPredict` routes, using explicit
+project/location routing and caller-supplied API-key or OAuth token credentials.
+Broader MaaS provider coverage remains future work until each route has
+deterministic request, stream, error, and metadata evidence.
+
+- [x] Add first-class Vertex OpenAI-compatible MaaS and Vertex Anthropic
+      provider registrations with shared project/location, API-version,
+      endpoint override, API-key, OAuth token, and placeholder credential
+      behavior.
+- [x] Add representative generated metadata for Vertex OpenAI-compatible Llama
+      MaaS and Anthropic Claude routes without broad catalog expansion.
+- [ ] Add Mistral-on-Vertex `rawPredict`/`streamRawPredict` support only after
+      settling its Chat Completions-shaped request and response fixtures.
+- [ ] Add broader Vertex MaaS catalog refresh support through the existing
+      reviewable catalog workflow rather than ad hoc metadata imports.
+- [ ] Add opt-in live Vertex MaaS probes for OpenAI-compatible, Anthropic, and
+      future Mistral routes without making live provider calls part of
+      `mise run ci`.
+
 ## First-class provider rows
 
 Provider IDs and compatibility routing may already exist, but each needs

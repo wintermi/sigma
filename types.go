@@ -99,6 +99,10 @@ const (
 	ProviderGoogle ProviderID = "google"
 	// ProviderGoogleVertex identifies Google Vertex AI.
 	ProviderGoogleVertex ProviderID = "google-vertex"
+	// ProviderGoogleVertexOpenAI identifies Vertex AI OpenAI-compatible MaaS.
+	ProviderGoogleVertexOpenAI ProviderID = "google-vertex-openai"
+	// ProviderGoogleVertexAnthropic identifies Anthropic Claude on Vertex AI.
+	ProviderGoogleVertexAnthropic ProviderID = "google-vertex-anthropic"
 	// ProviderMistral identifies Mistral AI.
 	ProviderMistral ProviderID = "mistral"
 	// ProviderAmazonBedrock identifies Amazon Bedrock.
