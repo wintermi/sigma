@@ -11844,7 +11844,8 @@
       ],
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
-        "requiresReasoningContentOnAssistantMessages": "supported"
+        "requiresReasoningContentOnAssistantMessages": "supported",
+        "supportsJSONSchemaResponseFormat": "unsupported"
       }
     },
     {

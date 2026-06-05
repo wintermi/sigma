@@ -7,6 +7,7 @@ package openai
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -687,6 +688,138 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 		if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorInvalidOptions {
 			t.Fatalf("unsupported Grok Build level %q error = %T %[2]v, want invalid options", level, err)
 		}
+	}
+}
+
+func TestOpenAICompletionsCompatDowngradesUnsupportedJSONSchemaResponseFormat(t *testing.T) {
+	t.Parallel()
+
+	responseFormat := map[string]any{
+		"type": "json_schema",
+		"json_schema": map[string]any{
+			"name":   "answer",
+			"strict": true,
+			"schema": map[string]any{"type": "object"},
+		},
+	}
+	model := compatTestModel(sigma.OpenAICompletionsCompat{
+		SupportsJSONSchemaResponseFormat: sigma.OpenAICompatUnsupported,
+	})
+
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("json")}},
+		sigma.Options{OpenAIOptions: &sigma.OpenAIOptions{ResponseFormat: responseFormat}},
+		openAICompletionsCompat(model, "https://opencode.ai/zen/go/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+
+	got, ok := payload["response_format"].(map[string]any)
+	if !ok {
+		t.Fatalf("response_format = %#v, want map", payload["response_format"])
+	}
+	if !reflect.DeepEqual(got, map[string]any{"type": "json_object"}) {
+		t.Fatalf("response_format = %#v, want json_object downgrade", got)
+	}
+	if responseFormat["type"] != "json_schema" || responseFormat["json_schema"] == nil {
+		t.Fatalf("original response format was mutated: %#v", responseFormat)
+	}
+}
+
+func TestOpenAICompletionsCompatPreservesSupportedResponseFormats(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		compat         sigma.OpenAICompletionsCompat
+		responseFormat any
+		want           any
+	}{
+		{
+			name: "json schema supported by default",
+			responseFormat: map[string]any{
+				"type": "json_schema",
+				"json_schema": map[string]any{
+					"name":   "answer",
+					"schema": map[string]any{"type": "object"},
+				},
+			},
+			want: map[string]any{
+				"type": "json_schema",
+				"json_schema": map[string]any{
+					"name":   "answer",
+					"schema": map[string]any{"type": "object"},
+				},
+			},
+		},
+		{
+			name: "json object unchanged when json schema unsupported",
+			compat: sigma.OpenAICompletionsCompat{
+				SupportsJSONSchemaResponseFormat: sigma.OpenAICompatUnsupported,
+			},
+			responseFormat: map[string]any{"type": "json_object"},
+			want:           map[string]any{"type": "json_object"},
+		},
+		{
+			name: "non map response format unchanged",
+			compat: sigma.OpenAICompletionsCompat{
+				SupportsJSONSchemaResponseFormat: sigma.OpenAICompatUnsupported,
+			},
+			responseFormat: "opaque",
+			want:           "opaque",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := compatTestModel(tt.compat)
+			payload, err := chatCompletionsPayload(
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("json")}},
+				sigma.Options{OpenAIOptions: &sigma.OpenAIOptions{ResponseFormat: tt.responseFormat}},
+				openAICompletionsCompat(model, "https://custom.example/v1"),
+			)
+			if err != nil {
+				t.Fatalf("chatCompletionsPayload returned error: %v", err)
+			}
+			if got := payload["response_format"]; !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("response_format = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOpenAICompletionsCompatPreservesOpenAIJSONSchemaResponseFormat(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:       "gpt-test",
+		Provider: sigma.ProviderOpenAI,
+		API:      sigma.APIOpenAICompletions,
+	}
+	responseFormat := map[string]any{
+		"type": "json_schema",
+		"json_schema": map[string]any{
+			"name":   "answer",
+			"schema": map[string]any{"type": "object"},
+		},
+	}
+
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("json")}},
+		sigma.Options{OpenAIOptions: &sigma.OpenAIOptions{ResponseFormat: responseFormat}},
+		openAICompletionsCompat(model, "https://api.openai.com/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	if got := payload["response_format"]; !reflect.DeepEqual(got, responseFormat) {
+		t.Fatalf("response_format = %#v, want %#v", got, responseFormat)
 	}
 }
 

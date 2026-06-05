@@ -22,6 +22,7 @@ type completionsCompat struct {
 	supportsStreamingUsage                      bool
 	supportsStrictTools                         bool
 	supportsToolStream                          bool
+	supportsJSONSchemaResponseFormat            bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
 	supportsSessionAffinity                     bool
@@ -45,6 +46,10 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsStreamingUsage = supportOverride(compat.supportsStreamingUsage, override.SupportsStreamingUsage)
 	compat.supportsStrictTools = supportOverride(compat.supportsStrictTools, override.SupportsStrictTools)
 	compat.supportsToolStream = supportOverride(compat.supportsToolStream, override.SupportsToolStream)
+	compat.supportsJSONSchemaResponseFormat = supportOverride(
+		compat.supportsJSONSchemaResponseFormat,
+		override.SupportsJSONSchemaResponseFormat,
+	)
 	compat.supportsSessionAffinity = supportOverride(compat.supportsSessionAffinity, override.SupportsSessionAffinity)
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
@@ -79,14 +84,15 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 	switch {
 	case provider == sigma.ProviderOpenAI || host == "api.openai.com":
 		return completionsCompat{
-			supportsStore:           true,
-			supportsDeveloperRole:   true,
-			reasoningFormat:         sigma.OpenAICompletionsReasoningEffort,
-			supportsReasoningEffort: true,
-			supportsStreamingUsage:  true,
-			supportsStrictTools:     true,
-			maxTokensField:          sigma.OpenAICompletionsMaxTokens,
-			cacheControlFormat:      sigma.OpenAICompletionsCacheControlMessage,
+			supportsStore:                    true,
+			supportsDeveloperRole:            true,
+			reasoningFormat:                  sigma.OpenAICompletionsReasoningEffort,
+			supportsReasoningEffort:          true,
+			supportsStreamingUsage:           true,
+			supportsStrictTools:              true,
+			supportsJSONSchemaResponseFormat: true,
+			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
+			cacheControlFormat:               sigma.OpenAICompletionsCacheControlMessage,
 		}
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
@@ -127,10 +133,11 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 
 func conservativeCompletionsCompat() completionsCompat {
 	return completionsCompat{
-		reasoningFormat:         sigma.OpenAICompletionsReasoningUnsupported,
-		supportsReasoningEffort: true,
-		maxTokensField:          sigma.OpenAICompletionsMaxTokens,
-		cacheControlFormat:      sigma.OpenAICompletionsCacheControlUnsupported,
+		reasoningFormat:                  sigma.OpenAICompletionsReasoningUnsupported,
+		supportsReasoningEffort:          true,
+		supportsJSONSchemaResponseFormat: true,
+		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
+		cacheControlFormat:               sigma.OpenAICompletionsCacheControlUnsupported,
 	}
 }
 

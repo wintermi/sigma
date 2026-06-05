@@ -90,6 +90,9 @@ integrations remain future work until they have the same local evidence bar.
       first-class OpenAI-compatible row.
 - [x] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
       first-class Cloudflare OpenAI-compatible row.
+- [ ] Add opt-in structured-output capability probes for OpenAI-compatible
+      routes so JSON object and strict JSON Schema support can be refreshed
+      from live evidence without making provider calls part of `mise run ci`.
 
 ## First-class provider rows
 

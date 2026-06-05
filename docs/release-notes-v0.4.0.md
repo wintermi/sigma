@@ -7,16 +7,23 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.4.0 is open for development. Release scope will be recorded here as
-changes land.
+`sigma` v0.4.0 is open for development. The first compatibility fix tightens
+structured-output request shaping for an OpenCode Go DeepSeek route that does
+not currently accept strict JSON Schema response formats.
 
 ## Added
 
-- No release-visible changes yet.
+- OpenCode Go DeepSeek V4 Flash Chat Completions requests now preserve JSON
+  generation by downgrading unsupported strict JSON Schema response formats to
+  JSON object mode.
 
 ## Compatibility
 
-- Compatibility notes will be added as release-visible changes land.
+- `opencode-go/deepseek-v4-flash` no longer sends
+  `response_format.type = "json_schema"` through Chat Completions. Sigma
+  downgrades that request shape to `response_format.type = "json_object"` for
+  this model because the route rejects strict JSON Schema response formats
+  before generation.
 
 ## Deferred work
 

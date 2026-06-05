@@ -281,8 +281,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	if openCodeGo.OpenAICompletionsCompat == nil ||
 		openCodeGo.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		openCodeGo.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-		t.Fatalf("OpenCode Go DeepSeek compat = %#v, want deepseek reasoning content replay", openCodeGo.OpenAICompletionsCompat)
+		openCodeGo.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported ||
+		openCodeGo.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Go DeepSeek compat = %#v, want deepseek reasoning replay and JSON Schema response downgrade", openCodeGo.OpenAICompletionsCompat)
 	}
 	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("OpenCode Go xhigh level = %q, %v; want max, true", got, ok)

@@ -12,7 +12,9 @@ See [release notes](docs/release-notes-v0.4.0.md).
 
 ### Added
 
-- No release-visible changes yet.
+- OpenCode Go DeepSeek V4 Flash Chat Completions requests now downgrade
+  strict JSON Schema response formats to JSON object mode, avoiding provider
+  rejection while preserving JSON-mode generation.
 
 ## [0.3.0] - 2026-06-05
 

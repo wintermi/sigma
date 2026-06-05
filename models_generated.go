@@ -9929,7 +9929,8 @@ var builtinTextModels = []Model{
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
-			ReasoningFormat: OpenAICompletionsReasoningFormat("deepseek"),
+			ReasoningFormat:                             OpenAICompletionsReasoningFormat("deepseek"),
+			SupportsJSONSchemaResponseFormat:            OpenAICompatSupport("unsupported"),
 			RequiresReasoningContentOnAssistantMessages: OpenAICompatSupport("supported"),
 		},
 		ProviderMetadata: map[string]any{

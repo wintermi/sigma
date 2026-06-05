@@ -136,7 +136,7 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
 	}
 	if opts.OpenAIOptions.ResponseFormat != nil {
-		payload["response_format"] = opts.OpenAIOptions.ResponseFormat
+		payload["response_format"] = chatResponseFormat(opts.OpenAIOptions.ResponseFormat, compat)
 	}
 	if opts.OpenAIOptions.TopLogprobs > 0 {
 		payload["logprobs"] = true
@@ -151,6 +151,20 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 	if opts.OpenAIOptions.PromptCacheRetention != "" {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
 	}
+}
+
+func chatResponseFormat(value any, compat completionsCompat) any {
+	if compat.supportsJSONSchemaResponseFormat {
+		return value
+	}
+	responseFormat, ok := value.(map[string]any)
+	if !ok {
+		return value
+	}
+	if formatType, _ := responseFormat[providerToolOptionTypeKey].(string); formatType != "json_schema" {
+		return value
+	}
+	return map[string]any{providerToolOptionTypeKey: "json_object"}
 }
 
 func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat) ([]map[string]any, error) {
@@ -282,8 +296,8 @@ func inputContent(message sigma.Message) (any, error) {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			parts = append(parts, map[string]any{
-				"type": "text", //nolint:goconst
-				"text": providerText(block.Text),
+				providerToolOptionTypeKey: "text",
+				"text":                    providerText(block.Text),
 			})
 		case sigma.ContentBlockImage:
 			if message.Role != sigma.RoleUser {
@@ -294,7 +308,7 @@ func inputContent(message sigma.Message) (any, error) {
 				return nil, err
 			}
 			parts = append(parts, map[string]any{
-				"type": "image_url",
+				providerToolOptionTypeKey: "image_url",
 				"image_url": map[string]any{
 					"url": url,
 				},
@@ -353,8 +367,8 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 				return "", "", nil, err
 			}
 			toolCalls = append(toolCalls, map[string]any{
-				"id":   chatToolCallID(block.ToolCallID),
-				"type": "function",
+				"id":                      chatToolCallID(block.ToolCallID),
+				providerToolOptionTypeKey: "function",
 				"function": map[string]any{
 					"name":      block.ToolName,
 					"arguments": arguments,
@@ -429,7 +443,7 @@ func toolResultImageParts(message sigma.Message) ([]map[string]any, error) {
 			return nil, err
 		}
 		parts = append(parts, map[string]any{
-			"type": "image_url",
+			providerToolOptionTypeKey: "image_url",
 			"image_url": map[string]any{
 				"url": url,
 			},
@@ -441,8 +455,8 @@ func toolResultImageParts(message sigma.Message) ([]map[string]any, error) {
 func toolResultImageMessage(imageParts []map[string]any) map[string]any {
 	parts := make([]map[string]any, 0, 1+len(imageParts))
 	parts = append(parts, map[string]any{
-		"type": "text",
-		"text": "Attached image(s) from tool result:",
+		providerToolOptionTypeKey: "text",
+		"text":                    "Attached image(s) from tool result:",
 	})
 	parts = append(parts, imageParts...)
 	return map[string]any{
@@ -462,7 +476,7 @@ func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat) 
 			return nil, fmt.Errorf("openai completions: tool %q schema: %w", tool.Name, err)
 		}
 		if parameters == nil {
-			parameters = map[string]any{"type": "object"}
+			parameters = map[string]any{providerToolOptionTypeKey: "object"}
 		}
 		function := map[string]any{
 			"name":        tool.Name,
@@ -475,8 +489,8 @@ func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat) 
 			}
 		}
 		converted = append(converted, map[string]any{
-			"type":     "function",
-			"function": function,
+			providerToolOptionTypeKey: "function",
+			"function":                function,
 		})
 	}
 	return converted, nil
@@ -635,10 +649,10 @@ func addDeepSeekReasoning(payload map[string]any, model sigma.Model, opts sigma.
 	}
 	effort := reasoningEffort(model, opts)
 	if effort == "" {
-		payload["thinking"] = map[string]any{"type": "disabled"}
+		payload["thinking"] = map[string]any{providerToolOptionTypeKey: "disabled"}
 		return
 	}
-	payload["thinking"] = map[string]any{"type": "enabled"}
+	payload["thinking"] = map[string]any{providerToolOptionTypeKey: "enabled"}
 	if compat.supportsReasoningEffort {
 		payload["reasoning_effort"] = effort
 	}
@@ -668,8 +682,8 @@ func addStringThinkingReasoning(payload map[string]any, model sigma.Model, opts 
 func addFireworksReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if opts.ThinkingBudgetTokens != nil {
 		payload["thinking"] = map[string]any{
-			"type":          "enabled",
-			"budget_tokens": *opts.ThinkingBudgetTokens,
+			providerToolOptionTypeKey: "enabled",
+			"budget_tokens":           *opts.ThinkingBudgetTokens,
 		}
 		return
 	}
@@ -771,7 +785,7 @@ func addCacheControl(message map[string]any, retention sigma.CacheRetention, for
 	if retention.CacheLongLived() {
 		cacheType = "persistent"
 	}
-	cacheControl := map[string]any{"type": cacheType}
+	cacheControl := map[string]any{providerToolOptionTypeKey: cacheType}
 	if format == sigma.OpenAICompletionsCacheControlContentPart {
 		addContentPartCacheControl(message, cacheControl)
 		return
@@ -783,7 +797,7 @@ func anthropicCacheControl(retention sigma.CacheRetention, format sigma.OpenAICo
 	if !retention.CacheEnabled() || format != sigma.OpenAICompletionsCacheControlAnthropic {
 		return nil
 	}
-	cacheControl := map[string]any{"type": "ephemeral"}
+	cacheControl := map[string]any{providerToolOptionTypeKey: "ephemeral"}
 	if retention.CacheLongLived() {
 		cacheControl["ttl"] = "1h"
 	}
@@ -822,9 +836,9 @@ func addContentPartCacheControl(message map[string]any, cacheControl map[string]
 			return false
 		}
 		message["content"] = []map[string]any{{
-			"type":             providerOptionText,
-			providerOptionText: content,
-			"cache_control":    cacheControl,
+			providerToolOptionTypeKey: providerOptionText,
+			providerOptionText:        content,
+			"cache_control":           cacheControl,
 		}}
 		return true
 	case []map[string]any:
@@ -832,7 +846,7 @@ func addContentPartCacheControl(message map[string]any, cacheControl map[string]
 			return false
 		}
 		for index := len(content) - 1; index >= 0; index-- {
-			if content[index]["type"] != providerOptionText {
+			if content[index][providerToolOptionTypeKey] != providerOptionText {
 				continue
 			}
 			content[index]["cache_control"] = cacheControl
