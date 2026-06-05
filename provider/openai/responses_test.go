@@ -1211,6 +1211,108 @@ func TestResponsesRetriesRetryableStatus(t *testing.T) {
 	}
 }
 
+func TestResponsesDefaultsStoreAndReasoningReplayInclude(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		opts          []sigma.Option
+		wantStore     any
+		wantInclude   any
+		wantSummary   any
+		wantNoInclude bool
+	}{
+		{
+			name:        "reasoning defaults store include and summary",
+			opts:        []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelHigh)},
+			wantStore:   false,
+			wantInclude: []any{"reasoning.encrypted_content"},
+			wantSummary: "auto",
+		},
+		{
+			name: "explicit include and store are preserved",
+			opts: []sigma.Option{
+				sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+				sigma.WithProviderOptions(sigma.ProviderID("responses-defaults-test"), map[string]any{
+					"include": []any{"file_search_call.results"},
+					"store":   true,
+				}),
+			},
+			wantStore:   true,
+			wantInclude: []any{"file_search_call.results"},
+			wantSummary: "auto",
+		},
+		{
+			name:          "no reasoning keeps include absent",
+			wantStore:     false,
+			wantNoInclude: true,
+		},
+		{
+			name: "explicit reasoning summary is preserved",
+			opts: []sigma.Option{
+				sigma.WithOpenAIOptions(sigma.OpenAIOptions{
+					ReasoningEffort:  sigma.ThinkingLevelHigh,
+					ReasoningSummary: "detailed",
+				}),
+			},
+			wantStore:   false,
+			wantInclude: []any{"reasoning.encrypted_content"},
+			wantSummary: "detailed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-defaults-test")
+			model := responsesTestModel(providerID)
+			client := responsesTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				tt.opts...,
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got := payload["store"]; got != tt.wantStore {
+				t.Fatalf("store = %#v, want %#v", got, tt.wantStore)
+			}
+			if tt.wantNoInclude {
+				if _, ok := payload["include"]; ok {
+					t.Fatalf("include = %#v, want absent", payload["include"])
+				}
+				return
+			}
+			if !reflect.DeepEqual(payload["include"], tt.wantInclude) {
+				t.Fatalf("include = %#v, want %#v", payload["include"], tt.wantInclude)
+			}
+			reasoning, ok := payload["reasoning"].(map[string]any)
+			if !ok {
+				t.Fatalf("reasoning = %#v, want object", payload["reasoning"])
+			}
+			if got := reasoning["summary"]; got != tt.wantSummary {
+				t.Fatalf("reasoning.summary = %#v, want %#v", got, tt.wantSummary)
+			}
+		})
+	}
+}
+
 func responsesTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.Model, baseURL string, opts ...openai.ProviderOption) *sigma.Client {
 	t.Helper()
 

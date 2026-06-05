@@ -848,6 +848,74 @@ func TestOpenAICompletionsCompatReplaysReasoningContent(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/replays_reasoning_content.json")
 }
 
+func TestOpenAICompletionsCompatOmitsEmptyAssistantReplay(t *testing.T) {
+	t.Parallel()
+
+	model := compatTestModel(sigma.OpenAICompletionsCompat{})
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("start"),
+			{Role: sigma.RoleAssistant},
+			sigma.UserText("continue"),
+		}},
+		sigma.Options{},
+		openAICompletionsCompat(model, "https://custom.example/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	messages, ok := payload["messages"].([]map[string]any)
+	if !ok {
+		t.Fatalf("messages = %#v, want message array", payload["messages"])
+	}
+	roles := make([]any, len(messages))
+	for i, message := range messages {
+		roles[i] = message["role"]
+	}
+	if want := []any{"user", "user"}; !reflect.DeepEqual(roles, want) {
+		t.Fatalf("roles = %#v, want %#v", roles, want)
+	}
+}
+
+func TestOpenAICompletionsCompatRequiresToolsForToolHistory(t *testing.T) {
+	t.Parallel()
+
+	req := sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("weather"),
+		{
+			Role:    sigma.RoleAssistant,
+			Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "weather", map[string]any{"city": "Melbourne"})},
+		},
+		sigma.ToolResult("call_1", "sunny"),
+		sigma.UserText("summarize"),
+	}}
+
+	model := compatTestModel(sigma.OpenAICompletionsCompat{})
+	payload, err := chatCompletionsPayload(model, req, sigma.Options{}, openAICompletionsCompat(model, "https://custom.example/v1"))
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	if _, ok := payload["tools"]; ok {
+		t.Fatalf("tools = %#v, want absent without compat opt-in", payload["tools"])
+	}
+
+	model = compatTestModel(sigma.OpenAICompletionsCompat{
+		RequiresToolsForToolHistory: sigma.OpenAICompatSupported,
+	})
+	payload, err = chatCompletionsPayload(model, req, sigma.Options{}, openAICompletionsCompat(model, "https://custom.example/v1"))
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	tools, ok := payload["tools"].([]map[string]any)
+	if !ok {
+		t.Fatalf("tools = %#v, want empty tool array", payload["tools"])
+	}
+	if len(tools) != 0 {
+		t.Fatalf("tools length = %d, want 0", len(tools))
+	}
+}
+
 func compatTestModel(compat sigma.OpenAICompletionsCompat) sigma.Model {
 	return sigma.Model{
 		ID:                      "compat-model",

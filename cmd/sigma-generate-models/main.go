@@ -236,6 +236,7 @@ func writeOpenAICompatField(b *bytes.Buffer, compat *modeldata.OpenAICompletions
 	writeStringField(b, "SupportsSessionAffinity", "OpenAICompatSupport", compat.SupportsSessionAffinity)
 	writeStringField(b, "RequiresToolResultName", "OpenAICompatSupport", compat.RequiresToolResultName)
 	writeStringField(b, "RequiresAssistantAfterToolResult", "OpenAICompatSupport", compat.RequiresAssistantAfterToolResult)
+	writeStringField(b, "RequiresToolsForToolHistory", "OpenAICompatSupport", compat.RequiresToolsForToolHistory)
 	writeStringField(b, "RequiresReasoningContentOnAssistantMessages", "OpenAICompatSupport", compat.RequiresReasoningContentOnAssistantMessages)
 	writeOpenRouterRoutingField(b, compat.OpenRouterRouting)
 	writeVercelRoutingField(b, compat.VercelAIGatewayRouting)

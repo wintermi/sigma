@@ -70,6 +70,8 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		if compat.supportsToolStream {
 			payload["tool_stream"] = true
 		}
+	} else if compat.requiresToolsForToolHistory && hasToolHistory(req.Messages) {
+		payload["tools"] = []map[string]any{}
 	}
 
 	for key, value := range extraBody(opts, model.Provider) {
@@ -192,6 +194,9 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 		if err != nil {
 			return nil, err
 		}
+		if converted == nil {
+			continue
+		}
 		messages = append(messages, converted)
 		if message.Role == sigma.RoleAssistant {
 			recordToolNames(toolNames, message.Content)
@@ -257,6 +262,9 @@ func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat c
 		if len(toolCalls) > 0 {
 			converted["tool_calls"] = toolCalls
 		}
+		if !assistantHasContent(converted) {
+			return nil, nil
+		}
 		return converted, nil
 	case sigma.RoleTool:
 		content := textContent(message.Content)
@@ -281,6 +289,36 @@ func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat c
 	default:
 		return nil, fmt.Errorf("openai completions: unsupported message role %q", message.Role)
 	}
+}
+
+func assistantHasContent(message map[string]any) bool {
+	if content, ok := message["content"].(string); ok && content != "" {
+		return true
+	}
+	if reasoning, ok := message["reasoning_content"].(string); ok && reasoning != "" {
+		return true
+	}
+	if toolCalls, ok := message["tool_calls"].([]map[string]any); ok && len(toolCalls) > 0 {
+		return true
+	}
+	return false
+}
+
+func hasToolHistory(messages []sigma.Message) bool {
+	for _, message := range messages {
+		if message.Role == sigma.RoleTool {
+			return true
+		}
+		if message.Role != sigma.RoleAssistant {
+			continue
+		}
+		for _, block := range message.Content {
+			if block.Type == sigma.ContentBlockToolCall {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func inputContent(message sigma.Message) (any, error) {

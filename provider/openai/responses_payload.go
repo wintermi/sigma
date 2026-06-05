@@ -36,6 +36,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	payload := map[string]any{
 		"model":  string(model.ID),
 		"input":  input,
+		"store":  false,
 		"stream": true,
 	}
 	if req.SystemPrompt != "" {
@@ -58,6 +59,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 		return nil, err
 	}
 	addResponsesReasoning(payload, model, opts)
+	addResponsesReasoningInclude(payload, model, opts)
 	if len(req.Tools) > 0 {
 		tools, err := responsesTools(req.Tools)
 		if err != nil {
@@ -279,10 +281,32 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	}
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningSummary != "" {
 		reasoning["summary"] = opts.OpenAIOptions.ReasoningSummary
+	} else if len(reasoning) > 0 {
+		reasoning["summary"] = "auto"
 	}
 	if len(reasoning) > 0 {
 		payload["reasoning"] = reasoning
 	}
+}
+
+func addResponsesReasoningInclude(payload map[string]any, model sigma.Model, opts sigma.Options) {
+	if !responsesReasoningEnabled(model, opts) || responsesIncludeConfigured(model.Provider, opts) {
+		return
+	}
+	payload["include"] = []string{"reasoning.encrypted_content"}
+}
+
+func responsesReasoningEnabled(model sigma.Model, opts sigma.Options) bool {
+	if reasoningEffort(model, opts) != "" {
+		return true
+	}
+	return opts.ThinkingBudgetTokens != nil
+}
+
+func responsesIncludeConfigured(provider sigma.ProviderID, opts sigma.Options) bool {
+	options := providerOptions(opts, provider)
+	_, ok := options[providerOptionInclude]
+	return ok
 }
 
 func addResponsesOpenAIOptions(payload map[string]any, model sigma.Model, opts sigma.Options) error {

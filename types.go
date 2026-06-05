@@ -327,6 +327,7 @@ type OpenAICompletionsCompat struct {
 	SupportsSessionAffinity                     OpenAICompatSupport                 `json:"supportsSessionAffinity,omitempty"`
 	RequiresToolResultName                      OpenAICompatSupport                 `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            OpenAICompatSupport                 `json:"requiresAssistantAfterToolResult,omitempty"`
+	RequiresToolsForToolHistory                 OpenAICompatSupport                 `json:"requiresToolsForToolHistory,omitempty"`
 	RequiresReasoningContentOnAssistantMessages OpenAICompatSupport                 `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	OpenRouterRouting                           *OpenRouterRoutingPreference        `json:"openRouterRouting,omitempty"`
 	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference   `json:"vercelAIGatewayRouting,omitempty"`

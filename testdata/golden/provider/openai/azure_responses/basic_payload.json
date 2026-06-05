@@ -13,5 +13,6 @@
   "instructions": "You are helpful.",
   "max_output_tokens": 25,
   "model": "request-deployment",
+  "store": false,
   "stream": true
 }

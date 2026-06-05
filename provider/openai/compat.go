@@ -28,6 +28,7 @@ type completionsCompat struct {
 	supportsSessionAffinity                     bool
 	requiresToolResultName                      bool
 	requiresAssistantAfterToolResult            bool
+	requiresToolsForToolHistory                 bool
 	requiresReasoningContentOnAssistantMessages bool
 	openRouterRouting                           *sigma.OpenRouterRoutingPreference
 	vercelAIGatewayRouting                      *sigma.VercelAIGatewayRoutingPreference
@@ -53,6 +54,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsSessionAffinity = supportOverride(compat.supportsSessionAffinity, override.SupportsSessionAffinity)
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
+	compat.requiresToolsForToolHistory = supportOverride(compat.requiresToolsForToolHistory, override.RequiresToolsForToolHistory)
 	compat.requiresReasoningContentOnAssistantMessages = supportOverride(
 		compat.requiresReasoningContentOnAssistantMessages,
 		override.RequiresReasoningContentOnAssistantMessages,

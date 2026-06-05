@@ -15,6 +15,12 @@ See [release notes](docs/release-notes-v0.4.0.md).
 - OpenCode Go DeepSeek V4 Flash Chat Completions requests now downgrade
   strict JSON Schema response formats to JSON object mode, avoiding provider
   rejection while preserving JSON-mode generation.
+- OpenAI Responses requests now default to `store: false`, include encrypted
+  reasoning replay metadata when reasoning is enabled, and default reasoning
+  summaries to `auto` while preserving explicit caller overrides.
+- OpenAI-compatible Chat Completions replay now omits empty assistant history
+  turns and can opt specific compatibility routes into empty `tools: []`
+  payloads when prior tool-call history requires the tools field.
 
 ## [0.3.0] - 2026-06-05
 

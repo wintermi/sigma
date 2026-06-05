@@ -11,6 +11,7 @@
     }
   ],
   "model": "gpt-test",
+  "store": false,
   "stream": true,
   "tools": [
     {
