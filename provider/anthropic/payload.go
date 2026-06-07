@@ -245,8 +245,12 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompa
 			if input == nil {
 				input = map[string]any{}
 			}
+			blockType := "tool_use"
+			if providerMetadataString(block.ProviderMetadata, "type") == "server_tool_use" {
+				blockType = "server_tool_use"
+			}
 			content = append(content, map[string]any{
-				"type":  "tool_use",
+				"type":  blockType,
 				"id":    block.ToolCallID,
 				"name":  block.ToolName,
 				"input": input,
@@ -583,6 +587,11 @@ func mapOption(options map[string]any, key string) (map[string]any, bool) {
 	}
 	values, ok := value.(map[string]any)
 	return values, ok
+}
+
+func providerMetadataString(metadata map[string]any, key string) string {
+	value, _ := metadata[key].(string)
+	return value
 }
 
 func copyAnyMap(values map[string]any) map[string]any {

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime"
+	"sort"
 	"strings"
 
 	"github.com/wintermi/sigma"
@@ -205,6 +206,8 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		}
 		payload.Tools = tools
 		payload.ToolChoice = toolChoice
+	} else if toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone {
+		payload.Tools = replayToolSpecs(transformed.Messages)
 	}
 	return payload, nil
 }
@@ -427,6 +430,44 @@ func converseTools(model sigma.Model, tools []sigma.Tool) ([]ConverseTool, error
 		})
 	}
 	return converted, nil
+}
+
+func replayToolSpecs(messages []sigma.Message) []ConverseTool {
+	names := make(map[string]struct{})
+	for _, message := range messages {
+		switch message.Role {
+		case sigma.RoleAssistant:
+			for _, block := range message.Content {
+				if block.Type == sigma.ContentBlockToolCall && block.ToolName != "" {
+					names[block.ToolName] = struct{}{}
+				}
+			}
+		case sigma.RoleTool:
+			if message.ToolName != "" {
+				names[message.ToolName] = struct{}{}
+			}
+		case sigma.RoleUser, sigma.RoleDeveloper:
+			continue
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	sorted := make([]string, 0, len(names))
+	for name := range names {
+		sorted = append(sorted, name)
+	}
+	sort.Strings(sorted)
+
+	tools := make([]ConverseTool, 0, len(sorted))
+	for _, name := range sorted {
+		tools = append(tools, ConverseTool{
+			Name:        name,
+			Description: name,
+			InputSchema: map[string]any{"type": "object"},
+		})
+	}
+	return tools
 }
 
 func bedrockModelID(config Config, model sigma.Model) string {

@@ -20,13 +20,14 @@ import (
 )
 
 type streamEvent struct {
-	Type    string          `json:"type"`
-	Index   int             `json:"index"`
-	Message streamMessage   `json:"message"`
-	Content streamContent   `json:"content_block"`
-	Delta   streamDelta     `json:"delta"`
-	Usage   *streamUsage    `json:"usage"`
-	Error   *streamAPIError `json:"error"`
+	Type              string          `json:"type"`
+	Index             int             `json:"index"`
+	Message           streamMessage   `json:"message"`
+	Content           streamContent   `json:"content_block"`
+	Delta             streamDelta     `json:"delta"`
+	Usage             *streamUsage    `json:"usage"`
+	ContextManagement map[string]any  `json:"context_management"`
+	Error             *streamAPIError `json:"error"`
 }
 
 type streamMessage struct {
@@ -40,23 +41,26 @@ type streamMessage struct {
 }
 
 type streamContent struct {
-	Type      string `json:"type"`
-	Text      string `json:"text"`
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Input     any    `json:"input"`
-	Thinking  string `json:"thinking"`
-	Signature string `json:"signature"`
-	Data      string `json:"data"`
+	Type      string           `json:"type"`
+	Text      string           `json:"text"`
+	ID        string           `json:"id"`
+	Name      string           `json:"name"`
+	Input     any              `json:"input"`
+	Thinking  string           `json:"thinking"`
+	Signature string           `json:"signature"`
+	Data      string           `json:"data"`
+	Citations []map[string]any `json:"citations"`
 }
 
 type streamDelta struct {
-	Type        string `json:"type"`
-	Text        string `json:"text"`
-	Thinking    string `json:"thinking"`
-	Signature   string `json:"signature"`
-	PartialJSON string `json:"partial_json"`
-	StopReason  string `json:"stop_reason"`
+	Type        string         `json:"type"`
+	Text        string         `json:"text"`
+	Thinking    string         `json:"thinking"`
+	Signature   string         `json:"signature"`
+	PartialJSON string         `json:"partial_json"`
+	StopReason  string         `json:"stop_reason"`
+	Citation    map[string]any `json:"citation"`
+	Container   map[string]any `json:"container"`
 }
 
 type streamUsage struct {
@@ -65,8 +69,13 @@ type streamUsage struct {
 	CacheCreationInputTokens *int                 `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     *int                 `json:"cache_read_input_tokens"`
 	CacheCreation            *streamCacheCreation `json:"cache_creation"`
+	OutputTokensDetails      *streamOutputDetails `json:"output_tokens_details"`
 	ServerToolUse            map[string]int       `json:"server_tool_use"`
 	ServiceTier              string               `json:"service_tier"`
+}
+
+type streamOutputDetails struct {
+	ThinkingTokens int `json:"thinking_tokens"`
 }
 
 type streamCacheCreation struct {
@@ -91,6 +100,7 @@ type streamParser struct {
 	toolCalls      map[int]*streamblocks.ToolCall
 	responseID     string
 	providerModel  string
+	metadata       map[string]any
 	usage          *sigma.Usage
 	stopReason     sigma.StopReason
 	messageStarted bool
@@ -156,6 +166,12 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	case "message_delta":
 		if parsed.Delta.StopReason != "" {
 			p.stopReason = anthropicStopReason(parsed.Delta.StopReason)
+		}
+		if len(parsed.Delta.Container) > 0 {
+			p.setMetadata("container", parsed.Delta.Container)
+		}
+		if len(parsed.ContextManagement) > 0 {
+			p.setMetadata("context_management", parsed.ContextManagement)
 		}
 		if parsed.Usage != nil {
 			p.mergeUsage(parsed.Usage)
@@ -242,7 +258,7 @@ func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, c
 	case "redacted_thinking":
 		_ = p.thinkingState(index)
 		return nil
-	case "tool_use":
+	case "tool_use", "server_tool_use":
 		return p.emitToolCall(ctx, index, "")
 	default:
 		return nil
@@ -255,6 +271,9 @@ func (p *streamParser) captureContent(index int, content streamContent) {
 		state := p.textState(index)
 		if content.Text != "" {
 			state.Set(content.Text)
+		}
+		if len(content.Citations) > 0 {
+			state.ProviderMetadata = addCitations(state.ProviderMetadata, content.Citations)
 		}
 	case "thinking":
 		state := p.thinkingState(index)
@@ -270,10 +289,13 @@ func (p *streamParser) captureContent(index int, content streamContent) {
 		if content.Data != "" {
 			state.ProviderSignature = content.Data
 		}
-	case "tool_use":
+	case "tool_use", "server_tool_use":
 		state := p.toolCallState(index)
 		state.SetID(content.ID)
 		state.SetName(content.Name)
+		if content.Type == "server_tool_use" {
+			state.ProviderMetadata = withProviderMetadata(state.ProviderMetadata, "type", "server_tool_use")
+		}
 		if content.Input != nil {
 			data, err := json.Marshal(content.Input)
 			if err == nil && (state.ArgumentsText() == "" || string(data) != "{}") {
@@ -295,6 +317,12 @@ func (p *streamParser) handleDelta(ctx context.Context, index int, delta streamD
 		return nil
 	case "input_json_delta":
 		return p.emitToolCall(ctx, index, delta.PartialJSON)
+	case "citations_delta":
+		if len(delta.Citation) > 0 {
+			state := p.textState(index)
+			state.ProviderMetadata = addCitations(state.ProviderMetadata, []map[string]any{delta.Citation})
+		}
+		return nil
 	default:
 		return nil
 	}
@@ -383,7 +411,9 @@ func (p *streamParser) emitToolCall(ctx context.Context, index int, argumentsDel
 func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	contentByIndex := make(map[int]sigma.ContentBlock)
 	for _, state := range p.sortedText() {
-		contentByIndex[state.ContentIndex] = sigma.Text(state.String())
+		block := sigma.Text(state.String())
+		block.ProviderMetadata = copyAnyMap(state.ProviderMetadata)
+		contentByIndex[state.ContentIndex] = block
 	}
 	for _, state := range p.sortedThinking() {
 		block := sigma.Thinking(state.String(), state.Signature)
@@ -393,7 +423,10 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	}
 	for _, state := range p.sortedToolCalls() {
 		call := anthropicToolCall(state)
-		contentByIndex[state.ContentIndex] = sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
+		block := sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
+		block.ProviderSignature = call.ProviderSignature
+		block.ProviderMetadata = copyAnyMap(call.ProviderMetadata)
+		contentByIndex[state.ContentIndex] = block
 	}
 	p.emitEndEvents(ctx)
 
@@ -421,7 +454,7 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
-	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.model.ID)
+	p.final.ProviderMetadata = p.responseMetadata()
 	return p.final
 }
 
@@ -698,12 +731,56 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	if update.CacheReadInputTokens != nil {
 		usage.CacheReadInputTokens = *update.CacheReadInputTokens
 	}
+	if update.OutputTokensDetails != nil {
+		usage.ThinkingTokens = update.OutputTokensDetails.ThinkingTokens
+	}
 	if update.CacheCreationInputTokens != nil {
 		usage.CacheWriteInputTokens = *update.CacheCreationInputTokens
 	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {
 		usage.CacheWriteInputTokens = update.CacheCreation.Ephemeral5mInputTokens + update.CacheCreation.Ephemeral1hInputTokens
 	}
 	p.usage = &usage
+}
+
+func (p *streamParser) setMetadata(key string, value any) {
+	if p.metadata == nil {
+		p.metadata = make(map[string]any)
+	}
+	p.metadata[key] = value
+}
+
+func (p *streamParser) responseMetadata() map[string]any {
+	metadata := responseMetadata(p.responseID, p.providerModel, p.model.ID)
+	if len(p.metadata) == 0 {
+		return metadata
+	}
+	if metadata == nil {
+		metadata = make(map[string]any, len(p.metadata))
+	}
+	for key, value := range p.metadata {
+		metadata[key] = value
+	}
+	return metadata
+}
+
+func addCitations(metadata map[string]any, citations []map[string]any) map[string]any {
+	if len(citations) == 0 {
+		return metadata
+	}
+	if metadata == nil {
+		metadata = make(map[string]any)
+	}
+	existing, _ := metadata["citations"].([]map[string]any)
+	metadata["citations"] = append(existing, citations...)
+	return metadata
+}
+
+func withProviderMetadata(metadata map[string]any, key string, value any) map[string]any {
+	if metadata == nil {
+		metadata = make(map[string]any)
+	}
+	metadata[key] = value
+	return metadata
 }
 
 func anthropicStopReason(reason string) sigma.StopReason {

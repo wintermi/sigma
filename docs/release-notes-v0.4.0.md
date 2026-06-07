@@ -12,7 +12,9 @@ structured-output request shaping, OpenAI Responses reasoning replay defaults,
 OpenAI-compatible Chat Completions history replay for stricter routes, and
 Vertex AI routing for both Gemini and focused non-Gemini MaaS routes, and a
 focused provider-surface expansion for Google/Vertex image generation plus
-Google/Vertex/Bedrock embeddings.
+Google/Vertex/Bedrock embeddings. Provider replay and metadata hardening now
+also preserves Anthropic hosted-tool metadata, Google grounding sources, and
+Bedrock tool-use history in deterministic request shapes.
 
 ## Added
 
@@ -57,6 +59,13 @@ Google/Vertex/Bedrock embeddings.
 - Bedrock embeddings use `InvokeModel` through Sigma's existing stdlib Bedrock
   region, endpoint, credential, retry, debug, and SigV4 paths for Titan,
   Cohere, Titan image text-only, and Nova text embedding request shapes.
+- Anthropic Messages streams now preserve hosted `server_tool_use` blocks,
+  citation deltas, context-management metadata, container metadata, and
+  thinking-token usage details for replay and diagnostics.
+- Google Gemini API and Vertex AI streams now keep raw grounding metadata plus
+  normalized source entries from grounded responses.
+- Bedrock Converse Stream now synthesizes placeholder tool specs from replayed
+  assistant/tool-call history when the current request has no active tools.
 
 ## Compatibility
 
@@ -95,6 +104,14 @@ Google/Vertex/Bedrock embeddings.
 - Bedrock embeddings intentionally reuse the existing stdlib credential path;
   AWS profiles, SSO, web identity, IMDS, and shared-config loading are not
   introduced by this provider-surface slice.
+- Anthropic hosted server-tool replay is preserved as provider metadata on
+  existing tool-call content blocks; Sigma does not add a new content type for
+  hosted tools in this release.
+- Google grounding sources are exposed as provider metadata on the final
+  assistant message, leaving any higher-level citation rendering to callers.
+- Bedrock replay tool specs are synthesized only from existing tool-use history
+  when no active tools are present; explicit tools and tool-choice options keep
+  precedence.
 
 ## Deferred work
 
@@ -115,6 +132,9 @@ Google/Vertex/Bedrock embeddings.
 - Hosted-tool factory expansion, live probes, broad catalog refresh,
   tokenizer-based embedding estimates, provider-selection fallback, external
   vector stores, and AWS SDK credential-chain integration remain deferred.
+- Provider-neutral document/PDF content blocks, Anthropic native output-format
+  policy, and broader first-class provider row promotion remain deferred until
+  their public API and deterministic fixture boundaries are settled.
 
 ## Validation status
 

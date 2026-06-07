@@ -26,10 +26,11 @@ type generateContentResponse struct {
 }
 
 type googleCandidate struct {
-	Content       googleStreamContent `json:"content"`
-	FinishReason  string              `json:"finishReason"`
-	SafetyRatings []any               `json:"safetyRatings"`
-	Index         int                 `json:"index"`
+	Content           googleStreamContent `json:"content"`
+	FinishReason      string              `json:"finishReason"`
+	SafetyRatings     []any               `json:"safetyRatings"`
+	GroundingMetadata map[string]any      `json:"groundingMetadata"`
+	Index             int                 `json:"index"`
 }
 
 type googleStreamContent struct {
@@ -77,6 +78,8 @@ type streamParser struct {
 	responseID      string
 	modelVersion    string
 	promptFeedback  map[string]any
+	grounding       []map[string]any
+	sources         []map[string]any
 	toolCallIDs     map[string]struct{}
 	toolCallCounter int
 }
@@ -129,6 +132,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		return err
 	}
 	for _, candidate := range response.Candidates {
+		p.captureCandidate(candidate)
 		if candidate.FinishReason != "" {
 			p.stopReason = googleStopReason(candidate.FinishReason)
 		}
@@ -155,6 +159,14 @@ func (p *streamParser) captureResponse(response generateContentResponse) {
 		usage := response.UsageMetadata.sigmaUsage()
 		p.usage = &usage
 	}
+}
+
+func (p *streamParser) captureCandidate(candidate googleCandidate) {
+	if len(candidate.GroundingMetadata) == 0 {
+		return
+	}
+	p.grounding = append(p.grounding, candidate.GroundingMetadata)
+	p.sources = append(p.sources, groundingSources(candidate.GroundingMetadata)...)
 }
 
 func (p *streamParser) handlePart(ctx context.Context, part googlePart) error {
@@ -388,10 +400,60 @@ func (p *streamParser) responseMetadata() map[string]any {
 	if len(p.promptFeedback) > 0 {
 		metadata["promptFeedback"] = p.promptFeedback
 	}
+	if len(p.grounding) == 1 {
+		metadata["groundingMetadata"] = p.grounding[0]
+	} else if len(p.grounding) > 1 {
+		values := make([]map[string]any, len(p.grounding))
+		copy(values, p.grounding)
+		metadata["groundingMetadata"] = values
+	}
+	if len(p.sources) > 0 {
+		values := make([]map[string]any, len(p.sources))
+		copy(values, p.sources)
+		metadata["sources"] = values
+	}
 	if len(metadata) == 0 {
 		return nil
 	}
 	return metadata
+}
+
+func groundingSources(metadata map[string]any) []map[string]any {
+	chunks, ok := metadata["groundingChunks"].([]any)
+	if !ok {
+		return nil
+	}
+	sources := make([]map[string]any, 0, len(chunks))
+	for _, chunk := range chunks {
+		item, ok := chunk.(map[string]any)
+		if !ok {
+			continue
+		}
+		if source := groundingSource(item, "web"); source != nil {
+			sources = append(sources, source)
+			continue
+		}
+		if source := groundingSource(item, "retrievedContext"); source != nil {
+			sources = append(sources, source)
+		}
+	}
+	return sources
+}
+
+func groundingSource(chunk map[string]any, key string) map[string]any {
+	raw, ok := chunk[key].(map[string]any)
+	if !ok {
+		return nil
+	}
+	source := map[string]any{"type": key}
+	if uri, _ := raw["uri"].(string); uri != "" {
+		source["uri"] = uri
+		source["url"] = uri
+	}
+	if title, _ := raw["title"].(string); title != "" {
+		source["title"] = title
+	}
+	return source
 }
 
 func (s *googleBlockState) partial(delta string) *sigma.PartialToolCall {

@@ -47,6 +47,14 @@ See [release notes](docs/release-notes-v0.4.0.md).
 - Bedrock embeddings use `InvokeModel` through the existing stdlib Bedrock
   region, endpoint, credential, retry, debug, and SigV4 paths for Titan,
   Cohere, and Nova text embedding request shapes.
+- Anthropic Messages streaming now preserves hosted server-tool metadata,
+  citation deltas, context-management metadata, container metadata, and
+  thinking-token usage details for provider-neutral replay and diagnostics.
+- Google Gemini API and Vertex AI streaming now preserve grounding metadata and
+  normalized source entries from grounded responses.
+- Bedrock Converse Stream now synthesizes placeholder tool specs from replayed
+  assistant/tool history when the current request has no active tools, avoiding
+  provider rejection of otherwise valid tool-use history.
 
 ## [0.3.0] - 2026-06-05
 

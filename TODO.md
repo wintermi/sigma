@@ -124,6 +124,27 @@ deterministic request, stream, error, and metadata evidence.
       future Mistral routes without making live provider calls part of
       `mise run ci`.
 
+## Provider replay and metadata hardening
+
+Sigma preserves provider-native replay and diagnostic metadata only when it can
+do so through existing provider-neutral shapes or opaque provider metadata.
+Public content-type additions and first-class provider promotions remain future
+work until their API boundaries are explicit.
+
+- [x] Preserve Anthropic hosted server-tool metadata, citations,
+      context-management metadata, container metadata, and thinking-token usage
+      details through deterministic stream parsing.
+- [x] Preserve Google grounding metadata and normalized source entries from
+      Gemini API and Vertex AI grounded responses.
+- [x] Synthesize Bedrock Converse tool specs from replayed assistant/tool
+      history when the current request has no active tools.
+- [ ] Add provider-neutral document/PDF content blocks only after settling
+      request, replay, debug-redaction, and provider compatibility semantics.
+- [ ] Decide whether Anthropic native `output_format` becomes a typed Sigma
+      option or remains an advanced provider-option passthrough.
+- [ ] Add opt-in live provider metadata/replay probes without making live
+      provider calls part of `mise run ci`.
+
 ## First-class provider rows
 
 Provider IDs and compatibility routing may already exist, but each needs
@@ -132,6 +153,9 @@ first-class row in [provider parity](docs/provider-parity.md). Representative
 generated metadata can exist before first-class promotion when it is
 metadata-only and backed by compatibility checks.
 
+- [ ] Keep provider packages that do not yet have Sigma-native adapters behind
+      first-class row promotion, with deterministic request, stream, error,
+      redaction, and cancellation coverage before registration.
 - [ ] DeepSeek — promote to a first-class provider row with fixtures.
 - [ ] Groq — promote to a first-class provider row with fixtures.
 - [ ] Cerebras — promote to a first-class provider row with fixtures.

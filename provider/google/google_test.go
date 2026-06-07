@@ -797,6 +797,41 @@ func TestCompleteFunctionCallArgumentsEmitToolCallEvents(t *testing.T) {
 	}
 }
 
+func TestCompletePreservesGroundingMetadataSources(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeGoogleSSE(t, w, `data: {"responseId":"resp_grounded","candidates":[{"content":{"role":"model","parts":[{"text":"Grounded answer."}]},"finishReason":"STOP","groundingMetadata":{"groundingChunks":[{"web":{"uri":"https://example.com","title":"Example"}},{"retrievedContext":{"uri":"gs://bucket/doc.pdf","title":"Doc"}}]}}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":3}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-grounding-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("ground")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "Grounded answer."; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if final.ProviderMetadata["groundingMetadata"] == nil {
+		t.Fatal("grounding metadata missing")
+	}
+	sources, ok := final.ProviderMetadata["sources"].([]map[string]any)
+	if !ok || len(sources) != 2 {
+		t.Fatalf("sources = %#v, want two normalized sources", final.ProviderMetadata["sources"])
+	}
+	if got, want := sources[0]["url"], "https://example.com"; got != want {
+		t.Fatalf("source url = %v, want %v", got, want)
+	}
+	if got, want := sources[1]["uri"], "gs://bucket/doc.pdf"; got != want {
+		t.Fatalf("source uri = %v, want %v", got, want)
+	}
+}
+
 func TestFunctionCallArgumentsGenerateSyntheticIDsWhenMissingOrDuplicate(t *testing.T) {
 	t.Parallel()
 

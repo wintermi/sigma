@@ -327,6 +327,77 @@ func TestToolResultsGroupAndPreserveImages(t *testing.T) {
 	}
 }
 
+func TestReplayToolHistorySynthesizesToolConfigWithoutActiveTools(t *testing.T) {
+	t.Parallel()
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("tool_a", "lookup", map[string]any{"query": "weather"}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_a",
+				ToolName:   "lookup",
+				Content:    []sigma.ContentBlock{sigma.Text("sunny")},
+			},
+			sigma.UserText("continue"),
+		}},
+		sigma.Options{},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if got, want := len(payload.Tools), 1; got != want {
+		t.Fatalf("replay tools = %d, want %d", got, want)
+	}
+	if got, want := payload.Tools[0].Name, "lookup"; got != want {
+		t.Fatalf("replay tool name = %q, want %q", got, want)
+	}
+	if payload.ToolChoice != nil {
+		t.Fatalf("tool choice = %#v, want nil for synthesized replay tools", payload.ToolChoice)
+	}
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	toolConfig := input["toolConfig"].(map[string]any)
+	tools := toolConfig["tools"].([]map[string]any)
+	spec := tools[0]["toolSpec"].(map[string]any)
+	if got, want := spec["name"], "lookup"; got != want {
+		t.Fatalf("tool spec name = %v, want %v", got, want)
+	}
+}
+
+func TestNoToolHistoryDoesNotSynthesizeToolConfig(t *testing.T) {
+	t.Parallel()
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hello")}},
+		sigma.Options{},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if len(payload.Tools) != 0 {
+		t.Fatalf("tools = %#v, want none", payload.Tools)
+	}
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	if _, ok := input["toolConfig"]; ok {
+		t.Fatalf("toolConfig = %#v, want absent", input["toolConfig"])
+	}
+}
+
 func TestAWSConverseInputRejectsMaxTokensOutsideInt32(t *testing.T) {
 	t.Parallel()
 

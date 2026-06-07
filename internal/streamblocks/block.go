@@ -26,9 +26,10 @@ const (
 
 // Text accumulates streamed text for one content block.
 type Text struct {
-	ContentIndex int
-	Started      bool
-	Closed       bool
+	ContentIndex     int
+	Started          bool
+	Closed           bool
+	ProviderMetadata map[string]any
 
 	text strings.Builder
 }
@@ -83,6 +84,7 @@ func (b *Thinking) String() string {
 type ToolCall struct {
 	ContentIndex      int
 	ProviderSignature string
+	ProviderMetadata  map[string]any
 	Started           bool
 	Closed            bool
 
@@ -159,10 +161,18 @@ func (c *ToolCall) Partial(argumentsDelta string, mode ToolPartialMode) *sigma.P
 			if decoded, ok := c.DecodeArguments(); ok {
 				metadata["arguments"] = decoded
 			}
+			for key, value := range c.ProviderMetadata {
+				metadata[key] = value
+			}
 			partial.ProviderMetadata = metadata
+		} else if len(c.ProviderMetadata) > 0 {
+			partial.ProviderMetadata = copyAnyMap(c.ProviderMetadata)
 		}
 	case ToolPartialArguments:
 		partial.ProviderMetadata = map[string]any{"arguments": c.ArgumentsValue()}
+		for key, value := range c.ProviderMetadata {
+			partial.ProviderMetadata[key] = value
+		}
 	}
 	return partial
 }
@@ -174,6 +184,7 @@ func (c *ToolCall) ToolCall() sigma.ToolCall {
 		Name:              c.name,
 		Arguments:         c.ArgumentsValue(),
 		ProviderSignature: c.ProviderSignature,
+		ProviderMetadata:  copyAnyMap(c.ProviderMetadata),
 	}
 }
 
@@ -205,4 +216,15 @@ func (c *ToolCall) DecodeArguments() (any, bool) {
 	c.decoded = decoded
 	c.decodedOK = err == nil
 	return decoded, err == nil
+}
+
+func copyAnyMap(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make(map[string]any, len(values))
+	for key, value := range values {
+		out[key] = value
+	}
+	return out
 }

@@ -746,6 +746,112 @@ data: {"type":"message_stop"}
 	}
 }
 
+func TestStreamingPreservesHostedToolAndProviderMetadata(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMessagesSSE(t, w, `data: {"type":"message_start","message":{"id":"msg_metadata","type":"message","role":"assistant","model":"claude-test","content":[]}}
+
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Grounded"}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"citations_delta","citation":{"type":"web_search_result_location","url":"https://example.com","cited_text":"fact"}}}
+
+data: {"type":"content_block_start","index":1,"content_block":{"type":"server_tool_use","id":"srvtoolu_1","name":"web_search","input":{"query":"go 1.26"}}}
+
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","container":{"id":"ctr_1"}},"usage":{"output_tokens":9,"output_tokens_details":{"thinking_tokens":4}},"context_management":{"applied_edits":[{"type":"clear_thinking","cleared_input_tokens":12}]}}
+
+data: {"type":"message_stop"}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-metadata-stream-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("search")}})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindToolCallStart,
+		sigma.EventKindToolCallDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindToolCallEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	citations, ok := final.Content[0].ProviderMetadata["citations"].([]map[string]any)
+	if !ok || len(citations) != 1 {
+		t.Fatalf("citations = %#v, want one citation", final.Content[0].ProviderMetadata["citations"])
+	}
+	if got, want := citations[0]["url"], "https://example.com"; got != want {
+		t.Fatalf("citation url = %v, want %v", got, want)
+	}
+	if got, want := final.Content[1].ProviderMetadata["type"], "server_tool_use"; got != want {
+		t.Fatalf("tool metadata type = %v, want %v", got, want)
+	}
+	if final.Usage == nil || final.Usage.ThinkingTokens != 4 {
+		t.Fatalf("usage = %#v, want thinking tokens", final.Usage)
+	}
+	container, ok := final.ProviderMetadata["container"].(map[string]any)
+	if !ok || container["id"] != "ctr_1" {
+		t.Fatalf("container metadata = %#v", final.ProviderMetadata["container"])
+	}
+	contextManagement, ok := final.ProviderMetadata["context_management"].(map[string]any)
+	if !ok || contextManagement["applied_edits"] == nil {
+		t.Fatalf("context management metadata = %#v", final.ProviderMetadata["context_management"])
+	}
+}
+
+func TestHostedToolUseReplaysAsServerToolUse(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-server-tool-replay-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	toolCall := sigma.ToolCallBlock("srvtoolu_1", "web_search", map[string]any{"query": "go 1.26"})
+	toolCall.ProviderMetadata = map[string]any{"type": "server_tool_use"}
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{toolCall}},
+		sigma.UserText("continue"),
+	}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	messages := payload["messages"].([]any)
+	content := messages[0].(map[string]any)["content"].([]any)
+	replayed := content[0].(map[string]any)
+	if got, want := replayed["type"], "server_tool_use"; got != want {
+		t.Fatalf("replayed tool type = %v, want %v", got, want)
+	}
+	if got, want := replayed["id"], "srvtoolu_1"; got != want {
+		t.Fatalf("replayed tool id = %v, want %v", got, want)
+	}
+}
+
 func TestStreamUsageMergeContentBlockStopAndStopReasons(t *testing.T) {
 	t.Parallel()
 
