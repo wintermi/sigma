@@ -10,7 +10,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 `sigma` v0.4.0 is open for development. The first compatibility fixes tighten
 structured-output request shaping, OpenAI Responses reasoning replay defaults,
 OpenAI-compatible Chat Completions history replay for stricter routes, and
-Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
+Vertex AI routing for both Gemini and focused non-Gemini MaaS routes, and a
+focused provider-surface expansion for Google/Vertex image generation plus
+Google/Vertex/Bedrock embeddings.
 
 ## Added
 
@@ -44,6 +46,17 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
 - Bedrock Converse Stream now derives the `eu-central-1` runtime endpoint for
   built-in EU regional inference-profile rows when callers have not configured
   a region, endpoint, or AWS region environment variable.
+- Google Gemini API and Vertex AI now expose preview image generation adapters
+  through Sigma's provider-neutral `ImageProvider` surface, covering Gemini API
+  Imagen `predict`, Gemini image `generateContent` image outputs, and Vertex
+  Imagen `predict` with explicit project/location routing.
+- Google Gemini API, Google Vertex AI, and Amazon Bedrock now expose preview
+  embedding adapters through Sigma's provider-neutral `EmbeddingProvider`
+  surface, with representative generated metadata for the new built-in
+  embedding models.
+- Bedrock embeddings use `InvokeModel` through Sigma's existing stdlib Bedrock
+  region, endpoint, credential, retry, debug, and SigV4 paths for Titan,
+  Cohere, Titan image text-only, and Nova text embedding request shapes.
 
 ## Compatibility
 
@@ -74,6 +87,14 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
 - Explicit Bedrock provider config, provider options, custom endpoints,
   `AWS_REGION`, and `AWS_DEFAULT_REGION` keep precedence over generated
   metadata fallback.
+- Google and Vertex image adapters are generation-only in this release. Edits,
+  variations, live probes, and broad image catalog expansion remain outside the
+  deterministic release gate.
+- Google and Vertex embeddings map query/document intent to provider task
+  types while preserving explicit provider options for advanced request fields.
+- Bedrock embeddings intentionally reuse the existing stdlib credential path;
+  AWS profiles, SSO, web identity, IMDS, and shared-config loading are not
+  introduced by this provider-surface slice.
 
 ## Deferred work
 
@@ -91,6 +112,9 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
   image references, and broad direct Mistral catalog expansion remain deferred.
 - AWS profile, SSO, web identity, IMDS, shared-config loading, and live Bedrock
   validation remain deferred.
+- Hosted-tool factory expansion, live probes, broad catalog refresh,
+  tokenizer-based embedding estimates, provider-selection fallback, external
+  vector stores, and AWS SDK credential-chain integration remain deferred.
 
 ## Validation status
 

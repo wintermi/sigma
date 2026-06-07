@@ -15883,6 +15883,109 @@
   ],
   "imageModels": [
     {
+      "id": "gemini-2.5-flash-image",
+      "name": "Gemini 2.5 Flash Image",
+      "provider": "google",
+      "api": "google-images",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "maxWidth": 2048,
+      "maxHeight": 2048,
+      "supportedSizes": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "gemini-image"
+      }
+    },
+    {
+      "id": "imagen-4.0-generate-001",
+      "name": "Imagen 4 Generate",
+      "provider": "google",
+      "api": "google-images",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "maxWidth": 2048,
+      "maxHeight": 2048,
+      "supportedSizes": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "imagen"
+      }
+    },
+    {
+      "id": "imagen-4.0-generate-001",
+      "name": "Imagen 4 Generate (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex-images",
+      "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
+      "maxWidth": 2048,
+      "maxHeight": 2048,
+      "supportedSizes": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "imagen",
+        "vertexPublisher": "google"
+      }
+    },
+    {
       "id": "gpt-image-1",
       "name": "GPT Image 1",
       "provider": "openai",
@@ -16889,6 +16992,120 @@
     }
   ],
   "embeddingModels": [
+    {
+      "id": "amazon.nova-2-multimodal-embeddings-v1:0",
+      "name": "Nova 2 Multimodal Embeddings",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-embeddings",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "defaultDimensions": 3072,
+      "minDimensions": 256,
+      "maxDimensions": 3072,
+      "maxInputTokens": 8192,
+      "maxBatchInputs": 1,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "providerMetadata": {
+        "modelFamily": "nova"
+      }
+    },
+    {
+      "id": "amazon.titan-embed-text-v2:0",
+      "name": "Titan Text Embeddings V2",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-embeddings",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "defaultDimensions": 1024,
+      "minDimensions": 256,
+      "maxDimensions": 1024,
+      "maxInputTokens": 8192,
+      "maxBatchInputs": 1,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "providerMetadata": {
+        "modelFamily": "titan"
+      }
+    },
+    {
+      "id": "cohere.embed-english-v3",
+      "name": "Cohere Embed English V3",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-embeddings",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "defaultDimensions": 1024,
+      "minDimensions": 1024,
+      "maxDimensions": 1024,
+      "maxInputTokens": 512,
+      "maxBatchInputs": 96,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "providerMetadata": {
+        "modelFamily": "cohere"
+      }
+    },
+    {
+      "id": "text-embedding-004",
+      "name": "Text Embedding 004",
+      "provider": "google",
+      "api": "google-embeddings",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "defaultDimensions": 768,
+      "minDimensions": 1,
+      "maxDimensions": 768,
+      "maxInputTokens": 2048,
+      "maxBatchInputs": 100,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "gemini-embedding"
+      }
+    },
+    {
+      "id": "text-embedding-004",
+      "name": "Text Embedding 004 (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex-embeddings",
+      "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
+      "defaultDimensions": 768,
+      "minDimensions": 1,
+      "maxDimensions": 768,
+      "maxInputTokens": 2048,
+      "maxBatchInputs": 250,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "gemini-embedding",
+        "vertexPublisher": "google"
+      }
+    },
     {
       "id": "text-embedding-3-large",
       "name": "Text Embedding 3 Large",

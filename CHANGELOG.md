@@ -38,6 +38,15 @@ See [release notes](docs/release-notes-v0.4.0.md).
 - Bedrock Converse Stream now derives the runtime endpoint and
   `eu-central-1` region for built-in EU regional inference-profile rows when no
   explicit region, endpoint, or AWS region environment variable is configured.
+- Google Gemini API and Vertex AI now have preview image generation adapters
+  for Imagen and Gemini image output using Sigma's provider-neutral
+  `ImageProvider` surface.
+- Google Gemini API, Google Vertex AI, and Amazon Bedrock now have preview
+  embedding adapters using Sigma's provider-neutral `EmbeddingProvider`
+  surface, with representative generated model metadata.
+- Bedrock embeddings use `InvokeModel` through the existing stdlib Bedrock
+  region, endpoint, credential, retry, debug, and SigV4 paths for Titan,
+  Cohere, and Nova text embedding request shapes.
 
 ## [0.3.0] - 2026-06-05
 
@@ -212,10 +221,10 @@ See [release notes](docs/release-notes-v0.3.0.md).
   environments should use SSE fallback.
 - Token usage and cost reporting come from provider usage data and model
   metadata; tokenizer-based token estimates are deferred.
-- Built-in embeddings are currently limited to OpenAI text embedding models.
-  External vector stores, tokenizer-aware chunking and estimates,
-  provider-selection fallback, non-OpenAI embedding adapters, and live embedding
-  probes remain deferred.
+- Built-in embeddings now include representative OpenAI, Google Gemini API,
+  Google Vertex AI, and Amazon Bedrock text embedding models. External vector
+  stores, tokenizer-aware chunking and estimates, provider-selection fallback,
+  broad provider promotion, and live embedding probes remain deferred.
 - Built-in model metadata is still refreshed through the curated checked-in
   catalog; automated `models.dev`/provider-catalog ingestion is deferred until
   it can preserve deterministic review and fixtures.

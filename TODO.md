@@ -10,19 +10,23 @@ cancellation/error coverage (see the coverage standards in
 
 - [ ] Decide whether image generation graduates from preview into the MVP
       boundary and update release docs accordingly.
+- [x] Add focused Google Gemini API and Vertex AI image generation adapters for
+      Imagen/Gemini image output through the provider-neutral image surface.
 - [ ] Add live OpenAI image validation probes for generation, edits,
       reference-only JSON edits, variations, streaming partial images, and
       Responses image-generation tool output without making live provider calls
       part of `mise run ci`.
+- [ ] Add opt-in live Google Gemini API and Vertex AI image probes without
+      making live provider calls part of `mise run ci`.
 
 ## Embeddings
 
-Sigma now has a first-class provider-neutral embeddings surface with OpenAI
-`/v1/embeddings` support and generated metadata for the current OpenAI text
-embedding models. Resilient batch hardening is available through
-`Client.EmbedBatch`; small in-memory retrieval primitives are available for
-local document/chunk search, while external stores and tokenizer-aware workflows
-remain future work.
+Sigma now has a first-class provider-neutral embeddings surface with OpenAI,
+Google Gemini API, Google Vertex AI, and Amazon Bedrock adapter coverage plus
+representative generated metadata. Resilient batch hardening is available
+through `Client.EmbedBatch`; small in-memory retrieval primitives are available
+for local document/chunk search, while external stores and tokenizer-aware
+workflows remain future work.
 
 - [x] Add resilient embedding batch helpers for duplicate input reuse,
       retry-aware batch splitting, optional oversized-input splitting, progress
@@ -58,8 +62,9 @@ remain future work.
       tokenizers a hidden runtime dependency.
 - [ ] Add provider-selection fallback only after settling provider/model
       precedence semantics for embeddings as a separate public API decision.
-- [ ] Add non-OpenAI embedding adapters only after each provider has request,
-      response, usage, error, and cancellation fixtures.
+- [x] Add focused non-OpenAI embedding adapters for Google Gemini API, Google
+      Vertex AI, and Amazon Bedrock with deterministic request/response, usage,
+      error, and cancellation-path coverage.
 - [ ] Add opt-in live embedding probes without making live provider calls part
       of `mise run ci`.
 
@@ -264,6 +269,10 @@ should still come through the catalog refresh workflow.
 - [x] Normalize Google replayed tool-call IDs for model families that require
       explicit function-call IDs, and omit empty function-response IDs for
       native Gemini requests.
+- [x] Add focused Google Gemini API embeddings and image generation adapters
+      with deterministic payload and response fixtures.
+- [x] Add focused Vertex AI embeddings and Imagen generation adapters with
+      explicit project/location routing and deterministic fixtures.
 - [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
       use credential-gated probes only for manual compatibility investigation.
 - [ ] Keep ambient Vertex project/location environment fallback and built-in ADC
@@ -295,6 +304,9 @@ should still come through the catalog refresh workflow.
 - [x] Derive the `eu-central-1` runtime endpoint for built-in EU regional
       inference-profile rows when callers have not configured an endpoint,
       region, or AWS region environment variable.
+- [x] Add focused Bedrock `InvokeModel` embedding support for Titan, Cohere,
+      and Nova text embedding request shapes through the existing stdlib
+      credential and signing path.
 - [ ] Keep live Bedrock validation out of `mise run ci`; use credential-gated
       checks only for manual compatibility investigation.
 - [ ] Expand broad Bedrock generated metadata only through the catalog refresh

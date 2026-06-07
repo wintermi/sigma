@@ -22,19 +22,24 @@ packages and metadata fields. It should be read with
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | [provider/bedrock](../provider/bedrock) | AWS-isolated text adapter with stdlib SigV4/EventStream transport, injectable Converse Stream client, and credential detector. |
 | OpenAI Images | `openai-images` | [provider/openai](../provider/openai), [image_models_generated.go](../image_models_generated.go) | Generation-only adapter over OpenAI's dedicated Images API plus generated image model metadata. |
 | OpenRouter image generation through Chat Completions | `openrouter-images` | [provider/openrouter](../provider/openrouter), `ImageModel.ProviderMetadata` | Image-generation adapter over OpenRouter chat-completions image responses. |
+| Google Gemini API image generation | `google-images` | [provider/google](../provider/google), [image_models_generated.go](../image_models_generated.go) | Image adapter over Gemini API Imagen `predict` and Gemini image `generateContent` image outputs. |
+| Google Vertex AI Imagen generation | `google-vertex-images` | [provider/google](../provider/google), `VertexConfig`, [image_models_generated.go](../image_models_generated.go) | Vertex Imagen `predict` adapter using explicit project/location routing and Google auth handling. |
 | OpenAI Embeddings | `openai-embeddings` | [provider/openai](../provider/openai), [embedding_models_generated.go](../embedding_models_generated.go), `EmbeddingModel` | Vector embedding adapter over OpenAI's `/v1/embeddings` API plus generated and caller-registered embedding model metadata. |
+| Google Gemini API embeddings | `google-embeddings` | [provider/google](../provider/google), [embedding_models_generated.go](../embedding_models_generated.go), `EmbeddingModel` | Embeddings adapter over Gemini API `batchEmbedContents`, including task type and output dimensionality mapping. |
+| Google Vertex AI embeddings | `google-vertex-embeddings` | [provider/google](../provider/google), `VertexConfig`, [embedding_models_generated.go](../embedding_models_generated.go) | Vertex native embeddings `predict` adapter with explicit project/location routing, API-key or OAuth token auth, and token-count usage mapping. |
+| Amazon Bedrock InvokeModel embeddings | `bedrock-embeddings` | [provider/bedrock](../provider/bedrock), [embedding_models_generated.go](../embedding_models_generated.go) | Bedrock `InvokeModel` embeddings adapter for Titan, Cohere, and Nova text embedding request shapes using the existing stdlib credential and signing path. |
 
 ## Provider ID mapping
 
 | Source provider family | Go provider ID | API path today | Notes |
 | --- | --- | --- | --- |
-| OpenAI | `openai` | `openai-responses`, `openai-completions`, `openai-images` | Text Responses, Chat Completions, and Images generation adapters exist. |
+| OpenAI | `openai` | `openai-responses`, `openai-completions`, `openai-images`, `openai-embeddings` | Text Responses, Chat Completions, Images generation, and embeddings adapters exist. |
 | Azure OpenAI | caller-chosen, usually Azure-specific | `azure-openai-responses` | Uses model/request `AzureOpenAIResponses` config rather than generated default metadata. |
 | OpenAI Codex | caller-chosen, usually Codex-specific | `openai-codex-responses` | Uses explicit OAuth token providers; includes browser callback login, device-code login, and refresh helpers. |
 | Anthropic | `anthropic` | `anthropic-messages` | Generated metadata includes a Claude text model. |
-| Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream` | Generated metadata includes a Claude-on-Bedrock text model. |
-| Google Gemini API | `google` | `google-generative-ai` | Generated metadata includes Gemini text. |
-| Google Vertex AI | `google-vertex` | `google-vertex` | Generated metadata includes a representative Gemini Vertex route; callers still supply project/location routing. |
+| Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream`, `bedrock-embeddings` | Generated metadata includes representative Bedrock text and embedding routes. |
+| Google Gemini API | `google` | `google-generative-ai`, `google-images`, `google-embeddings` | Generated metadata includes representative Gemini text, image, and embedding routes. |
+| Google Vertex AI | `google-vertex` | `google-vertex`, `google-vertex-images`, `google-vertex-embeddings` | Generated metadata includes representative Gemini Vertex text, Imagen, and embedding routes; callers still supply project/location routing. |
 | Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text plus representative adjustable and native reasoning models. |
 | OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and image routes for Gemini and Grok Imagine routed models. |
 | OpenCode Zen, OpenCode Go | `opencode`, `opencode-go` | `openai-completions` | Generated metadata includes curated OpenAI-compatible text routes. Register the shared OpenAI-compatible provider under these IDs to make requests. |
@@ -72,6 +77,10 @@ packages and metadata fields. It should be read with
 ## Source capabilities not yet represented as complete Go parity
 
 - OpenAI Images is generation-only; edits, variations, streaming partial images, and Responses image-tool generation are deferred.
+- Google and Vertex image adapters are generation-only. Reference edits,
+  variations, and live image validation remain future work.
+- Google, Vertex, and Bedrock embeddings are fixture-backed provider adapters;
+  live embedding probes and tokenizer-based input estimates remain future work.
 - Automatic provider/model discovery is generated from curated metadata, not live provider listing calls.
 - OAuth credential persistence is intentionally absent.
 - Cross-provider context handoff and capability-loss reporting are future work.

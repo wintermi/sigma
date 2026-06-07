@@ -39,6 +39,8 @@ Release scope values:
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` |
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
+| Google Gemini API image generation | `google-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
+| Google Vertex AI Imagen generation | `google-vertex-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, Together, GitHub Copilot | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 
 ## Evidence references
@@ -57,6 +59,7 @@ Release scope values:
 - `bedrock-converse-stream`: [provider/bedrock/bedrock_test.go](../provider/bedrock/bedrock_test.go).
 - `openai-images`: [provider/openai/images_test.go](../provider/openai/images_test.go), [image_models_generated.go](../image_models_generated.go).
 - `openrouter-images`: [provider/openrouter/images_test.go](../provider/openrouter/images_test.go).
+- `google-images`, `google-vertex-images`: [provider/google/surfaces_test.go](../provider/google/surfaces_test.go), [image_models_generated.go](../image_models_generated.go).
 - Cost calculation: [usage_test.go](../usage_test.go) and provider stream tests that assert usage mapping.
 - Built-in model metadata registration: [modeldata_test.go](../modeldata_test.go).
 
@@ -64,6 +67,12 @@ Release scope values:
 
 - Default registry entries are metadata-only. Importing provider packages and calling their `Register` functions is still required for runtime provider dispatch.
 - `openai-images` supports generation, reference-image edits, explicit `dall-e-2` variations, and streaming partial image events. Live validation remains outside deterministic CI.
+- `google-images` supports Gemini API Imagen `predict` generation and Gemini
+  image `generateContent` image outputs. Edits, variations, and live image
+  validation remain outside deterministic CI.
+- `google-vertex-images` supports Vertex Imagen `predict` generation with
+  explicit project/location routing. Ambient routing and live validation remain
+  outside deterministic CI.
 - Azure and Codex adapters are implemented provider packages, but their APIs are
   not represented by generated default model metadata yet. Vertex now has a
   representative metadata-only route.

@@ -10,6 +10,10 @@ const (
 	ImageAPIOpenAIImages ImageAPI = "openai-images"
 	// ImageAPIOpenRouterImages identifies OpenRouter image generation through Chat Completions.
 	ImageAPIOpenRouterImages ImageAPI = "openrouter-images"
+	// ImageAPIGoogleImages identifies Google's Gemini and Imagen image APIs.
+	ImageAPIGoogleImages ImageAPI = "google-images"
+	// ImageAPIGoogleVertexImages identifies Google's Vertex AI Imagen image API.
+	ImageAPIGoogleVertexImages ImageAPI = "google-vertex-images"
 )
 
 const (

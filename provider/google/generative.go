@@ -287,7 +287,7 @@ func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, erro
 
 func (p *Provider) baseURLForModel(model sigma.Model, opts sigma.Options) string {
 	baseURL := p.baseURLForProvider(model.Provider, opts)
-	if value := modelMetadataString(model.ProviderMetadata, "baseURL"); value != "" {
+	if value := modelMetadataBaseURL(model.ProviderMetadata); value != "" {
 		baseURL = value
 	}
 	options := providerOptions(opts, model.Provider)
@@ -353,8 +353,8 @@ func unsafeGoogleMetadataHeader(key string) bool {
 	}
 }
 
-func modelMetadataString(metadata map[string]any, key string) string {
-	value, ok := metadata[key]
+func modelMetadataBaseURL(metadata map[string]any) string {
+	value, ok := metadata["baseURL"]
 	if !ok {
 		return ""
 	}

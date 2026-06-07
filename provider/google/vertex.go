@@ -329,7 +329,7 @@ func (p *VertexProvider) requestConfig(model sigma.Model, opts sigma.Options) (v
 }
 
 func (c *vertexRequestConfig) applyMetadata(metadata map[string]any) {
-	if value := modelMetadataString(metadata, "baseURL"); value != "" && !strings.Contains(value, "{location}") {
+	if value := modelMetadataBaseURL(metadata); value != "" && !strings.Contains(value, "{location}") {
 		c.BaseURL = value
 	}
 	c.ProjectID = metadataString(metadata, vertexMetadataProjectID, c.ProjectID)
