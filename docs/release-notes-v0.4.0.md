@@ -34,6 +34,10 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
 - Generated model metadata now includes representative Vertex MaaS rows for
   Llama and Claude routes while keeping broad MaaS catalog expansion out of the
   default registry refresh.
+- Anthropic Messages requests now expose typed Sigma controls for tool choice,
+  thinking display, and explicit interleaved-thinking beta opt-in, so callers
+  can use `sigma.WithAnthropicOptions` for common provider controls without raw
+  provider option maps.
 
 ## Compatibility
 
@@ -55,6 +59,9 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
 - Vertex Anthropic models use the Anthropic Messages API surface but send
   `anthropic_version` in the request body and route through Vertex
   `streamRawPredict`, not the direct Anthropic `/messages` endpoint.
+- Typed Anthropic options take precedence over matching raw provider options.
+  Raw provider options remain available for advanced or newly introduced
+  Anthropic fields.
 
 ## Deferred work
 
@@ -66,6 +73,8 @@ Vertex AI routing for both Gemini and focused non-Gemini MaaS routes.
   fixtures.
 - Broad Vertex MaaS catalog expansion and live Vertex MaaS probes remain
   opt-in future work and are not part of `mise run ci`.
+- Anthropic OAuth, Claude Code identity headers, Claude Code tool-name
+  canonicalization, and live Anthropic-compatible probes remain deferred.
 
 ## Validation status
 

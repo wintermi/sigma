@@ -25,6 +25,7 @@ const (
 	DefaultBaseURL               = "https://api.anthropic.com/v1"
 	defaultVersion               = "2023-06-01"
 	fineGrainedToolStreamingBeta = "fine-grained-tool-streaming-2025-05-14"
+	interleavedThinkingBeta      = "interleaved-thinking-2025-05-14"
 	defaultSessionAffinityHeader = "x-session-affinity"
 )
 
@@ -204,7 +205,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("User-Agent", "sigma/anthropic-messages")
 	httpReq.Header.Set("Anthropic-Version", anthropicVersion(model.Provider, opts))
-	if beta := anthropicBeta(model.Provider, opts, compat, len(req.Tools) > 0); beta != "" {
+	if beta := anthropicBeta(model, opts, compat, len(req.Tools) > 0); beta != "" {
 		httpReq.Header.Set("Anthropic-Beta", beta)
 	}
 
@@ -360,8 +361,9 @@ func anthropicVersion(provider sigma.ProviderID, opts sigma.Options) string {
 	return defaultVersion
 }
 
-func anthropicBeta(provider sigma.ProviderID, opts sigma.Options, compat messagesCompat, hasTools bool) string {
+func anthropicBeta(model sigma.Model, opts sigma.Options, compat messagesCompat, hasTools bool) string {
 	betas := make([]string, 0, 2)
+	provider := model.Provider
 	options := providerOptions(opts, provider)
 	if beta, ok := stringOption(options, providerOptionBeta); ok {
 		betas = appendBetas(betas, beta)
@@ -371,7 +373,16 @@ func anthropicBeta(provider sigma.ProviderID, opts sigma.Options, compat message
 	if hasTools && !compat.eagerToolInputStreaming {
 		betas = appendBetas(betas, fineGrainedToolStreamingBeta)
 	}
+	if anthropicInterleavedThinking(opts) && thinkingRequested(opts) && thinkingFormat(model, compat) != sigma.AnthropicThinkingAdaptive {
+		betas = appendBetas(betas, interleavedThinkingBeta)
+	}
 	return strings.Join(betas, ",")
+}
+
+func anthropicInterleavedThinking(opts sigma.Options) bool {
+	return opts.AnthropicOptions != nil &&
+		opts.AnthropicOptions.InterleavedThinking != nil &&
+		*opts.AnthropicOptions.InterleavedThinking
 }
 
 func appendBetas(betas []string, value string) []string {

@@ -33,7 +33,42 @@ type OpenAIOptions struct {
 // package without importing provider adapters.
 type AnthropicOptions struct {
 	ThinkingBudgetTokens *int
+	ToolChoice           *AnthropicToolChoice
+	ThinkingDisplay      AnthropicThinkingDisplay
+	InterleavedThinking  *bool
 }
+
+// AnthropicToolChoiceType identifies Anthropic Messages tool selection behavior.
+type AnthropicToolChoiceType string
+
+const (
+	// AnthropicToolChoiceAuto lets Anthropic choose whether to call a tool.
+	AnthropicToolChoiceAuto AnthropicToolChoiceType = "auto"
+	// AnthropicToolChoiceAny requires Anthropic to call one of the supplied tools.
+	AnthropicToolChoiceAny AnthropicToolChoiceType = "any"
+	// AnthropicToolChoiceNone prevents Anthropic from calling tools.
+	AnthropicToolChoiceNone AnthropicToolChoiceType = "none"
+	// AnthropicToolChoiceTool requires Anthropic to call the named tool.
+	AnthropicToolChoiceTool AnthropicToolChoiceType = "tool"
+)
+
+// AnthropicToolChoice carries Anthropic Messages tool choice controls.
+type AnthropicToolChoice struct {
+	Type AnthropicToolChoiceType `json:"type"`
+	Name string                  `json:"name,omitempty"`
+}
+
+// AnthropicThinkingDisplay controls how Claude thinking content is returned
+// when the model supports the display field.
+type AnthropicThinkingDisplay string
+
+const (
+	// AnthropicThinkingDisplaySummarized requests summarized thinking text.
+	AnthropicThinkingDisplaySummarized AnthropicThinkingDisplay = "summarized"
+	// AnthropicThinkingDisplayOmitted asks Anthropic to omit thinking text while
+	// preserving signatures for replay.
+	AnthropicThinkingDisplayOmitted AnthropicThinkingDisplay = "omitted"
+)
 
 // GoogleOptions carries Google-specific request options known to the root
 // package without importing provider adapters.
@@ -411,6 +446,11 @@ func cloneAnthropicOptions(options *AnthropicOptions) *AnthropicOptions {
 	}
 	copied := *options
 	copied.ThinkingBudgetTokens = cloneIntPtr(options.ThinkingBudgetTokens)
+	if options.ToolChoice != nil {
+		toolChoice := *options.ToolChoice
+		copied.ToolChoice = &toolChoice
+	}
+	copied.InterleavedThinking = cloneBoolPtr(options.InterleavedThinking)
 	return &copied
 }
 

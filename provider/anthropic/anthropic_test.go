@@ -7,6 +7,7 @@ package anthropic_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -303,6 +304,164 @@ func TestAdaptiveThinkingPayloadUsesOutputConfigEffort(t *testing.T) {
 	request := receiveRequest(t, requests)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/adaptive_output_config_payload.json")
 	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
+}
+
+func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-typed-options-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	budget := 2048
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("hi")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+			ThinkingBudgetTokens: &budget,
+			ToolChoice:           &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
+			ThinkingDisplay:      sigma.AnthropicThinkingDisplayOmitted,
+		}),
+		sigma.WithProviderOptions(providerID, map[string]any{
+			"thinking_display": "summarized",
+			"tool_choice":      map[string]any{"type": "auto"},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	thinking := payload["thinking"].(map[string]any)
+	if got, want := thinking["display"], string(sigma.AnthropicThinkingDisplayOmitted); got != want {
+		t.Fatalf("thinking display = %v, want %v", got, want)
+	}
+	toolChoice := payload["tool_choice"].(map[string]any)
+	if got, want := toolChoice["type"], string(sigma.AnthropicToolChoiceTool); got != want {
+		t.Fatalf("tool choice type = %v, want %v", got, want)
+	}
+	if got, want := toolChoice["name"], "lookup"; got != want {
+		t.Fatalf("tool choice name = %v, want %v", got, want)
+	}
+}
+
+func TestTypedAnthropicThinkingDisplayAppliesToAdaptiveThinking(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-adaptive-display-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		ThinkingFormat: sigma.AnthropicThinkingAdaptive,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+			ThinkingDisplay: sigma.AnthropicThinkingDisplayOmitted,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	thinking := payload["thinking"].(map[string]any)
+	if got, want := thinking["display"], string(sigma.AnthropicThinkingDisplayOmitted); got != want {
+		t.Fatalf("thinking display = %v, want %v", got, want)
+	}
+}
+
+func TestTypedAnthropicInterleavedThinkingBeta(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		adaptive   bool
+		interleave bool
+		wantHeader string
+	}{
+		{
+			name:       "enabled for budget thinking",
+			interleave: true,
+			wantHeader: "interleaved-thinking-2025-05-14",
+		},
+		{
+			name:       "explicit false suppresses header",
+			interleave: false,
+		},
+		{
+			name:       "adaptive thinking skips beta",
+			adaptive:   true,
+			interleave: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("anthropic-interleaved-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := anthropicTestModel(providerID)
+			if tt.adaptive {
+				model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+					ThinkingFormat: sigma.AnthropicThinkingAdaptive,
+				}
+			}
+			client := anthropicTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+				sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+					InterleavedThinking: &tt.interleave,
+				}),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			if got := request.Headers.Get("Anthropic-Beta"); got != tt.wantHeader {
+				t.Fatalf("Anthropic-Beta = %q, want %q", got, tt.wantHeader)
+			}
+		})
+	}
 }
 
 func TestModelCompatSuppressesUnsupportedTemperature(t *testing.T) {
@@ -1082,6 +1241,16 @@ func anthropicTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.
 		sigma.WithAuthResolver(resolver),
 		sigma.WithDefaultHeader("X-Client", "client"),
 	)
+}
+
+func decodePayload(t *testing.T, body string) map[string]any {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	return payload
 }
 
 func anthropicTestModel(providerID sigma.ProviderID) sigma.Model {

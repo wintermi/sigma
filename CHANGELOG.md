@@ -29,6 +29,9 @@ See [release notes](docs/release-notes-v0.4.0.md).
   OpenAI-compatible MaaS routes and Anthropic Claude `streamRawPredict` routes,
   including shared Vertex project/location routing, API-key or OAuth token auth,
   placeholder credential fallback, and representative generated metadata.
+- Anthropic Messages now has typed Sigma options for tool choice, thinking
+  display, and explicit interleaved-thinking beta opt-in while preserving raw
+  provider options for advanced fields.
 
 ## [0.3.0] - 2026-06-05
 

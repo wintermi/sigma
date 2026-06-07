@@ -317,6 +317,9 @@ should still come through the catalog refresh workflow.
 
 ## Anthropic-compatible routing
 
+- [x] Add typed Anthropic Messages controls for tool choice, thinking display,
+      and explicit interleaved-thinking beta opt-in while preserving raw
+      provider options for advanced fields.
 - [ ] Evaluate GitHub Copilot and Cloudflare AI Gateway Anthropic Messages
       routing before making either a first-class Anthropic-compatible row.
 - [ ] Add opt-in live Anthropic-compatible provider probes for compatibility

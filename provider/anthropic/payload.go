@@ -339,8 +339,7 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 	if !model.SupportsReasoning() {
 		return false
 	}
-	options := providerOptions(opts, model.Provider)
-	display := thinkingDisplay(options)
+	display := thinkingDisplay(opts, model.Provider)
 	if thinkingFormat(model, compat) == sigma.AnthropicThinkingAdaptive && thinkingRequested(opts) {
 		payload["thinking"] = map[string]any{
 			"type":    "adaptive",
@@ -364,7 +363,11 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 	return true
 }
 
-func thinkingDisplay(options map[string]any) string {
+func thinkingDisplay(opts sigma.Options, provider sigma.ProviderID) string {
+	if opts.AnthropicOptions != nil && opts.AnthropicOptions.ThinkingDisplay != "" {
+		return string(opts.AnthropicOptions.ThinkingDisplay)
+	}
+	options := providerOptions(opts, provider)
 	if display, ok := stringOption(options, providerOptionThinkingDisplay); ok {
 		return display
 	}
@@ -451,7 +454,9 @@ func thinkingBudget(model sigma.Model, opts sigma.Options, compat messagesCompat
 
 func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
 	options := providerOptions(opts, provider)
-	if value, ok := options[providerOptionToolChoice]; ok {
+	if value := anthropicToolChoice(opts); value != nil {
+		payload["tool_choice"] = value
+	} else if value, ok := options[providerOptionToolChoice]; ok {
 		payload["tool_choice"] = value
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
 		payload["tool_choice"] = value
@@ -459,6 +464,25 @@ func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts 
 	for key, value := range extraBody(opts, provider) {
 		payload[key] = value
 	}
+}
+
+func anthropicToolChoice(opts sigma.Options) map[string]any {
+	if opts.AnthropicOptions == nil || opts.AnthropicOptions.ToolChoice == nil {
+		return nil
+	}
+	choice := opts.AnthropicOptions.ToolChoice
+	choiceType := choice.Type
+	if choiceType == "" && choice.Name != "" {
+		choiceType = sigma.AnthropicToolChoiceTool
+	}
+	if choiceType == "" {
+		return nil
+	}
+	out := map[string]any{"type": string(choiceType)}
+	if choiceType == sigma.AnthropicToolChoiceTool && choice.Name != "" {
+		out["name"] = choice.Name
+	}
+	return out
 }
 
 func addCacheControlToLast(content []map[string]any, retention sigma.CacheRetention, compat messagesCompat) {

@@ -231,26 +231,53 @@ func TestTypedProviderOptionsAreCopied(t *testing.T) {
 	t.Parallel()
 
 	budget := 128
+	interleaved := true
 	client, provider, model := newOptionsTestClient(t,
 		sigma.WithDefaultOptions(sigma.WithAnthropicOptions(sigma.AnthropicOptions{
 			ThinkingBudgetTokens: &budget,
+			ToolChoice:           &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
+			ThinkingDisplay:      sigma.AnthropicThinkingDisplayOmitted,
+			InterleavedThinking:  &interleaved,
 		})),
 	)
 	budget = 256
+	interleaved = false
 
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
-	if got, want := valueOf(provider.opts.AnthropicOptions.ThinkingBudgetTokens), 128; got != want {
-		t.Fatalf("anthropic thinking budget tokens = %d, want %d", got, want)
+	got := provider.opts.AnthropicOptions
+	if got == nil {
+		t.Fatal("anthropic options = nil")
+	}
+	if gotBudget, want := valueOf(got.ThinkingBudgetTokens), 128; gotBudget != want {
+		t.Fatalf("anthropic thinking budget tokens = %d, want %d", gotBudget, want)
+	}
+	if got.ToolChoice == nil || got.ToolChoice.Name != "lookup" {
+		t.Fatalf("anthropic tool choice = %+v, want lookup", got.ToolChoice)
+	}
+	if got.ThinkingDisplay != sigma.AnthropicThinkingDisplayOmitted {
+		t.Fatalf("anthropic thinking display = %q, want %q", got.ThinkingDisplay, sigma.AnthropicThinkingDisplayOmitted)
+	}
+	if got.InterleavedThinking == nil || !*got.InterleavedThinking {
+		t.Fatalf("anthropic interleaved thinking = %v, want true", got.InterleavedThinking)
 	}
 
 	*provider.opts.AnthropicOptions.ThinkingBudgetTokens = 512
+	provider.opts.AnthropicOptions.ToolChoice.Name = "mutated"
+	*provider.opts.AnthropicOptions.InterleavedThinking = false
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
 	}
-	if got, want := valueOf(provider.opts.AnthropicOptions.ThinkingBudgetTokens), 128; got != want {
-		t.Fatalf("anthropic thinking budget tokens after mutation = %d, want %d", got, want)
+	got = provider.opts.AnthropicOptions
+	if gotBudget, want := valueOf(got.ThinkingBudgetTokens), 128; gotBudget != want {
+		t.Fatalf("anthropic thinking budget tokens after mutation = %d, want %d", gotBudget, want)
+	}
+	if got.ToolChoice == nil || got.ToolChoice.Name != "lookup" {
+		t.Fatalf("anthropic tool choice after mutation = %+v, want lookup", got.ToolChoice)
+	}
+	if got.InterleavedThinking == nil || !*got.InterleavedThinking {
+		t.Fatalf("anthropic interleaved thinking after mutation = %v, want true", got.InterleavedThinking)
 	}
 }
 
