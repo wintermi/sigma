@@ -1,22 +1,21 @@
 # Release notes: sigma v0.4.0
 
-This is the maintainer-facing release note for the next `sigma` tag. It records
-the v0.4.0 summary and scope as changes land. For the itemized change list see
+This is the maintainer-facing release note for the `sigma` v0.4.0 tag. It
+records the v0.4.0 summary and scope. For the itemized change list see
 [CHANGELOG.md](../CHANGELOG.md); for the validation commands and pre-tag
 checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.4.0 is open for development. The first compatibility fixes tighten
-structured-output request shaping, OpenAI Responses reasoning replay defaults,
-OpenAI-compatible Chat Completions history replay for stricter routes, and
-Vertex AI routing for both Gemini and focused non-Gemini MaaS routes, and a
-focused provider-surface expansion for Google/Vertex image generation plus
-Google/Vertex/Bedrock embeddings. Provider replay and metadata hardening now
-also preserves Anthropic hosted-tool metadata, Google grounding sources, and
-Bedrock tool-use history in deterministic request shapes, drops abandoned local
-tool calls during replay, and normalizes invalid UTF-8 text before non-OpenAI
-provider JSON encoding.
+`sigma` v0.4.0 tightens structured-output request shaping, OpenAI Responses
+reasoning replay defaults, OpenAI-compatible Chat Completions history replay
+for stricter routes, and Vertex AI routing for both Gemini and focused
+non-Gemini MaaS routes. It also expands preview provider surfaces for
+Google/Vertex image generation plus Google/Vertex/Bedrock embeddings. Provider
+replay and metadata hardening now preserves Anthropic hosted-tool metadata,
+Google grounding sources, and Bedrock tool-use history in deterministic request
+shapes, drops abandoned local tool calls during replay, and normalizes invalid
+UTF-8 text before non-OpenAI provider JSON encoding.
 
 ## Added
 
@@ -156,4 +155,4 @@ provider JSON encoding.
 
 ## Validation status
 
-This release should use the validation process in [RELEASING.md](../RELEASING.md).
+Release validation follows the process in [RELEASING.md](../RELEASING.md).

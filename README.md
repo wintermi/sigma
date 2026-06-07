@@ -16,7 +16,7 @@ go get github.com/wintermi/sigma
 The root package name is `sigma`. Version tags follow standard
 Major.Minor.Patch numbering, starting with `v0.1.0`. Any breaking changes before
 `v1.0.0` should be documented in [CHANGELOG.md](CHANGELOG.md),
-[release notes](docs/release-notes-v0.3.0.md), and upgrade guidance. This
+[release notes](docs/release-notes-v0.4.0.md), and upgrade guidance. This
 checkout is licensed under the [MIT License](LICENSE).
 
 ## Quick Start
@@ -159,7 +159,7 @@ images, `GenerateImages` dispatches to a registered image provider and returns
 
 - [Changelog](CHANGELOG.md) tracks release-visible changes and known
   limitations.
-- [Release notes](docs/release-notes-v0.3.0.md) summarize the latest closed tag
+- [Release notes](docs/release-notes-v0.4.0.md) summarize the latest closed tag
   scope and compatibility boundary.
 - [Releasing](RELEASING.md) documents the validation commands and pre-tag
   checklist used for every release.
