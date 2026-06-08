@@ -186,7 +186,7 @@ type OpenAICodexResponses struct {
 
 // Load reads and validates a catalog JSON file.
 func Load(path string) (Catalog, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) // #nosec G304 -- catalog path is supplied by trusted generator/test code.
 	if err != nil {
 		return Catalog{}, err
 	}

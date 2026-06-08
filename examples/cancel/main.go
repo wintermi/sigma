@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"os"
 	"time"
 
 	"github.com/wintermi/sigma"
@@ -17,6 +17,10 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	provider := sigmatest.NewFauxProvider(sigmatest.Script{
 		WaitForCancel: true,
 		Final: sigma.AssistantMessage{
@@ -25,7 +29,8 @@ func main() {
 	})
 	registry, err := sigmatest.Registry(provider)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "setup failed: %v\n", err)
+		return 1
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
@@ -38,10 +43,12 @@ func main() {
 
 	final, err := sigma.Collect(context.Background(), stream)
 	if err == nil {
-		log.Fatal("expected cancellation error")
+		fmt.Fprintf(os.Stderr, "expected cancellation error\n")
+		return 1
 	}
 	if !errors.Is(err, sigma.ErrAborted) {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "expected cancellation error: %v\n", err)
+		return 1
 	}
 
 	fmt.Printf("stop reason: %s\n", final.StopReason)
@@ -52,4 +59,5 @@ func main() {
 		aborted, ok := generationErr.FinalMessage()
 		fmt.Printf("aborted final available: %t (%s)\n", ok, aborted.StopReason)
 	}
+	return 0
 }

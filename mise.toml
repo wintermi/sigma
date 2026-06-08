@@ -8,13 +8,13 @@ COMMIT_LONG = "{{ exec(command='git rev-parse HEAD 2>/dev/null || echo \"unknown
 
 [tools]
 go = "1.26"
-"aqua:golangci/golangci-lint" = { version = "latest" }
-"aqua:securego/gosec" = { version = "latest" }
 "go:golang.org/x/tools/gopls" = { version = "latest" }
 "go:golang.org/x/vuln/cmd/govulncheck" = { version = "latest" }
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = { version = "latest" }
 "go:mvdan.cc/gofumpt" = { version = "latest" }
-"go:go.uber.org/nilaway/cmd/nilaway" = { version = "latest" }
+"go:github.com/securego/gosec/v2/cmd/gosec" = { version = "latest" }
+"go:github.com/go-critic/go-critic/cmd/gocritic" = { version = "latest" }
+"go:honnef.co/go/tools/cmd/staticcheck" = { version = "latest" }
 
 [tasks."mise:validate"]
 description = "Validate the local mise task configuration"
@@ -69,14 +69,46 @@ run = "golangci-lint fmt --diff"
 description = "Run golangci-lint using .golangci.yaml"
 run = "golangci-lint run"
 
+[tasks."go:critic"]
+description = "Run Go Critic against the project"
+run = "gocritic check -disable='#style' ./..."
+
+[tasks."go:staticcheck"]
+description = "Run staticcheck static analysis"
+run = "staticcheck ./..."
+
+[tasks."go:security"]
+description = "Run Go Sec against the project"
+run = "gosec -exclude=G101 --exclude-dir=internal/store/mocks --exclude-dir=internal/background/tasks/mocks --exclude-dir=cmd/control/api/docs ./..."
+
+[tasks."go:vuln"]
+description = "Check for known vulnerabilities in dependencies"
+run = """
+  out="$(mktemp -d /tmp/hephaestus-govulncheck.XXXXXX)/govulncheck.out"
+  govuln_status=0
+  govulncheck ./... >"$out" 2>&1 || govuln_status=$?
+  cat "$out"
+  if [ ! -s "$out" ]; then exit "$govuln_status"; fi
+  if grep -q '^Vulnerability #' "$out" && grep "Fixed in:" "$out" | grep -qv "N/A"; then exit 1; fi
+  if [ "$govuln_status" -ne 0 ] && ! grep -q '^Vulnerability #' "$out"; then exit "$govuln_status"; fi
+  if grep -q '^Vulnerability #' "$out"; then
+    echo
+    echo "WARNING: Found vulnerabilities with no fix available upstream - skipping failure."
+  fi
+  exit 0
+"""
+
 [tasks.ci]
 description = "Run the local CI-equivalent verification suite"
-depends = [
-  "mise:validate",
-  "go:fmt:check",
-  "go:lint",
-  "go:vet",
-  "go:test",
-  "go:race",
-]
-run = "true"
+run = """
+  mise run mise:validate
+  mise run go:fmt:check
+  mise run go:critic
+  mise run go:staticcheck
+  mise run go:security
+  mise run go:vuln
+  mise run go:lint
+  mise run go:vet
+  mise run go:test
+  mise run go:race
+"""

@@ -20,9 +20,13 @@ import (
 const firepassModelID = sigma.ModelID("accounts/fireworks/routers/kimi-k2p6-turbo")
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	if os.Getenv("FIREWORKS_API_KEY") == "" {
 		fmt.Fprintln(os.Stderr, "set FIREWORKS_API_KEY to run the live Fireworks Firepass demo")
-		os.Exit(2)
+		return 2
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -31,7 +35,7 @@ func main() {
 	client, model, err := firepassDemoClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "setup failed: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	tools := []sigma.Tool{demoProjectTool(), demoRuntimeTool()}
@@ -50,7 +54,7 @@ func main() {
 		)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Complete returned error: %v\n", err)
-			os.Exit(1)
+			return 1
 		}
 
 		messages = append(messages, assistantMessage(final))
@@ -58,16 +62,16 @@ func main() {
 			response := textContent(final)
 			if response == "" {
 				fmt.Fprintf(os.Stderr, "response contained no text blocks: %#v\n", final.Content)
-				os.Exit(1)
+				return 1
 			}
 			fmt.Printf("Response: %s\n", response)
-			return
+			return 0
 		}
 
 		calls := toolCalls(final)
 		if len(calls) == 0 {
 			fmt.Fprintln(os.Stderr, "model stopped for tool calls without returning any tool calls")
-			os.Exit(1)
+			return 1
 		}
 
 		for _, call := range calls {
@@ -91,9 +95,11 @@ func main() {
 
 		if turn == 3 {
 			fmt.Fprintln(os.Stderr, "model did not produce a final response after tool results")
-			os.Exit(1)
+			return 1
 		}
 	}
+
+	return 0
 }
 
 func firepassDemoClient() (*sigma.Client, sigma.Model, error) {

@@ -516,7 +516,7 @@ func writeGoFile(path string, source []byte) error {
 	if err != nil {
 		return fmt.Errorf("format generated source: %w\n%s", err, source)
 	}
-	return os.WriteFile(path, formatted, 0o644) //nolint:gosec
+	return os.WriteFile(path, formatted, 0o644) // #nosec G306 -- generated Go source is checked in and reviewed.
 }
 
 func cloneAnyMap(values map[string]any) map[string]any {

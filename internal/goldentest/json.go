@@ -31,16 +31,16 @@ func AssertJSON(t testing.TB, got any, name string) {
 
 	path := GoldenPath(t, name)
 	if os.Getenv(updateEnv) == "1" {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // #nosec G301 -- golden fixtures are checked-in test files.
 			t.Fatalf("create golden directory: %v", err)
 		}
-		if err := os.WriteFile(path, actual, 0o644); err != nil { //nolint:gosec
+		if err := os.WriteFile(path, actual, 0o644); err != nil { // #nosec G306 -- golden fixtures are checked-in test files.
 			t.Fatalf("update golden %s: %v", path, err)
 		}
 		return
 	}
 
-	expected, err := os.ReadFile(path)
+	expected, err := os.ReadFile(path) // #nosec G304 -- golden path is derived from the current test name.
 	if err != nil {
 		t.Fatalf("read golden %s: %v\nset %s=1 to create or update it", path, err, updateEnv)
 	}
