@@ -12,9 +12,6 @@ go = "1.26"
 "go:golang.org/x/vuln/cmd/govulncheck" = { version = "latest" }
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = { version = "latest" }
 "go:mvdan.cc/gofumpt" = { version = "latest" }
-"go:github.com/securego/gosec/v2/cmd/gosec" = { version = "latest" }
-"go:github.com/go-critic/go-critic/cmd/gocritic" = { version = "latest" }
-"go:honnef.co/go/tools/cmd/staticcheck" = { version = "latest" }
 
 [tasks."mise:validate"]
 description = "Validate the local mise task configuration"
@@ -69,18 +66,6 @@ run = "golangci-lint fmt --diff"
 description = "Run golangci-lint using .golangci.yaml"
 run = "golangci-lint run"
 
-[tasks."go:critic"]
-description = "Run Go Critic against the project"
-run = "gocritic check -disable='#style' ./..."
-
-[tasks."go:staticcheck"]
-description = "Run staticcheck static analysis"
-run = "staticcheck ./..."
-
-[tasks."go:security"]
-description = "Run Go Sec against the project"
-run = "gosec -exclude=G101 --exclude-dir=internal/store/mocks --exclude-dir=internal/background/tasks/mocks --exclude-dir=cmd/control/api/docs ./..."
-
 [tasks."go:vuln"]
 description = "Check for known vulnerabilities in dependencies"
 run = """
@@ -103,9 +88,6 @@ description = "Run the local CI-equivalent verification suite"
 run = """
   mise run mise:validate
   mise run go:fmt:check
-  mise run go:critic
-  mise run go:staticcheck
-  mise run go:security
   mise run go:vuln
   mise run go:lint
   mise run go:vet

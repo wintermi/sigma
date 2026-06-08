@@ -7,6 +7,7 @@ linters:
     - errcheck
     - exhaustive
     - goconst
+    - gocritic
     - godot
     - goprintffuncname
     - gomoddirectives
@@ -43,6 +44,9 @@ linters:
     goconst:
       min-len: 3
       min-occurrences: 10
+    gocritic:
+      disabled-tags:
+        - style
     gosec:
       excludes:
         - G101
