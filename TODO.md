@@ -141,6 +141,8 @@ work until their API boundaries are explicit.
       Gemini API and Vertex AI grounded responses.
 - [x] Synthesize Bedrock Converse tool specs from replayed assistant/tool
       history when the current request has no active tools.
+- [x] Add typed Bedrock structured-output requests through a synthetic schema
+      tool that is hidden from callers while preserving real tool calls.
 - [x] Drop abandoned local assistant tool-call blocks during provider replay
       when a new user/developer turn arrives before the matching tool result,
       while preserving answered calls and hosted provider tool metadata.
@@ -148,8 +150,12 @@ work until their API boundaries are explicit.
       Anthropic, Google/Vertex, Mistral, and Bedrock request builders.
 - [ ] Add provider-neutral document/PDF content blocks only after settling
       request, replay, debug-redaction, and provider compatibility semantics.
-- [ ] Decide whether Anthropic native `output_format` becomes a typed Sigma
-      option or remains an advanced provider-option passthrough.
+- [x] Add typed Anthropic native `output_format` and parallel-tool suppression
+      controls without adding provider-neutral structured-output semantics.
+- [ ] Add provider-neutral source/citation result APIs only after settling the
+      public shape across OpenAI-compatible, Anthropic, and Google metadata.
+- [ ] Add broader provider-neutral sampling controls such as top-p, top-k,
+      seed, and penalty fields only after settling cross-provider semantics.
 - [ ] Add opt-in live provider metadata/replay probes without making live
       provider calls part of `mise run ci`.
 

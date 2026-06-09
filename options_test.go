@@ -232,16 +232,22 @@ func TestTypedProviderOptionsAreCopied(t *testing.T) {
 
 	budget := 128
 	interleaved := true
+	disableParallel := true
+	outputFormat := map[string]any{"type": "json_schema"}
 	client, provider, model := newOptionsTestClient(t,
 		sigma.WithDefaultOptions(sigma.WithAnthropicOptions(sigma.AnthropicOptions{
-			ThinkingBudgetTokens: &budget,
-			ToolChoice:           &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
-			ThinkingDisplay:      sigma.AnthropicThinkingDisplayOmitted,
-			InterleavedThinking:  &interleaved,
+			ThinkingBudgetTokens:   &budget,
+			ToolChoice:             &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
+			ThinkingDisplay:        sigma.AnthropicThinkingDisplayOmitted,
+			InterleavedThinking:    &interleaved,
+			OutputFormat:           outputFormat,
+			DisableParallelToolUse: &disableParallel,
 		})),
 	)
 	budget = 256
 	interleaved = false
+	disableParallel = false
+	outputFormat["type"] = "mutated"
 
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -262,10 +268,18 @@ func TestTypedProviderOptionsAreCopied(t *testing.T) {
 	if got.InterleavedThinking == nil || !*got.InterleavedThinking {
 		t.Fatalf("anthropic interleaved thinking = %v, want true", got.InterleavedThinking)
 	}
+	if got.OutputFormat.(map[string]any)["type"] != "json_schema" {
+		t.Fatalf("anthropic output format = %#v, want json_schema", got.OutputFormat)
+	}
+	if got.DisableParallelToolUse == nil || !*got.DisableParallelToolUse {
+		t.Fatalf("anthropic disable parallel tool use = %v, want true", got.DisableParallelToolUse)
+	}
 
 	*provider.opts.AnthropicOptions.ThinkingBudgetTokens = 512
 	provider.opts.AnthropicOptions.ToolChoice.Name = "mutated"
 	*provider.opts.AnthropicOptions.InterleavedThinking = false
+	provider.opts.AnthropicOptions.OutputFormat.(map[string]any)["type"] = "provider-mutated"
+	*provider.opts.AnthropicOptions.DisableParallelToolUse = false
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
 	}
@@ -279,6 +293,12 @@ func TestTypedProviderOptionsAreCopied(t *testing.T) {
 	if got.InterleavedThinking == nil || !*got.InterleavedThinking {
 		t.Fatalf("anthropic interleaved thinking after mutation = %v, want true", got.InterleavedThinking)
 	}
+	if got.OutputFormat.(map[string]any)["type"] != "json_schema" {
+		t.Fatalf("anthropic output format after mutation = %#v, want json_schema", got.OutputFormat)
+	}
+	if got.DisableParallelToolUse == nil || !*got.DisableParallelToolUse {
+		t.Fatalf("anthropic disable parallel tool use after mutation = %v, want true", got.DisableParallelToolUse)
+	}
 }
 
 func TestBedrockOptionsAreCopied(t *testing.T) {
@@ -286,11 +306,13 @@ func TestBedrockOptionsAreCopied(t *testing.T) {
 
 	topP := 0.8
 	interleaved := true
+	responseFormat := map[string]any{"type": "object"}
 	options := sigma.BedrockOptions{
 		ToolChoice:          &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: "lookup"},
 		InterleavedThinking: &interleaved,
 		TopP:                &topP,
 		StopSequences:       []string{"stop"},
+		ResponseFormat:      responseFormat,
 		RequestMetadata:     map[string]string{"trace": "original"},
 		AdditionalModelRequestFields: map[string]any{
 			"custom": "original",
@@ -305,6 +327,7 @@ func TestBedrockOptionsAreCopied(t *testing.T) {
 	options.RequestMetadata["trace"] = "mutated"
 	options.AdditionalModelRequestFields["custom"] = "mutated"
 	options.AdditionalModelResponseFieldPaths[0] = "/mutated"
+	responseFormat["type"] = "mutated"
 	topP = 0.2
 	interleaved = false
 
@@ -333,6 +356,9 @@ func TestBedrockOptionsAreCopied(t *testing.T) {
 	if valueOf(got.TopP) != 0.8 {
 		t.Fatalf("top_p = %v, want 0.8", valueOf(got.TopP))
 	}
+	if got.ResponseFormat.(map[string]any)["type"] != "object" {
+		t.Fatalf("response format = %#v, want object", got.ResponseFormat)
+	}
 	if !valueOf(got.InterleavedThinking) {
 		t.Fatal("interleaved thinking = false, want true")
 	}
@@ -342,6 +368,7 @@ func TestBedrockOptionsAreCopied(t *testing.T) {
 	got.RequestMetadata["trace"] = "provider-mutated"
 	got.AdditionalModelRequestFields["custom"] = "provider-mutated"
 	got.AdditionalModelResponseFieldPaths[0] = "/provider-mutated"
+	got.ResponseFormat.(map[string]any)["type"] = "provider-mutated"
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
 	}
@@ -350,7 +377,8 @@ func TestBedrockOptionsAreCopied(t *testing.T) {
 		got.StopSequences[0] != "stop" ||
 		got.RequestMetadata["trace"] != "original" ||
 		got.AdditionalModelRequestFields["custom"] != "original" ||
-		got.AdditionalModelResponseFieldPaths[0] != "/stop_sequence" {
+		got.AdditionalModelResponseFieldPaths[0] != "/stop_sequence" ||
+		got.ResponseFormat.(map[string]any)["type"] != "object" {
 		t.Fatalf("bedrock options were not cloned after provider mutation: %+v", got)
 	}
 }

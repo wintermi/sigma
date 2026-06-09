@@ -61,29 +61,34 @@ type ConverseUsage struct {
 }
 
 type converseStreamParser struct {
-	writer    sigma.StreamWriter
-	model     sigma.Model
-	final     sigma.AssistantMessage
-	started   bool
-	nextBlock int
-	text      map[int]*streamblocks.Text
-	thinking  map[int]*streamblocks.Thinking
-	toolCalls map[int]*streamblocks.ToolCall
-	usage     *sigma.Usage
-	stop      sigma.StopReason
+	writer              sigma.StreamWriter
+	model               sigma.Model
+	final               sigma.AssistantMessage
+	started             bool
+	nextBlock           int
+	text                map[int]*streamblocks.Text
+	thinking            map[int]*streamblocks.Thinking
+	toolCalls           map[int]*streamblocks.ToolCall
+	responseFormatTools map[int]struct{}
+	usage               *sigma.Usage
+	stop                sigma.StopReason
 }
 
-func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
+func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigma.StreamWriter, model sigma.Model, responseFormat bool) (sigma.AssistantMessage, error) {
 	parser := converseStreamParser{
-		writer:    writer,
-		model:     model,
-		text:      make(map[int]*streamblocks.Text),
-		thinking:  make(map[int]*streamblocks.Thinking),
-		toolCalls: make(map[int]*streamblocks.ToolCall),
+		writer:              writer,
+		model:               model,
+		text:                make(map[int]*streamblocks.Text),
+		thinking:            make(map[int]*streamblocks.Thinking),
+		toolCalls:           make(map[int]*streamblocks.ToolCall),
+		responseFormatTools: make(map[int]struct{}),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
 		},
+	}
+	if !responseFormat {
+		parser.responseFormatTools = nil
 	}
 	for {
 		select {
@@ -112,6 +117,9 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 			return err
 		}
 		if event.ToolUseID != "" || event.ToolName != "" {
+			if p.markResponseFormatTool(event.ContentBlockIndex, event.ToolName) {
+				return nil
+			}
 			return p.emitToolCall(ctx, event.ContentBlockIndex, event.ToolInputDelta, event.ToolUseID, event.ToolName)
 		}
 		return nil
@@ -126,6 +134,9 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 			return p.emitThinking(ctx, event.ContentBlockIndex, event)
 		}
 		if event.ToolInputDelta != "" {
+			if p.isResponseFormatTool(event.ContentBlockIndex) {
+				return p.emitText(ctx, event.ContentBlockIndex, event.ToolInputDelta)
+			}
 			return p.emitToolCall(ctx, event.ContentBlockIndex, event.ToolInputDelta, event.ToolUseID, event.ToolName)
 		}
 		return nil
@@ -235,6 +246,22 @@ func (p *converseStreamParser) emitToolCall(ctx context.Context, index int, delt
 	})
 }
 
+func (p *converseStreamParser) markResponseFormatTool(index int, name string) bool {
+	if p.responseFormatTools == nil || name != bedrockResponseFormatToolName {
+		return false
+	}
+	p.responseFormatTools[index] = struct{}{}
+	return true
+}
+
+func (p *converseStreamParser) isResponseFormatTool(index int) bool {
+	if p.responseFormatTools == nil {
+		return false
+	}
+	_, ok := p.responseFormatTools[index]
+	return ok
+}
+
 func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	contentByIndex := make(map[int]sigma.ContentBlock)
 	for _, state := range p.sortedText() {
@@ -286,7 +313,9 @@ func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMess
 			p.final.Content = append(p.final.Content, contentByIndex[index])
 		}
 	}
-	if p.stop != "" {
+	if p.stop == sigma.StopReasonToolCalls && len(p.toolCalls) == 0 {
+		p.final.StopReason = sigma.StopReasonEndTurn
+	} else if p.stop != "" {
 		p.final.StopReason = p.stop
 	} else if len(p.toolCalls) > 0 {
 		p.final.StopReason = sigma.StopReasonToolCalls

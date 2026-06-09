@@ -44,6 +44,7 @@ const (
 	providerOptionThinkingDisplayGo            = "thinkingDisplay"
 	providerOptionInterleavedThinking          = "interleaved_thinking"
 	providerOptionInterleavedThinkingGo        = "interleavedThinking"
+	bedrockResponseFormatToolName              = "__sigma_json_response"
 )
 
 const (
@@ -200,9 +201,14 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 			payload.AdditionalModelRequestFields[key] = value
 		}
 	}
+	tools := transformed.Tools
 	toolChoice := bedrockToolChoice(opts, model.Provider)
-	if len(transformed.Tools) > 0 && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
-		tools, err := converseTools(model, transformed.Tools)
+	tools, toolChoice, err = addBedrockResponseFormatTool(model, tools, toolChoice, opts)
+	if err != nil {
+		return ConverseRequest{}, err
+	}
+	if len(tools) > 0 && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
+		tools, err := converseTools(model, tools)
 		if err != nil {
 			return ConverseRequest{}, err
 		}
@@ -216,7 +222,8 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 
 func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Options) error {
 	toolChoice := bedrockToolChoice(opts, model.Provider)
-	if len(req.Tools) > 0 && !model.SupportsTools && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
+	responseFormatRequested := opts.BedrockOptions != nil && opts.BedrockOptions.ResponseFormat != nil
+	if (len(req.Tools) > 0 || responseFormatRequested) && !model.SupportsTools && (toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone) {
 		return unsupportedError(model, "target model does not support tools")
 	}
 	if opts.ThinkingBudgetTokens != nil && !model.SupportsThinking {
@@ -233,6 +240,75 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 		}
 	}
 	return nil
+}
+
+func addBedrockResponseFormatTool(model sigma.Model, tools []sigma.Tool, toolChoice *sigma.BedrockToolChoice, opts sigma.Options) ([]sigma.Tool, *sigma.BedrockToolChoice, error) {
+	if opts.BedrockOptions == nil || opts.BedrockOptions.ResponseFormat == nil {
+		return tools, toolChoice, nil
+	}
+	for _, tool := range tools {
+		if tool.Name == bedrockResponseFormatToolName {
+			return nil, nil, &sigma.Error{
+				Code:     sigma.ErrorInvalidOptions,
+				Message:  "bedrock response format synthetic tool name is already in use",
+				Provider: model.Provider,
+				Model:    model.ID,
+				Err:      sigma.ErrInvalidOptions,
+			}
+		}
+	}
+	if toolChoice != nil && (toolChoice.Type != sigma.BedrockToolChoiceTool || toolChoice.Name != bedrockResponseFormatToolName) {
+		return nil, nil, &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  "bedrock response format cannot be combined with another tool choice",
+			Provider: model.Provider,
+			Model:    model.ID,
+			Err:      sigma.ErrInvalidOptions,
+		}
+	}
+	schema, err := bedrockResponseFormatSchema(opts.BedrockOptions.ResponseFormat)
+	if err != nil {
+		return nil, nil, &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  fmt.Sprintf("bedrock response format schema is invalid: %v", err),
+			Provider: model.Provider,
+			Model:    model.ID,
+			Err:      sigma.ErrInvalidOptions,
+		}
+	}
+	synthetic := sigma.Tool{
+		Name:        bedrockResponseFormatToolName,
+		Description: "Return structured JSON response",
+		InputSchema: schema,
+	}
+	out := make([]sigma.Tool, 0, len(tools)+1)
+	out = append(out, synthetic)
+	out = append(out, tools...)
+	return out, &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: bedrockResponseFormatToolName}, nil
+}
+
+func bedrockResponseFormatSchema(value any) (any, error) {
+	converted, err := jsonValue(value)
+	if err != nil {
+		return nil, err
+	}
+	format, ok := converted.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("expected JSON object")
+	}
+	if nested, ok := format["json_schema"].(map[string]any); ok {
+		if schema, ok := nested["schema"]; ok {
+			return schema, nil
+		}
+		return map[string]any{"type": "object"}, nil
+	}
+	if kind, _ := format["type"].(string); kind == "json_schema" {
+		if schema, ok := format["schema"]; ok {
+			return schema, nil
+		}
+		return map[string]any{"type": "object"}, nil
+	}
+	return format, nil
 }
 
 func unsupportedError(model sigma.Model, message string) error {

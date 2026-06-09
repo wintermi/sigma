@@ -32,10 +32,12 @@ type OpenAIOptions struct {
 // AnthropicOptions carries Anthropic-specific request options known to the root
 // package without importing provider adapters.
 type AnthropicOptions struct {
-	ThinkingBudgetTokens *int
-	ToolChoice           *AnthropicToolChoice
-	ThinkingDisplay      AnthropicThinkingDisplay
-	InterleavedThinking  *bool
+	ThinkingBudgetTokens   *int
+	ToolChoice             *AnthropicToolChoice
+	ThinkingDisplay        AnthropicThinkingDisplay
+	InterleavedThinking    *bool
+	OutputFormat           any
+	DisableParallelToolUse *bool
 }
 
 // AnthropicToolChoiceType identifies Anthropic Messages tool selection behavior.
@@ -118,6 +120,7 @@ type BedrockOptions struct {
 	InterleavedThinking               *bool
 	StopSequences                     []string
 	TopP                              *float64
+	ResponseFormat                    any
 	RequestMetadata                   map[string]string
 	AdditionalModelRequestFields      map[string]any
 	AdditionalModelResponseFieldPaths []string
@@ -451,6 +454,8 @@ func cloneAnthropicOptions(options *AnthropicOptions) *AnthropicOptions {
 		copied.ToolChoice = &toolChoice
 	}
 	copied.InterleavedThinking = cloneBoolPtr(options.InterleavedThinking)
+	copied.OutputFormat = cloneAnyValue(options.OutputFormat)
+	copied.DisableParallelToolUse = cloneBoolPtr(options.DisableParallelToolUse)
 	return &copied
 }
 
@@ -476,6 +481,7 @@ func cloneBedrockOptions(options *BedrockOptions) *BedrockOptions {
 	copied.InterleavedThinking = cloneBoolPtr(options.InterleavedThinking)
 	copied.StopSequences = append([]string(nil), options.StopSequences...)
 	copied.TopP = cloneFloat64Ptr(options.TopP)
+	copied.ResponseFormat = cloneAnyValue(options.ResponseFormat)
 	copied.RequestMetadata = copyStringStringMap(options.RequestMetadata)
 	copied.AdditionalModelRequestFields = copyStringAnyMap(options.AdditionalModelRequestFields)
 	copied.AdditionalModelResponseFieldPaths = append([]string(nil), options.AdditionalModelResponseFieldPaths...)

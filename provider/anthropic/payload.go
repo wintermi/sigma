@@ -27,6 +27,7 @@ const (
 	providerOptionBetaGo            = "anthropicBeta"
 	providerOptionExtraBody         = "extra_body"
 	providerOptionExtraBodyGo       = "extraBody"
+	providerOptionOutputFormat      = "output_format"
 	providerOptionSessionHeader     = "session_id_header"
 	providerOptionSessionHeaderGo   = "sessionIDHeader"
 	providerOptionToolChoice        = "tool_choice"
@@ -81,7 +82,9 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		}
 		payload["tools"] = tools
 	}
-	addProviderOptions(payload, model.Provider, opts)
+	if err := addProviderOptions(payload, model.Provider, opts, len(transformed.Tools) > 0); err != nil {
+		return nil, err
+	}
 	return payload, nil
 }
 
@@ -459,8 +462,11 @@ func thinkingBudget(model sigma.Model, opts sigma.Options, compat messagesCompat
 	}
 }
 
-func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
+func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts sigma.Options, hasTools bool) error {
 	options := providerOptions(opts, provider)
+	if opts.AnthropicOptions != nil && opts.AnthropicOptions.OutputFormat != nil {
+		payload[providerOptionOutputFormat] = opts.AnthropicOptions.OutputFormat
+	}
 	if value := anthropicToolChoice(opts); value != nil {
 		payload["tool_choice"] = value
 	} else if value, ok := options[providerOptionToolChoice]; ok {
@@ -468,9 +474,13 @@ func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts 
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
 		payload["tool_choice"] = value
 	}
+	if err := addDisableParallelToolUse(payload, provider, opts, hasTools); err != nil {
+		return err
+	}
 	for key, value := range extraBody(opts, provider) {
 		payload[key] = value
 	}
+	return nil
 }
 
 func anthropicToolChoice(opts sigma.Options) map[string]any {
@@ -490,6 +500,33 @@ func anthropicToolChoice(opts sigma.Options) map[string]any {
 		out["name"] = choice.Name
 	}
 	return out
+}
+
+func addDisableParallelToolUse(payload map[string]any, provider sigma.ProviderID, opts sigma.Options, hasTools bool) error {
+	if opts.AnthropicOptions == nil || opts.AnthropicOptions.DisableParallelToolUse == nil || !*opts.AnthropicOptions.DisableParallelToolUse {
+		return nil
+	}
+	value, ok := payload["tool_choice"]
+	if !ok {
+		if hasTools {
+			payload["tool_choice"] = map[string]any{
+				"type":                      "auto",
+				"disable_parallel_tool_use": true,
+			}
+		}
+		return nil
+	}
+	choice, ok := value.(map[string]any)
+	if !ok {
+		return &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  "anthropic disable parallel tool use requires a map-shaped tool choice",
+			Provider: provider,
+			Err:      sigma.ErrInvalidOptions,
+		}
+	}
+	choice["disable_parallel_tool_use"] = true
+	return nil
 }
 
 func addCacheControlToLast(content []map[string]any, retention sigma.CacheRetention, compat messagesCompat) {

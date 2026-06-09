@@ -467,6 +467,167 @@ func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
 	}
 }
 
+func TestTypedAnthropicOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-output-format-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("return json")}},
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+			OutputFormat: map[string]any{
+				"type":   "json_schema",
+				"schema": map[string]any{"type": "object"},
+			},
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	outputFormat := payload["output_format"].(map[string]any)
+	if got, want := outputFormat["type"], "json_schema"; got != want {
+		t.Fatalf("output_format.type = %v, want %v", got, want)
+	}
+	if _, ok := outputFormat["schema"].(map[string]any); !ok {
+		t.Fatalf("output_format.schema = %#v, want map", outputFormat["schema"])
+	}
+}
+
+func TestTypedAnthropicDisableParallelToolUseWithToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-disable-parallel-choice-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	disableParallel := true
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("use lookup")},
+			Tools:    []sigma.Tool{{Name: "lookup", Description: "Lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+			ToolChoice:             &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
+			DisableParallelToolUse: &disableParallel,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	toolChoice := payload["tool_choice"].(map[string]any)
+	if got, want := toolChoice["type"], string(sigma.AnthropicToolChoiceTool); got != want {
+		t.Fatalf("tool choice type = %v, want %v", got, want)
+	}
+	if got, want := toolChoice["name"], "lookup"; got != want {
+		t.Fatalf("tool choice name = %v, want %v", got, want)
+	}
+	if got, want := toolChoice["disable_parallel_tool_use"], true; got != want {
+		t.Fatalf("disable_parallel_tool_use = %v, want %v", got, want)
+	}
+}
+
+func TestTypedAnthropicDisableParallelToolUseSynthesizesAutoToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-disable-parallel-auto-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	disableParallel := true
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("use lookup")},
+			Tools:    []sigma.Tool{{Name: "lookup", Description: "Lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{DisableParallelToolUse: &disableParallel}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	toolChoice := payload["tool_choice"].(map[string]any)
+	if got, want := toolChoice["type"], string(sigma.AnthropicToolChoiceAuto); got != want {
+		t.Fatalf("tool choice type = %v, want %v", got, want)
+	}
+	if got, want := toolChoice["disable_parallel_tool_use"], true; got != want {
+		t.Fatalf("disable_parallel_tool_use = %v, want %v", got, want)
+	}
+}
+
+func TestTypedAnthropicDisableParallelToolUseRejectsNonMapRawToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-disable-parallel-conflict-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	disableParallel := true
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("use lookup")},
+			Tools:    []sigma.Tool{{Name: "lookup", Description: "Lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithAnthropicOptions(sigma.AnthropicOptions{DisableParallelToolUse: &disableParallel}),
+		sigma.WithProviderOption(providerID, "tool_choice", "auto"),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) {
+		t.Fatalf("error type = %T, want *sigma.Error", err)
+	}
+	if sigmaErr.Code != sigma.ErrorInvalidOptions {
+		t.Fatalf("error code = %q, want %q", sigmaErr.Code, sigma.ErrorInvalidOptions)
+	}
+	if len(requests) != 0 {
+		t.Fatal("provider request was sent after invalid options")
+	}
+}
+
 func TestTypedAnthropicThinkingDisplayAppliesToAdaptiveThinking(t *testing.T) {
 	t.Parallel()
 

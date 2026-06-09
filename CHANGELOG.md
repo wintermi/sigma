@@ -15,6 +15,11 @@ See [release notes](docs/release-notes-v0.5.0.md).
 - Bedrock Converse Stream now derives the runtime region from application
   inference profile ARNs on the model or request/provider options before AWS
   region environment fallbacks, while preserving explicit region overrides.
+- Anthropic Messages now has typed options for native `output_format` payloads
+  and `disable_parallel_tool_use` tool-choice controls.
+- Bedrock Converse Stream now supports typed structured-output requests by
+  synthesizing a schema tool and returning the structured tool arguments as
+  assistant text while preserving real tool calls.
 
 ## [0.4.0] - 2026-06-08
 

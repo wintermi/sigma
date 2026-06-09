@@ -223,7 +223,8 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		_ = stream.Close()
 	}()
 
-	final, err = parseConverseStream(ctx, stream, writer, model)
+	responseFormat := opts.BedrockOptions != nil && opts.BedrockOptions.ResponseFormat != nil
+	final, err = parseConverseStream(ctx, stream, writer, model, responseFormat)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted

@@ -453,6 +453,105 @@ func TestReplayToolHistorySynthesizesToolConfigWithoutActiveTools(t *testing.T) 
 	}
 }
 
+func TestConversePayloadInjectsResponseFormatTool(t *testing.T) {
+	t.Parallel()
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("return json")},
+			Tools: []sigma.Tool{{
+				Name:        "lookup",
+				Description: "Lookup",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.Options{BedrockOptions: &sigma.BedrockOptions{
+			ResponseFormat: map[string]any{
+				"type": "json_schema",
+				"json_schema": map[string]any{
+					"name":   "answer",
+					"schema": map[string]any{"type": "object"},
+				},
+			},
+		}},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	if got, want := payload.Tools[0].Name, bedrockResponseFormatToolName; got != want {
+		t.Fatalf("synthetic tool name = %q, want %q", got, want)
+	}
+	if got, want := payload.ToolChoice.Name, bedrockResponseFormatToolName; got != want {
+		t.Fatalf("tool choice name = %q, want %q", got, want)
+	}
+	if got, want := payload.Tools[1].Name, "lookup"; got != want {
+		t.Fatalf("real tool name = %q, want %q", got, want)
+	}
+	schema := payload.Tools[0].InputSchema.(map[string]any)
+	if got, want := schema["type"], "object"; got != want {
+		t.Fatalf("synthetic schema type = %v, want %v", got, want)
+	}
+
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	toolConfig := input["toolConfig"].(map[string]any)
+	if got, want := toolConfig["toolChoice"], map[string]any{"tool": map[string]any{"name": bedrockResponseFormatToolName}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool choice body = %#v, want %#v", got, want)
+	}
+}
+
+func TestConversePayloadRejectsResponseFormatToolNameConflict(t *testing.T) {
+	t.Parallel()
+
+	_, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("return json")},
+			Tools:    []sigma.Tool{{Name: bedrockResponseFormatToolName, InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.Options{BedrockOptions: &sigma.BedrockOptions{ResponseFormat: sigma.Schema{"type": "object"}}},
+		Config{ModelID: "model"},
+	)
+	if err == nil {
+		t.Fatal("conversePayload returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) {
+		t.Fatalf("error type = %T, want *sigma.Error", err)
+	}
+	if got, want := sigmaErr.Code, sigma.ErrorInvalidOptions; got != want {
+		t.Fatalf("error code = %q, want %q", got, want)
+	}
+}
+
+func TestConversePayloadRejectsResponseFormatToolChoiceConflict(t *testing.T) {
+	t.Parallel()
+
+	_, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("return json")}},
+		sigma.Options{BedrockOptions: &sigma.BedrockOptions{
+			ResponseFormat: sigma.Schema{"type": "object"},
+			ToolChoice:     &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: "lookup"},
+		}},
+		Config{ModelID: "model"},
+	)
+	if err == nil {
+		t.Fatal("conversePayload returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) {
+		t.Fatalf("error type = %T, want *sigma.Error", err)
+	}
+	if got, want := sigmaErr.Code, sigma.ErrorInvalidOptions; got != want {
+		t.Fatalf("error code = %q, want %q", got, want)
+	}
+}
+
 func TestNoToolHistoryDoesNotSynthesizeToolConfig(t *testing.T) {
 	t.Parallel()
 
@@ -801,6 +900,99 @@ func TestStreamingMapsThinkingToolCallsUsageAndStopReason(t *testing.T) {
 	}
 	if final.Usage == nil || final.Usage.CacheReadInputTokens != 3 {
 		t.Fatalf("usage = %+v, want cache read tokens 3", final.Usage)
+	}
+}
+
+func TestStreamingResponseFormatToolConvertsToText(t *testing.T) {
+	t.Parallel()
+
+	fakeClient := &fakeConverseClient{stream: fakeStream(
+		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 0, ToolUseID: "tool_json", ToolName: bedrockResponseFormatToolName},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ToolInputDelta: `{"answer"`},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ToolInputDelta: `:"ok"}`},
+		ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "tool_use"},
+	)}
+	providerID := sigma.ProviderID("bedrock-response-format-stream")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	stream := client.Stream(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("return json")}},
+		sigma.WithBedrockOptions(sigma.BedrockOptions{ResponseFormat: sigma.Schema{"type": "object"}}),
+	)
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if got, want := final.StopReason, sigma.StopReasonEndTurn; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, `{"answer":"ok"}`; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+}
+
+func TestStreamingResponseFormatPreservesRealToolCalls(t *testing.T) {
+	t.Parallel()
+
+	fakeClient := &fakeConverseClient{stream: fakeStream(
+		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 0, ToolUseID: "tool_json", ToolName: bedrockResponseFormatToolName},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ToolInputDelta: `{"answer":"ok"}`},
+		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 1, ToolUseID: "tool_lookup", ToolName: "lookup"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, ToolInputDelta: `{"id":"abc"}`},
+		ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "tool_use"},
+	)}
+	providerID := sigma.ProviderID("bedrock-response-format-real-tool-stream")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	stream := client.Stream(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("return json and lookup")},
+			Tools:    []sigma.Tool{{Name: "lookup", Description: "Lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithBedrockOptions(sigma.BedrockOptions{ResponseFormat: sigma.Schema{"type": "object"}}),
+	)
+	_ = collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, `{"answer":"ok"}`; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].ToolName, "lookup"; got != want {
+		t.Fatalf("tool name = %q, want %q", got, want)
+	}
+	args := final.Content[1].ToolArguments.(map[string]any)
+	if got, want := args["id"], "abc"; got != want {
+		t.Fatalf("tool arg id = %v, want %v", got, want)
 	}
 }
 

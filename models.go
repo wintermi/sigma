@@ -461,6 +461,12 @@ func cloneAnyValue(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:
 		return copyStringAnyMap(typed)
+	case Schema:
+		copied := make(Schema, len(typed))
+		for key, nested := range typed {
+			copied[key] = nested
+		}
+		return copied
 	case []any:
 		return append([]any(nil), typed...)
 	case []string:
