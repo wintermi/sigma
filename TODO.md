@@ -336,6 +336,10 @@ should still come through the catalog refresh workflow.
 - [x] Derive the `eu-central-1` runtime endpoint for built-in EU regional
       inference-profile rows when callers have not configured an endpoint,
       region, or AWS region environment variable.
+- [x] Derive the runtime region from Bedrock application inference profile ARNs
+      supplied as the model ID or `inference_profile_arn` provider option before
+      AWS region environment fallbacks, while preserving explicit region
+      overrides.
 - [x] Add focused Bedrock `InvokeModel` embedding support for Titan, Cohere,
       and Nova text embedding request shapes through the existing stdlib
       credential and signing path.

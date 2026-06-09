@@ -266,6 +266,13 @@ func effectiveConfig(base Config, model sigma.Model, opts sigma.Options) Config 
 		config.CredentialSource = CredentialSource(value)
 	}
 	if config.Region == "" {
+		if region := inferenceProfileARNRegion(config.InferenceProfileARN); region != "" {
+			config.Region = region
+		} else if region := inferenceProfileARNRegion(string(model.ID)); region != "" {
+			config.Region = region
+		}
+	}
+	if config.Region == "" {
 		config.Region = os.Getenv("AWS_REGION")
 	}
 	if config.Region == "" {
@@ -302,6 +309,23 @@ func regionalInferenceProfileRegion(modelID sigma.ModelID) string {
 		return "eu-central-1"
 	}
 	return ""
+}
+
+func inferenceProfileARNRegion(value string) string {
+	parts := strings.Split(value, ":")
+	if len(parts) < 6 {
+		return ""
+	}
+	if parts[0] != "arn" || parts[2] != "bedrock" || parts[3] == "" {
+		return ""
+	}
+	if parts[1] != "aws" && !strings.HasPrefix(parts[1], "aws-") {
+		return ""
+	}
+	if !strings.HasPrefix(parts[5], "application-inference-profile/") {
+		return ""
+	}
+	return parts[3]
 }
 
 func bedrockEndpointRegion(raw string) string {

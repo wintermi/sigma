@@ -7,15 +7,20 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.5.0 is open for development. Release scope is TBC.
+`sigma` v0.5.0 is open for development with focused provider hardening for
+Bedrock application inference profile routing.
 
 ## Added
 
-- TBC.
+- Bedrock Converse Stream now derives the runtime region from application
+  inference profile ARNs supplied as the model ID or `inference_profile_arn`
+  provider option before AWS region environment fallbacks.
 
 ## Compatibility
 
-- TBC.
+- Explicit Bedrock region configuration continues to win over ARN-derived
+  regions. Existing AWS environment fallback, EU regional inference-profile
+  endpoint fallback, and caller-supplied endpoint behavior are unchanged.
 
 ## Deferred work
 

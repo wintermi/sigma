@@ -961,6 +961,56 @@ func TestEffectiveConfigUsesModelEndpointForRegionalInferenceProfile(t *testing.
 	}
 }
 
+func TestEffectiveConfigUsesApplicationInferenceProfileARNRegionBeforeEnvironment(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.ID = "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123"
+
+	config := effectiveConfig(Config{}, model, sigma.Options{})
+	if got, want := config.Region, "us-west-2"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveConfigUsesGovCloudApplicationInferenceProfileARNRegion(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.ID = "arn:aws-us-gov:bedrock:us-gov-west-1:123456789012:application-inference-profile/abc123"
+
+	config := effectiveConfig(Config{}, model, sigma.Options{})
+	if got, want := config.Region, "us-gov-west-1"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveConfigUsesProviderInferenceProfileARNRegionAndModelID(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	arn := "arn:aws:bedrock:ap-southeast-2:123456789012:application-inference-profile/profile-id"
+	config := effectiveConfig(Config{}, model, sigma.Options{
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionInferenceProfileARN: arn,
+			},
+		},
+	})
+	if got, want := config.Region, "ap-southeast-2"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+	if got := config.InferenceProfileARN; got != arn {
+		t.Fatalf("inference profile ARN = %q, want %q", got, arn)
+	}
+	if got := bedrockModelID(config, model); got != arn {
+		t.Fatalf("model ID = %q, want %q", got, arn)
+	}
+}
+
 func TestEffectiveConfigKeepsEnvironmentBeforeModelEndpoint(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	t.Setenv("AWS_DEFAULT_REGION", "")
@@ -1014,6 +1064,25 @@ func TestEffectiveConfigKeepsExplicitConfigAndOptionsBeforeModelEndpoint(t *test
 	}
 	if got, want := config.Endpoint, "https://bedrock-custom.example.com"; got != want {
 		t.Fatalf("provider option endpoint = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveConfigKeepsExplicitRegionBeforeApplicationInferenceProfileARN(t *testing.T) {
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_DEFAULT_REGION", "")
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.ID = "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123"
+
+	config := effectiveConfig(Config{}, model, sigma.Options{
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionRegion: "eu-west-1",
+			},
+		},
+	})
+	if got, want := config.Region, "eu-west-1"; got != want {
+		t.Fatalf("provider option region = %q, want %q", got, want)
 	}
 }
 

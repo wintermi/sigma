@@ -12,7 +12,9 @@ See [release notes](docs/release-notes-v0.5.0.md).
 
 ### Added
 
-- TBC.
+- Bedrock Converse Stream now derives the runtime region from application
+  inference profile ARNs on the model or request/provider options before AWS
+  region environment fallbacks, while preserving explicit region overrides.
 
 ## [0.4.0] - 2026-06-08
 
