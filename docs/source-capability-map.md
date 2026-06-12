@@ -36,7 +36,7 @@ packages and metadata fields. It should be read with
 | OpenAI | `openai` | `openai-responses`, `openai-completions`, `openai-images`, `openai-embeddings` | Text Responses, Chat Completions, Images generation, and embeddings adapters exist. |
 | Azure OpenAI | caller-chosen, usually Azure-specific | `azure-openai-responses` | Uses model/request `AzureOpenAIResponses` config rather than generated default metadata. |
 | OpenAI Codex | caller-chosen, usually Codex-specific | `openai-codex-responses` | Uses explicit OAuth token providers; includes browser callback login, device-code login, and refresh helpers. |
-| Anthropic | `anthropic` | `anthropic-messages` | Generated metadata includes a Claude text model. |
+| Anthropic | `anthropic` | `anthropic-messages` | Generated metadata includes a Claude text model. Includes browser callback OAuth login, refresh helpers, an in-memory OAuth token provider, and automatic Claude Code identity for OAuth tokens. |
 | Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream`, `bedrock-embeddings` | Generated metadata includes representative Bedrock text and embedding routes. |
 | Google Gemini API | `google` | `google-generative-ai`, `google-images`, `google-embeddings` | Generated metadata includes representative Gemini text, image, and embedding routes. |
 | Google Vertex AI | `google-vertex` | `google-vertex`, `google-vertex-images`, `google-vertex-embeddings` | Generated metadata includes representative Gemini Vertex text, Imagen, and embedding routes; callers still supply project/location routing. |

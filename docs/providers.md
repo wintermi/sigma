@@ -123,6 +123,16 @@ _ = anthropic.Register(registry, sigma.ProviderAnthropic)
 
 Environment: `ANTHROPIC_API_KEY`.
 
+Claude Pro/Max subscriptions can authenticate with OAuth instead of an API
+key. Use `anthropic.LoginAnthropicBrowser`, `anthropic.RefreshAnthropicToken`,
+and `anthropic.NewAnthropicOAuthTokenProvider` for stdlib-only browser
+callback login, refresh, and request-time token resolution; credential
+persistence stays caller-owned. When the resolved credential is an Anthropic
+OAuth token, the adapter automatically sends the required Claude Code identity
+(beta headers, identity system block, and canonical tool-name casing, with
+streamed tool names restored to the caller's casing). Browser login binds the
+provider-registered callback at `http://localhost:53692/callback`.
+
 This adapter also handles Anthropic-compatible endpoints used by some Kimi,
 Fireworks, and Xiaomi routes. Compatibility varies by endpoint; check
 [provider parity](provider-parity.md).

@@ -219,7 +219,7 @@ func (p *VertexProvider) run(ctx context.Context, writer sigma.StreamWriter, mod
 	}
 
 	compat := anthropicMessagesCompat(model, p.baseURLForModel(model, opts), p.compat)
-	final, err = parseMessagesStream(ctx, body, writer, model, compat)
+	final, err = parseMessagesStream(ctx, body, writer, model, compat, req.Tools)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted

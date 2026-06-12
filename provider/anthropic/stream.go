@@ -92,6 +92,7 @@ type streamParser struct {
 	writer         sigma.StreamWriter
 	model          sigma.Model
 	compat         messagesCompat
+	requestTools   []sigma.Tool
 	final          sigma.AssistantMessage
 	started        bool
 	nextBlock      int
@@ -107,14 +108,15 @@ type streamParser struct {
 	messageStopped bool
 }
 
-func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, compat messagesCompat) (sigma.AssistantMessage, error) {
+func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, compat messagesCompat, tools []sigma.Tool) (sigma.AssistantMessage, error) {
 	parser := streamParser{
-		writer:    writer,
-		model:     model,
-		compat:    compat,
-		text:      make(map[int]*streamblocks.Text),
-		thinking:  make(map[int]*streamblocks.Thinking),
-		toolCalls: make(map[int]*streamblocks.ToolCall),
+		writer:       writer,
+		model:        model,
+		compat:       compat,
+		requestTools: tools,
+		text:         make(map[int]*streamblocks.Text),
+		thinking:     make(map[int]*streamblocks.Thinking),
+		toolCalls:    make(map[int]*streamblocks.ToolCall),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -292,7 +294,11 @@ func (p *streamParser) captureContent(index int, content streamContent) {
 	case "tool_use", "server_tool_use":
 		state := p.toolCallState(index)
 		state.SetID(content.ID)
-		state.SetName(content.Name)
+		name := content.Name
+		if p.compat.claudeCodeIdentity {
+			name = restoreCallerToolName(name, p.requestTools)
+		}
+		state.SetName(name)
 		if content.Type == "server_tool_use" {
 			state.ProviderMetadata = withProviderMetadata(state.ProviderMetadata, "type", "server_tool_use")
 		}

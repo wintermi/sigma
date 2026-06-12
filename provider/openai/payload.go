@@ -622,9 +622,12 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 		addTogetherReasoning(payload, model, opts, compat)
 		return
 	}
-	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningQwen ||
-		compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
+	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningQwen {
 		addToggleReasoning(payload, model, opts)
+		return
+	}
+	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
+		addZAIReasoning(payload, model, opts)
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningAntLing {
@@ -672,6 +675,17 @@ func addToggleReasoning(payload map[string]any, model sigma.Model, opts sigma.Op
 		return
 	}
 	payload["enable_thinking"] = reasoningEffort(model, opts) != ""
+}
+
+func addZAIReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+	if !model.SupportsReasoning() {
+		return
+	}
+	state := "disabled"
+	if reasoningEffort(model, opts) != "" {
+		state = "enabled"
+	}
+	payload["thinking"] = map[string]any{providerToolOptionTypeKey: state}
 }
 
 func addAntLingReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {

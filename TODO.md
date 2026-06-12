@@ -101,6 +101,10 @@ integrations remain future work until they have the same local evidence bar.
       first-class OpenAI-compatible row.
 - [x] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
       first-class Cloudflare OpenAI-compatible row.
+- [x] Send Z.ai reasoning requests as `thinking` objects with enabled or
+      disabled types instead of the legacy `enable_thinking` toggle.
+- [x] Send explicit `max_tokens` for OpenCode Zen and OpenCode Go Chat
+      Completions through compatibility detection.
 - [ ] Add opt-in structured-output capability probes for OpenAI-compatible
       routes so JSON object and strict JSON Schema support can be refreshed
       from live evidence without making provider calls part of `mise run ci`.
@@ -234,6 +238,14 @@ upstream.
 - [x] Add a deterministic local catalog summary report for the generator,
       covering source count, text/image/embedding totals, text tool/reasoning
       counts, and provider/API buckets without changing the checked-in catalog.
+- [x] Correct the Azure GPT-5.4/GPT-5.5 context windows to the 1,050,000-token
+      Azure Foundry deployments and the OpenAI/Azure GPT-5 Pro max output
+      tokens to 128,000.
+- [x] Add the DeepSeek-style thinking format to direct Moonshot AI and
+      Moonshot AI CN generated rows so thinking-off requests explicitly disable
+      reasoning.
+- [x] Add disabled-thinking compatibility metadata to the generated Claude
+      Fable 5 row so thinking-off requests omit the rejected disabled payload.
 - [ ] Add an offline-friendly refresh command that can ingest `models.dev` and
       provider catalog APIs into a candidate catalog file without replacing the
       checked-in review step.
@@ -378,6 +390,10 @@ should still come through the catalog refresh workflow.
       credential and signing path.
 - [x] Add request-scoped Bedrock bearer-token auth through typed Bedrock options
       before resolver and environment credential fallback.
+- [x] Replace blank required user/tool-result text with a placeholder and drop
+      blank replayed assistant text blocks that Bedrock Converse rejects.
+- [x] Append the AWS data-retention documentation link to Bedrock provider
+      errors that reject the configured data retention mode.
 - [ ] Keep live Bedrock validation out of `mise run ci`; use credential-gated
       checks only for manual compatibility investigation.
 - [ ] Expand broad Bedrock generated metadata only through the catalog refresh
@@ -393,14 +409,18 @@ should still come through the catalog refresh workflow.
       credential persistence.
 - [x] Implement OpenAI Codex browser callback OAuth login with caller-owned
       credential persistence.
+- [x] Implement Anthropic (Claude Pro/Max) browser callback OAuth login,
+      refresh helpers, and an in-memory OAuth token provider with caller-owned
+      credential persistence.
 - [ ] Implement token persistence for OAuth-based providers.
-- [ ] Add Anthropic Claude Code OAuth identity headers and Claude Code
-      tool-name canonicalization if Sigma adopts a first-class Anthropic OAuth
-      login path.
+- [x] Add Anthropic Claude Code OAuth identity headers and Claude Code
+      tool-name canonicalization, applied automatically when the resolved
+      Anthropic credential is an OAuth token.
 - [x] Wire OpenAI Codex browser/device-code login and refresh into Codex
       Responses through `openai.NewCodexOAuthTokenProvider`.
-- [ ] Add deterministic coverage for login/refresh/persistence flows without
-      live network calls.
+- [x] Add deterministic coverage for Codex and Anthropic login/refresh flows
+      without live network calls; persistence flows stay deferred with
+      caller-owned token persistence.
 
 ## Anthropic-compatible routing
 

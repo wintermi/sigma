@@ -1188,17 +1188,35 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			thinking: map[sigma.ThinkingLevel]string{sigma.ThinkingLevelHigh: "provider-high"},
 		},
 		{
-			name:   "zai sends enable thinking and tool stream",
+			name:   "zai sends enabled thinking object and tool stream",
 			format: sigma.OpenAICompletionsReasoningZAI,
 			level:  sigma.ThinkingLevelHigh,
 			tool:   true,
 			assert: func(t *testing.T, body map[string]any) {
 				t.Helper()
-				if got := body["enable_thinking"]; got != true {
-					t.Fatalf("enable_thinking = %#v, want true", got)
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if _, ok := body["enable_thinking"]; ok {
+					t.Fatalf("enable_thinking = %#v, want absent", body["enable_thinking"])
 				}
 				if got := body["tool_stream"]; got != true {
 					t.Fatalf("tool_stream = %#v, want true", got)
+				}
+			},
+		},
+		{
+			name:   "zai disables thinking when no level is requested",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "disabled" {
+					t.Fatalf("thinking = %#v, want disabled type", body["thinking"])
+				}
+				if _, ok := body["enable_thinking"]; ok {
+					t.Fatalf("enable_thinking = %#v, want absent", body["enable_thinking"])
 				}
 			},
 		},

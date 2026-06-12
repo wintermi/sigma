@@ -102,6 +102,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if fable.AnthropicMessagesCompat == nil || fable.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
 		t.Fatalf("Claude Fable 5 compat = %#v, want adaptive thinking", fable.AnthropicMessagesCompat)
 	}
+	if fable.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported {
+		t.Fatalf("Claude Fable 5 disabled thinking = %q, want unsupported", fable.AnthropicMessagesCompat.SupportsDisabledThinking)
+	}
 	if got, ok := fable.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
 		t.Fatalf("Claude Fable 5 xhigh level = %q, %v; want xhigh, true", got, ok)
 	}
@@ -495,6 +498,18 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		xiaomi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
 		xiaomi.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
 		t.Fatalf("Xiaomi compat = %#v, want deepseek reasoning content replay", xiaomi.OpenAICompletionsCompat)
+	}
+
+	for _, provider := range []ProviderID{ProviderMoonshotAI, ProviderMoonshotAICN} {
+		moonshot, ok := registry.Model(provider, "kimi-k2-thinking")
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s kimi-k2-thinking model", provider)
+		}
+		if moonshot.OpenAICompletionsCompat == nil ||
+			moonshot.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+			moonshot.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+			t.Fatalf("%s compat = %#v, want deepseek thinking format without reasoning effort", provider, moonshot.OpenAICompletionsCompat)
+		}
 	}
 
 	for _, id := range []ModelID{

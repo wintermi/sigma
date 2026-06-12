@@ -36,6 +36,31 @@ See [release notes](docs/release-notes-v0.5.0.md).
 - Bedrock Converse Stream now supports typed structured-output requests by
   synthesizing a schema tool and returning the structured tool arguments as
   assistant text while preserving real tool calls.
+- Anthropic Messages now omits the disabled-thinking payload for models whose
+  compatibility metadata marks disabled thinking as unsupported, and generated
+  Claude Fable 5 metadata now sets that flag because the model rejects explicit
+  `thinking: disabled` requests.
+- OpenAI-compatible Z.ai reasoning requests now send `thinking` objects with
+  enabled or disabled types instead of the legacy `enable_thinking` toggle.
+- Generated Moonshot AI and Moonshot AI CN metadata now uses the DeepSeek-style
+  thinking format so thinking-off requests explicitly disable reasoning.
+- OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
+  instead of `max_completion_tokens`, matching the OpenCode request shape.
+- Generated Azure GPT-5.4 and GPT-5.5 context windows now match the
+  1,050,000-token Azure Foundry deployments, and OpenAI/Azure GPT-5 Pro max
+  output tokens are corrected to 128,000.
+- Bedrock Converse Stream now replaces blank required user and tool-result text
+  with an `<empty>` placeholder and drops blank replayed assistant text blocks,
+  which Bedrock would otherwise reject.
+- Bedrock provider errors now link the AWS data-retention documentation when a
+  model rejects the configured data retention mode.
+- Anthropic Messages now has stdlib-only browser callback OAuth login for
+  Claude Pro/Max subscriptions, token refresh helpers, and an in-memory OAuth
+  token provider, with credential persistence remaining caller-owned.
+- Anthropic Messages now sends the Claude Code identity required by Anthropic
+  OAuth tokens: identity beta headers, a leading Claude Code system block, and
+  canonical Claude Code tool-name casing with streamed tool names restored to
+  the caller's original casing.
 
 ## [0.4.0] - 2026-06-08
 

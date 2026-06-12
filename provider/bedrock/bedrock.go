@@ -413,7 +413,7 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
-		return nil, sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse)
+		return nil, withDataRetentionHint(sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse))
 	}
 	return newHTTPConverseStream(resp.Body), nil
 }
@@ -920,10 +920,10 @@ func intValue(values map[string]any, key string) int {
 func providerError(model sigma.Model, err error) *sigma.ProviderError {
 	var providerErr *sigma.ProviderError
 	if errors.As(err, &providerErr) {
-		return providerErr
+		return withDataRetentionHint(providerErr)
 	}
 	statusCode, requestID := providerErrorMetadata(err)
-	return sigma.NewProviderError(
+	return withDataRetentionHint(sigma.NewProviderError(
 		model.Provider,
 		sigma.APIBedrockConverseStream,
 		model.ID,
@@ -932,7 +932,32 @@ func providerError(model sigma.Model, err error) *sigma.ProviderError {
 		0,
 		[]byte(err.Error()),
 		err,
-	)
+	))
+}
+
+// dataRetentionDocsURL points at the AWS guidance for configuring a supported
+// Bedrock data retention mode when a model rejects the account default.
+const dataRetentionDocsURL = "https://docs.aws.amazon.com/bedrock/latest/userguide/data-retention.html"
+
+func withDataRetentionHint(providerErr *sigma.ProviderError) *sigma.ProviderError {
+	if providerErr == nil {
+		return nil
+	}
+	message := providerErr.ProviderMessage
+	if !strings.Contains(strings.ToLower(message), "data retention mode") &&
+		!strings.Contains(strings.ToLower(providerErr.BodyPreview), "data retention mode") {
+		return providerErr
+	}
+	if strings.Contains(message, dataRetentionDocsURL) {
+		return providerErr
+	}
+	hint := "See " + dataRetentionDocsURL + " for supported data retention modes."
+	if message == "" {
+		providerErr.ProviderMessage = hint
+		return providerErr
+	}
+	providerErr.ProviderMessage = message + " " + hint
+	return providerErr
 }
 
 func contextError(ctx context.Context, err error) error {

@@ -1581,6 +1581,7 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
         "thinkingFormat": "adaptive"
       },
       "thinkingLevelMap": {
@@ -3062,7 +3063,7 @@
         "currency": "USD"
       },
       "contextWindow": 400000,
-      "maxOutputTokens": 272000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "AZURE_OPENAI_API_KEY"
@@ -3575,7 +3576,7 @@
         "currency": "USD",
         "cacheReadInputPerMillion": 0.25
       },
-      "contextWindow": 272000,
+      "contextWindow": 1050000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -3738,7 +3739,7 @@
         "currency": "USD",
         "cacheReadInputPerMillion": 0.5
       },
-      "contextWindow": 272000,
+      "contextWindow": 1050000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -9632,6 +9633,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9667,6 +9669,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9702,6 +9705,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9737,6 +9741,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9772,6 +9777,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9808,6 +9814,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9844,6 +9851,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9879,6 +9887,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9914,6 +9923,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9949,6 +9959,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -9984,6 +9995,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -10019,6 +10031,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -10055,6 +10068,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -10091,6 +10105,7 @@
         "modelFamily": "kimi"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
@@ -11432,7 +11447,7 @@
         "currency": "USD"
       },
       "contextWindow": 400000,
-      "maxOutputTokens": 272000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "OPENAI_API_KEY"

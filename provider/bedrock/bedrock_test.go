@@ -177,6 +177,64 @@ func TestConversePayloadNormalizesProviderText(t *testing.T) {
 	}
 }
 
+func TestConversePayloadReplacesBlankTextAndDropsBlankReplayBlocks(t *testing.T) {
+	t.Parallel()
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{
+			Messages: []sigma.Message{
+				sigma.UserText("  \t\n"),
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.Text("   "),
+						sigma.Text("kept"),
+					},
+				},
+				{
+					Role:    sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{sigma.Text("")},
+				},
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.ToolCallBlock("call_blank", "lookup", map[string]any{"query": "weather"}),
+					},
+				},
+				{Role: sigma.RoleTool, ToolCallID: "call_blank", ToolName: "lookup", Content: []sigma.ContentBlock{sigma.Text(" ")}},
+			},
+			Tools: []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.Options{},
+		Config{ModelID: "anthropic.claude-3-5-sonnet-20240620-v1:0"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+
+	if got, want := len(payload.Messages), 4; got != want {
+		t.Fatalf("messages = %d, want %d (all-blank assistant turn dropped)", got, want)
+	}
+	if got, want := payload.Messages[0].Content[0].Text, emptyTextPlaceholder; got != want {
+		t.Fatalf("blank user text = %q, want placeholder %q", got, want)
+	}
+	assistant := payload.Messages[1]
+	if got, want := len(assistant.Content), 1; got != want {
+		t.Fatalf("assistant blocks = %d, want %d (blank text dropped)", got, want)
+	}
+	if got, want := assistant.Content[0].Text, "kept"; got != want {
+		t.Fatalf("assistant text = %q, want %q", got, want)
+	}
+	toolResult := payload.Messages[3].Content[0].ToolResult
+	if toolResult == nil {
+		t.Fatal("tool result block missing")
+	}
+	if got, want := toolResult.Content[0].Text, emptyTextPlaceholder; got != want {
+		t.Fatalf("blank tool result text = %q, want placeholder %q", got, want)
+	}
+}
+
 func TestBedrockOptionsOverrideProviderOptionsAndMapToolChoice(t *testing.T) {
 	t.Parallel()
 
@@ -1551,4 +1609,58 @@ func appendEventStreamHeader(dst []byte, name string, value string) []byte {
 	dst = binary.BigEndian.AppendUint16(dst, uint16(len(value)))
 	dst = append(dst, value...)
 	return dst
+}
+
+func TestWithDataRetentionHintAppendsDocsLink(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		message string
+		body    string
+		want    string
+	}{
+		{
+			name:    "appends hint to matching provider message",
+			message: "data retention mode 'default' is not available for this model",
+			want:    "data retention mode 'default' is not available for this model See " + dataRetentionDocsURL + " for supported data retention modes.",
+		},
+		{
+			name: "matches body preview when message is empty",
+			body: `bedrock converse stream: validationException: data retention mode 'default' is not available`,
+			want: "See " + dataRetentionDocsURL + " for supported data retention modes.",
+		},
+		{
+			name:    "leaves unrelated errors unchanged",
+			message: "model not found",
+			want:    "model not found",
+		},
+		{
+			name:    "does not duplicate an existing hint",
+			message: "data retention mode rejected. See " + dataRetentionDocsURL + " for supported data retention modes.",
+			want:    "data retention mode rejected. See " + dataRetentionDocsURL + " for supported data retention modes.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			providerErr := &sigma.ProviderError{ProviderMessage: tt.message, BodyPreview: tt.body}
+			if got := withDataRetentionHint(providerErr).ProviderMessage; got != tt.want {
+				t.Fatalf("ProviderMessage = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProviderErrorAddsDataRetentionHintFromStreamError(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ID: "anthropic.claude-3", Provider: sigma.ProviderAmazonBedrock, API: sigma.APIBedrockConverseStream}
+	streamErr := errors.New("bedrock converse stream: validationException: data retention mode 'default' is not available for this model")
+	providerErr := providerError(model, streamErr)
+	if !strings.Contains(providerErr.ProviderMessage, dataRetentionDocsURL) {
+		t.Fatalf("ProviderMessage = %q, want data retention docs link", providerErr.ProviderMessage)
+	}
 }

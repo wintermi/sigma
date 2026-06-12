@@ -141,6 +141,7 @@ type AnthropicMessagesCompat struct {
 	SupportsCacheControlOnTools     string `json:"supportsCacheControlOnTools,omitempty"`
 	SupportsEmptyThinkingSignature  string `json:"supportsEmptyThinkingSignature,omitempty"`
 	SupportsTemperature             string `json:"supportsTemperature,omitempty"`
+	SupportsDisabledThinking        string `json:"supportsDisabledThinking,omitempty"`
 	ThinkingFormat                  string `json:"thinkingFormat,omitempty"`
 }
 

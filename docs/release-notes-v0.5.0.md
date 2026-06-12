@@ -14,6 +14,12 @@ request-shape controls. It also tightens the generated model-metadata workflow
 with a deterministic local catalog summary while keeping broad catalog refresh
 automation outside the release scope.
 
+This release additionally adds first-class Anthropic (Claude Pro/Max) OAuth
+login with Claude Code identity support, fixes provider thinking payload
+shapes for Claude Fable 5, Z.ai, and Moonshot routes, hardens Bedrock replay
+against blank text blocks, and corrects Azure GPT-5.4/5.5, GPT-5 Pro,
+Moonshot, and OpenCode request metadata.
+
 ## Added
 
 - Bedrock Converse Stream now derives the runtime region from application
@@ -42,6 +48,34 @@ automation outside the release scope.
 - Bedrock Converse Stream now accepts `sigma.BedrockOptions.ResponseFormat`,
   injects a synthetic schema tool, and surfaces the generated JSON arguments as
   assistant text while preserving any real tool calls emitted by the model.
+- Anthropic Messages now omits the disabled-thinking payload when
+  `sigma.AnthropicMessagesCompat.SupportsDisabledThinking` is unsupported, and
+  generated Claude Fable 5 metadata sets that flag because the model rejects
+  explicit `thinking: disabled` requests.
+- OpenAI-compatible Z.ai reasoning requests now send `thinking` objects with
+  enabled or disabled types instead of the legacy `enable_thinking` toggle, and
+  generated Moonshot AI metadata now uses the DeepSeek-style thinking format so
+  thinking-off requests explicitly disable reasoning.
+- OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
+  instead of `max_completion_tokens`.
+- Generated Azure GPT-5.4 and GPT-5.5 context windows now match the
+  1,050,000-token Azure Foundry deployments, and OpenAI/Azure GPT-5 Pro max
+  output tokens are corrected to 128,000.
+- Bedrock Converse Stream now replaces blank required user and tool-result
+  text with an `<empty>` placeholder and drops blank replayed assistant text
+  blocks before dispatch.
+- Bedrock provider errors now append a link to the AWS data-retention
+  documentation when a model rejects the configured data retention mode.
+- Anthropic Messages now has stdlib-only Claude Pro/Max OAuth support:
+  `anthropic.LoginAnthropicBrowser` browser callback login with a manual
+  code-paste fallback, `anthropic.RefreshAnthropicToken`, and
+  `anthropic.NewAnthropicOAuthTokenProvider` with expiry-aware refresh and an
+  `OnRefresh` callback for caller-owned persistence.
+- Anthropic Messages now sends the Claude Code identity required by Anthropic
+  OAuth tokens: `claude-code-20250219`/`oauth-2025-04-20` beta headers, the
+  Claude Code user agent, a leading Claude Code identity system block, and
+  canonical Claude Code tool-name casing with streamed tool names restored to
+  the caller's original casing.
 
 ## Compatibility
 
@@ -69,6 +103,25 @@ automation outside the release scope.
   map-shaped tool-choice payload.
 - Bedrock structured-output mode requires tool-capable models and reserves the
   `__sigma_json_response` synthetic tool name for the generated schema tool.
+- Disabled-thinking omission applies only to models whose compatibility
+  metadata marks disabled thinking as unsupported; other reasoning-capable
+  models keep sending the explicit disabled payload when thinking is off.
+- The Z.ai, Moonshot, and OpenCode payload changes follow the providers'
+  current request shapes. Raw provider options and other reasoning formats are
+  unchanged.
+- The Azure GPT-5.4/5.5, GPT-5 Pro, and Moonshot catalog changes are metadata
+  corrections; adapter behavior is driven by the same generated fields as
+  before. The OpenCode `max_tokens` change is compatibility detection, so it
+  also applies to caller-registered OpenCode-compatible models.
+- The Bedrock blank-text placeholder applies only where Converse requires
+  non-empty content; non-blank text, images, tool calls, and redacted thinking
+  replay are unchanged. The data-retention hint appends documentation to the
+  provider message without changing error classification.
+- Claude Code identity mode activates only when the resolved credential is
+  OAuth-typed or carries an Anthropic OAuth access token; API-key requests are
+  byte-for-byte unchanged. Anthropic browser login binds the
+  provider-registered `http://localhost:53692/callback` redirect, and OAuth
+  token persistence remains caller-owned.
 
 ## Deferred work
 

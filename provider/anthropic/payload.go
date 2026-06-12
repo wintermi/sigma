@@ -65,7 +65,9 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		"max_tokens": maxTokens,
 		"stream":     true,
 	}
-	if transformed.SystemPrompt != "" {
+	if compat.claudeCodeIdentity {
+		payload["system"] = claudeCodeSystem(transformed.SystemPrompt, opts.CacheRetention, compat)
+	} else if transformed.SystemPrompt != "" {
 		payload["system"] = anthropicSystem(transformed.SystemPrompt, opts.CacheRetention, compat)
 	}
 	thinkingEnabled := addThinking(payload, model, opts, compat)
@@ -99,6 +101,27 @@ func anthropicSystem(prompt string, retention sigma.CacheRetention, compat messa
 	}
 	addCacheControl(block, retention, compat)
 	return []map[string]any{block}
+}
+
+// claudeCodeSystem builds the system blocks for Anthropic OAuth requests,
+// which must start with the Claude Code identity block ahead of any caller
+// system prompt.
+func claudeCodeSystem(prompt string, retention sigma.CacheRetention, compat messagesCompat) []map[string]any {
+	identity := map[string]any{
+		"type": "text",
+		"text": claudeCodeIdentityPrompt,
+	}
+	addCacheControl(identity, retention, compat)
+	blocks := []map[string]any{identity}
+	if prompt != "" {
+		callerPrompt := map[string]any{
+			"type": "text",
+			"text": providertext.Clean(prompt),
+		}
+		addCacheControl(callerPrompt, retention, compat)
+		blocks = append(blocks, callerPrompt)
+	}
+	return blocks
 }
 
 func anthropicMessages(req sigma.Request, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
@@ -255,10 +278,14 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompa
 			if providerMetadataString(block.ProviderMetadata, "type") == "server_tool_use" {
 				blockType = "server_tool_use"
 			}
+			name := block.ToolName
+			if compat.claudeCodeIdentity && blockType == "tool_use" {
+				name = toClaudeCodeToolName(name)
+			}
 			content = append(content, map[string]any{
 				"type":  blockType,
 				"id":    block.ToolCallID,
-				"name":  block.ToolName,
+				"name":  name,
 				"input": input,
 			})
 		default:
@@ -329,8 +356,12 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 		if inputSchema == nil {
 			inputSchema = map[string]any{"type": "object"}
 		}
+		name := tool.Name
+		if compat.claudeCodeIdentity {
+			name = toClaudeCodeToolName(name)
+		}
 		convertedTool := map[string]any{
-			"name":         tool.Name,
+			"name":         name,
 			"description":  tool.Description,
 			"input_schema": inputSchema,
 		}
@@ -362,7 +393,9 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 	}
 	budget := thinkingBudget(model, opts, compat)
 	if budget <= 0 {
-		payload["thinking"] = map[string]any{"type": "disabled"}
+		if compat.supportsDisabledThinking {
+			payload["thinking"] = map[string]any{"type": "disabled"}
+		}
 		return false
 	}
 	payload["thinking"] = map[string]any{

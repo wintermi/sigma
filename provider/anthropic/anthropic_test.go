@@ -343,6 +343,204 @@ func TestCompleteSendsDisabledThinkingAndEagerToolStreamingPayload(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/disabled_thinking_eager_tools_payload.json")
 }
 
+func TestCompleteOmitsDisabledThinkingWhenUnsupported(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := anthropicTestModel(sigma.ProviderAnthropic)
+	model.ID = "claude-fable-test"
+	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelXHigh: "xhigh"}
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsDisabledThinking: sigma.AnthropicCompatUnsupported,
+		ThinkingFormat:           sigma.AnthropicThinkingAdaptive,
+	}
+	client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("No thinking, please.")}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	var body map[string]any
+	if err := json.Unmarshal([]byte(request.Body), &body); err != nil {
+		t.Fatalf("request body unmarshal: %v", err)
+	}
+	if thinking, ok := body["thinking"]; ok {
+		t.Fatalf("thinking = %#v, want field omitted", thinking)
+	}
+}
+
+func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, claudeCodeToolUseEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := anthropicTestModel(sigma.ProviderAnthropic)
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(sigma.ProviderAnthropic, anthropic.NewProvider(anthropic.WithBaseURL(server.URL))); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "sk-ant-oat01-token"}, nil
+	})
+	client := sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+
+	message, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			SystemPrompt: "Caller system prompt.",
+			Messages: []sigma.Message{
+				sigma.UserText("Read the file."),
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.ToolCallBlock("toolu_prior", "read", map[string]any{"path": "old.txt"}),
+					},
+				},
+				{Role: sigma.RoleTool, ToolCallID: "toolu_prior", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("prior result")}},
+			},
+			Tools: []sigma.Tool{{
+				Name:        "read",
+				Description: "Read a file",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Headers.Get("Authorization"), "Bearer sk-ant-oat01-token"; got != want {
+		t.Fatalf("Authorization = %q, want %q", got, want)
+	}
+	if got := request.Headers.Get("X-Api-Key"); got != "" {
+		t.Fatalf("X-Api-Key = %q, want empty", got)
+	}
+	beta := request.Headers.Get("Anthropic-Beta")
+	if !strings.Contains(beta, "claude-code-20250219") || !strings.Contains(beta, "oauth-2025-04-20") {
+		t.Fatalf("Anthropic-Beta = %q, want Claude Code identity betas", beta)
+	}
+	if got, want := request.Headers.Get("User-Agent"), "claude-cli/2.1.75"; got != want {
+		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+	if got, want := request.Headers.Get("X-App"), "cli"; got != want {
+		t.Fatalf("X-App = %q, want %q", got, want)
+	}
+
+	payload := decodePayload(t, request.Body)
+	system, ok := payload["system"].([]any)
+	if !ok || len(system) != 2 {
+		t.Fatalf("system = %#v, want identity block plus caller prompt", payload["system"])
+	}
+	identity := system[0].(map[string]any)
+	if got, want := identity["text"], "You are Claude Code, Anthropic's official CLI for Claude."; got != want {
+		t.Fatalf("identity block = %#v, want Claude Code identity text", identity)
+	}
+	caller := system[1].(map[string]any)
+	if got, want := caller["text"], "Caller system prompt."; got != want {
+		t.Fatalf("caller system block = %#v, want caller prompt", caller)
+	}
+
+	tools := payload["tools"].([]any)
+	tool := tools[0].(map[string]any)
+	if got, want := tool["name"], "Read"; got != want {
+		t.Fatalf("tool name = %q, want canonical Claude Code casing %q", got, want)
+	}
+
+	messages := payload["messages"].([]any)
+	assistant := messages[1].(map[string]any)
+	replayedTool := assistant["content"].([]any)[0].(map[string]any)
+	if got, want := replayedTool["name"], "Read"; got != want {
+		t.Fatalf("replayed tool name = %q, want canonical Claude Code casing %q", got, want)
+	}
+
+	var streamedTool *sigma.ContentBlock
+	for index := range message.Content {
+		if message.Content[index].Type == sigma.ContentBlockToolCall {
+			streamedTool = &message.Content[index]
+			break
+		}
+	}
+	if streamedTool == nil {
+		t.Fatalf("message content = %#v, want streamed tool call", message.Content)
+	}
+	if got, want := streamedTool.ToolName, "read"; got != want {
+		t.Fatalf("streamed tool name = %q, want caller casing %q", got, want)
+	}
+}
+
+func TestAPIKeyCredentialDoesNotUseClaudeCodeIdentity(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := anthropicTestModel(sigma.ProviderAnthropic)
+	client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			SystemPrompt: "Caller system prompt.",
+			Messages:     []sigma.Message{sigma.UserText("hello")},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got := request.Headers.Get("Anthropic-Beta"); strings.Contains(got, "claude-code") || strings.Contains(got, "oauth-2025-04-20") {
+		t.Fatalf("Anthropic-Beta = %q, want no Claude Code identity betas", got)
+	}
+	if got, want := request.Headers.Get("User-Agent"), "sigma/anthropic-messages"; got != want {
+		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+	payload := decodePayload(t, request.Body)
+	if system, ok := payload["system"].(string); !ok || system != "Caller system prompt." {
+		t.Fatalf("system = %#v, want caller prompt only", payload["system"])
+	}
+}
+
+const claudeCodeToolUseEvent = `data: {"type":"message_start","message":{"id":"msg_cc","type":"message","role":"assistant","model":"claude-test","content":[]}}
+
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_cc","name":"Read","input":{}}}
+
+data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"file.txt\"}"}}
+
+data: {"type":"content_block_stop","index":0}
+
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"input_tokens":1,"output_tokens":1}}
+
+data: {"type":"message_stop"}
+`
+
 func TestCompatibilitySuppressesUnsupportedLongCacheAndToolCache(t *testing.T) {
 	t.Parallel()
 

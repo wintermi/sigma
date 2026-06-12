@@ -32,7 +32,7 @@ Release scope values:
 | OpenAI Responses | `openai-responses` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Azure OpenAI Responses | `azure-openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | OpenAI Codex Responses | `openai-codex-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `implemented` | `partial` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
-| Anthropic Messages and Anthropic-compatible Kimi/Fireworks/Xiaomi routing | `anthropic-messages` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
+| Anthropic Messages and Anthropic-compatible Kimi/Fireworks/Xiaomi routing | `anthropic-messages` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Google Generative AI | `google-generative-ai` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI | `google-vertex` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `not supported by provider` | `partial` | `partial` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Mistral Conversations | `mistral-conversations` | `preview` | `fixture-tested` | `not yet implemented` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
@@ -52,7 +52,7 @@ Release scope values:
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - `azure-openai-responses`: [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
 - `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go).
-- `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go).
+- `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
 - `google-vertex`: [provider/google/vertex_test.go](../provider/google/vertex_test.go).
 - `mistral-conversations`: [provider/mistral/mistral_test.go](../provider/mistral/mistral_test.go).
@@ -103,7 +103,12 @@ Release scope values:
   `sigma.WithSessionID` maps to Mistral `x-affinity` for prefix-cache reuse, but
   explicit cache-retention controls and cache-token accounting are not exposed by
   the Conversations adapter.
-- The `not supported by provider` value in the OAuth column for the Anthropic and Bedrock rows describes the provider's native authentication model, not a missing code path. Both adapters still forward an OAuth-typed `Credential` returned by an auth resolver as a bearer token (Bedrock has fixture coverage for this).
+- Anthropic Messages supports Claude Pro/Max OAuth: browser callback login with
+  a manual code-paste fallback, refresh helpers, an in-memory OAuth token
+  provider, and automatic Claude Code identity (beta headers, identity system
+  block, tool-name canonicalization) when the resolved credential is an OAuth
+  token. Token persistence is caller-owned.
+- The `not supported by provider` value in the OAuth column for the Bedrock row describes the provider's native authentication model, not a missing code path. The adapter still forwards an OAuth-typed `Credential` returned by an auth resolver as a bearer token, with fixture coverage.
 - Live tests are skipped by default and are not an MVP readiness signal unless a row explicitly says `live-tested`.
 - Cross-provider context handoff is not covered by this matrix; unsupported handoff behavior must remain explicit in later compatibility docs.
 - MVP rows are the only provider rows that may be described as release-ready in

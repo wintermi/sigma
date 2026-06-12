@@ -129,7 +129,14 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		Provider: model.Provider,
 	}
 
-	resp, err := p.do(ctx, model, req, opts)
+	credential, err := p.resolveCredential(ctx, model, opts)
+	if err != nil {
+		_ = writer.Error(ctx, err, final)
+		return
+	}
+	claudeCode := isAnthropicOAuthCredential(credential)
+
+	resp, err := p.do(ctx, model, req, opts, credential, claudeCode)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -152,7 +159,8 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 	}
 
 	compat := anthropicMessagesCompat(model, p.baseURLForProvider(model.Provider, opts), p.compat)
-	final, err = parseMessagesStream(ctx, body, writer, model, compat)
+	compat.claudeCodeIdentity = claudeCode
+	final, err = parseMessagesStream(ctx, body, writer, model, compat, req.Tools)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -166,13 +174,13 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 	_ = writer.Done(ctx, final)
 }
 
-func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Response, error) {
+func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool) (*http.Response, error) {
 	return sigma.DoHTTPWithRetry(
 		ctx,
 		p.httpClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return p.newRequest(ctx, model, req, opts)
+			return p.newRequest(ctx, model, req, opts, credential, claudeCode)
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return responseError(resp, model)
@@ -181,9 +189,10 @@ func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request,
 	)
 }
 
-func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Request, error) {
+func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool) (*http.Request, error) {
 	baseURL := p.baseURLForModel(model, opts)
 	compat := anthropicMessagesCompat(model, baseURL, p.compat)
+	compat.claudeCodeIdentity = claudeCode
 	payload, err := messagesPayload(model, req, opts, compat)
 	if err != nil {
 		return nil, err
@@ -205,13 +214,15 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("User-Agent", "sigma/anthropic-messages")
 	httpReq.Header.Set("Anthropic-Version", anthropicVersion(model.Provider, opts))
+	if compat.claudeCodeIdentity {
+		httpReq.Header.Set("User-Agent", claudeCodeUserAgent)
+		httpReq.Header.Set("X-App", "cli")
+	}
 	if beta := anthropicBeta(model, opts, compat, len(req.Tools) > 0); beta != "" {
 		httpReq.Header.Set("Anthropic-Beta", beta)
 	}
 
-	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
-		return nil, err
-	}
+	applyAuthHeader(httpReq, credential)
 	p.addProviderHeaders(httpReq, model.Provider, opts, compat)
 	for key, value := range p.headers {
 		httpReq.Header.Set(key, value)
@@ -231,28 +242,27 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	return httpReq, nil
 }
 
-func (p *Provider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.Model, opts sigma.Options) error {
+func (p *Provider) resolveCredential(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	if opts.AuthResolver == nil {
-		return &sigma.Error{
+		return sigma.Credential{}, &sigma.Error{
 			Code:     sigma.ErrorUnsupported,
 			Message:  "anthropic messages: auth resolver is required",
 			Provider: model.Provider,
 			Model:    model.ID,
 		}
 	}
-	credential, err := opts.AuthResolver.Resolve(ctx, model, opts)
-	if err != nil {
-		return err
-	}
+	return opts.AuthResolver.Resolve(ctx, model, opts)
+}
+
+func applyAuthHeader(req *http.Request, credential sigma.Credential) {
 	if credential.Value == "" {
-		return nil
+		return
 	}
-	if credential.Type == sigma.CredentialTypeOAuthToken {
+	if credential.Type == sigma.CredentialTypeOAuthToken || strings.Contains(credential.Value, anthropicOAuthTokenMark) {
 		req.Header.Set("Authorization", "Bearer "+credential.Value)
-		return nil
+		return
 	}
 	req.Header.Set("X-Api-Key", credential.Value)
-	return nil
 }
 
 func (p *Provider) addProviderHeaders(req *http.Request, provider sigma.ProviderID, opts sigma.Options, compat messagesCompat) {
@@ -362,8 +372,12 @@ func anthropicVersion(provider sigma.ProviderID, opts sigma.Options) string {
 }
 
 func anthropicBeta(model sigma.Model, opts sigma.Options, compat messagesCompat, hasTools bool) string {
-	betas := make([]string, 0, 2)
+	betas := make([]string, 0, 4)
 	provider := model.Provider
+	if compat.claudeCodeIdentity {
+		betas = appendBetas(betas, claudeCodeBetaHeader)
+		betas = appendBetas(betas, claudeCodeOAuthBeta)
+	}
 	options := providerOptions(opts, provider)
 	if beta, ok := stringOption(options, providerOptionBeta); ok {
 		betas = appendBetas(betas, beta)

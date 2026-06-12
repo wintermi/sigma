@@ -1,5 +1,5 @@
 {
-  "max_completion_tokens": 12,
+  "max_tokens": 12,
   "messages": [
     {
       "content": "hi",

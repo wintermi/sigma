@@ -347,6 +347,7 @@ func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessa
 	writeStringField(b, "SupportsCacheControlOnTools", "AnthropicCompatSupport", compat.SupportsCacheControlOnTools)
 	writeStringField(b, "SupportsEmptyThinkingSignature", "AnthropicCompatSupport", compat.SupportsEmptyThinkingSignature)
 	writeStringField(b, "SupportsTemperature", "AnthropicCompatSupport", compat.SupportsTemperature)
+	writeStringField(b, "SupportsDisabledThinking", "AnthropicCompatSupport", compat.SupportsDisabledThinking)
 	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
 	b.WriteString("\t\t},\n")
 }

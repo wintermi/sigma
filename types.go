@@ -274,7 +274,8 @@ const (
 	OpenAICompletionsReasoningTogether OpenAICompletionsReasoningFormat = "together"
 	// OpenAICompletionsReasoningQwen sends a top-level Qwen enable_thinking flag.
 	OpenAICompletionsReasoningQwen OpenAICompletionsReasoningFormat = "qwen"
-	// OpenAICompletionsReasoningZAI sends a top-level Z.ai enable_thinking flag.
+	// OpenAICompletionsReasoningZAI sends a Z.ai thinking object with an
+	// enabled or disabled type.
 	OpenAICompletionsReasoningZAI OpenAICompletionsReasoningFormat = "zai"
 	// OpenAICompletionsReasoningAntLing sends Ant Ling's reasoning object only
 	// for explicitly supported effort levels.
@@ -347,6 +348,7 @@ type AnthropicMessagesCompat struct {
 	SupportsCacheControlOnTools     AnthropicCompatSupport  `json:"supportsCacheControlOnTools,omitempty"`
 	SupportsEmptyThinkingSignature  AnthropicCompatSupport  `json:"supportsEmptyThinkingSignature,omitempty"`
 	SupportsTemperature             AnthropicCompatSupport  `json:"supportsTemperature,omitempty"`
+	SupportsDisabledThinking        AnthropicCompatSupport  `json:"supportsDisabledThinking,omitempty"`
 	ThinkingFormat                  AnthropicThinkingFormat `json:"thinkingFormat,omitempty"`
 }
 

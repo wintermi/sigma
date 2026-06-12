@@ -337,6 +337,12 @@ func converseMessages(req sigma.Request) ([]ConverseMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Bedrock rejects messages with empty content arrays, so drop replayed
+		// assistant turns whose blocks were all blank (for example aborted
+		// requests).
+		if message.Role == sigma.RoleAssistant && len(converted.Content) == 0 {
+			continue
+		}
 		messages = append(messages, converted)
 	}
 	return messages, nil
@@ -388,14 +394,17 @@ func converseToolResult(message sigma.Message) (ConverseContentBlock, error) {
 }
 
 func converseToolResultContent(blocks []sigma.ContentBlock) ([]ConverseToolResultContent, error) {
-	if len(blocks) == 0 {
-		return []ConverseToolResultContent{{Type: converseBlockText, Text: ""}}, nil
-	}
 	content := make([]ConverseToolResultContent, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			content = append(content, ConverseToolResultContent{Type: converseBlockText, Text: providertext.Clean(block.Text)})
+			// Bedrock rejects blank text blocks, so skip them here and fall
+			// back to the placeholder below when nothing else remains.
+			text := providertext.Clean(block.Text)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			content = append(content, ConverseToolResultContent{Type: converseBlockText, Text: text})
 		case sigma.ContentBlockImage:
 			image, err := converseImage(block)
 			if err != nil {
@@ -406,18 +415,28 @@ func converseToolResultContent(blocks []sigma.ContentBlock) ([]ConverseToolResul
 			return nil, fmt.Errorf("bedrock converse stream: unsupported tool result content block %q", block.Type)
 		}
 	}
+	if len(content) == 0 {
+		return []ConverseToolResultContent{{Type: converseBlockText, Text: emptyTextPlaceholder}}, nil
+	}
 	return content, nil
 }
 
+// emptyTextPlaceholder replaces required Bedrock text content whose replayed
+// blocks were all blank, because Converse rejects blank text blocks.
+const emptyTextPlaceholder = "<empty>"
+
 func converseInputContent(blocks []sigma.ContentBlock) ([]ConverseContentBlock, error) {
-	if len(blocks) == 0 {
-		return []ConverseContentBlock{{Type: converseBlockText, Text: ""}}, nil
-	}
 	content := make([]ConverseContentBlock, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			content = append(content, ConverseContentBlock{Type: converseBlockText, Text: providertext.Clean(block.Text)})
+			// Bedrock rejects blank text blocks, so skip them here and fall
+			// back to the placeholder below when nothing else remains.
+			text := providertext.Clean(block.Text)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			content = append(content, ConverseContentBlock{Type: converseBlockText, Text: text})
 		case sigma.ContentBlockImage:
 			image, err := converseImage(block)
 			if err != nil {
@@ -428,6 +447,9 @@ func converseInputContent(blocks []sigma.ContentBlock) ([]ConverseContentBlock, 
 			return nil, fmt.Errorf("bedrock converse stream: unsupported user content block %q", block.Type)
 		}
 	}
+	if len(content) == 0 {
+		return []ConverseContentBlock{{Type: converseBlockText, Text: emptyTextPlaceholder}}, nil
+	}
 	return content, nil
 }
 
@@ -436,10 +458,19 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			content = append(content, ConverseContentBlock{Type: converseBlockText, Text: providertext.Clean(block.Text)})
+			// Bedrock rejects blank text blocks, so skip blank replay text.
+			text := providertext.Clean(block.Text)
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			content = append(content, ConverseContentBlock{Type: converseBlockText, Text: text})
 		case sigma.ContentBlockThinking:
+			thinkingText := providertext.Clean(block.ThinkingText)
+			if strings.TrimSpace(thinkingText) == "" && !block.Redacted {
+				continue
+			}
 			reasoning := &ConverseReasoningBlock{
-				Text:              providertext.Clean(block.ThinkingText),
+				Text:              thinkingText,
 				Signature:         block.Signature,
 				ProviderSignature: firstNonEmpty(block.ProviderSignature, block.Signature),
 				Redacted:          block.Redacted,
@@ -464,9 +495,6 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 		default:
 			return nil, fmt.Errorf("bedrock converse stream: unsupported assistant content block %q", block.Type)
 		}
-	}
-	if len(content) == 0 {
-		content = append(content, ConverseContentBlock{Type: converseBlockText, Text: ""})
 	}
 	return content, nil
 }

@@ -1334,6 +1334,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2233,7 +2234,7 @@ var builtinTextModels = []Model{
 		API:                       API("azure-openai-responses"),
 		Name:                      "GPT-5 Pro",
 		ContextWindow:             400000,
-		MaxOutputTokens:           272000,
+		MaxOutputTokens:           128000,
 		SupportedInputs:           []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
 		SupportsTools:             true,
 		SupportsThinking:          true,
@@ -2627,7 +2628,7 @@ var builtinTextModels = []Model{
 		Provider:         ProviderID("azure-openai-responses"),
 		API:              API("azure-openai-responses"),
 		Name:             "GPT-5.4",
-		ContextWindow:    272000,
+		ContextWindow:    1050000,
 		MaxOutputTokens:  128000,
 		SupportedInputs:  []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
 		SupportsTools:    true,
@@ -2754,7 +2755,7 @@ var builtinTextModels = []Model{
 		Provider:         ProviderID("azure-openai-responses"),
 		API:              API("azure-openai-responses"),
 		Name:             "GPT-5.5",
-		ContextWindow:    272000,
+		ContextWindow:    1050000,
 		MaxOutputTokens:  128000,
 		SupportedInputs:  []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
 		SupportsTools:    true,
@@ -7136,6 +7137,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7164,6 +7166,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7193,6 +7196,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7222,6 +7226,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7250,6 +7255,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7279,6 +7285,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7308,6 +7315,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7336,6 +7344,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7364,6 +7373,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7393,6 +7403,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7422,6 +7433,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7450,6 +7462,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7479,6 +7492,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -7508,6 +7522,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("deepseek"),
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),
@@ -8360,7 +8375,7 @@ var builtinTextModels = []Model{
 		API:                       API("openai-responses"),
 		Name:                      "GPT-5 Pro",
 		ContextWindow:             400000,
-		MaxOutputTokens:           272000,
+		MaxOutputTokens:           128000,
 		SupportedInputs:           []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
 		SupportsTools:             true,
 		SupportsThinking:          true,
