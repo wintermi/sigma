@@ -734,8 +734,18 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 	if minimax.API != APIAnthropicMessages || !minimax.SupportsTools || !minimax.SupportsReasoning() {
 		t.Fatalf("MiniMax model capabilities were not generated: %+v", minimax)
 	}
-	assertMetadataString(t, minimax.ProviderMetadata, "baseURL", "https://api.minimax.io/anthropic")
+	assertMetadataString(t, minimax.ProviderMetadata, "baseURL", "https://api.minimax.io/anthropic/v1")
 	assertMetadataStrings(t, minimax.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"MINIMAX_API_KEY"})
+
+	minimaxCN, ok := registry.Model(ProviderMiniMaxCN, "MiniMax-M3")
+	if !ok {
+		t.Fatal("fresh registry missing generated MiniMax CN model")
+	}
+	if minimaxCN.API != APIAnthropicMessages || !minimaxCN.SupportsTools || !minimaxCN.SupportsImages() || !minimaxCN.SupportsReasoning() {
+		t.Fatalf("MiniMax CN model capabilities were not generated: %+v", minimaxCN)
+	}
+	assertMetadataString(t, minimaxCN.ProviderMetadata, "baseURL", "https://api.minimaxi.com/anthropic/v1")
+	assertMetadataStrings(t, minimaxCN.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"MINIMAX_CN_API_KEY"})
 
 	vercel, ok := registry.Model(ProviderVercelAIGateway, "anthropic/claude-opus-4.8")
 	if !ok {

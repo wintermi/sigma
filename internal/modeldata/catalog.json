@@ -8712,7 +8712,7 @@
       "name": "MiniMax-M2.7",
       "provider": "minimax-cn",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimaxi.com/anthropic",
+      "baseURL": "https://api.minimaxi.com/anthropic/v1",
       "supportedInputs": [
         "text"
       ],
@@ -8741,7 +8741,7 @@
       "name": "MiniMax-M2.7-highspeed",
       "provider": "minimax-cn",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimaxi.com/anthropic",
+      "baseURL": "https://api.minimaxi.com/anthropic/v1",
       "supportedInputs": [
         "text"
       ],
@@ -8770,7 +8770,7 @@
       "name": "MiniMax-M3",
       "provider": "minimax-cn",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimaxi.com/anthropic",
+      "baseURL": "https://api.minimaxi.com/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -8799,7 +8799,7 @@
       "name": "MiniMax-M2.7",
       "provider": "minimax",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimax.io/anthropic",
+      "baseURL": "https://api.minimax.io/anthropic/v1",
       "supportedInputs": [
         "text"
       ],
@@ -8828,7 +8828,7 @@
       "name": "MiniMax-M2.7-highspeed",
       "provider": "minimax",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimax.io/anthropic",
+      "baseURL": "https://api.minimax.io/anthropic/v1",
       "supportedInputs": [
         "text"
       ],
@@ -8857,7 +8857,7 @@
       "name": "MiniMax-M3",
       "provider": "minimax",
       "api": "anthropic-messages",
-      "baseURL": "https://api.minimax.io/anthropic",
+      "baseURL": "https://api.minimax.io/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"

@@ -6443,7 +6443,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_API_KEY"},
-			"baseURL":             "https://api.minimax.io/anthropic",
+			"baseURL":             "https://api.minimax.io/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -6466,7 +6466,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_API_KEY"},
-			"baseURL":             "https://api.minimax.io/anthropic",
+			"baseURL":             "https://api.minimax.io/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -6488,7 +6488,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_API_KEY"},
-			"baseURL":             "https://api.minimax.io/anthropic",
+			"baseURL":             "https://api.minimax.io/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -6511,7 +6511,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_CN_API_KEY"},
-			"baseURL":             "https://api.minimaxi.com/anthropic",
+			"baseURL":             "https://api.minimaxi.com/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -6534,7 +6534,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_CN_API_KEY"},
-			"baseURL":             "https://api.minimaxi.com/anthropic",
+			"baseURL":             "https://api.minimaxi.com/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -6556,7 +6556,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"MINIMAX_CN_API_KEY"},
-			"baseURL":             "https://api.minimaxi.com/anthropic",
+			"baseURL":             "https://api.minimaxi.com/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},

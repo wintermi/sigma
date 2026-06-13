@@ -57,6 +57,9 @@ See [release notes](docs/release-notes-v0.5.0.md).
 - Generated Moonshot AI metadata now includes the direct Kimi K2.7 Code row
   with text/image input, reasoning, tool support, current limits, pricing, and
   `MOONSHOT_API_KEY` discovery.
+- MiniMax and MiniMax CN now have a first-class Anthropic-compatible provider
+  wrapper, and generated direct MiniMax metadata now targets the
+  `/anthropic/v1` base URL used by Sigma's Messages adapter.
 - OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
   instead of `max_completion_tokens`, matching the OpenCode request shape.
 - Generated OpenCode Go metadata now uses `reasoning_effort` requests for Kimi

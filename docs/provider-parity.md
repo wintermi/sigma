@@ -36,6 +36,7 @@ Release scope values:
 | Google Generative AI | `google-generative-ai` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI | `google-vertex` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `not supported by provider` | `partial` | `partial` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Mistral Conversations | `mistral-conversations` | `preview` | `fixture-tested` | `not yet implemented` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
+| MiniMax and MiniMax CN Anthropic-compatible Messages | `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `implemented` | `implemented` | `implemented` | `implemented` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` |
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
@@ -56,6 +57,7 @@ Release scope values:
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
 - `google-vertex`: [provider/google/vertex_test.go](../provider/google/vertex_test.go).
 - `mistral-conversations`: [provider/mistral/mistral_test.go](../provider/mistral/mistral_test.go).
+- MiniMax `anthropic-messages`: [provider/minimax/minimax_test.go](../provider/minimax/minimax_test.go), [modeldata_test.go](../modeldata_test.go).
 - `bedrock-converse-stream`: [provider/bedrock/bedrock_test.go](../provider/bedrock/bedrock_test.go).
 - `openai-images`: [provider/openai/images_test.go](../provider/openai/images_test.go), [image_models_generated.go](../image_models_generated.go).
 - `openrouter-images`: [provider/openrouter/images_test.go](../provider/openrouter/images_test.go).
@@ -98,7 +100,12 @@ Release scope values:
   WebSocket transport with session caching and SSE fallback. Token persistence
   and proxy-aware WebSocket dialing are out of scope.
 - Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers. Typed Bedrock request controls, custom non-reserved headers, retry behavior, and response debug hooks have deterministic fixture coverage.
-- The Anthropic-compatible routing in the Anthropic row title covers Kimi, Fireworks, and Xiaomi compat branches. Each branch has deterministic compatibility coverage in `provider/anthropic`; Fireworks is also exercised through the `openai-completions` path.
+- The Anthropic-compatible routing in the Anthropic row title covers Kimi,
+  Fireworks, and Xiaomi compat branches. Each branch has deterministic
+  compatibility coverage in `provider/anthropic`; Fireworks is also exercised
+  through the `openai-completions` path. MiniMax and MiniMax CN use a thin
+  provider wrapper over the same Anthropic-compatible adapter with direct
+  registration and endpoint-path coverage.
 - Mistral Conversations cache retention is marked `partial` because
   `sigma.WithSessionID` maps to Mistral `x-affinity` for prefix-cache reuse, but
   explicit cache-retention controls and cache-token accounting are not exposed by

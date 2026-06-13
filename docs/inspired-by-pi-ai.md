@@ -62,14 +62,13 @@ out of the box. Sigma's Go design is intentionally explicit:
   Amazon Bedrock Converse Stream.
 - Image generation currently has OpenRouter and OpenAI Images adapters.
 - Provider IDs such as DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot,
-  Fireworks, OpenCode Zen, OpenCode Go, Kimi, Xiaomi, and `custom` exist for
-  compatible models, but generated default model coverage and fixture coverage
-  vary. OpenCode Zen and OpenCode Go include curated OpenAI-compatible built-in
-  metadata.
-- Cloudflare AI Gateway, Cloudflare Workers AI, a standalone MiniMax provider,
-  and non-OpenAI OpenCode routes do not have complete Go parity at the time of
-  this guide. MiniMax models are reachable only through the curated OpenCode
-  routes, not as a first-class provider. Check
+  Fireworks, OpenCode Zen, OpenCode Go, Kimi, MiniMax, Xiaomi, and `custom`
+  exist for compatible models, but generated default model coverage and fixture
+  coverage vary. OpenCode Zen and OpenCode Go include curated
+  OpenAI-compatible built-in metadata, and MiniMax has direct
+  Anthropic-compatible registration helpers for the global and CN routes.
+- Cloudflare AI Gateway, Cloudflare Workers AI, and non-OpenAI OpenCode routes
+  do not have complete Go parity at the time of this guide. Check
   [provider-parity.md](provider-parity.md) before relying on those routes.
 
 ## Model Lookup
