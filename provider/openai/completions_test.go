@@ -938,6 +938,53 @@ func TestStreamingParsesOpenAICompatibleMetadataAndFallbackToolID(t *testing.T) 
 	}
 }
 
+func TestStreamingParsesChoiceUsage(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_choice_usage","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_choice_usage","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop","usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":3,"cache_write_tokens":2},"completion_tokens_details":{"reasoning_tokens":4}}}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-choice-usage-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	_ = collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if final.Usage == nil {
+		t.Fatal("final usage was nil")
+	}
+	if got, want := final.Usage.InputTokens, 5; got != want {
+		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
+		t.Fatalf("cache read tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.CacheWriteInputTokens, 2; got != want {
+		t.Fatalf("cache write tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.OutputTokens, 5; got != want {
+		t.Fatalf("output tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.ThinkingTokens, 4; got != want {
+		t.Fatalf("thinking tokens = %d, want %d", got, want)
+	}
+	if final.Cost == nil || final.Cost.TotalCost == 0 {
+		t.Fatalf("final cost = %#v, want populated cost", final.Cost)
+	}
+}
+
 func TestProviderErrorResponseEndsStreamWithProviderError(t *testing.T) {
 	t.Parallel()
 

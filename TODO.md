@@ -244,8 +244,12 @@ upstream.
       Azure Foundry deployments and the OpenAI/Azure GPT-5 Pro max output
       tokens to 128,000.
 - [x] Add the DeepSeek-style thinking format to direct Moonshot AI and
-      Moonshot AI CN generated rows so thinking-off requests explicitly disable
-      reasoning.
+      Moonshot AI CN generated rows, streaming-usage metadata, and provider or
+      host compatibility detection so thinking-off requests explicitly disable
+      reasoning and streamed usage can be requested.
+- [x] Add the direct Moonshot AI Kimi K2.7 Code row with text/image input,
+      reasoning, tools, current limits, pricing, and `MOONSHOT_API_KEY`
+      discovery.
 - [x] Add disabled-thinking compatibility metadata to the generated Claude
       Fable 5 row so thinking-off requests omit the rejected disabled payload.
 - [ ] Add an offline-friendly refresh command that can ingest `models.dev` and

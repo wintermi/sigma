@@ -43,7 +43,15 @@ See [release notes](docs/release-notes-v0.5.0.md).
 - OpenAI-compatible Z.ai reasoning requests now send `thinking` objects with
   enabled or disabled types instead of the legacy `enable_thinking` toggle.
 - Generated Moonshot AI and Moonshot AI CN metadata now uses the DeepSeek-style
-  thinking format so thinking-off requests explicitly disable reasoning.
+  thinking format and streaming-usage support so thinking-off requests
+  explicitly disable reasoning and streamed usage can be requested.
+- OpenAI-compatible Moonshot routes are now detected from the provider ID or
+  `api.moonshot.*` host, applying the Moonshot `max_tokens`,
+  developer-role, store, strict-tool, and DeepSeek-style thinking request
+  shape even for caller-registered models.
+- Generated Moonshot AI metadata now includes the direct Kimi K2.7 Code row
+  with text/image input, reasoning, tool support, current limits, pricing, and
+  `MOONSHOT_API_KEY` discovery.
 - OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
   instead of `max_completion_tokens`, matching the OpenCode request shape.
 - Generated Azure GPT-5.4 and GPT-5.5 context windows now match the

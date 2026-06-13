@@ -507,9 +507,26 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 		if moonshot.OpenAICompletionsCompat == nil ||
 			moonshot.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-			moonshot.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+			moonshot.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+			moonshot.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported {
 			t.Fatalf("%s compat = %#v, want deepseek thinking format without reasoning effort", provider, moonshot.OpenAICompletionsCompat)
 		}
+	}
+
+	moonshotCode, ok := registry.Model(ProviderMoonshotAI, "kimi-k2.7-code")
+	if !ok {
+		t.Fatal("fresh registry missing generated Moonshot AI Kimi K2.7 Code model")
+	}
+	if !moonshotCode.SupportsTools || !moonshotCode.SupportsImages() || !moonshotCode.SupportsReasoning() {
+		t.Fatalf("Moonshot AI Kimi K2.7 Code capabilities were not generated: %+v", moonshotCode)
+	}
+	if moonshotCode.OpenAICompletionsCompat == nil ||
+		moonshotCode.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		moonshotCode.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+		moonshotCode.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+		moonshotCode.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatUnsupported ||
+		moonshotCode.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+		t.Fatalf("Moonshot AI Kimi K2.7 Code compat = %#v, want Moonshot OpenAI-compatible overrides", moonshotCode.OpenAICompletionsCompat)
 	}
 
 	for _, id := range []ModelID{

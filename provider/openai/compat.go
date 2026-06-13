@@ -110,6 +110,11 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningFireworks
 		compat.supportsStreamingUsage = true
 		compat.supportsStrictTools = true
+	case provider == sigma.ProviderMoonshotAI || provider == sigma.ProviderMoonshotAICN || strings.Contains(host, "api.moonshot."):
+		compat.reasoningFormat = sigma.OpenAICompletionsReasoningDeepSeek
+		compat.supportsReasoningEffort = false
+		compat.supportsStreamingUsage = true
+		compat.maxTokensField = sigma.OpenAICompletionsMaxTokens
 	case provider == sigma.ProviderOpenCode || provider == sigma.ProviderOpenCodeGo || strings.Contains(host, "opencode.ai"):
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningEffort
 		compat.supportsStreamingUsage = true

@@ -33,6 +33,7 @@ type streamChoice struct {
 	Delta        streamDelta     `json:"delta"`
 	FinishReason *string         `json:"finish_reason"`
 	Logprobs     json.RawMessage `json:"logprobs"`
+	Usage        *openAIUsage    `json:"usage"`
 }
 
 type streamDelta struct {
@@ -168,6 +169,11 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 		return err
 	}
 	for _, choice := range chunk.Choices {
+		if chunk.Usage == nil && choice.Usage != nil {
+			usage := choice.Usage.sigmaUsage()
+			p.usage = &usage
+			p.captureCompletionTokenDetails(choice.Usage.CompletionTokensDetails)
+		}
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
 			p.finishReason = stopReason(*choice.FinishReason)
 		}

@@ -57,7 +57,15 @@ need to distinguish oversized-context failures from ordinary provider errors.
 - OpenAI-compatible Z.ai reasoning requests now send `thinking` objects with
   enabled or disabled types instead of the legacy `enable_thinking` toggle, and
   generated Moonshot AI metadata now uses the DeepSeek-style thinking format so
-  thinking-off requests explicitly disable reasoning.
+  thinking-off requests explicitly disable reasoning. Moonshot AI and
+  Moonshot AI CN metadata now also marks streaming usage as supported.
+- OpenAI-compatible Moonshot routes are now detected from provider IDs or
+  `api.moonshot.*` hosts, applying the Moonshot `max_tokens`,
+  developer-role, store, strict-tool, and DeepSeek-style thinking request
+  shape for caller-registered models.
+- Generated Moonshot AI metadata now includes Kimi K2.7 Code with text/image
+  input, reasoning, tool support, current limits, pricing, and
+  `MOONSHOT_API_KEY` discovery.
 - OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
   instead of `max_completion_tokens`.
 - Generated Azure GPT-5.4 and GPT-5.5 context windows now match the
@@ -115,11 +123,12 @@ need to distinguish oversized-context failures from ordinary provider errors.
   models keep sending the explicit disabled payload when thinking is off.
 - The Z.ai, Moonshot, and OpenCode payload changes follow the providers'
   current request shapes. Raw provider options and other reasoning formats are
-  unchanged.
+  unchanged. The Moonshot detection also applies to caller-registered
+  Moonshot-compatible models.
 - The Azure GPT-5.4/5.5, GPT-5 Pro, and Moonshot catalog changes are metadata
-  corrections; adapter behavior is driven by the same generated fields as
-  before. The OpenCode `max_tokens` change is compatibility detection, so it
-  also applies to caller-registered OpenCode-compatible models.
+  corrections driven by generated fields. Moonshot AI CN keeps the existing
+  curated model set; only the direct Moonshot AI catalog gains the Kimi K2.7
+  Code row.
 - The Bedrock blank-text placeholder applies only where Converse requires
   non-empty content; non-blank text, images, tool calls, and redacted thinking
   replay are unchanged. The data-retention hint appends documentation to the

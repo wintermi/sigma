@@ -9638,7 +9638,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9674,7 +9675,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9710,7 +9712,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9746,7 +9749,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9782,7 +9786,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9819,7 +9824,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9856,7 +9862,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9892,7 +9899,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9928,7 +9936,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -9964,7 +9973,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -10000,7 +10010,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -10036,7 +10047,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -10073,7 +10085,8 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
         "supportsStrictTools": "unsupported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
       }
     },
     {
@@ -10109,6 +10122,45 @@
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "unsupported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens",
+        "supportsStreamingUsage": "supported"
+      }
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "provider": "moonshotai",
+      "api": "openai-completions",
+      "baseURL": "https://api.moonshot.ai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.19
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "MOONSHOT_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
         "supportsStrictTools": "unsupported",
         "maxTokensField": "max_tokens"
       }
