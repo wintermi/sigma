@@ -114,6 +114,43 @@ stdlib-only login and refresh. Sigma does not implement token storage or
 WebSocket transport. Codex image input should use HTTPS image URLs; ChatGPT
 Codex rejects base64 image payloads.
 
+### GitHub Copilot
+
+```go
+registry := sigma.DefaultRegistry()
+_ = githubcopilot.RegisterResponses(registry)
+_ = githubcopilot.RegisterAnthropic(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `COPILOT_GITHUB_TOKEN`.
+
+`provider/githubcopilot` is a thin wrapper over the shared OpenAI-compatible and
+Anthropic-compatible adapters. Use `Register` for Chat Completions models,
+`RegisterResponses` for Responses models, and `RegisterAnthropic` for
+Anthropic Messages models. The wrapper applies the Copilot base URL, the
+Copilot dynamic initiator/intent/vision headers, static model headers from
+metadata, and bearer-token auth.
+
+### Cloudflare AI Gateway
+
+```go
+registry := sigma.DefaultRegistry()
+_ = cloudflare.RegisterAIGatewayResponses(registry)
+_ = cloudflare.RegisterAIGatewayAnthropic(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `CLOUDFLARE_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, and
+`CLOUDFLARE_GATEWAY_ID`.
+
+`provider/cloudflare` exposes AI Gateway helpers for OpenAI-compatible and
+Anthropic-compatible text routes. The wrapper resolves account and gateway
+placeholders in the base URL and sends API keys with Cloudflare's
+`cf-aig-authorization` header. Direct Cloudflare Workers AI routes remain
+metadata-only until their direct endpoint behavior has separate fixture
+coverage.
+
 ### Anthropic Messages
 
 ```go
@@ -206,8 +243,9 @@ Environment: `MISTRAL_API_KEY`.
 
 The current adapter covers streaming text, streamed thinking chunks, function
 tools, request-scoped `x-affinity` session reuse through `sigma.WithSessionID`,
-and replay of cross-provider tool-call IDs. Image input, built-in connectors,
-append, and restart are not implemented.
+base64 image input, image-bearing tool results, and replay of cross-provider
+tool-call IDs. URL/file image references, built-in connectors, append, and
+restart are not implemented.
 
 ### Amazon Bedrock Converse Stream
 

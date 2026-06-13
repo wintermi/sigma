@@ -23,6 +23,9 @@ context-overflow detection, adds Fireworks Kimi K2.7 Code coverage on both
 Fireworks text surfaces plus an Anthropic-compatible Kimi K2.6 route, and adds
 a final-message helper for callers that need to distinguish oversized-context
 failures from ordinary provider errors.
+GitHub Copilot and Cloudflare AI Gateway also move from metadata-only routes to
+first-class compatible provider wrappers for the text API families Sigma can
+exercise deterministically.
 
 ## Added
 
@@ -75,6 +78,14 @@ failures from ordinary provider errors.
 - MiniMax and MiniMax CN now have first-class Anthropic-compatible provider
   registration helpers, and generated direct MiniMax metadata now uses the
   `/anthropic/v1` base URL expected by Sigma's Messages adapter.
+- GitHub Copilot now has first-class compatible provider registration helpers
+  for Chat Completions, Responses, and Anthropic Messages routes. The wrappers
+  apply Copilot defaults, dynamic request headers, bearer auth, and
+  `COPILOT_GITHUB_TOKEN` environment credential discovery.
+- Cloudflare AI Gateway now has first-class compatible provider registration
+  helpers for OpenAI-compatible and Anthropic-compatible text routes. The
+  wrappers resolve account/gateway base URL placeholders and send
+  `CLOUDFLARE_API_KEY` credentials through `cf-aig-authorization`.
 - OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
   instead of `max_completion_tokens`.
 - Generated OpenCode Go metadata now uses `reasoning_effort` requests for Kimi
@@ -161,10 +172,10 @@ failures from ordinary provider errors.
   result APIs, broad provider-neutral sampling controls, and model-inferred
   Anthropic output-format routing remain deferred and are tracked in
   [TODO.md](../TODO.md).
-- First-class Cloudflare/GitHub provider-row promotion, AWS SDK credential
-  loading, live provider probes, Mistral connectors, candidate catalog ingestion,
-  source-precedence automation, refresh diff reports, broad OpenRouter/Vercel
-  text expansion, Anthropic-routed alias expansion, Bedrock regional-profile
+- AWS SDK credential loading, live provider probes, Mistral connectors,
+  candidate catalog ingestion, source-precedence automation, refresh diff
+  reports, broad OpenRouter/Vercel text expansion, Cloudflare Workers AI
+  promotion, broader Anthropic-routed alias expansion, Bedrock regional-profile
   catalog expansion, and new provider family catalog promotion remain deferred.
 
 ## Validation status

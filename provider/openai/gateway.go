@@ -72,16 +72,18 @@ func resolveCloudflareBaseURL(provider sigma.ProviderID, baseURL string) (string
 }
 
 func isCloudflareRoute(provider sigma.ProviderID, baseURL string) bool {
-	providerText := strings.ToLower(string(provider))
-	if strings.Contains(providerText, "cloudflare") {
+	if provider == sigma.ProviderCloudflareAIGateway {
 		return true
+	}
+	if provider == sigma.ProviderCloudflareWorkersAI {
+		return false
 	}
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
-		return strings.Contains(strings.ToLower(baseURL), "cloudflare")
+		return strings.Contains(strings.ToLower(baseURL), "gateway.ai.cloudflare.com")
 	}
 	host := strings.ToLower(parsed.Host)
-	return strings.Contains(host, "cloudflare.com")
+	return host == "gateway.ai.cloudflare.com"
 }
 
 func addCloudflareAuthHeader(req *http.Request, model sigma.Model, credential sigma.Credential) bool {

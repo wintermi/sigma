@@ -101,6 +101,10 @@ integrations remain future work until they have the same local evidence bar.
       first-class OpenAI-compatible row.
 - [x] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
       first-class Cloudflare OpenAI-compatible row.
+- [x] Promote GitHub Copilot to first-class compatible provider wrappers for
+      Chat Completions, Responses, and Anthropic Messages.
+- [x] Promote Cloudflare AI Gateway to first-class compatible provider wrappers
+      for OpenAI-compatible and Anthropic-compatible text routes.
 - [x] Send Z.ai reasoning requests as `thinking` objects with enabled or
       disabled types instead of the legacy `enable_thinking` toggle.
 - [x] Send explicit `max_tokens` for OpenCode Zen and OpenCode Go Chat
@@ -180,9 +184,11 @@ metadata-only and backed by compatibility checks.
 - [ ] Groq — promote to a first-class provider row with fixtures.
 - [ ] Cerebras — promote to a first-class provider row with fixtures.
 - [ ] Together — promote to a first-class provider row with fixtures.
-- [ ] GitHub Copilot — promote to a first-class provider row with fixtures.
-- [ ] Cloudflare AI Gateway and Cloudflare Workers AI — promote to first-class
-      provider rows with fixtures.
+- [x] GitHub Copilot — promote to a first-class provider row with fixtures.
+- [x] Cloudflare AI Gateway — promote to a first-class provider row with
+      fixtures.
+- [ ] Cloudflare Workers AI — promote to a first-class provider row with
+      fixtures.
 - [ ] NVIDIA NIM — promote to a first-class provider row with fixtures.
 - [ ] Z.ai and Z.ai Coding CN — promote to first-class provider rows with
       fixtures.
@@ -439,8 +445,8 @@ should still come through the catalog refresh workflow.
 - [x] Add typed Anthropic Messages controls for tool choice, thinking display,
       and explicit interleaved-thinking beta opt-in while preserving raw
       provider options for advanced fields.
-- [ ] Evaluate GitHub Copilot and Cloudflare AI Gateway Anthropic Messages
-      routing before making either a first-class Anthropic-compatible row.
+- [x] Add GitHub Copilot and Cloudflare AI Gateway Anthropic Messages routing
+      coverage before making either a first-class Anthropic-compatible row.
 - [ ] Add opt-in live Anthropic-compatible provider probes for compatibility
       metadata, separate from the deterministic release gate.
 

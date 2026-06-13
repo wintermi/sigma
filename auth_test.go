@@ -86,6 +86,7 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "openrouter", provider: sigma.ProviderOpenRouter, env: "OPENROUTER_API_KEY"},
 		{name: "xai", provider: sigma.ProviderXAI, env: "XAI_API_KEY"},
 		{name: "cloudflare ai gateway", provider: sigma.ProviderCloudflareAIGateway, env: "CLOUDFLARE_API_KEY"},
+		{name: "github copilot", provider: sigma.ProviderGitHubCopilot, env: "COPILOT_GITHUB_TOKEN"},
 		{name: "nvidia", provider: sigma.ProviderNVIDIA, env: "NVIDIA_API_KEY"},
 		{name: "zai", provider: sigma.ProviderZAI, env: "ZAI_API_KEY"},
 		{name: "ant ling", provider: sigma.ProviderAntLing, env: "ANT_LING_API_KEY"},

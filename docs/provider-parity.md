@@ -32,17 +32,19 @@ Release scope values:
 | OpenAI Responses | `openai-responses` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Azure OpenAI Responses | `azure-openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | OpenAI Codex Responses | `openai-codex-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `implemented` | `partial` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
+| GitHub Copilot compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| Cloudflare AI Gateway compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Anthropic Messages and Anthropic-compatible Kimi/Fireworks/Xiaomi routing | `anthropic-messages` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Google Generative AI | `google-generative-ai` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI | `google-vertex` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `not supported by provider` | `partial` | `partial` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
-| Mistral Conversations | `mistral-conversations` | `preview` | `fixture-tested` | `not yet implemented` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
+| Mistral Conversations | `mistral-conversations` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | MiniMax and MiniMax CN Anthropic-compatible Messages | `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `implemented` | `implemented` | `implemented` | `implemented` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` |
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Google Gemini API image generation | `google-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI Imagen generation | `google-vertex-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
-| Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, Together, GitHub Copilot | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, Together | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 
 ## Evidence references
 
@@ -53,6 +55,8 @@ Release scope values:
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - `azure-openai-responses`: [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
 - `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go).
+- GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
+- Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
 - `google-vertex`: [provider/google/vertex_test.go](../provider/google/vertex_test.go).
@@ -78,19 +82,19 @@ Release scope values:
 - Azure and Codex adapters are implemented provider packages, but their APIs are
   not represented by generated default model metadata yet. Vertex now has a
   representative metadata-only route.
-- OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/xAI/OpenCode rely
-  on shared compatibility detection or explicit `OpenAICompletionsCompat`
-  metadata. They are future-scope rows and are not independently
-  release-complete.
+- OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/xAI/OpenCode,
+  GitHub Copilot, and Cloudflare AI Gateway rely on shared compatibility
+  detection or explicit `OpenAICompletionsCompat` metadata. They are
+  future-scope rows and are not independently release-complete.
 - OpenCode Zen and OpenCode Go coverage is limited to curated
   `openai-completions` models. Source-package OpenCode models that route through
   OpenAI Responses, Anthropic Messages, or Google APIs are not Go parity today.
 - Caller-defined custom and local OpenAI-compatible endpoints are covered by the
   MVP `openai-completions` row when they use explicit compatibility metadata.
 - OpenAI-compatible Chat Completions supports typed `tool_choice`, opt-in
-  Anthropic-style cache markers, and opt-in `tool_stream`; provider-specific
-  dynamic headers for GitHub Copilot and Cloudflare AI Gateway remain out of
-  scope.
+  Anthropic-style cache markers, and opt-in `tool_stream`; GitHub Copilot and
+  Cloudflare AI Gateway provider-specific headers are fixture-tested through
+  their wrappers.
 - OpenAI Responses and Codex Responses support typed prompt cache retention,
   parallel tool calls, text verbosity, bounded replay IDs, and image-capable
   tool-result replay through fixture-tested payload coverage.
@@ -110,6 +114,9 @@ Release scope values:
   `sigma.WithSessionID` maps to Mistral `x-affinity` for prefix-cache reuse, but
   explicit cache-retention controls and cache-token accounting are not exposed by
   the Conversations adapter.
+- Mistral Conversations supports base64 image input and image-bearing tool
+  results for image-capable models. URL/file image references, built-in
+  connector tools, append, and restart remain deferred.
 - Anthropic Messages supports Claude Pro/Max OAuth: browser callback login with
   a manual code-paste fallback, refresh helpers, an in-memory OAuth token
   provider, and automatic Claude Code identity (beta headers, identity system

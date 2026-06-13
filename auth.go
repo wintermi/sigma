@@ -38,17 +38,18 @@ const (
 )
 
 const (
-	defaultOpenAIAPIKeyEnv      = "OPENAI_API_KEY"
-	defaultAzureOpenAIAPIKeyEnv = "AZURE_OPENAI_API_KEY"
-	defaultAnthropicAPIKeyEnv   = "ANTHROPIC_API_KEY"
-	defaultGoogleAPIKeyEnv      = "GOOGLE_API_KEY"
-	defaultGoogleCloudAPIKeyEnv = "GOOGLE_CLOUD_API_KEY"
-	defaultMistralAPIKeyEnv     = "MISTRAL_API_KEY"
-	defaultOpenRouterAPIKeyEnv  = "OPENROUTER_API_KEY"
-	defaultXAIAPIKeyEnv         = "XAI_API_KEY"
-	defaultCloudflareAPIKeyEnv  = "CLOUDFLARE_API_KEY"
-	defaultNVIDIAAPIKeyEnv      = "NVIDIA_API_KEY"
-	defaultMoonshotAPIKeyEnv    = "MOONSHOT_API_KEY"
+	defaultOpenAIAPIKeyEnv       = "OPENAI_API_KEY"
+	defaultAzureOpenAIAPIKeyEnv  = "AZURE_OPENAI_API_KEY"
+	defaultAnthropicAPIKeyEnv    = "ANTHROPIC_API_KEY"
+	defaultGoogleAPIKeyEnv       = "GOOGLE_API_KEY"
+	defaultGoogleCloudAPIKeyEnv  = "GOOGLE_CLOUD_API_KEY"
+	defaultMistralAPIKeyEnv      = "MISTRAL_API_KEY"
+	defaultOpenRouterAPIKeyEnv   = "OPENROUTER_API_KEY"
+	defaultXAIAPIKeyEnv          = "XAI_API_KEY"
+	defaultCloudflareAPIKeyEnv   = "CLOUDFLARE_API_KEY"
+	defaultCopilotGitHubTokenEnv = "COPILOT_GITHUB_TOKEN"
+	defaultNVIDIAAPIKeyEnv       = "NVIDIA_API_KEY"
+	defaultMoonshotAPIKeyEnv     = "MOONSHOT_API_KEY"
 )
 
 var defaultProviderEnvNames = map[ProviderID][]string{
@@ -64,6 +65,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderXAI:                   {defaultXAIAPIKeyEnv},
 	ProviderCloudflareAIGateway:   {defaultCloudflareAPIKeyEnv},
 	ProviderCloudflareWorkersAI:   {defaultCloudflareAPIKeyEnv},
+	ProviderGitHubCopilot:         {defaultCopilotGitHubTokenEnv},
 	ProviderNVIDIA:                {defaultNVIDIAAPIKeyEnv},
 	ProviderZAI:                   {"ZAI_API_KEY"},
 	ProviderZAICodingCN:           {"ZAI_CODING_CN_API_KEY"},

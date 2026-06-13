@@ -14,6 +14,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 	"strings"
 
 	"github.com/wintermi/sigma"
@@ -28,6 +30,8 @@ const (
 	interleavedThinkingBeta      = "interleaved-thinking-2025-05-14"
 	defaultSessionAffinityHeader = "x-session-affinity"
 )
+
+var cloudflareAIGatewayBaseURLVariable = regexp.MustCompile(`\{([A-Z_][A-Z0-9_]*)\}`)
 
 // Provider adapts Anthropic Messages-compatible HTTP APIs to sigma.
 type Provider struct {
@@ -222,11 +226,12 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 		httpReq.Header.Set("Anthropic-Beta", beta)
 	}
 
-	applyAuthHeader(httpReq, credential)
+	applyAuthHeader(httpReq, model.Provider, credential)
 	p.addProviderHeaders(httpReq, model.Provider, opts, compat)
 	for key, value := range p.headers {
 		httpReq.Header.Set(key, value)
 	}
+	addCopilotDynamicHeaders(httpReq, model, req)
 	for key, value := range anthropicModelHeaders(model) {
 		if unsafeCredentialHeader(key) {
 			continue
@@ -254,8 +259,16 @@ func (p *Provider) resolveCredential(ctx context.Context, model sigma.Model, opt
 	return opts.AuthResolver.Resolve(ctx, model, opts)
 }
 
-func applyAuthHeader(req *http.Request, credential sigma.Credential) {
+func applyAuthHeader(req *http.Request, provider sigma.ProviderID, credential sigma.Credential) {
 	if credential.Value == "" {
+		return
+	}
+	if provider == sigma.ProviderCloudflareAIGateway {
+		req.Header.Set("cf-aig-authorization", "Bearer "+credential.Value)
+		return
+	}
+	if provider == sigma.ProviderGitHubCopilot {
+		req.Header.Set("Authorization", "Bearer "+credential.Value)
 		return
 	}
 	if credential.Type == sigma.CredentialTypeOAuthToken || strings.Contains(credential.Value, anthropicOAuthTokenMark) {
@@ -286,6 +299,11 @@ func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, erro
 	}
 
 	baseURL := p.baseURLForModel(model, opts)
+	resolved, err := resolveCloudflareAIGatewayBaseURL(model.Provider, baseURL)
+	if err != nil {
+		return "", err
+	}
+	baseURL = resolved
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("anthropic messages: invalid base URL %q", baseURL)
@@ -319,6 +337,61 @@ func (p *Provider) baseURLForProvider(provider sigma.ProviderID, opts sigma.Opti
 		baseURL = value
 	}
 	return strings.TrimRight(baseURL, "/")
+}
+
+func addCopilotDynamicHeaders(req *http.Request, model sigma.Model, request sigma.Request) {
+	if model.Provider != sigma.ProviderGitHubCopilot {
+		return
+	}
+	req.Header.Set("X-Initiator", copilotInitiator(request.Messages))
+	req.Header.Set("Openai-Intent", "conversation-edits")
+	if hasCopilotVisionInput(request.Messages) {
+		req.Header.Set("Copilot-Vision-Request", "true")
+	}
+}
+
+func copilotInitiator(messages []sigma.Message) string {
+	if len(messages) == 0 || messages[len(messages)-1].Role == sigma.RoleUser {
+		return "user"
+	}
+	return "agent"
+}
+
+func hasCopilotVisionInput(messages []sigma.Message) bool {
+	for _, message := range messages {
+		if message.Role != sigma.RoleUser && message.Role != sigma.RoleTool {
+			continue
+		}
+		for _, block := range message.Content {
+			if block.Type == sigma.ContentBlockImage {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func resolveCloudflareAIGatewayBaseURL(provider sigma.ProviderID, baseURL string) (string, error) {
+	if provider != sigma.ProviderCloudflareAIGateway {
+		return baseURL, nil
+	}
+	var missing string
+	resolved := cloudflareAIGatewayBaseURLVariable.ReplaceAllStringFunc(baseURL, func(match string) string {
+		if missing != "" {
+			return match
+		}
+		name := strings.Trim(match, "{}")
+		value := os.Getenv(name)
+		if value == "" {
+			missing = name
+			return match
+		}
+		return value
+	})
+	if missing != "" {
+		return "", fmt.Errorf("anthropic messages: %s is required for Cloudflare base URL", missing)
+	}
+	return resolved, nil
 }
 
 func anthropicModelHeaders(model sigma.Model) map[string]string {

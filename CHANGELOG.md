@@ -60,6 +60,14 @@ See [release notes](docs/release-notes-v0.5.0.md).
 - MiniMax and MiniMax CN now have a first-class Anthropic-compatible provider
   wrapper, and generated direct MiniMax metadata now targets the
   `/anthropic/v1` base URL used by Sigma's Messages adapter.
+- GitHub Copilot now has a first-class compatible provider wrapper for Chat
+  Completions, Responses, and Anthropic Messages routes, including Copilot base
+  URL defaults, dynamic request headers, bearer auth, and
+  `COPILOT_GITHUB_TOKEN` environment credential discovery.
+- Cloudflare AI Gateway now has first-class compatible provider wrappers for
+  OpenAI-compatible and Anthropic-compatible text routes, including
+  environment-backed account/gateway base URL placeholders and
+  `cf-aig-authorization` gateway auth.
 - OpenCode Zen and OpenCode Go Chat Completions now send explicit `max_tokens`
   instead of `max_completion_tokens`, matching the OpenCode request shape.
 - Generated OpenCode Go metadata now uses `reasoning_effort` requests for Kimi
