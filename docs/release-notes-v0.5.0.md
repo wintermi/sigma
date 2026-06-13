@@ -18,7 +18,9 @@ This release additionally adds first-class Anthropic (Claude Pro/Max) OAuth
 login with Claude Code identity support, fixes provider thinking payload
 shapes for Claude Fable 5, Z.ai, and Moonshot routes, hardens Bedrock replay
 against blank text blocks, and corrects Azure GPT-5.4/5.5, GPT-5 Pro,
-Moonshot, and OpenCode request metadata.
+Moonshot, and OpenCode request metadata. It also broadens provider
+context-overflow detection and adds a final-message helper for callers that
+need to distinguish oversized-context failures from ordinary provider errors.
 
 ## Added
 
@@ -66,6 +68,11 @@ Moonshot, and OpenCode request metadata.
   blocks before dispatch.
 - Bedrock provider errors now append a link to the AWS data-retention
   documentation when a model rejects the configured data retention mode.
+- Provider error classification now recognizes additional context-overflow
+  wording from OpenAI-compatible routes, OpenRouter, Together, Copilot, Kimi,
+  MiniMax, and local OpenAI-compatible endpoints. `sigma.IsContextOverflow`
+  can inspect final assistant messages for overflow diagnostics and
+  caller-supplied context-window usage signals.
 - Anthropic Messages now has stdlib-only Claude Pro/Max OAuth support:
   `anthropic.LoginAnthropicBrowser` browser callback login with a manual
   code-paste fallback, `anthropic.RefreshAnthropicToken`, and
@@ -117,6 +124,10 @@ Moonshot, and OpenCode request metadata.
   non-empty content; non-blank text, images, tool calls, and redacted thinking
   replay are unchanged. The data-retention hint appends documentation to the
   provider message without changing error classification.
+- Context-overflow helper usage-based detection is caller-owned: Sigma does
+  not estimate tokens or call provider tokenizers, and `sigma.IsContextOverflow`
+  only checks silent or length-stop overflow signals when the caller supplies a
+  positive context window.
 - Claude Code identity mode activates only when the resolved credential is
   OAuth-typed or carries an Anthropic OAuth access token; API-key requests are
   byte-for-byte unchanged. Anthropic browser login binds the

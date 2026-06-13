@@ -205,6 +205,48 @@ func TestClassifyError(t *testing.T) {
 			split: true,
 		},
 		{
+			name:  "openai compatible maximum context length",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAICompletions, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"Input length (265330) exceeds model's maximum context length (262144)."}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "openrouter maximum allowed input length",
+			err:   NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "auto", 400, "", 0, []byte(`{"error":{"message":"Input length 131393 exceeds the maximum allowed input length of 131040 tokens."}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "together input longer than context length",
+			err:   NewProviderError(ProviderTogether, APIOpenAICompletions, "deepseek-test", 400, "", 0, []byte(`{"error":{"message":"The input (516368 tokens) is longer than the model's context length (262144 tokens)."}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "copilot prompt token limit",
+			err:   NewProviderError(ProviderGitHubCopilot, APIOpenAICompletions, "gemini-test", 400, "", 0, []byte(`{"error":{"message":"prompt token count of 1196265 exceeds the limit of 1048575"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "kimi model token limit",
+			err:   NewProviderError(ProviderKimi, APIOpenAICompletions, "kimi-test", 400, "", 0, []byte(`{"error":{"message":"Your request exceeded model token limit: 131072 (requested: 140000)"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "minimax context window limit",
+			err:   NewProviderError(ProviderMiniMax, APIOpenAICompletions, "minimax-test", 400, "", 0, []byte(`{"error":{"message":"invalid params, context window exceeds limit"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "ollama prompt too long",
+			err:   NewProviderError(ProviderCustom, APIOpenAICompletions, "ollama-test", 400, "", 0, []byte(`{"error":{"message":"prompt too long; exceeded max context length by 100918 tokens"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
 			name:      "plain eof",
 			err:       io.EOF,
 			class:     ErrorClassTransient,
@@ -224,6 +266,18 @@ func TestClassifyError(t *testing.T) {
 			name:      "rate limit text wins over token overflow text on 429",
 			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 429, "", 0, []byte(`{"error":{"message":"Throttling error: Too many tokens, please wait before trying again."}}`), ErrProviderResponse),
 			class:     ErrorClassRateLimited,
+			retryable: true,
+		},
+		{
+			name:      "generic rate limit text is not overflow",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"Rate limit exceeded, please retry after 30 seconds."}}`), ErrProviderResponse),
+			class:     ErrorClassRateLimited,
+			retryable: true,
+		},
+		{
+			name:      "service unavailable text is not overflow",
+			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 400, "", 0, []byte(`{"error":{"message":"Service unavailable: The service is temporarily unavailable."}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
 			retryable: true,
 		},
 		{
@@ -283,6 +337,93 @@ func TestProviderErrorClassificationRedactsParsedFields(t *testing.T) {
 	assertNoSecrets(t, classification.Message)
 	if classification.Class != ErrorClassAuth {
 		t.Fatalf("class = %q, want %q", classification.Class, ErrorClassAuth)
+	}
+}
+
+func TestIsContextOverflow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		message       AssistantMessage
+		contextWindow int
+		want          bool
+	}{
+		{
+			name: "provider diagnostic",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{{
+					Provider:        ProviderOpenAI,
+					API:             APIOpenAIResponses,
+					Model:           "gpt-test",
+					StatusCode:      400,
+					ProviderMessage: "Input length (265330) exceeds model's maximum context length (262144).",
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "normal stop above context window",
+			message: AssistantMessage{
+				StopReason: StopReasonEndTurn,
+				Usage:      &Usage{InputTokens: 120, CacheReadInputTokens: 10},
+			},
+			contextWindow: 100,
+			want:          true,
+		},
+		{
+			name: "max tokens zero output with full context",
+			message: AssistantMessage{
+				StopReason: StopReasonMaxTokens,
+				Usage:      &Usage{InputTokens: 58, CacheReadInputTokens: 1048512},
+			},
+			contextWindow: 1048576,
+			want:          true,
+		},
+		{
+			name: "max tokens with output is not overflow",
+			message: AssistantMessage{
+				StopReason: StopReasonMaxTokens,
+				Usage:      &Usage{InputTokens: 990, OutputTokens: 1},
+			},
+			contextWindow: 1000,
+		},
+		{
+			name: "max tokens below context is not overflow",
+			message: AssistantMessage{
+				StopReason: StopReasonMaxTokens,
+				Usage:      &Usage{InputTokens: 100},
+			},
+			contextWindow: 1000,
+		},
+		{
+			name: "usage detection requires context window",
+			message: AssistantMessage{
+				StopReason: StopReasonEndTurn,
+				Usage:      &Usage{InputTokens: 120},
+			},
+		},
+		{
+			name: "non-overflow diagnostic",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{{
+					StatusCode:      429,
+					ProviderMessage: "Too many requests. Please slow down.",
+				}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsContextOverflow(tt.message, tt.contextWindow); got != tt.want {
+				t.Fatalf("IsContextOverflow() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

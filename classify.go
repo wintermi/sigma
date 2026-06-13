@@ -222,6 +222,52 @@ func classSplitRecoverable(class ErrorClass) bool {
 	return class == ErrorClassContextOverflow
 }
 
+// IsContextOverflow reports whether a final assistant message indicates that a
+// request exceeded the model context window.
+//
+// Error messages are detected from safe provider diagnostics. Usage-based
+// detection requires a positive contextWindow supplied by the caller.
+func IsContextOverflow(message AssistantMessage, contextWindow int) bool {
+	if message.StopReason == StopReasonError {
+		for _, diagnostic := range message.Diagnostics {
+			if diagnosticClass(diagnostic) == ErrorClassContextOverflow {
+				return true
+			}
+		}
+	}
+	if contextWindow <= 0 || message.Usage == nil {
+		return false
+	}
+	inputTokens := message.Usage.InputTokens + message.Usage.CacheReadInputTokens
+	if message.StopReason == StopReasonEndTurn && inputTokens > contextWindow {
+		return true
+	}
+	return message.StopReason == StopReasonMaxTokens &&
+		message.Usage.OutputTokens == 0 &&
+		inputTokens*100 >= contextWindow*99
+}
+
+func diagnosticClass(diagnostic Diagnostic) ErrorClass {
+	code := normalizedErrorText(diagnostic.ProviderCode)
+	if class, ok := classForProviderCode(code); ok {
+		return class
+	}
+
+	message := normalizedErrorText(firstNonEmpty(
+		diagnostic.ProviderMessage,
+		diagnostic.BodyPreview,
+		diagnostic.UnderlyingMessage,
+		diagnostic.Message,
+	))
+	if class, ok := classForMessage(message); ok {
+		return class
+	}
+	if class, ok := classForStatus(diagnostic.StatusCode); ok {
+		return class
+	}
+	return ErrorClassUnknown
+}
+
 func messageIndicatesAuth(message string) bool {
 	return strings.Contains(message, "invalid api key") ||
 		strings.Contains(message, "unauthorized") ||
@@ -268,12 +314,19 @@ func messageIndicatesContextOverflow(message string) bool {
 		strings.Contains(message, "request_too_large") ||
 		strings.Contains(message, "request too large") ||
 		strings.Contains(message, "maximum prompt length") ||
+		strings.Contains(message, "maximum context length") ||
+		strings.Contains(message, "maximum allowed input length") ||
 		strings.Contains(message, "token limit exceeded") ||
+		strings.Contains(message, "exceeded model token limit") ||
 		strings.Contains(message, "tokenizer") && strings.Contains(message, "eof") ||
 		strings.Contains(message, "tokenizer") && strings.Contains(message, "too large") ||
-		strings.Contains(message, "context") && (strings.Contains(message, "too long") || strings.Contains(message, "maximum") || strings.Contains(message, "exceed")) ||
+		strings.Contains(message, "context") && (strings.Contains(message, "too long") || strings.Contains(message, "longer than") || strings.Contains(message, "maximum") || strings.Contains(message, "exceed") || strings.Contains(message, "greater than")) ||
 		strings.Contains(message, "prompt is too long") ||
+		strings.Contains(message, "prompt too long") ||
+		strings.Contains(message, "input is too long for requested model") ||
 		strings.Contains(message, "input token count") && strings.Contains(message, "exceeds the maximum") ||
+		strings.Contains(message, "prompt token count") && strings.Contains(message, "exceeds the limit") ||
+		strings.Contains(message, "too large for model with") && strings.Contains(message, "maximum context length") ||
 		strings.Contains(message, "reduce the length of the messages")
 }
 

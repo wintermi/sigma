@@ -54,6 +54,11 @@ See [release notes](docs/release-notes-v0.5.0.md).
   which Bedrock would otherwise reject.
 - Bedrock provider errors now link the AWS data-retention documentation when a
   model rejects the configured data retention mode.
+- Provider error classification now recognizes additional context-overflow
+  messages from OpenAI-compatible routes, OpenRouter, Together, Copilot, Kimi,
+  MiniMax, and local OpenAI-compatible endpoints. `sigma.IsContextOverflow`
+  can also identify final assistant messages that report provider diagnostics
+  or caller-supplied context-window usage consistent with overflow.
 - Anthropic Messages now has stdlib-only browser callback OAuth login for
   Claude Pro/Max subscriptions, token refresh helpers, and an in-memory OAuth
   token provider, with credential persistence remaining caller-owned.

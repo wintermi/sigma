@@ -152,6 +152,8 @@ work until their API boundaries are explicit.
       while preserving answered calls and hosted provider tool metadata.
 - [x] Normalize invalid UTF-8 text before non-OpenAI provider JSON encoding for
       Anthropic, Google/Vertex, Mistral, and Bedrock request builders.
+- [x] Broaden provider context-overflow classification and add a final-message
+      helper for diagnostic and caller-supplied context-window usage signals.
 - [ ] Add provider-neutral document/PDF content blocks only after settling
       request, replay, debug-redaction, and provider compatibility semantics.
 - [x] Add typed Anthropic native `output_format` and parallel-tool suppression
