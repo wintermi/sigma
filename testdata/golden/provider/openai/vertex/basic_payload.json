@@ -1,11 +1,11 @@
 {
-  "model": "meta/llama-3.3-70b-instruct-maas",
+  "max_tokens": 64,
   "messages": [
     {
-      "role": "user",
-      "content": "hi"
+      "content": "hi",
+      "role": "user"
     }
   ],
-  "stream": true,
-  "max_tokens": 64
+  "model": "meta/llama-3.3-70b-instruct-maas",
+  "stream": true
 }

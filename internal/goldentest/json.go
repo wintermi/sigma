@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -82,7 +84,8 @@ func CanonicalJSON(value any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.MarshalIndent(decoded, "", "  ")
+	ordered := sortedObjectValue(decoded)
+	data, err := json.MarshalIndent(ordered, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -166,18 +169,67 @@ func normalize(value any) any {
 	}
 }
 
-func repoRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
+type sortedObject map[string]any
+
+func (o sortedObject) MarshalJSON() ([]byte, error) {
+	if o == nil {
+		return []byte("null"), nil
 	}
+	keys := make([]string, 0, len(o))
+	for k := range o {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		kb, err := json.Marshal(k)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(kb)
+		b.WriteByte(':')
+		vb, err := json.Marshal(sortedObjectValue(o[k]))
+		if err != nil {
+			return nil, err
+		}
+		b.Write(vb)
+	}
+	b.WriteByte('}')
+	return b.Bytes(), nil
+}
+
+func sortedObjectValue(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		return sortedObject(x)
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = sortedObjectValue(e)
+		}
+		return out
+	default:
+		return x
+	}
+}
+
+func repoRoot() (string, error) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("runtime.Caller failed to determine source location for goldentest")
+	}
+	dir := filepath.Dir(filename)
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("go.mod not found from %s", dir)
+			return "", fmt.Errorf("go.mod not found from goldentest source %s", filename)
 		}
 		dir = parent
 	}
