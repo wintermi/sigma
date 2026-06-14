@@ -475,6 +475,64 @@ func TestEmbedBatchSplitsRetryableBatchFailure(t *testing.T) {
 	}
 }
 
+// TestEmbedBatchConcurrentSplitWithCacheIsRaceFree is a regression test for a
+// data race on the in-process dedup cache: when ReuseDuplicateInputs and
+// MaxParallelBatches are both set, a retryable split runs two embedJobs
+// goroutines concurrently, both reading and writing the shared cache map. It
+// must run clean under -race.
+func TestEmbedBatchConcurrentSplitWithCacheIsRaceFree(t *testing.T) {
+	t.Parallel()
+
+	providerErr := sigma.NewProviderError(
+		sigmatest.ProviderID,
+		sigma.API(sigmatest.EmbeddingAPI),
+		sigmatest.EmbeddingModelID,
+		429,
+		"",
+		0,
+		[]byte(`{"error":{"message":"rate limited"}}`),
+		sigma.ErrProviderResponse,
+	)
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{
+			Attempts: []sigma.EmbeddingAttempt{{StatusCode: 429}},
+		}, Err: providerErr},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{
+			Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}},
+		}},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{
+			Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{2}}},
+		}},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	got, err := client.EmbedBatch(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"alpha", "beta"}},
+		sigma.EmbeddingBatchConfig{
+			MaxRetries:           1,
+			MaxParallelBatches:   2,
+			ReuseDuplicateInputs: true,
+		},
+	)
+	if err != nil {
+		t.Fatalf("EmbedBatch returned error: %v", err)
+	}
+	if got, want := len(got.Embeddings.Vectors), 2; got != want {
+		t.Fatalf("vectors = %d, want %d", got, want)
+	}
+	for i, vector := range got.Embeddings.Vectors {
+		if vector.Index != i {
+			t.Fatalf("vector %d index = %d, want %d", i, vector.Index, i)
+		}
+	}
+}
+
 func TestEmbedBatchSplitsByConfiguredInputLimit(t *testing.T) {
 	t.Parallel()
 

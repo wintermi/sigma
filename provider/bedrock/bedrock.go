@@ -663,6 +663,7 @@ func awsRole(role string) string {
 type httpConverseStream struct {
 	body   io.ReadCloser
 	events chan ConverseEvent
+	done   chan struct{}
 	err    error
 	once   sync.Once
 }
@@ -671,6 +672,7 @@ func newHTTPConverseStream(body io.ReadCloser) *httpConverseStream {
 	stream := &httpConverseStream{
 		body:   body,
 		events: make(chan ConverseEvent),
+		done:   make(chan struct{}),
 	}
 	go stream.forward()
 	return stream
@@ -683,6 +685,7 @@ func (s *httpConverseStream) Events() <-chan ConverseEvent {
 func (s *httpConverseStream) Close() error {
 	var err error
 	s.once.Do(func() {
+		close(s.done)
 		if s.body != nil {
 			if closeErr := s.body.Close(); closeErr != nil {
 				err = fmt.Errorf("bedrock converse stream: close response body: %w", closeErr)
@@ -712,7 +715,11 @@ func (s *httpConverseStream) forward() {
 		if !ok {
 			continue
 		}
-		s.events <- event
+		select {
+		case s.events <- event:
+		case <-s.done:
+			return
+		}
 	}
 }
 

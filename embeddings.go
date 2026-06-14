@@ -58,6 +58,10 @@ type EmbeddingCacheKey struct {
 }
 
 // EmbeddingCache stores embeddings for reuse across EmbedBatch calls.
+//
+// When EmbeddingBatchConfig.MaxParallelBatches is greater than zero, Get and Set
+// may be called concurrently from multiple goroutines, so implementations must be
+// safe for concurrent use.
 type EmbeddingCache interface {
 	Get(EmbeddingCacheKey) (Embedding, bool, error)
 	Set(EmbeddingCacheKey, Embedding) error
@@ -79,7 +83,10 @@ type EmbeddingBatchConfig struct {
 	SplitOversized       bool
 	Cache                EmbeddingCache
 	SplitPolicy          EmbeddingSplitPolicy
-	Progress             func(EmbeddingBatchProgress) error
+	// Progress receives batch progress callbacks. When MaxParallelBatches is
+	// greater than zero it may be called concurrently from multiple goroutines,
+	// so it must be safe for concurrent use.
+	Progress func(EmbeddingBatchProgress) error
 }
 
 // EmbeddingBatchTraceEvent reports structured, redacted EmbedBatch execution
@@ -141,8 +148,9 @@ type embeddingBatcher struct {
 	config EmbeddingBatchConfig
 	opts   []EmbeddingOption
 
-	cache map[EmbeddingCacheKey]Embedding
-	sem   chan struct{}
+	cache   map[EmbeddingCacheKey]Embedding
+	cacheMu sync.Mutex
+	sem     chan struct{}
 
 	mu      sync.Mutex
 	summary EmbeddingBatchSummary
@@ -756,12 +764,10 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 	misses := make([]embeddingBatchJob, 0, len(jobs))
 	for _, job := range jobs {
 		key := b.cacheKey(job.text)
-		if b.cache != nil {
-			if embedding, ok := b.cache[key]; ok {
-				b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
-				cached = append(cached, expandCachedEmbedding(job, embedding)...)
-				continue
-			}
+		if embedding, ok := b.cacheLoad(key); ok {
+			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
+			cached = append(cached, expandCachedEmbedding(job, embedding)...)
+			continue
 		}
 		if b.config.Cache == nil {
 			misses = append(misses, job)
@@ -773,9 +779,7 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 			return nil, nil, fmt.Errorf("embedding batch cache get: %w", err)
 		}
 		if ok {
-			if b.cache != nil {
-				b.cache[key] = cloneCachedEmbedding(embedding)
-			}
+			b.cacheStoreLocal(key, cloneCachedEmbedding(embedding))
 			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
 			cached = append(cached, expandCachedEmbedding(job, embedding)...)
 			continue
@@ -795,9 +799,7 @@ func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Emb
 			Index:  0,
 			Vector: append([]float32(nil), embeddings[i].Vector...),
 		}
-		if b.cache != nil {
-			b.cache[key] = cloneCachedEmbedding(embedding)
-		}
+		b.cacheStoreLocal(key, cloneCachedEmbedding(embedding))
 		if b.config.Cache != nil {
 			if err := b.config.Cache.Set(key, cloneCachedEmbedding(embedding)); err != nil {
 				return fmt.Errorf("embedding batch cache set: %w", err)
@@ -806,6 +808,30 @@ func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Emb
 		}
 	}
 	return nil
+}
+
+// cacheLoad reads from the in-process dedup cache under cacheMu. The cache is
+// shared across the goroutines that embedSplitBatches launches when
+// MaxParallelBatches is set, so all map access must be serialized.
+func (b *embeddingBatcher) cacheLoad(key EmbeddingCacheKey) (Embedding, bool) {
+	if b.cache == nil {
+		return Embedding{}, false
+	}
+	b.cacheMu.Lock()
+	defer b.cacheMu.Unlock()
+	embedding, ok := b.cache[key]
+	return embedding, ok
+}
+
+// cacheStoreLocal writes to the in-process dedup cache under cacheMu. It is a
+// no-op when the in-process cache is disabled.
+func (b *embeddingBatcher) cacheStoreLocal(key EmbeddingCacheKey, embedding Embedding) {
+	if b.cache == nil {
+		return
+	}
+	b.cacheMu.Lock()
+	defer b.cacheMu.Unlock()
+	b.cache[key] = embedding
 }
 
 func (b *embeddingBatcher) cacheKey(text string) EmbeddingCacheKey {

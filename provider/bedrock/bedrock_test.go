@@ -17,7 +17,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -805,6 +807,83 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	if events[3].Usage == nil || events[3].Usage.TotalTokens != 3 {
 		t.Fatalf("usage = %+v, want total tokens 3", events[3].Usage)
 	}
+}
+
+// TestHTTPConverseStreamCloseReleasesBlockedForward is a regression test for a
+// goroutine leak: forward() blocked on a bare channel send when the consumer
+// stopped draining Events() (e.g. on context cancellation). Closing the stream
+// must release the parked sender, not just close the HTTP body.
+func TestHTTPConverseStreamCloseReleasesBlockedForward(t *testing.T) {
+	// Not parallel: this test inspects the process goroutine count.
+	frame := bedrockEventStream(
+		bedrockEventStreamFrame("contentBlockDelta", []byte(`{"contentBlockIndex":0,"delta":{"text":"ok"}}`)),
+	)
+	body := newBlockingReadCloser(frame)
+
+	baseline := runtime.NumGoroutine()
+	stream := newHTTPConverseStream(body)
+
+	// Wait until the decoder has consumed the frame; forward() then parks on the
+	// channel send because nothing drains Events().
+	select {
+	case <-body.drained:
+	case <-time.After(2 * time.Second):
+		t.Fatal("converse stream never read the event frame")
+	}
+	// Give forward() a moment to actually reach the blocked send.
+	time.Sleep(50 * time.Millisecond)
+
+	stream.Close()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if runtime.NumGoroutine() <= baseline {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("forward goroutine leaked after Close: goroutines=%d baseline=%d",
+				runtime.NumGoroutine(), baseline)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// blockingReadCloser returns data once, then blocks subsequent reads until Close.
+// It signals drained after the final data byte is handed to the reader so a test
+// can know the decoder has the full frame before forward() parks on its send.
+type blockingReadCloser struct {
+	data      []byte
+	off       int
+	drained   chan struct{}
+	closed    chan struct{}
+	drainOnce sync.Once
+	closeOnce sync.Once
+}
+
+func newBlockingReadCloser(data []byte) *blockingReadCloser {
+	return &blockingReadCloser{
+		data:    data,
+		drained: make(chan struct{}),
+		closed:  make(chan struct{}),
+	}
+}
+
+func (b *blockingReadCloser) Read(p []byte) (int, error) {
+	if b.off >= len(b.data) {
+		<-b.closed
+		return 0, io.EOF
+	}
+	n := copy(p, b.data[b.off:])
+	b.off += n
+	if b.off >= len(b.data) {
+		b.drainOnce.Do(func() { close(b.drained) })
+	}
+	return n, nil
+}
+
+func (b *blockingReadCloser) Close() error {
+	b.closeOnce.Do(func() { close(b.closed) })
+	return nil
 }
 
 func TestHTTPConverseStreamClientRetriesAndRunsResponseHooks(t *testing.T) {
