@@ -160,6 +160,9 @@ work until their API boundaries are explicit.
       helper for diagnostic and caller-supplied context-window usage signals.
 - [x] Preserve long prompt-cache write usage separately for cost accounting
       while keeping total cache-write tokens unchanged.
+- [x] Normalize text-generation usage/accounting metadata with provider/model
+      identity, raw provider usage payloads, tool-use input tokens, terminal
+      stream usage, and separate provider-reported versus Sigma-estimated cost.
 - [ ] Add provider-neutral document/PDF content blocks only after settling
       request, replay, debug-redaction, and provider compatibility semantics.
 - [x] Add typed Anthropic native `output_format` and parallel-tool suppression

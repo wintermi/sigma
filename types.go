@@ -443,23 +443,33 @@ type ContentBlock struct {
 
 // Usage records provider token accounting for a model turn.
 type Usage struct {
-	InputTokens               int `json:"inputTokens,omitempty"`
-	OutputTokens              int `json:"outputTokens,omitempty"`
-	TotalTokens               int `json:"totalTokens,omitempty"`
-	CacheReadInputTokens      int `json:"cacheReadInputTokens,omitempty"`
-	CacheWriteInputTokens     int `json:"cacheWriteInputTokens,omitempty"`
-	LongCacheWriteInputTokens int `json:"longCacheWriteInputTokens,omitempty"`
-	ThinkingTokens            int `json:"thinkingTokens,omitempty"`
+	InputTokens               int            `json:"inputTokens,omitempty"`
+	OutputTokens              int            `json:"outputTokens,omitempty"`
+	TotalTokens               int            `json:"totalTokens,omitempty"`
+	CacheReadInputTokens      int            `json:"cacheReadInputTokens,omitempty"`
+	CacheWriteInputTokens     int            `json:"cacheWriteInputTokens,omitempty"`
+	LongCacheWriteInputTokens int            `json:"longCacheWriteInputTokens,omitempty"`
+	ThinkingTokens            int            `json:"thinkingTokens,omitempty"`
+	ToolUseInputTokens        int            `json:"toolUseInputTokens,omitempty"`
+	Provider                  ProviderID     `json:"provider,omitempty"`
+	Model                     ModelID        `json:"model,omitempty"`
+	Raw                       map[string]any `json:"raw,omitempty"`
 }
 
-// Cost records provider cost accounting for a model turn.
+// Cost records estimated and provider-reported cost accounting for a model turn.
+//
+// The component costs and TotalCost are Sigma estimates calculated from model
+// pricing metadata. ProviderReportedCost is only populated when the provider
+// returns an explicit numeric cost.
 type Cost struct {
-	InputCost           float64 `json:"inputCost,omitempty"`
-	OutputCost          float64 `json:"outputCost,omitempty"`
-	CacheReadInputCost  float64 `json:"cacheReadInputCost,omitempty"`
-	CacheWriteInputCost float64 `json:"cacheWriteInputCost,omitempty"`
-	TotalCost           float64 `json:"totalCost,omitempty"`
-	Currency            string  `json:"currency,omitempty"`
+	InputCost                float64  `json:"inputCost,omitempty"`
+	OutputCost               float64  `json:"outputCost,omitempty"`
+	CacheReadInputCost       float64  `json:"cacheReadInputCost,omitempty"`
+	CacheWriteInputCost      float64  `json:"cacheWriteInputCost,omitempty"`
+	TotalCost                float64  `json:"totalCost,omitempty"`
+	Currency                 string   `json:"currency,omitempty"`
+	ProviderReportedCost     *float64 `json:"providerReportedCost,omitempty"`
+	ProviderReportedCurrency string   `json:"providerReportedCurrency,omitempty"`
 }
 
 // AssistantMessage is provider-neutral assistant output plus turn metadata.

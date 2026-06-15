@@ -88,6 +88,8 @@ type responsesUsage struct {
 	TotalTokens         int                          `json:"total_tokens"`
 	InputTokensDetails  *responsesInputTokenDetails  `json:"input_tokens_details"`
 	OutputTokensDetails *responsesOutputTokenDetails `json:"output_tokens_details"`
+	Cost                *float64                     `json:"cost"`
+	Currency            string                       `json:"currency"`
 }
 
 type responsesInputTokenDetails struct {
@@ -336,6 +338,7 @@ func (p *responsesStreamParser) captureResponse(response responsesResponse) {
 	}
 	if response.Usage != nil {
 		usage := response.Usage.sigmaUsage()
+		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*response.Usage))
 		p.usage = &usage
 	}
 	if response.IncompleteDetails != nil && response.IncompleteDetails.Reason != "" {
@@ -626,12 +629,14 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
-		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
+		opts := []sigma.UsageAccountingOption{}
 		if p.options.applyServiceTierCosts {
-			applyResponsesServiceTierCost(&cost, p.model, p.resolvedServiceTier())
+			opts = append(opts, sigma.WithEstimatedCostAdjustment(func(cost *sigma.Cost) {
+				applyResponsesServiceTierCost(cost, p.model, p.resolvedServiceTier())
+			}))
 		}
+		usage, cost := sigma.AccountUsage(p.model, *p.usage, opts...)
+		p.final.Usage = &usage
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.model.ID)

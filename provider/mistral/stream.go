@@ -223,6 +223,7 @@ func (p *conversationStreamParser) capture(event conversationEvent) {
 	}
 	if event.Usage != nil {
 		usage := event.Usage.sigmaUsage()
+		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*event.Usage))
 		p.usage = &usage
 	}
 }
@@ -447,9 +448,8 @@ func (p *conversationStreamParser) finalize(ctx context.Context) sigma.Assistant
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
+		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = p.responseMetadata()
@@ -522,10 +522,17 @@ func (p *conversationStreamParser) sortedToolCalls() []*streamblocks.ToolCall {
 }
 
 func (u conversationUsage) sigmaUsage() sigma.Usage {
+	toolUseInputTokens := u.ConnectorTokens
+	if toolUseInputTokens == 0 {
+		for _, tokens := range u.Connectors {
+			toolUseInputTokens += tokens
+		}
+	}
 	return sigma.Usage{
-		InputTokens:  u.PromptTokens,
-		OutputTokens: u.CompletionTokens,
-		TotalTokens:  u.TotalTokens,
+		InputTokens:        u.PromptTokens,
+		OutputTokens:       u.CompletionTokens,
+		TotalTokens:        u.TotalTokens,
+		ToolUseInputTokens: toolUseInputTokens,
 	}
 }
 

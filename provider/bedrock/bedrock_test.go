@@ -984,7 +984,7 @@ func TestStreamingMapsThinkingToolCallsUsageAndStopReason(t *testing.T) {
 		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 2, ToolUseID: "tool_1", ToolName: "lookup"},
 		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 2, ToolInputDelta: "{\"id\""},
 		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 2, ToolInputDelta: ":\"abc\"}"},
-		ConverseEvent{Kind: ConverseEventMetadata, Usage: &ConverseUsage{InputTokens: 7, OutputTokens: 5, TotalTokens: 12, CacheReadInputTokens: 3}},
+		ConverseEvent{Kind: ConverseEventMetadata, Usage: &ConverseUsage{InputTokens: 7, OutputTokens: 5, TotalTokens: 12, CacheReadInputTokens: 3, Raw: map[string]any{"inputTokens": float64(7), "cacheReadInputTokens": float64(3)}}},
 		ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "tool_use"},
 	)
 	fakeClient := &fakeConverseClient{stream: stream}
@@ -1037,6 +1037,18 @@ func TestStreamingMapsThinkingToolCallsUsageAndStopReason(t *testing.T) {
 	}
 	if final.Usage == nil || final.Usage.CacheReadInputTokens != 3 {
 		t.Fatalf("usage = %+v, want cache read tokens 3", final.Usage)
+	}
+	if got, want := final.Usage.Provider, providerID; got != want {
+		t.Fatalf("usage provider = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Model, model.ID; got != want {
+		t.Fatalf("usage model = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Raw["inputTokens"], float64(7); got != want {
+		t.Fatalf("raw input tokens = %v, want %v", got, want)
+	}
+	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.Raw["inputTokens"] != float64(7) {
+		t.Fatalf("terminal usage = %#v, want raw input tokens", events[len(events)-1].Usage)
 	}
 }
 

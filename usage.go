@@ -5,7 +5,82 @@
 
 package sigma
 
+import "encoding/json"
+
 const defaultCostCurrency = "USD"
+
+const (
+	rawCostKey     = "cost"
+	rawCurrencyKey = "currency"
+)
+
+type usageAccountingConfig struct {
+	raw                      any
+	providerReportedCost     *float64
+	providerReportedCurrency string
+	estimatedCostAdjustment  func(*Cost)
+}
+
+// UsageAccountingOption configures AccountUsage.
+type UsageAccountingOption func(*usageAccountingConfig)
+
+// WithRawUsage preserves the provider usage payload as JSON-like debug data.
+func WithRawUsage(raw any) UsageAccountingOption {
+	return func(config *usageAccountingConfig) {
+		config.raw = raw
+	}
+}
+
+// WithProviderReportedCost records a provider-reported cost separately from
+// Sigma's model-metadata estimate.
+func WithProviderReportedCost(cost float64, currency string) UsageAccountingOption {
+	return func(config *usageAccountingConfig) {
+		config.providerReportedCost = cloneFloat64Ptr(&cost)
+		config.providerReportedCurrency = currency
+	}
+}
+
+// WithEstimatedCostAdjustment adjusts Sigma's estimated cost after model
+// pricing has been applied. Providers use this for request-specific pricing
+// modifiers such as service tiers.
+func WithEstimatedCostAdjustment(adjust func(*Cost)) UsageAccountingOption {
+	return func(config *usageAccountingConfig) {
+		config.estimatedCostAdjustment = adjust
+	}
+}
+
+// AccountUsage stamps usage with model identity, preserves raw provider usage,
+// and calculates Sigma's estimated cost from model metadata.
+func AccountUsage(model Model, usage Usage, opts ...UsageAccountingOption) (Usage, Cost) {
+	config := usageAccountingConfig{}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&config)
+		}
+	}
+
+	usage.Provider = model.Provider
+	usage.Model = model.ID
+	if raw := usageRawMap(config.raw); raw != nil {
+		usage.Raw = raw
+	} else {
+		usage.Raw = usageRawMap(usage.Raw)
+	}
+
+	cost := CostForUsage(model, usage)
+	if config.providerReportedCost != nil {
+		reported := *config.providerReportedCost
+		cost.ProviderReportedCost = &reported
+		cost.ProviderReportedCurrency = config.providerReportedCurrency
+	} else if reported, currency, ok := providerReportedCostFromRaw(usage.Raw); ok {
+		cost.ProviderReportedCost = &reported
+		cost.ProviderReportedCurrency = currency
+	}
+	if config.estimatedCostAdjustment != nil {
+		config.estimatedCostAdjustment(&cost)
+	}
+	return usage, cost
+}
 
 // Total returns provider-supplied total tokens when available, otherwise it
 // computes a deterministic total from input, output, and prompt-cache token
@@ -22,7 +97,8 @@ func (usage Usage) Total() int {
 	return usage.InputTokens +
 		usage.OutputTokens +
 		usage.CacheReadInputTokens +
-		usage.CacheWriteInputTokens
+		usage.CacheWriteInputTokens +
+		usage.ToolUseInputTokens
 }
 
 // CostForUsage calculates deterministic per-turn cost from model rates.
@@ -80,4 +156,91 @@ func embeddingCostCurrency(model EmbeddingModel) string {
 		return model.CostCurrency
 	}
 	return defaultCostCurrency
+}
+
+func usageRawMap(raw any) map[string]any {
+	switch typed := raw.(type) {
+	case nil:
+		return nil
+	case map[string]any:
+		return cloneUsageRawMap(typed)
+	default:
+		encoded, err := json.Marshal(raw)
+		if err != nil {
+			return nil
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			return nil
+		}
+		return cloneUsageRawMap(decoded)
+	}
+}
+
+func cloneUsageRawMap(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return nil
+	}
+	cloned := make(map[string]any, len(values))
+	for key, value := range values {
+		cloned[key] = cloneUsageRawValue(value)
+	}
+	return cloned
+}
+
+func cloneUsageRawValue(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		return cloneUsageRawMap(typed)
+	case []any:
+		cloned := make([]any, len(typed))
+		for i, value := range typed {
+			cloned[i] = cloneUsageRawValue(value)
+		}
+		return cloned
+	default:
+		return typed
+	}
+}
+
+func providerReportedCostFromRaw(raw map[string]any) (float64, string, bool) {
+	if len(raw) == 0 {
+		return 0, "", false
+	}
+	for _, key := range []string{rawCostKey, "total_cost", "totalCost"} {
+		cost, ok := numericRawValue(raw[key])
+		if ok {
+			return cost, rawCurrency(raw), true
+		}
+	}
+	return 0, "", false
+}
+
+func numericRawValue(value any) (float64, bool) {
+	switch typed := value.(type) {
+	case float64:
+		return typed, true
+	case float32:
+		return float64(typed), true
+	case int:
+		return float64(typed), true
+	case int64:
+		return float64(typed), true
+	case int32:
+		return float64(typed), true
+	case json.Number:
+		value, err := typed.Float64()
+		return value, err == nil
+	default:
+		return 0, false
+	}
+}
+
+func rawCurrency(raw map[string]any) string {
+	for _, key := range []string{rawCurrencyKey, "cost_currency", "costCurrency"} {
+		if value, ok := raw[key].(string); ok {
+			return value
+		}
+	}
+	return ""
 }

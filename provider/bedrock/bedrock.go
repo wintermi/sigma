@@ -808,6 +808,7 @@ func usageFromPayload(payload map[string]any) *ConverseUsage {
 		TotalTokens:           intValue(usage, "totalTokens"),
 		CacheReadInputTokens:  intValue(usage, "cacheReadInputTokens"),
 		CacheWriteInputTokens: intValue(usage, "cacheWriteInputTokens"),
+		Raw:                   usage,
 	}
 }
 

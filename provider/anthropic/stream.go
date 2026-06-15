@@ -455,9 +455,8 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
+		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = p.responseMetadata()
@@ -740,6 +739,12 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	if update.OutputTokensDetails != nil {
 		usage.ThinkingTokens = update.OutputTokensDetails.ThinkingTokens
 	}
+	if len(update.ServerToolUse) > 0 {
+		usage.ToolUseInputTokens = 0
+		for _, tokens := range update.ServerToolUse {
+			usage.ToolUseInputTokens += tokens
+		}
+	}
 	if update.CacheCreation != nil {
 		usage.LongCacheWriteInputTokens = update.CacheCreation.Ephemeral1hInputTokens
 	}
@@ -748,6 +753,7 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {
 		usage.CacheWriteInputTokens = update.CacheCreation.Ephemeral5mInputTokens + update.CacheCreation.Ephemeral1hInputTokens
 	}
+	usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*update))
 	p.usage = &usage
 }
 

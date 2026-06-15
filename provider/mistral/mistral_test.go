@@ -741,7 +741,7 @@ event: message.output.delta
 data: {"type":"message.output.delta","output_index":0,"id":"msg_1","content_index":0,"content":" world"}
 
 event: conversation.response.done
-data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18}}
+data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18,"connector_tokens":4}}
 `)
 	}))
 	t.Cleanup(server.Close)
@@ -784,6 +784,21 @@ data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completi
 	}
 	if got, want := final.Usage.InputTokens, 10; got != want {
 		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.ToolUseInputTokens, 4; got != want {
+		t.Fatalf("tool use input tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.Provider, providerID; got != want {
+		t.Fatalf("usage provider = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Model, model.ID; got != want {
+		t.Fatalf("usage model = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Raw["connector_tokens"], float64(4); got != want {
+		t.Fatalf("raw connector tokens = %v, want %v", got, want)
+	}
+	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.ToolUseInputTokens != 4 {
+		t.Fatalf("terminal usage = %#v, want tool use tokens", events[len(events)-1].Usage)
 	}
 }
 

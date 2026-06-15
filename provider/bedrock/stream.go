@@ -58,6 +58,7 @@ type ConverseUsage struct {
 	TotalTokens           int
 	CacheReadInputTokens  int
 	CacheWriteInputTokens int
+	Raw                   map[string]any
 }
 
 type converseStreamParser struct {
@@ -148,6 +149,7 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 	case ConverseEventMetadata:
 		if event.Usage != nil {
 			usage := event.Usage.sigmaUsage()
+			usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(event.Usage.Raw))
 			p.usage = &usage
 		}
 		return nil
@@ -323,9 +325,8 @@ func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMess
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
+		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
 	return p.final

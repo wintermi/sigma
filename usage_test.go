@@ -36,10 +36,99 @@ func TestUsageTotalIncludesCacheTokensWhenProviderTotalIsMissing(t *testing.T) {
 		CacheReadInputTokens:      400,
 		CacheWriteInputTokens:     75,
 		LongCacheWriteInputTokens: 25,
+		ToolUseInputTokens:        10,
 	}
 
-	if got, want := usage.Total(), 600; got != want {
+	if got, want := usage.Total(), 610; got != want {
 		t.Fatalf("total tokens = %d, want computed total %d", got, want)
+	}
+}
+
+func TestAccountUsageStampsModelAndClonesRawUsage(t *testing.T) {
+	t.Parallel()
+
+	raw := map[string]any{
+		"input_tokens":  float64(10),
+		"nested":        map[string]any{"cached_tokens": float64(3)},
+		"token_details": []any{map[string]any{"reasoning_tokens": float64(2)}},
+	}
+	usage, cost := sigma.AccountUsage(sigma.Model{
+		ID:                   "model-a",
+		Provider:             "provider-a",
+		InputCostPerMillion:  1,
+		OutputCostPerMillion: 2,
+	}, sigma.Usage{
+		InputTokens:  1_000_000,
+		OutputTokens: 500_000,
+	}, sigma.WithRawUsage(raw))
+
+	raw["input_tokens"] = float64(99)
+	raw["nested"].(map[string]any)["cached_tokens"] = float64(99)
+	raw["token_details"].([]any)[0].(map[string]any)["reasoning_tokens"] = float64(99)
+
+	if got, want := usage.Provider, sigma.ProviderID("provider-a"); got != want {
+		t.Fatalf("provider = %q, want %q", got, want)
+	}
+	if got, want := usage.Model, sigma.ModelID("model-a"); got != want {
+		t.Fatalf("model = %q, want %q", got, want)
+	}
+	if got, want := usage.Raw["input_tokens"], float64(10); got != want {
+		t.Fatalf("raw input tokens = %v, want %v", got, want)
+	}
+	nested := usage.Raw["nested"].(map[string]any)
+	if got, want := nested["cached_tokens"], float64(3); got != want {
+		t.Fatalf("raw nested cached tokens = %v, want %v", got, want)
+	}
+	details := usage.Raw["token_details"].([]any)[0].(map[string]any)
+	if got, want := details["reasoning_tokens"], float64(2); got != want {
+		t.Fatalf("raw reasoning tokens = %v, want %v", got, want)
+	}
+	if got, want := cost.TotalCost, 2.0; got != want {
+		t.Fatalf("estimated total cost = %v, want %v", got, want)
+	}
+}
+
+func TestAccountUsagePreservesProviderReportedCost(t *testing.T) {
+	t.Parallel()
+
+	_, cost := sigma.AccountUsage(sigma.Model{
+		ID:           "model-a",
+		Provider:     "provider-a",
+		CostCurrency: "EUR",
+	}, sigma.Usage{}, sigma.WithProviderReportedCost(0.125, "USD"))
+
+	if cost.ProviderReportedCost == nil {
+		t.Fatal("provider reported cost was nil")
+	}
+	if got, want := *cost.ProviderReportedCost, 0.125; got != want {
+		t.Fatalf("provider reported cost = %v, want %v", got, want)
+	}
+	if got, want := cost.ProviderReportedCurrency, "USD"; got != want {
+		t.Fatalf("provider reported currency = %q, want %q", got, want)
+	}
+	if got, want := cost.Currency, "EUR"; got != want {
+		t.Fatalf("estimated currency = %q, want %q", got, want)
+	}
+}
+
+func TestAccountUsageReadsProviderReportedCostFromRawUsage(t *testing.T) {
+	t.Parallel()
+
+	_, cost := sigma.AccountUsage(sigma.Model{}, sigma.Usage{
+		Raw: map[string]any{
+			"total_cost": float64(0.25),
+			"currency":   "USD",
+		},
+	})
+
+	if cost.ProviderReportedCost == nil {
+		t.Fatal("provider reported cost was nil")
+	}
+	if got, want := *cost.ProviderReportedCost, 0.25; got != want {
+		t.Fatalf("provider reported cost = %v, want %v", got, want)
+	}
+	if got, want := cost.ProviderReportedCurrency, "USD"; got != want {
+		t.Fatalf("provider reported currency = %q, want %q", got, want)
 	}
 }
 

@@ -944,7 +944,7 @@ func TestStreamingParsesChoiceUsage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_choice_usage","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_choice_usage","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop","usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":3,"cache_write_tokens":2},"completion_tokens_details":{"reasoning_tokens":4}}}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_choice_usage","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop","usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_tokens_details":{"cached_tokens":3,"cache_write_tokens":2},"completion_tokens_details":{"reasoning_tokens":4},"cost":0.125,"currency":"USD"}}]}`+"\n\n")
 		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
 	t.Cleanup(server.Close)
@@ -954,7 +954,7 @@ func TestStreamingParsesChoiceUsage(t *testing.T) {
 	client := openAITestClient(t, providerID, model, server.URL)
 
 	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
-	_ = collectEvents(t, stream)
+	events := collectEvents(t, stream)
 	if err := stream.Err(); err != nil {
 		t.Fatalf("stream error = %v", err)
 	}
@@ -980,8 +980,26 @@ func TestStreamingParsesChoiceUsage(t *testing.T) {
 	if got, want := final.Usage.ThinkingTokens, 4; got != want {
 		t.Fatalf("thinking tokens = %d, want %d", got, want)
 	}
+	if got, want := final.Usage.Provider, providerID; got != want {
+		t.Fatalf("usage provider = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Model, model.ID; got != want {
+		t.Fatalf("usage model = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Raw["prompt_tokens"], float64(10); got != want {
+		t.Fatalf("raw prompt tokens = %v, want %v", got, want)
+	}
+	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.Raw["prompt_tokens"] != float64(10) {
+		t.Fatalf("terminal usage = %#v, want raw prompt tokens", events[len(events)-1].Usage)
+	}
 	if final.Cost == nil || final.Cost.TotalCost == 0 {
 		t.Fatalf("final cost = %#v, want populated cost", final.Cost)
+	}
+	if final.Cost.ProviderReportedCost == nil || *final.Cost.ProviderReportedCost != 0.125 {
+		t.Fatalf("provider reported cost = %#v, want 0.125", final.Cost.ProviderReportedCost)
+	}
+	if got, want := final.Cost.ProviderReportedCurrency, "USD"; got != want {
+		t.Fatalf("provider reported currency = %q, want %q", got, want)
 	}
 }
 

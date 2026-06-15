@@ -838,6 +838,18 @@ data: {"type":"response.completed","response":{"id":"resp_stream","model":"gpt-t
 	if got, want := final.Usage.ThinkingTokens, 2; got != want {
 		t.Fatalf("thinking tokens = %d, want %d", got, want)
 	}
+	if got, want := final.Usage.Provider, providerID; got != want {
+		t.Fatalf("usage provider = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Model, model.ID; got != want {
+		t.Fatalf("usage model = %q, want %q", got, want)
+	}
+	if got, want := final.Usage.Raw["input_tokens"], float64(10); got != want {
+		t.Fatalf("raw input tokens = %v, want %v", got, want)
+	}
+	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.Raw["input_tokens"] != float64(10) {
+		t.Fatalf("terminal usage = %#v, want raw input tokens", events[len(events)-1].Usage)
+	}
 }
 
 func TestResponsesStreamingParsesReasoningTextAndRefusal(t *testing.T) {

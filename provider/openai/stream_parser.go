@@ -71,6 +71,8 @@ type openAIUsage struct {
 	TotalTokens             int                 `json:"total_tokens"`
 	PromptTokensDetails     *promptTokenDetails `json:"prompt_tokens_details"`
 	CompletionTokensDetails *outputTokenDetails `json:"completion_tokens_details"`
+	Cost                    *float64            `json:"cost"`
+	Currency                string              `json:"currency"`
 }
 
 type promptTokenDetails struct {
@@ -159,6 +161,7 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 	}
 	if chunk.Usage != nil {
 		usage := chunk.Usage.sigmaUsage()
+		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*chunk.Usage))
 		p.usage = &usage
 		p.captureCompletionTokenDetails(chunk.Usage.CompletionTokensDetails)
 	}
@@ -171,6 +174,7 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 	for _, choice := range chunk.Choices {
 		if chunk.Usage == nil && choice.Usage != nil {
 			usage := choice.Usage.sigmaUsage()
+			usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*choice.Usage))
 			p.usage = &usage
 			p.captureCompletionTokenDetails(choice.Usage.CompletionTokensDetails)
 		}
@@ -407,9 +411,8 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
+		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = p.responseMetadata()

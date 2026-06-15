@@ -157,6 +157,7 @@ func (p *streamParser) captureResponse(response generateContentResponse) {
 	}
 	if response.UsageMetadata != nil {
 		usage := response.UsageMetadata.sigmaUsage()
+		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*response.UsageMetadata))
 		p.usage = &usage
 	}
 }
@@ -325,9 +326,8 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage := *p.usage
+		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
-		cost := sigma.CostForUsage(p.model, usage)
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = p.responseMetadata()
