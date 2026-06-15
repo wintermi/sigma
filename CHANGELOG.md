@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- GitHub Copilot now has stdlib-only device-code OAuth login, Copilot token
+  refresh helpers, an in-memory OAuth token provider that also implements
+  Sigma's auth resolver interface, and explicit opt-in helpers for enabling
+  Copilot model policies while keeping credential persistence caller-owned.
 - Anthropic Messages usage now preserves long prompt-cache write tokens
   separately and prices those writes at the provider's long-cache input
   multiplier while keeping total cache-write tokens unchanged.

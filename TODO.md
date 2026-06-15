@@ -432,6 +432,12 @@ should still come through the catalog refresh workflow.
 - [x] Implement Anthropic (Claude Pro/Max) browser callback OAuth login,
       refresh helpers, and an in-memory OAuth token provider with caller-owned
       credential persistence.
+- [x] Implement GitHub Copilot device-code OAuth login, Copilot token refresh,
+      and an in-memory OAuth token provider with caller-owned credential
+      persistence.
+- [x] Add explicit GitHub Copilot model-policy enablement helpers with
+      per-model result reporting, without making model enablement an automatic
+      login side effect.
 - [ ] Implement token persistence for OAuth-based providers.
 - [x] Add Anthropic Claude Code OAuth identity headers and Claude Code
       tool-name canonicalization, applied automatically when the resolved
@@ -439,7 +445,8 @@ should still come through the catalog refresh workflow.
 - [x] Wire OpenAI Codex browser/device-code login and refresh into Codex
       Responses through `openai.NewCodexOAuthTokenProvider`.
 - [x] Add deterministic coverage for Codex and Anthropic login/refresh flows
-      without live network calls; persistence flows stay deferred with
+      plus GitHub Copilot login, refresh, token-provider, and model-policy
+      helpers without live network calls; persistence flows stay deferred with
       caller-owned token persistence.
 
 ## Anthropic-compatible routing
