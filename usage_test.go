@@ -31,10 +31,11 @@ func TestUsageTotalIncludesCacheTokensWhenProviderTotalIsMissing(t *testing.T) {
 	t.Parallel()
 
 	usage := sigma.Usage{
-		InputTokens:           100,
-		OutputTokens:          25,
-		CacheReadInputTokens:  400,
-		CacheWriteInputTokens: 75,
+		InputTokens:               100,
+		OutputTokens:              25,
+		CacheReadInputTokens:      400,
+		CacheWriteInputTokens:     75,
+		LongCacheWriteInputTokens: 25,
 	}
 
 	if got, want := usage.Total(), 600; got != want {
@@ -76,6 +77,27 @@ func TestCostForUsageStandardAndCacheHeavyUsage(t *testing.T) {
 	}
 	if got, want := cost.Currency, "USD"; got != want {
 		t.Fatalf("currency = %q, want %q", got, want)
+	}
+}
+
+func TestCostForUsagePricesLongCacheWritesAtInputMultiplier(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		InputCostPerMillion:           5,
+		CacheWriteInputCostPerMillion: 1,
+	}
+	usage := sigma.Usage{
+		CacheWriteInputTokens:     1_000_000,
+		LongCacheWriteInputTokens: 400_000,
+	}
+
+	cost := sigma.CostForUsage(model, usage)
+	if got, want := cost.CacheWriteInputCost, 4.6; got != want {
+		t.Fatalf("cache write cost = %v, want %v", got, want)
+	}
+	if got, want := usage.Total(), 1_000_000; got != want {
+		t.Fatalf("total tokens = %d, want cache write total %d", got, want)
 	}
 }
 

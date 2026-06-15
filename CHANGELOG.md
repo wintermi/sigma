@@ -42,6 +42,9 @@ See [release notes](docs/release-notes-v0.5.0.md).
   `fireworks-anthropic` route as `accounts/fireworks/models/kimi-k2p7-code`.
 - Anthropic Messages now has typed options for native `output_format` payloads
   and `disable_parallel_tool_use` tool-choice controls.
+- Anthropic Messages usage now preserves long prompt-cache write tokens
+  separately and prices those writes at the provider's long-cache input
+  multiplier while keeping total cache-write tokens unchanged.
 - Bedrock Converse Stream now supports typed structured-output requests by
   synthesizing a schema tool and returning the structured tool arguments as
   assistant text while preserving real tool calls.

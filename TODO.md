@@ -158,6 +158,8 @@ work until their API boundaries are explicit.
       Anthropic, Google/Vertex, Mistral, and Bedrock request builders.
 - [x] Broaden provider context-overflow classification and add a final-message
       helper for diagnostic and caller-supplied context-window usage signals.
+- [x] Preserve long prompt-cache write usage separately for cost accounting
+      while keeping total cache-write tokens unchanged.
 - [ ] Add provider-neutral document/PDF content blocks only after settling
       request, replay, debug-redaction, and provider compatibility semantics.
 - [x] Add typed Anthropic native `output_format` and parallel-tool suppression

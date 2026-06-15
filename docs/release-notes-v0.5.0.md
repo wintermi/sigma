@@ -17,8 +17,9 @@ This release additionally adds first-class Anthropic (Claude Pro/Max) OAuth
 login with Claude Code identity support, fixes provider thinking payload
 shapes for Claude Fable 5, Z.ai, and Moonshot routes, hardens Bedrock replay
 against blank text blocks, and corrects Azure GPT-5.4/5.5, GPT-5 Pro,
-Moonshot, and OpenCode request metadata. It also broadens provider
-context-overflow detection, adds Fireworks Kimi K2.7 Code coverage on both
+Moonshot, and OpenCode request metadata. It also preserves long prompt-cache
+write usage for accurate cost accounting, broadens provider context-overflow
+detection, adds Fireworks Kimi K2.7 Code coverage on both
 Fireworks text surfaces plus an Anthropic-compatible Kimi K2.6 route, and adds
 a final-message helper for callers that need to distinguish oversized-context
 failures from ordinary provider errors.
@@ -56,6 +57,10 @@ exercise deterministically.
   `sigma.AnthropicOptions.DisableParallelToolUse`, adding the provider field to
   typed or map-shaped tool choices and synthesizing an `auto` choice when tools
   are present.
+- Anthropic Messages usage now populates
+  `sigma.Usage.LongCacheWriteInputTokens` from long prompt-cache write usage
+  and `sigma.CostForUsage` prices those writes at the long-cache input
+  multiplier while preserving total cache-write token accounting.
 - Bedrock Converse Stream now accepts `sigma.BedrockOptions.ResponseFormat`,
   injects a synthetic schema tool, and surfaces the generated JSON arguments as
   assistant text while preserving any real tool calls emitted by the model.
@@ -139,6 +144,10 @@ exercise deterministically.
 - Anthropic parallel-tool suppression fails locally when combined with a raw
   non-map `tool_choice`, because the provider field must be merged into a
   map-shaped tool-choice payload.
+- `sigma.Usage.LongCacheWriteInputTokens` is additive metadata for cost
+  accounting. Existing `CacheWriteInputTokens` values remain the total cache
+  write count, so callers that ignore the long-cache split keep the same token
+  totals.
 - Bedrock structured-output mode requires tool-capable models and reserves the
   `__sigma_json_response` synthetic tool name for the generated schema tool.
 - Disabled-thinking omission applies only to models whose compatibility
@@ -180,7 +189,10 @@ exercise deterministically.
 
 ## Validation status
 
-Validated on 2026-06-13 with:
+Validated on 2026-06-15 with:
 
-- `mise run go:generate` with no generated metadata drift.
+- `mise run go:test`.
+- `mise run go:fmt:check`.
+- `mise run go:vet`.
 - `mise run ci`.
+- `git diff --check`.

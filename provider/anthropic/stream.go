@@ -740,6 +740,9 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	if update.OutputTokensDetails != nil {
 		usage.ThinkingTokens = update.OutputTokensDetails.ThinkingTokens
 	}
+	if update.CacheCreation != nil {
+		usage.LongCacheWriteInputTokens = update.CacheCreation.Ephemeral1hInputTokens
+	}
 	if update.CacheCreationInputTokens != nil {
 		usage.CacheWriteInputTokens = *update.CacheCreationInputTokens
 	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {

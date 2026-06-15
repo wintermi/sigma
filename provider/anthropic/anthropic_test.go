@@ -1148,7 +1148,7 @@ event: content_block_start
 data: {"type":"content_block_start","index":2,"content_block":{"type":"redacted_thinking","data":"redacted_payload"}}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"cache_creation_input_tokens":4,"cache_read_input_tokens":3,"output_tokens":8}}
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"cache_creation":{"ephemeral_5m_input_tokens":4,"ephemeral_1h_input_tokens":2},"cache_read_input_tokens":3,"output_tokens":8}}
 
 event: message_stop
 data: {"type":"message_stop"}
@@ -1204,8 +1204,11 @@ data: {"type":"message_stop"}
 	if final.Usage == nil {
 		t.Fatal("final usage was nil")
 	}
-	if got, want := final.Usage.CacheWriteInputTokens, 4; got != want {
+	if got, want := final.Usage.CacheWriteInputTokens, 6; got != want {
 		t.Fatalf("cache write tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.LongCacheWriteInputTokens, 2; got != want {
+		t.Fatalf("long cache write tokens = %d, want %d", got, want)
 	}
 	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
 		t.Fatalf("cache read tokens = %d, want %d", got, want)

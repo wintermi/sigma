@@ -443,12 +443,13 @@ type ContentBlock struct {
 
 // Usage records provider token accounting for a model turn.
 type Usage struct {
-	InputTokens           int `json:"inputTokens,omitempty"`
-	OutputTokens          int `json:"outputTokens,omitempty"`
-	TotalTokens           int `json:"totalTokens,omitempty"`
-	CacheReadInputTokens  int `json:"cacheReadInputTokens,omitempty"`
-	CacheWriteInputTokens int `json:"cacheWriteInputTokens,omitempty"`
-	ThinkingTokens        int `json:"thinkingTokens,omitempty"`
+	InputTokens               int `json:"inputTokens,omitempty"`
+	OutputTokens              int `json:"outputTokens,omitempty"`
+	TotalTokens               int `json:"totalTokens,omitempty"`
+	CacheReadInputTokens      int `json:"cacheReadInputTokens,omitempty"`
+	CacheWriteInputTokens     int `json:"cacheWriteInputTokens,omitempty"`
+	LongCacheWriteInputTokens int `json:"longCacheWriteInputTokens,omitempty"`
+	ThinkingTokens            int `json:"thinkingTokens,omitempty"`
 }
 
 // Cost records provider cost accounting for a model turn.

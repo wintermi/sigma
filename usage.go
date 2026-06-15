@@ -34,7 +34,12 @@ func CostForUsage(model Model, usage Usage) Cost {
 	inputCost := costForTokens(usage.InputTokens, model.InputCostPerMillion)
 	outputCost := costForTokens(usage.OutputTokens, model.OutputCostPerMillion)
 	cacheReadCost := costForTokens(usage.CacheReadInputTokens, model.CacheReadInputCostPerMillion)
-	cacheWriteCost := costForTokens(usage.CacheWriteInputTokens, model.CacheWriteInputCostPerMillion)
+	shortCacheWriteTokens := usage.CacheWriteInputTokens - usage.LongCacheWriteInputTokens
+	if shortCacheWriteTokens < 0 {
+		shortCacheWriteTokens = 0
+	}
+	cacheWriteCost := costForTokens(shortCacheWriteTokens, model.CacheWriteInputCostPerMillion) +
+		costForTokens(usage.LongCacheWriteInputTokens, model.InputCostPerMillion*2)
 
 	return Cost{
 		InputCost:           inputCost,
