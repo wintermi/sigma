@@ -47,10 +47,14 @@ const (
 	defaultOpenRouterAPIKeyEnv   = "OPENROUTER_API_KEY"
 	defaultXAIAPIKeyEnv          = "XAI_API_KEY"
 	defaultCloudflareAPIKeyEnv   = "CLOUDFLARE_API_KEY"
+	defaultGroqAPIKeyEnv         = "GROQ_API_KEY"
+	defaultTogetherAPIKeyEnv     = "TOGETHER_API_KEY"
 	defaultCopilotGitHubTokenEnv = "COPILOT_GITHUB_TOKEN"
 	defaultNVIDIAAPIKeyEnv       = "NVIDIA_API_KEY"
 	defaultMoonshotAPIKeyEnv     = "MOONSHOT_API_KEY"
 	defaultKimiAPIKeyEnv         = "KIMI_API_KEY"
+	defaultFireworksAPIKeyEnv    = "FIREWORKS_API_KEY"
+	defaultOpenCodeAPIKeyEnv     = "OPENCODE_API_KEY"
 )
 
 var defaultProviderEnvNames = map[ProviderID][]string{
@@ -63,7 +67,11 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderGoogleVertexAnthropic: {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderMistral:               {defaultMistralAPIKeyEnv},
 	ProviderOpenRouter:            {defaultOpenRouterAPIKeyEnv},
+	ProviderDeepSeek:              {"DEEPSEEK_API_KEY"},
+	ProviderGroq:                  {defaultGroqAPIKeyEnv},
+	ProviderCerebras:              {"CEREBRAS_API_KEY"},
 	ProviderXAI:                   {defaultXAIAPIKeyEnv},
+	ProviderTogether:              {defaultTogetherAPIKeyEnv},
 	ProviderCloudflareAIGateway:   {defaultCloudflareAPIKeyEnv},
 	ProviderCloudflareWorkersAI:   {defaultCloudflareAPIKeyEnv},
 	ProviderGitHubCopilot:         {defaultCopilotGitHubTokenEnv},
@@ -76,8 +84,13 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderMiniMax:               {"MINIMAX_API_KEY"},
 	ProviderMiniMaxCN:             {"MINIMAX_CN_API_KEY"},
 	ProviderVercelAIGateway:       {"AI_GATEWAY_API_KEY"},
+	ProviderOpenCode:              {defaultOpenCodeAPIKeyEnv},
+	ProviderOpenCodeGo:            {defaultOpenCodeAPIKeyEnv},
+	ProviderFireworks:             {defaultFireworksAPIKeyEnv},
+	ProviderFireworksAnthropic:    {defaultFireworksAPIKeyEnv},
 	ProviderKimi:                  {defaultKimiAPIKeyEnv},
 	ProviderKimiCoding:            {defaultKimiAPIKeyEnv},
+	ProviderXiaomi:                {"XIAOMI_API_KEY"},
 }
 
 // Credential carries authentication material for a provider.
@@ -188,13 +201,38 @@ type EnvironmentAuthResolver struct {
 	LookupEnv func(string) (string, bool)
 }
 
+// EnvVars returns the ordered environment variable names that would be checked
+// for model credentials. Model metadata takes precedence over provider
+// defaults. Secret values are not returned.
+func (r EnvironmentAuthResolver) EnvVars(model Model) []string {
+	return environmentCredentialSources(model)
+}
+
+// ConfiguredEnvVars returns the ordered environment variable names that are
+// currently set to non-empty values for model credentials. Secret values are
+// not returned.
+func (r EnvironmentAuthResolver) ConfiguredEnvVars(model Model) []string {
+	lookup := r.LookupEnv
+	if lookup == nil {
+		lookup = os.LookupEnv
+	}
+	var configured []string
+	for _, source := range r.EnvVars(model) {
+		value, ok := lookup(source)
+		if ok && value != "" {
+			configured = append(configured, source)
+		}
+	}
+	return configured
+}
+
 // Resolve returns the first non-empty provider API key found in the environment.
 func (r EnvironmentAuthResolver) Resolve(_ context.Context, model Model, _ Options) (Credential, error) {
 	lookup := r.LookupEnv
 	if lookup == nil {
 		lookup = os.LookupEnv
 	}
-	sources := environmentCredentialSources(model)
+	sources := r.EnvVars(model)
 	for _, source := range sources {
 		value, ok := lookup(source)
 		if ok && value != "" {

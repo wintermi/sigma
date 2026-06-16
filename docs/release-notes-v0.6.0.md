@@ -16,7 +16,9 @@ device-code login, token refresh, request-time credential resolution, and
 explicit model-policy enablement. Kimi Coding is promoted as a focused
 Anthropic-compatible provider slice with generated metadata, credential
 discovery, request headers, adaptive thinking metadata, and session-affinity
-support.
+support. The environment credential resolver also exposes non-secret discovery
+helpers so applications can inspect candidate and configured API-key variable
+names before making a request.
 
 ## Added
 
@@ -43,6 +45,10 @@ support.
   adapter with Kimi Coding base URL defaults, Kimi CLI request headers,
   `KIMI_API_KEY` credential discovery, and generated metadata for `k2p7`,
   `kimi-for-coding`, and `kimi-k2-thinking`.
+- `sigma.EnvironmentAuthResolver` now has `EnvVars` and `ConfiguredEnvVars`
+  helpers for model-aware environment credential discovery. They return ordered
+  variable names only, respect model metadata before provider defaults, and add
+  built-in fallback names for additional OpenAI-compatible provider IDs.
 
 ## Compatibility
 
@@ -61,6 +67,9 @@ support.
   not change the existing GitHub Copilot request dispatch path.
 - Kimi Coding is additive: the existing `kimi` metadata row remains available,
   and broader router or regional endpoint catalog expansion stays deferred.
+- Environment credential discovery is additive and non-secret. `Resolve`
+  remains the API that returns credential values, and the new helper methods do
+  not probe ambient cloud credentials or OAuth token stores.
 
 ## Deferred work
 

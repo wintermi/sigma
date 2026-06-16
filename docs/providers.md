@@ -53,6 +53,17 @@ Application code can provide credentials in four ways:
 - Environment variables through `sigma.EnvironmentAuthResolver`, which is part
   of the default credential chain.
 
+Use `EnvironmentAuthResolver.EnvVars` to show the ordered environment variables
+Sigma would check for a model, or `ConfiguredEnvVars` to show which of those
+names are currently set without exposing secret values:
+
+```go
+resolver := sigma.EnvironmentAuthResolver{}
+names := resolver.EnvVars(model)
+configured := resolver.ConfiguredEnvVars(model)
+_, _ = names, configured
+```
+
 Do not put credentials in `Request`, `ProviderMetadata`, tool arguments, or
 persisted JSON. See [Security](security.md) for redaction behavior.
 

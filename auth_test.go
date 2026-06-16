@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -69,6 +70,54 @@ func TestEnvironmentAuthResolverUsesMetadataBeforeDefaultNames(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAuthResolverEnvVarsUsesMetadataBeforeDefaultNames(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:       "custom-openai",
+		Provider: sigma.ProviderOpenAI,
+		ProviderMetadata: map[string]any{
+			sigma.MetadataAPIKeyEnvVar:  "CUSTOM_OPENAI_KEY",
+			sigma.MetadataAPIKeyEnvVars: []any{"FALLBACK_OPENAI_KEY", "CUSTOM_OPENAI_KEY", "OPENAI_API_KEY"},
+		},
+	}
+
+	got := (sigma.EnvironmentAuthResolver{}).EnvVars(model)
+	want := []string{"CUSTOM_OPENAI_KEY", "FALLBACK_OPENAI_KEY", "OPENAI_API_KEY"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("EnvVars() = %#v, want %#v", got, want)
+	}
+}
+
+func TestEnvironmentAuthResolverConfiguredEnvVarsUsesLookupWithoutValues(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:       "custom-openai",
+		Provider: sigma.ProviderOpenAI,
+		ProviderMetadata: map[string]any{
+			sigma.MetadataAPIKeyEnvVars: []string{"EMPTY_OPENAI_KEY", "CUSTOM_OPENAI_KEY"},
+		},
+	}
+	resolver := sigma.EnvironmentAuthResolver{
+		LookupEnv: func(name string) (string, bool) {
+			values := map[string]string{
+				"EMPTY_OPENAI_KEY":  "",
+				"CUSTOM_OPENAI_KEY": "metadata-secret",
+				"OPENAI_API_KEY":    "default-secret",
+			}
+			value, ok := values[name]
+			return value, ok
+		},
+	}
+
+	got := resolver.ConfiguredEnvVars(model)
+	want := []string{"CUSTOM_OPENAI_KEY", "OPENAI_API_KEY"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ConfiguredEnvVars() = %#v, want %#v", got, want)
+	}
+}
+
 func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -84,7 +133,11 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "google vertex anthropic", provider: sigma.ProviderGoogleVertexAnthropic, env: "GOOGLE_CLOUD_API_KEY"},
 		{name: "mistral", provider: sigma.ProviderMistral, env: "MISTRAL_API_KEY"},
 		{name: "openrouter", provider: sigma.ProviderOpenRouter, env: "OPENROUTER_API_KEY"},
+		{name: "deepseek", provider: sigma.ProviderDeepSeek, env: "DEEPSEEK_API_KEY"},
+		{name: "groq", provider: sigma.ProviderGroq, env: "GROQ_API_KEY"},
+		{name: "cerebras", provider: sigma.ProviderCerebras, env: "CEREBRAS_API_KEY"},
 		{name: "xai", provider: sigma.ProviderXAI, env: "XAI_API_KEY"},
+		{name: "together", provider: sigma.ProviderTogether, env: "TOGETHER_API_KEY"},
 		{name: "cloudflare ai gateway", provider: sigma.ProviderCloudflareAIGateway, env: "CLOUDFLARE_API_KEY"},
 		{name: "github copilot", provider: sigma.ProviderGitHubCopilot, env: "COPILOT_GITHUB_TOKEN"},
 		{name: "nvidia", provider: sigma.ProviderNVIDIA, env: "NVIDIA_API_KEY"},
@@ -93,8 +146,13 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "moonshot", provider: sigma.ProviderMoonshotAI, env: "MOONSHOT_API_KEY"},
 		{name: "minimax", provider: sigma.ProviderMiniMax, env: "MINIMAX_API_KEY"},
 		{name: "vercel ai gateway", provider: sigma.ProviderVercelAIGateway, env: "AI_GATEWAY_API_KEY"},
+		{name: "opencode", provider: sigma.ProviderOpenCode, env: "OPENCODE_API_KEY"},
+		{name: "opencode go", provider: sigma.ProviderOpenCodeGo, env: "OPENCODE_API_KEY"},
+		{name: "fireworks", provider: sigma.ProviderFireworks, env: "FIREWORKS_API_KEY"},
+		{name: "fireworks anthropic", provider: sigma.ProviderFireworksAnthropic, env: "FIREWORKS_API_KEY"},
 		{name: "kimi", provider: sigma.ProviderKimi, env: "KIMI_API_KEY"},
 		{name: "kimi coding", provider: sigma.ProviderKimiCoding, env: "KIMI_API_KEY"},
+		{name: "xiaomi", provider: sigma.ProviderXiaomi, env: "XIAOMI_API_KEY"},
 	}
 
 	for _, tt := range tests {
@@ -114,6 +172,33 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 				t.Fatalf("credential source = %q, want %q", got, want)
 			}
 		})
+	}
+}
+
+func TestEnvironmentAuthResolverCopilotIgnoresGenericGitHubTokens(t *testing.T) {
+	t.Parallel()
+
+	resolver := sigma.EnvironmentAuthResolver{
+		LookupEnv: func(name string) (string, bool) {
+			values := map[string]string{
+				"GH_TOKEN":     "gh-token",
+				"GITHUB_TOKEN": "github-token",
+			}
+			value, ok := values[name]
+			return value, ok
+		},
+	}
+	model := sigma.Model{ID: "copilot-test", Provider: sigma.ProviderGitHubCopilot}
+
+	if got := resolver.ConfiguredEnvVars(model); len(got) != 0 {
+		t.Fatalf("ConfiguredEnvVars() = %#v, want no configured Copilot env vars", got)
+	}
+	_, err := resolver.Resolve(context.Background(), model, sigma.Options{})
+	if err == nil {
+		t.Fatal("Resolve returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrCredentialUnavailable) {
+		t.Fatalf("Resolve error = %v, want ErrCredentialUnavailable", err)
 	}
 }
 
@@ -255,6 +340,16 @@ func clearCredentialEnv(t *testing.T) {
 		"MISTRAL_API_KEY",
 		"OPENROUTER_API_KEY",
 		"CUSTOM_OPENAI_KEY",
+		"COPILOT_GITHUB_TOKEN",
+		"GH_TOKEN",
+		"GITHUB_TOKEN",
+		"DEEPSEEK_API_KEY",
+		"GROQ_API_KEY",
+		"CEREBRAS_API_KEY",
+		"TOGETHER_API_KEY",
+		"FIREWORKS_API_KEY",
+		"OPENCODE_API_KEY",
+		"XIAOMI_API_KEY",
 	} {
 		t.Setenv(name, "")
 	}

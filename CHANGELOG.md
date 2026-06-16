@@ -26,6 +26,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Text-generation usage now carries provider/model identity, provider raw usage
   payloads, normalized tool-use input tokens, and provider-reported cost when
   available, while keeping Sigma's model-metadata cost estimate separate.
+- `EnvironmentAuthResolver` now exposes non-secret environment credential
+  discovery helpers for ordered candidate variable names and configured
+  variable names, with broader built-in API-key defaults for OpenAI-compatible
+  provider IDs that previously relied only on generated model metadata.
 
 ## [0.5.0] - 2026-06-13
 

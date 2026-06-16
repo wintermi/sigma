@@ -6,6 +6,14 @@ features — deterministic fixtures, golden payloads, or fake clients, plus
 cancellation/error coverage (see the coverage standards in
 [RELEASING.md](RELEASING.md)) — before it can be promoted out of "future" status.
 
+## Credential ergonomics
+
+- [x] Add model-aware environment credential discovery helpers that expose
+      candidate and configured environment variable names without returning
+      secret values.
+- [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
+      unless they get separate public API contracts.
+
 ## Image generation
 
 - [ ] Decide whether image generation graduates from preview into the MVP
