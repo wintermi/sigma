@@ -79,8 +79,8 @@ for _, call := range calls {
 
 `ValidateToolCall` supports the common subset providers emit for tool schemas:
 `type`, `properties`, `required`, `enum`, `items`, `additionalProperties`,
-`minimum`, `maximum`, `minLength`, and `maxLength`. It does not evaluate `$ref`,
-`oneOf`, `anyOf`, `allOf`, `pattern`, formats, or conditional schemas.
+`minimum`, `maximum`, `minLength`, `maxLength`, `anyOf`, `oneOf`, and `allOf`.
+It does not evaluate `$ref`, `pattern`, formats, or conditional schemas.
 
 ## Streaming Tool Calls
 

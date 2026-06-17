@@ -25,7 +25,9 @@ command adds a credential-gated cross-provider handoff diagnostic for replaying
 small tool-call contexts across selected live routes without moving live
 provider calls into CI. Assistant results now also expose provider-neutral
 source and citation accessors for the source metadata Sigma already captures
-from grounded and citation-bearing responses.
+from grounded and citation-bearing responses. Local tool-call validation also
+now evaluates composed JSON Schema branches so callers can reject invalid
+model-emitted arguments before running tools.
 
 ## Added
 
@@ -70,6 +72,9 @@ from grounded and citation-bearing responses.
   `sigma.AssistantMessage.Citations` now expose normalized source and citation
   entries from provider metadata, including URLs, URIs, titles, offsets, cited
   text, and copied provider metadata for provider-specific details.
+- `sigma.ValidateToolCall` now evaluates `anyOf`, `oneOf`, and `allOf` in tool
+  input schemas, including nested property, array item, and additional property
+  schemas, while preserving decoded-copy results and redacted validation errors.
 
 ## Compatibility
 
@@ -98,6 +103,9 @@ from grounded and citation-bearing responses.
 - Source and citation accessors are additive views over existing provider
   metadata. They do not change persisted request shape, replay behavior,
   provider dispatch, or the raw `ProviderMetadata` maps.
+- Tool schema composition validation is additive and stricter for previously
+  unchecked composed branches. It does not add primitive coercion or change the
+  `ValidateToolCall` API.
 
 ## Deferred work
 
@@ -115,6 +123,8 @@ from grounded and citation-bearing responses.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.
+- Full JSON Schema runtime support, including `$ref`, `pattern`, formats,
+  `not`, conditionals, and implicit argument coercion, remains deferred.
 
 ## Validation status
 

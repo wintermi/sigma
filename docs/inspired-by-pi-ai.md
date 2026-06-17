@@ -283,10 +283,10 @@ messages = append(messages, sigma.ToolResult(call.ID, result))
 
 `ValidateToolCall` returns a decoded copy of the arguments. It supports common
 JSON Schema keywords such as `type`, `properties`, `required`, `enum`, `items`,
-`additionalProperties`, numeric bounds, and string length bounds. It does not
-evaluate every TypeBox or JSON Schema feature; unsupported keywords such as
-`$ref`, `oneOf`, `anyOf`, `allOf`, `pattern`, formats, and conditionals are not
-enforced.
+`additionalProperties`, numeric bounds, string length bounds, and composed
+schemas using `anyOf`, `oneOf`, and `allOf`. It does not evaluate every TypeBox
+or JSON Schema feature; unsupported keywords such as `$ref`, `pattern`, formats,
+and conditionals are not enforced.
 
 ## Image Input
 

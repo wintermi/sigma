@@ -212,23 +212,135 @@ func validateValue(schema map[string]any, value any, path string, toolName strin
 		switch typ {
 		case "object":
 			if object, ok := value.(map[string]any); ok {
-				return validateObject(schema, object, path, toolName)
+				if err := validateObject(schema, object, path, toolName); err != nil {
+					return err
+				}
 			}
 		case "array":
 			if array, ok := value.([]any); ok {
-				return validateArray(schema, array, path, toolName)
+				if err := validateArray(schema, array, path, toolName); err != nil {
+					return err
+				}
 			}
 		case "string":
 			if text, ok := value.(string); ok {
-				return validateString(schema, text, path, toolName)
+				if err := validateString(schema, text, path, toolName); err != nil {
+					return err
+				}
 			}
 		case "number", "integer":
 			if isJSONNumber(value) {
-				return validateNumber(schema, value, path, toolName)
+				if err := validateNumber(schema, value, path, toolName); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return validateComposedSchemas(schema, value, path, toolName)
+}
+
+func validateComposedSchemas(schema map[string]any, value any, path string, toolName string) error {
+	if err := validateAllOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	if err := validateAnyOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	return validateOneOf(schema, value, path, toolName)
+}
+
+func validateAllOf(schema map[string]any, value any, path string, toolName string) error {
+	branches, ok, err := schemaBranches(schema, "allOf")
+	if err != nil {
+		return toolValidationError(toolName, path, "allOf schema array", schema["allOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return nil
+	}
+	for _, branch := range branches {
+		if err := validateValue(branch, value, path, toolName); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func validateAnyOf(schema map[string]any, value any, path string, toolName string) error {
+	branches, ok, err := schemaBranches(schema, "anyOf")
+	if err != nil {
+		return toolValidationError(toolName, path, "anyOf schema array", schema["anyOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return nil
+	}
+	matches := 0
+	for _, branch := range branches {
+		err := validateValue(branch, value, path, toolName)
+		if err == nil {
+			matches++
+			continue
+		}
+		if isMalformedSchemaError(err) {
+			return err
+		}
+	}
+	if matches > 0 {
+		return nil
+	}
+	return toolValidationError(toolName, path, "at least one matching schema", value, "anyOf violation", nil)
+}
+
+func validateOneOf(schema map[string]any, value any, path string, toolName string) error {
+	branches, ok, err := schemaBranches(schema, "oneOf")
+	if err != nil {
+		return toolValidationError(toolName, path, "oneOf schema array", schema["oneOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return nil
+	}
+	matches := 0
+	for _, branch := range branches {
+		err := validateValue(branch, value, path, toolName)
+		if err == nil {
+			matches++
+			continue
+		}
+		if isMalformedSchemaError(err) {
+			return err
+		}
+	}
+	if matches != 1 {
+		return toolValidationError(toolName, path, "exactly one matching schema", value, "oneOf violation", nil)
+	}
+	return nil
+}
+
+func schemaBranches(schema map[string]any, keyword string) ([]map[string]any, bool, error) {
+	raw, ok := schema[keyword]
+	if !ok {
+		return nil, false, nil
+	}
+	values, ok := raw.([]any)
+	if !ok {
+		return nil, true, fmt.Errorf("%s must be an array", keyword)
+	}
+	if len(values) == 0 {
+		return nil, true, fmt.Errorf("%s must contain at least one schema", keyword)
+	}
+	branches := make([]map[string]any, 0, len(values))
+	for index, value := range values {
+		branch, ok := value.(map[string]any)
+		if !ok {
+			return nil, true, fmt.Errorf("%s[%d] must be a schema object", keyword, index)
+		}
+		branches = append(branches, branch)
+	}
+	return branches, true, nil
+}
+
+func isMalformedSchemaError(err error) bool {
+	var validationErr *ToolValidationError
+	return errors.As(err, &validationErr) && validationErr.Reason == "schema is malformed"
 }
 
 func schemaTypes(schema map[string]any) ([]string, error) {

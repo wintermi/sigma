@@ -269,6 +269,208 @@ func TestValidateToolCallAcceptsRawJSONArguments(t *testing.T) {
 	}
 }
 
+func TestValidateToolCallValidatesComposedSchemas(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args map[string]any
+		want map[string]any
+	}{
+		{
+			name: "valid composed arguments",
+			args: map[string]any{
+				"selector": "name",
+				"code":     "ABC-123",
+				"filters":  []any{"active", "archived"},
+				"labels": map[string]any{
+					"priority": "high",
+				},
+			},
+			want: map[string]any{
+				"selector": "name",
+				"code":     "ABC-123",
+				"filters":  []any{"active", "archived"},
+				"labels": map[string]any{
+					"priority": "high",
+				},
+			},
+		},
+		{
+			name: "anyOf accepts alternate branch",
+			args: map[string]any{
+				"selector": 42,
+				"code":     "ABC-123",
+				"filters":  []any{"active"},
+				"labels":   map[string]any{"priority": "high"},
+			},
+			want: map[string]any{
+				"selector": float64(42),
+				"code":     "ABC-123",
+				"filters":  []any{"active"},
+				"labels":   map[string]any{"priority": "high"},
+			},
+		},
+	}
+
+	tools := []sigma.Tool{{Name: "search", InputSchema: composedToolSchema()}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "search", Arguments: tt.args})
+			if err != nil {
+				t.Fatalf("ValidateToolCall returned error: %v", err)
+			}
+			if gotJSON, wantJSON := mustJSON(t, got), mustJSON(t, tt.want); gotJSON != wantJSON {
+				t.Fatalf("decoded arguments = %s, want %s", gotJSON, wantJSON)
+			}
+		})
+	}
+}
+
+func TestValidateToolCallRejectsComposedSchemaFailures(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		args     map[string]any
+		path     string
+		reason   string
+		expected string
+	}{
+		{
+			name:     "anyOf matches no branches",
+			args:     map[string]any{"selector": false, "code": "ABC-123", "filters": []any{"active"}, "labels": map[string]any{"priority": "high"}},
+			path:     "$.selector",
+			reason:   "anyOf violation",
+			expected: "at least one matching schema",
+		},
+		{
+			name:     "oneOf matches no branches",
+			args:     map[string]any{"selector": "name", "code": false, "filters": []any{"active"}, "labels": map[string]any{"priority": "high"}},
+			path:     "$.code",
+			reason:   "oneOf violation",
+			expected: "exactly one matching schema",
+		},
+		{
+			name:     "oneOf matches multiple branches",
+			args:     map[string]any{"selector": "name", "code": "AB", "filters": []any{"active"}, "labels": map[string]any{"priority": "high"}},
+			path:     "$.code",
+			reason:   "oneOf violation",
+			expected: "exactly one matching schema",
+		},
+		{
+			name:     "allOf reports nested failure",
+			args:     map[string]any{"selector": "name", "code": "ABC-123", "filters": []any{"active"}, "labels": map[string]any{"priority": "lo"}},
+			path:     "$.labels.priority",
+			reason:   "string is too short",
+			expected: "length >= 3",
+		},
+		{
+			name:     "array item composition failure",
+			args:     map[string]any{"selector": "name", "code": "ABC-123", "filters": []any{"active", 7}, "labels": map[string]any{"priority": "high"}},
+			path:     "$.filters[1]",
+			reason:   "anyOf violation",
+			expected: "at least one matching schema",
+		},
+	}
+
+	tools := []sigma.Tool{{Name: "search", InputSchema: composedToolSchema()}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "search", Arguments: tt.args})
+			if err == nil {
+				t.Fatal("ValidateToolCall returned nil error")
+			}
+			if !errors.Is(err, sigma.ErrToolValidation) {
+				t.Fatalf("error does not match ErrToolValidation: %v", err)
+			}
+
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("error type = %T, want ToolValidationError", err)
+			}
+			if validationErr.Path != tt.path {
+				t.Fatalf("path = %q, want %q", validationErr.Path, tt.path)
+			}
+			if validationErr.Reason != tt.reason {
+				t.Fatalf("reason = %q, want %q", validationErr.Reason, tt.reason)
+			}
+			if validationErr.Expected != tt.expected {
+				t.Fatalf("expected = %q, want %q", validationErr.Expected, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValidateToolCallRejectsMalformedComposedSchemas(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema sigma.Schema
+	}{
+		{
+			name: "anyOf is not array",
+			schema: sigma.Schema{
+				"type":  "object",
+				"anyOf": "string",
+			},
+		},
+		{
+			name: "anyOf is empty",
+			schema: sigma.Schema{
+				"type":  "object",
+				"anyOf": []any{},
+			},
+		},
+		{
+			name: "oneOf branch is not schema",
+			schema: sigma.Schema{
+				"type":  "object",
+				"oneOf": []any{"string"},
+			},
+		},
+		{
+			name: "allOf branch is malformed",
+			schema: sigma.Schema{
+				"type": "object",
+				"allOf": []any{
+					map[string]any{"type": []any{"object", 7}},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := sigma.ValidateToolCall(
+				[]sigma.Tool{{Name: "search", InputSchema: tt.schema}},
+				sigma.ToolCall{Name: "search", Arguments: map[string]any{}},
+			)
+			if err == nil {
+				t.Fatal("ValidateToolCall returned nil error")
+			}
+			if !errors.Is(err, sigma.ErrToolValidation) {
+				t.Fatalf("error does not match ErrToolValidation: %v", err)
+			}
+
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("error type = %T, want ToolValidationError", err)
+			}
+			if validationErr.Reason != "schema is malformed" {
+				t.Fatalf("reason = %q, want schema is malformed", validationErr.Reason)
+			}
+		})
+	}
+}
+
 func TestValidateToolCallRejectsMalformedSchemas(t *testing.T) {
 	t.Parallel()
 
@@ -343,4 +545,43 @@ func mustJSON(t *testing.T, value any) string {
 		t.Fatalf("marshal JSON: %v", err)
 	}
 	return string(data)
+}
+
+func composedToolSchema() sigma.Schema {
+	return sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"selector": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string", "enum": []any{"name", "id"}},
+					map[string]any{"type": "integer", "minimum": 1},
+				},
+			},
+			"code": map[string]any{
+				"oneOf": []any{
+					map[string]any{"type": "string", "minLength": 2, "maxLength": 5},
+					map[string]any{"type": "string", "enum": []any{"AB", "ABC-123"}},
+				},
+			},
+			"filters": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"anyOf": []any{
+						map[string]any{"type": "string", "enum": []any{"active", "archived"}},
+						map[string]any{"type": "boolean"},
+					},
+				},
+			},
+			"labels": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"allOf": []any{
+						map[string]any{"type": "string"},
+						map[string]any{"type": "string", "minLength": 3},
+					},
+				},
+			},
+		},
+		"required": []any{"selector", "code", "filters", "labels"},
+	}
 }

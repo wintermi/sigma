@@ -171,6 +171,9 @@ work until their API boundaries are explicit.
 - [x] Normalize text-generation usage/accounting metadata with provider/model
       identity, raw provider usage payloads, tool-use input tokens, terminal
       stream usage, and separate provider-reported versus Sigma-estimated cost.
+- [x] Add strict local tool-call validation for composed JSON Schema branches
+      using `anyOf`, `oneOf`, and `allOf` without adding implicit argument
+      coercion.
 - [ ] Add provider-neutral document/PDF content blocks only after settling
       request, replay, debug-redaction, and provider compatibility semantics.
 - [x] Add typed Anthropic native `output_format` and parallel-tool suppression
@@ -182,6 +185,9 @@ work until their API boundaries are explicit.
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes
       without making live provider calls part of `mise run ci`.
+- [ ] Keep full JSON Schema runtime support, including `$ref`, `pattern`,
+      formats, `not`, conditionals, and implicit primitive coercion, deferred
+      unless Sigma adds a broader validation contract.
 
 ## First-class provider rows
 
