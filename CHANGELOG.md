@@ -34,6 +34,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   discovery helpers for ordered candidate variable names and configured
   variable names, with broader built-in API-key defaults for OpenAI-compatible
   provider IDs that previously relied only on generated model metadata.
+- Cloudflare AI Gateway and Amazon Bedrock now expose provider-specific
+  request configuration helpers for AI Gateway account/gateway placeholder
+  resolution, Bedrock request regions, and Bedrock request-scoped static AWS
+  credentials while preserving existing environment fallbacks.
 - `cmd/sigma-surface-probe` now has an opt-in cross-provider handoff diagnostic
   that builds small tool-call contexts and replays them pairwise across selected
   live routes without adding live provider calls to CI.

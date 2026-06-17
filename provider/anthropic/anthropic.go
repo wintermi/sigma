@@ -33,6 +33,11 @@ const (
 
 var cloudflareAIGatewayBaseURLVariable = regexp.MustCompile(`\{([A-Z_][A-Z0-9_]*)\}`)
 
+const (
+	cloudflareAIGatewayAccountIDOption = "cloudflare_ai_gateway_account_id"
+	cloudflareAIGatewayIDOption        = "cloudflare_ai_gateway_id"
+)
+
 // Provider adapts Anthropic Messages-compatible HTTP APIs to sigma.
 type Provider struct {
 	baseURL string
@@ -299,7 +304,7 @@ func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, erro
 	}
 
 	baseURL := p.baseURLForModel(model, opts)
-	resolved, err := resolveCloudflareAIGatewayBaseURL(model.Provider, baseURL)
+	resolved, err := resolveCloudflareAIGatewayBaseURL(model.Provider, baseURL, opts)
 	if err != nil {
 		return "", err
 	}
@@ -371,7 +376,7 @@ func hasCopilotVisionInput(messages []sigma.Message) bool {
 	return false
 }
 
-func resolveCloudflareAIGatewayBaseURL(provider sigma.ProviderID, baseURL string) (string, error) {
+func resolveCloudflareAIGatewayBaseURL(provider sigma.ProviderID, baseURL string, opts sigma.Options) (string, error) {
 	if provider != sigma.ProviderCloudflareAIGateway {
 		return baseURL, nil
 	}
@@ -381,7 +386,7 @@ func resolveCloudflareAIGatewayBaseURL(provider sigma.ProviderID, baseURL string
 			return match
 		}
 		name := strings.Trim(match, "{}")
-		value := os.Getenv(name)
+		value := cloudflareAIGatewayBaseURLVariableValue(provider, opts, name)
 		if value == "" {
 			missing = name
 			return match
@@ -392,6 +397,21 @@ func resolveCloudflareAIGatewayBaseURL(provider sigma.ProviderID, baseURL string
 		return "", fmt.Errorf("anthropic messages: %s is required for Cloudflare base URL", missing)
 	}
 	return resolved, nil
+}
+
+func cloudflareAIGatewayBaseURLVariableValue(provider sigma.ProviderID, opts sigma.Options, name string) string {
+	options := providerOptions(opts, provider)
+	switch name {
+	case "CLOUDFLARE_ACCOUNT_ID":
+		if value, ok := stringOption(options, cloudflareAIGatewayAccountIDOption); ok {
+			return value
+		}
+	case "CLOUDFLARE_GATEWAY_ID":
+		if value, ok := stringOption(options, cloudflareAIGatewayIDOption); ok {
+			return value
+		}
+	}
+	return os.Getenv(name)
 }
 
 func anthropicModelHeaders(model sigma.Model) map[string]string {

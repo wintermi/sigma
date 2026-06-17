@@ -37,6 +37,19 @@ type Config struct {
 	CredentialSource    CredentialSource
 }
 
+// StaticCredentials carries request-scoped AWS access key material for the
+// stdlib Bedrock credential path.
+type StaticCredentials struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	SessionToken    string
+}
+
+const (
+	providerOptionRequestRegion            = "request_region"
+	providerOptionRequestStaticCredentials = "request_static_credentials"
+)
+
 // Provider adapts Amazon Bedrock Converse Stream to sigma.
 //
 // Known limitations:
@@ -115,6 +128,18 @@ func WithCredentialSource(source CredentialSource) ProviderOption {
 	return func(provider *Provider) {
 		provider.config.CredentialSource = source
 	}
+}
+
+// WithRequestRegion configures a request-scoped Bedrock region used before
+// AWS_REGION and AWS_DEFAULT_REGION environment fallbacks.
+func WithRequestRegion(region string) sigma.Option {
+	return sigma.WithProviderOption(sigma.ProviderAmazonBedrock, providerOptionRequestRegion, region)
+}
+
+// WithRequestStaticCredentials configures request-scoped static AWS
+// credentials used before process environment credential fallbacks.
+func WithRequestStaticCredentials(credentials StaticCredentials) sigma.Option {
+	return sigma.WithProviderOption(sigma.ProviderAmazonBedrock, providerOptionRequestStaticCredentials, credentials)
 }
 
 // WithConverseStreamClient injects a fakeable Bedrock client.
@@ -270,6 +295,11 @@ func effectiveConfig(base Config, model sigma.Model, opts sigma.Options) Config 
 		if region := inferenceProfileARNRegion(config.InferenceProfileARN); region != "" {
 			config.Region = region
 		} else if region := inferenceProfileARNRegion(string(model.ID)); region != "" {
+			config.Region = region
+		}
+	}
+	if config.Region == "" {
+		if region, ok := stringOption(options, providerOptionRequestRegion); ok {
 			config.Region = region
 		}
 	}

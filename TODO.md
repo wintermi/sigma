@@ -11,6 +11,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add model-aware environment credential discovery helpers that expose
       candidate and configured environment variable names without returning
       secret values.
+- [x] Add provider-specific request configuration helpers for Cloudflare AI
+      Gateway account/gateway placeholders and Bedrock request region/static
+      credential values without adding a generic environment override surface.
 - [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
       unless they get separate public API contracts.
 
@@ -431,6 +434,9 @@ should still come through the catalog refresh workflow.
       credential and signing path.
 - [x] Add request-scoped Bedrock bearer-token auth through typed Bedrock options
       before resolver and environment credential fallback.
+- [x] Add request-scoped Bedrock region and static AWS credential helpers before
+      environment fallback while keeping AWS profile, SSO, web identity, IMDS,
+      and shared-config loading deferred.
 - [x] Replace blank required user/tool-result text with a placeholder and drop
       blank replayed assistant text blocks that Bedrock Converse rejects.
 - [x] Append the AWS data-retention documentation link to Bedrock provider

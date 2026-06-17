@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,8 +19,84 @@ import (
 )
 
 func TestAIGatewayResponsesResolvesPlaceholdersAndUsesGatewayAuth(t *testing.T) {
-	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "account")
-	t.Setenv("CLOUDFLARE_GATEWAY_ID", "gateway")
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := cloudflareResponsesModel()
+	registry := sigma.NewRegistry()
+	if err := cloudflare.RegisterAIGatewayResponses(
+		registry,
+		cloudflare.WithBaseURL(server.URL+"/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai"),
+	); err != nil {
+		t.Fatalf("RegisterAIGatewayResponses returned error: %v", err)
+	}
+	registerModel(t, registry, model)
+
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("cf-token"),
+		cloudflare.WithAIGatewayAccountID("account"),
+		cloudflare.WithAIGatewayID("gateway"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/account/gateway/openai/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer cf-token")
+	assertHeader(t, request.Headers, "Authorization", "")
+}
+
+func TestAIGatewayAnthropicResolvesPlaceholdersAndUsesGatewayAuth(t *testing.T) {
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeAnthropicCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := cloudflareAnthropicModel()
+	registry := sigma.NewRegistry()
+	if err := cloudflare.RegisterAIGatewayAnthropic(
+		registry,
+		cloudflare.WithAnthropicBaseURL(server.URL+"/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic"),
+	); err != nil {
+		t.Fatalf("RegisterAIGatewayAnthropic returned error: %v", err)
+	}
+	registerModel(t, registry, model)
+
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("cf-token"),
+		cloudflare.WithAIGatewayAccountID("account"),
+		cloudflare.WithAIGatewayID("gateway"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/account/gateway/anthropic/messages"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer cf-token")
+	assertHeader(t, request.Headers, "X-Api-Key", "")
+}
+
+func TestAIGatewayResponsesFallsBackToEnvironmentPlaceholders(t *testing.T) {
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "env-account")
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "env-gateway")
 
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,50 +126,35 @@ func TestAIGatewayResponsesResolvesPlaceholdersAndUsesGatewayAuth(t *testing.T) 
 	}
 
 	request := receiveRequest(t, requests)
-	if got, want := request.Path, "/account/gateway/openai/responses"; got != want {
+	if got, want := request.Path, "/env-account/env-gateway/openai/responses"; got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
-	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer cf-token")
-	assertHeader(t, request.Headers, "Authorization", "")
 }
 
-func TestAIGatewayAnthropicResolvesPlaceholdersAndUsesGatewayAuth(t *testing.T) {
-	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "account")
-	t.Setenv("CLOUDFLARE_GATEWAY_ID", "gateway")
-
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		writeAnthropicCompleted(w)
-	}))
-	t.Cleanup(server.Close)
-
-	model := cloudflareAnthropicModel()
+func TestAIGatewayResponsesReportsMissingPlaceholderBeforeNetwork(t *testing.T) {
+	model := cloudflareResponsesModel()
 	registry := sigma.NewRegistry()
-	if err := cloudflare.RegisterAIGatewayAnthropic(
+	if err := cloudflare.RegisterAIGatewayResponses(
 		registry,
-		cloudflare.WithAnthropicBaseURL(server.URL+"/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic"),
+		cloudflare.WithBaseURL("https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_MISSING_TEST_ID}/openai"),
 	); err != nil {
-		t.Fatalf("RegisterAIGatewayAnthropic returned error: %v", err)
+		t.Fatalf("RegisterAIGatewayResponses returned error: %v", err)
 	}
 	registerModel(t, registry, model)
 
 	client := sigma.NewClient(sigma.WithRegistry(registry))
-	if _, err := client.Complete(
+	_, err := client.Complete(
 		context.Background(),
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.WithAPIKey("cf-token"),
-	); err != nil {
-		t.Fatalf("Complete returned error: %v", err)
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
 	}
-
-	request := receiveRequest(t, requests)
-	if got, want := request.Path, "/account/gateway/anthropic/messages"; got != want {
-		t.Fatalf("path = %q, want %q", got, want)
+	if !strings.Contains(err.Error(), "CLOUDFLARE_MISSING_TEST_ID is required") {
+		t.Fatalf("error = %v, want missing placeholder", err)
 	}
-	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer cf-token")
-	assertHeader(t, request.Headers, "X-Api-Key", "")
 }
 
 func cloudflareResponsesModel() sigma.Model {

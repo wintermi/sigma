@@ -809,6 +809,50 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	}
 }
 
+func TestRequestStaticCredentialsSignHTTPRequests(t *testing.T) {
+	var gotAuthorization string
+	var gotSecurityToken string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuthorization = r.Header.Get("Authorization")
+		gotSecurityToken = r.Header.Get("X-Amz-Security-Token")
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+		_, _ = w.Write(bedrockEventStream(
+			bedrockEventStreamFrame("messageStart", []byte(`{"role":"assistant"}`)),
+			bedrockEventStreamFrame("contentBlockDelta", []byte(`{"contentBlockIndex":0,"delta":{"text":"ok"}}`)),
+			bedrockEventStreamFrame("messageStop", []byte(`{"stopReason":"end_turn"}`)),
+			bedrockEventStreamFrame("metadata", []byte(`{"usage":{"inputTokens":2,"outputTokens":1,"totalTokens":3}}`)),
+		))
+	}))
+	defer server.Close()
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	client := bedrockTestClient(t, sigma.ProviderAmazonBedrock, model, nil, nil, WithEndpoint(server.URL))
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		WithRequestRegion("us-east-1"),
+		WithRequestStaticCredentials(StaticCredentials{
+			AccessKeyID:     "AKIAREQUEST",
+			SecretAccessKey: "request-secret",
+			SessionToken:    "request-session",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "ok"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if !strings.HasPrefix(gotAuthorization, "AWS4-HMAC-SHA256 Credential=AKIAREQUEST/") {
+		t.Fatalf("Authorization = %q, want request static credential", gotAuthorization)
+	}
+	if got, want := gotSecurityToken, "request-session"; got != want {
+		t.Fatalf("security token = %q, want %q", got, want)
+	}
+}
+
 // TestHTTPConverseStreamCloseReleasesBlockedForward is a regression test for a
 // goroutine leak: forward() blocked on a bare channel send when the consumer
 // stopped draining Events() (e.g. on context cancellation). Closing the stream
@@ -1265,6 +1309,46 @@ func TestDefaultCredentialDetectorUsesRequestScopedBedrockBearerTokenWithoutEnvi
 	}
 }
 
+func TestDefaultCredentialDetectorUsesRequestStaticCredentialsBeforeEnvironment(t *testing.T) {
+	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "env-token")
+	t.Setenv("AWS_ACCESS_KEY_ID", "AKIAENV")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "env-secret")
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), model, sigma.Options{
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionRequestStaticCredentials: StaticCredentials{
+					AccessKeyID:     "AKIAREQUEST",
+					SecretAccessKey: "request-secret",
+					SessionToken:    "request-session",
+				},
+			},
+		},
+	}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.Source, CredentialSourceStaticCredentials; got != want {
+		t.Fatalf("source = %q, want %q", got, want)
+	}
+	if got, want := info.AccessKeyID, "AKIAREQUEST"; got != want {
+		t.Fatalf("access key = %q, want %q", got, want)
+	}
+	if got, want := info.SecretAccessKey, "request-secret"; got != want {
+		t.Fatalf("secret key = %q, want %q", got, want)
+	}
+	if got, want := info.SessionToken, "request-session"; got != want {
+		t.Fatalf("session token = %q, want %q", got, want)
+	}
+	if info.BearerToken != "" {
+		t.Fatalf("bearer token = %q, want request static credentials", info.BearerToken)
+	}
+}
+
 func TestDefaultCredentialDetectorRequestScopedBedrockBearerTokenWins(t *testing.T) {
 	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "env-token")
 	t.Setenv("AWS_ACCESS_KEY_ID", "AKIAIGNORED")
@@ -1292,6 +1376,44 @@ func TestDefaultCredentialDetectorRequestScopedBedrockBearerTokenWins(t *testing
 	}
 	if got, want := info.BearerToken, "request-token"; got != want {
 		t.Fatalf("bearer token = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultCredentialDetectorAuthResolverWinsOverRequestStaticCredentials(t *testing.T) {
+	t.Parallel()
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{
+			Type:  sigma.CredentialTypeOAuthToken,
+			Value: "resolver-token",
+		}, nil
+	})
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), model, sigma.Options{
+		AuthResolver: resolver,
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionRequestStaticCredentials: StaticCredentials{
+					AccessKeyID:     "AKIAREQUEST",
+					SecretAccessKey: "request-secret",
+				},
+			},
+		},
+	}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceAuto,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.Source, CredentialSourceAuthResolver; got != want {
+		t.Fatalf("source = %q, want %q", got, want)
+	}
+	if got, want := info.BearerToken, "resolver-token"; got != want {
+		t.Fatalf("bearer token = %q, want %q", got, want)
+	}
+	if got := info.AccessKeyID; got != "" {
+		t.Fatalf("access key = %q, want auth resolver without request static credentials", got)
 	}
 }
 
@@ -1336,6 +1458,22 @@ func TestEffectiveConfigUsesRegionEnvironmentFallback(t *testing.T) {
 	}
 }
 
+func TestEffectiveConfigUsesRequestRegionBeforeEnvironment(t *testing.T) {
+	t.Setenv("AWS_REGION", "ap-southeast-2")
+	t.Setenv("AWS_DEFAULT_REGION", "us-west-2")
+
+	config := effectiveConfig(Config{}, bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionRequestRegion: "eu-west-1",
+			},
+		},
+	})
+	if got, want := config.Region, "eu-west-1"; got != want {
+		t.Fatalf("region = %q, want %q", got, want)
+	}
+}
+
 func TestEffectiveConfigUsesModelEndpointForRegionalInferenceProfile(t *testing.T) {
 	t.Setenv("AWS_REGION", "")
 	t.Setenv("AWS_DEFAULT_REGION", "")
@@ -1362,7 +1500,13 @@ func TestEffectiveConfigUsesApplicationInferenceProfileARNRegionBeforeEnvironmen
 	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
 	model.ID = "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123"
 
-	config := effectiveConfig(Config{}, model, sigma.Options{})
+	config := effectiveConfig(Config{}, model, sigma.Options{
+		ProviderOptions: map[sigma.ProviderID]map[string]any{
+			sigma.ProviderAmazonBedrock: {
+				providerOptionRequestRegion: "eu-west-1",
+			},
+		},
+	})
 	if got, want := config.Region, "us-west-2"; got != want {
 		t.Fatalf("region = %q, want %q", got, want)
 	}

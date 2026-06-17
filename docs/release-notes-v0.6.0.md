@@ -20,14 +20,16 @@ support. Xiaomi is promoted as a focused OpenAI-compatible provider slice with
 API-billing and regional token-plan registration helpers, generated MiMo
 metadata, and regional API-key discovery. The environment credential resolver
 also exposes non-secret discovery helpers so applications can inspect candidate
-and configured API-key variable names before making a request. The surface probe
-command adds a credential-gated cross-provider handoff diagnostic for replaying
-small tool-call contexts across selected live routes without moving live
-provider calls into CI. Assistant results now also expose provider-neutral
-source and citation accessors for the source metadata Sigma already captures
-from grounded and citation-bearing responses. Local tool-call validation also
-now evaluates composed JSON Schema branches so callers can reject invalid
-model-emitted arguments before running tools.
+and configured API-key variable names before making a request, and focused
+provider helpers now let callers pass Cloudflare AI Gateway placeholder values
+and Bedrock region/static credential values without mutating process
+environment. The surface probe command adds a credential-gated cross-provider
+handoff diagnostic for replaying small tool-call contexts across selected live
+routes without moving live provider calls into CI. Assistant results now also
+expose provider-neutral source and citation accessors for the source metadata
+Sigma already captures from grounded and citation-bearing responses. Local
+tool-call validation also now evaluates composed JSON Schema branches so
+callers can reject invalid model-emitted arguments before running tools.
 
 ## Added
 
@@ -64,6 +66,13 @@ model-emitted arguments before running tools.
   helpers for model-aware environment credential discovery. They return ordered
   variable names only, respect model metadata before provider defaults, and add
   built-in fallback names for additional OpenAI-compatible provider IDs.
+- `cloudflare.WithAIGatewayAccountID` and `cloudflare.WithAIGatewayID` now
+  provide request-scoped Cloudflare AI Gateway placeholder values before the
+  existing `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_GATEWAY_ID` environment
+  fallback.
+- `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
+  provide request-scoped Bedrock runtime region and static AWS credential values
+  before the existing AWS region and static credential environment fallbacks.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so
@@ -100,6 +109,12 @@ model-emitted arguments before running tools.
 - Environment credential discovery is additive and non-secret. `Resolve`
   remains the API that returns credential values, and the new helper methods do
   not probe ambient cloud credentials or OAuth token stores.
+- Cloudflare and Bedrock request configuration helpers are provider-specific
+  request options. They do not add a root-level environment override map, and
+  existing process environment fallback behavior remains available.
+- Bedrock credential precedence remains explicit: typed bearer-token options
+  and auth resolvers run before request static credentials, and request static
+  credentials run before the existing static environment credential path.
 - Source and citation accessors are additive views over existing provider
   metadata. They do not change persisted request shape, replay behavior,
   provider dispatch, or the raw `ProviderMetadata` maps.
@@ -111,6 +126,9 @@ model-emitted arguments before running tools.
 
 - OAuth token persistence remains deferred and caller-owned. Deferred work
   continues to be tracked in [TODO.md](../TODO.md).
+- Ambient cloud credential probing, OAuth token stores, AWS profiles, SSO, web
+  identity, IMDS, and shared-config loading remain deferred. Applications that
+  need those flows should continue to resolve credentials before calling Sigma.
 - Billing reconciliation, subscription analytics, and UI presentation of usage
   totals remain caller-owned. Sigma normalizes and preserves provider data but
   does not claim invoice-grade billing accuracy.

@@ -18,6 +18,11 @@ const (
 	DefaultAIGatewayAnthropicBaseURL = "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic"
 )
 
+const (
+	aiGatewayAccountIDOption = "cloudflare_ai_gateway_account_id"
+	aiGatewayIDOption        = "cloudflare_ai_gateway_id"
+)
+
 // Provider adapts Cloudflare AI Gateway's OpenAI-compatible Chat Completions endpoint.
 type Provider = openai.Provider
 
@@ -94,6 +99,18 @@ func WithAnthropicHeaders(headers map[string]string) AnthropicProviderOption {
 // WithAnthropicMessagesCompat overrides detected Anthropic-compatible endpoint behavior.
 func WithAnthropicMessagesCompat(compat anthropic.MessagesCompat) AnthropicProviderOption {
 	return anthropic.WithMessagesCompat(compat)
+}
+
+// WithAIGatewayAccountID configures the request-scoped Cloudflare account ID
+// used to resolve AI Gateway base URL placeholders.
+func WithAIGatewayAccountID(accountID string) sigma.Option {
+	return sigma.WithProviderOption(sigma.ProviderCloudflareAIGateway, aiGatewayAccountIDOption, accountID)
+}
+
+// WithAIGatewayID configures the request-scoped Cloudflare AI Gateway ID used
+// to resolve AI Gateway base URL placeholders.
+func WithAIGatewayID(gatewayID string) sigma.Option {
+	return sigma.WithProviderOption(sigma.ProviderCloudflareAIGateway, aiGatewayIDOption, gatewayID)
 }
 
 // RegisterAIGateway adds a Cloudflare AI Gateway Chat Completions provider to registry.

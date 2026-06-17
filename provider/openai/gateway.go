@@ -18,6 +18,11 @@ import (
 
 var cloudflareBaseURLVariable = regexp.MustCompile(`\{([A-Z_][A-Z0-9_]*)\}`)
 
+const (
+	cloudflareAIGatewayAccountIDOption = "cloudflare_ai_gateway_account_id"
+	cloudflareAIGatewayIDOption        = "cloudflare_ai_gateway_id"
+)
+
 func addCopilotDynamicHeaders(req *http.Request, model sigma.Model, request sigma.Request) {
 	if model.Provider != sigma.ProviderGitHubCopilot {
 		return
@@ -48,7 +53,7 @@ func hasCopilotVisionInput(messages []sigma.Message) bool {
 	return false
 }
 
-func resolveCloudflareBaseURL(provider sigma.ProviderID, baseURL string) (string, error) {
+func resolveCloudflareBaseURL(provider sigma.ProviderID, baseURL string, opts sigma.Options) (string, error) {
 	if !isCloudflareRoute(provider, baseURL) {
 		return baseURL, nil
 	}
@@ -58,7 +63,7 @@ func resolveCloudflareBaseURL(provider sigma.ProviderID, baseURL string) (string
 			return match
 		}
 		name := strings.Trim(match, "{}")
-		value := os.Getenv(name)
+		value := cloudflareBaseURLVariableValue(provider, opts, name)
 		if value == "" {
 			missing = name
 			return match
@@ -69,6 +74,21 @@ func resolveCloudflareBaseURL(provider sigma.ProviderID, baseURL string) (string
 		return "", fmt.Errorf("openai: %s is required for Cloudflare base URL", missing)
 	}
 	return resolved, nil
+}
+
+func cloudflareBaseURLVariableValue(provider sigma.ProviderID, opts sigma.Options, name string) string {
+	options := providerOptions(opts, provider)
+	switch name {
+	case "CLOUDFLARE_ACCOUNT_ID":
+		if value, ok := stringOption(options, cloudflareAIGatewayAccountIDOption); ok {
+			return value
+		}
+	case "CLOUDFLARE_GATEWAY_ID":
+		if value, ok := stringOption(options, cloudflareAIGatewayIDOption); ok {
+			return value
+		}
+	}
+	return os.Getenv(name)
 }
 
 func isCloudflareRoute(provider sigma.ProviderID, baseURL string) bool {

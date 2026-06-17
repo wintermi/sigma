@@ -254,7 +254,7 @@ func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, erro
 	}
 
 	baseURL := p.baseURLForModel(model, opts)
-	resolved, err := resolveCloudflareBaseURL(model.Provider, baseURL)
+	resolved, err := resolveCloudflareBaseURL(model.Provider, baseURL, opts)
 	if err != nil {
 		return "", err
 	}

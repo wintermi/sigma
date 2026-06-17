@@ -27,6 +27,8 @@ const (
 	CredentialSourceAuthResolver CredentialSource = "auth-resolver"
 	// CredentialSourceBearerToken uses an explicit request-scoped bearer token.
 	CredentialSourceBearerToken CredentialSource = "bearer-token"
+	// CredentialSourceStaticCredentials uses request-scoped static AWS credentials.
+	CredentialSourceStaticCredentials CredentialSource = "static-credentials"
 )
 
 // CredentialInfo is diagnostic-safe AWS credential metadata plus optional static
@@ -79,7 +81,7 @@ func (DefaultCredentialDetector) Detect(ctx context.Context, model sigma.Model, 
 	case CredentialSourceAuthResolver:
 		return authResolverCredential(ctx, model, opts)
 	case CredentialSourceDefaultChain:
-		return defaultChainCredential(ctx, bedrockConfig)
+		return defaultChainCredential(ctx, model, opts, bedrockConfig)
 	case CredentialSourceAuto:
 		credential, err := authResolverCredential(ctx, model, opts)
 		if err == nil {
@@ -88,7 +90,7 @@ func (DefaultCredentialDetector) Detect(ctx context.Context, model sigma.Model, 
 		if !errors.Is(err, sigma.ErrCredentialUnavailable) {
 			return CredentialInfo{}, err
 		}
-		return defaultChainCredential(ctx, bedrockConfig)
+		return defaultChainCredential(ctx, model, opts, bedrockConfig)
 	default:
 		return CredentialInfo{}, credentialError("bedrock converse stream: unsupported credential source", nil, bedrockConfig, []string{string(source)})
 	}
@@ -128,10 +130,21 @@ func authResolverCredential(ctx context.Context, model sigma.Model, opts sigma.O
 	return info, nil
 }
 
-func defaultChainCredential(ctx context.Context, bedrockConfig Config) (CredentialInfo, error) {
+func defaultChainCredential(ctx context.Context, model sigma.Model, opts sigma.Options, bedrockConfig Config) (CredentialInfo, error) {
 	_ = ctx
 	if bedrockConfig.Region == "" {
 		return CredentialInfo{}, credentialError("bedrock converse stream: region is required", nil, bedrockConfig, []string{"region"})
+	}
+	if credentials, ok := requestStaticCredentials(opts, model.Provider); ok {
+		if credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
+			return CredentialInfo{}, credentialError("bedrock converse stream: request static credentials are incomplete", sigma.ErrCredentialUnavailable, bedrockConfig, []string{"request:static-credentials"})
+		}
+		return CredentialInfo{
+			Source:          CredentialSourceStaticCredentials,
+			AccessKeyID:     credentials.AccessKeyID,
+			SessionToken:    credentials.SessionToken,
+			SecretAccessKey: credentials.SecretAccessKey,
+		}, nil
 	}
 	if bearer := os.Getenv("AWS_BEARER_TOKEN_BEDROCK"); bearer != "" {
 		return CredentialInfo{
@@ -150,6 +163,22 @@ func defaultChainCredential(ctx context.Context, bedrockConfig Config) (Credenti
 		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
 		SecretAccessKey: secretAccessKey,
 	}, nil
+}
+
+func requestStaticCredentials(opts sigma.Options, provider sigma.ProviderID) (StaticCredentials, bool) {
+	options := providerOptions(opts, provider)
+	value, ok := options[providerOptionRequestStaticCredentials]
+	if !ok {
+		return StaticCredentials{}, false
+	}
+	credentials, ok := value.(StaticCredentials)
+	if ok {
+		return credentials, true
+	}
+	if credentials, ok := value.(*StaticCredentials); ok && credentials != nil {
+		return *credentials, true
+	}
+	return StaticCredentials{}, false
 }
 
 func credentialError(message string, err error, bedrockConfig Config, sources []string) error {
