@@ -122,11 +122,22 @@ func thinkingText(data json.RawMessage) string {
 }
 
 type conversationUsage struct {
-	PromptTokens     int            `json:"prompt_tokens"`
-	CompletionTokens int            `json:"completion_tokens"`
-	TotalTokens      int            `json:"total_tokens"`
-	ConnectorTokens  int            `json:"connector_tokens"`
-	Connectors       map[string]int `json:"connectors"`
+	PromptTokens             int                       `json:"prompt_tokens"`
+	CompletionTokens         int                       `json:"completion_tokens"`
+	TotalTokens              int                       `json:"total_tokens"`
+	ConnectorTokens          int                       `json:"connector_tokens"`
+	Connectors               map[string]int            `json:"connectors"`
+	PromptTokensDetails      *conversationTokenDetails `json:"prompt_tokens_details"`
+	PromptTokensDetailsCamel *conversationTokenDetails `json:"promptTokensDetails"`
+	PromptTokenDetails       *conversationTokenDetails `json:"prompt_token_details"`
+	PromptTokenDetailsCamel  *conversationTokenDetails `json:"promptTokenDetails"`
+	NumCachedTokens          int                       `json:"num_cached_tokens"`
+	NumCachedTokensCamel     int                       `json:"numCachedTokens"`
+}
+
+type conversationTokenDetails struct {
+	CachedTokens      int `json:"cached_tokens"`
+	CachedTokensCamel int `json:"cachedTokens"`
 }
 
 type conversationAPIError struct {
@@ -528,12 +539,41 @@ func (u conversationUsage) sigmaUsage() sigma.Usage {
 			toolUseInputTokens += tokens
 		}
 	}
+	cacheReadInputTokens := u.cachedPromptTokens()
 	return sigma.Usage{
-		InputTokens:        u.PromptTokens,
-		OutputTokens:       u.CompletionTokens,
-		TotalTokens:        u.TotalTokens,
-		ToolUseInputTokens: toolUseInputTokens,
+		InputTokens:          max(0, u.PromptTokens-cacheReadInputTokens),
+		OutputTokens:         u.CompletionTokens,
+		TotalTokens:          u.TotalTokens,
+		CacheReadInputTokens: cacheReadInputTokens,
+		ToolUseInputTokens:   toolUseInputTokens,
 	}
+}
+
+func (u conversationUsage) cachedPromptTokens() int {
+	candidates := []int{
+		cachedTokens(u.PromptTokensDetails),
+		cachedTokens(u.PromptTokensDetailsCamel),
+		cachedTokens(u.PromptTokenDetails),
+		cachedTokens(u.PromptTokenDetailsCamel),
+		u.NumCachedTokens,
+		u.NumCachedTokensCamel,
+	}
+	for _, tokens := range candidates {
+		if tokens > 0 {
+			return min(u.PromptTokens, tokens)
+		}
+	}
+	return 0
+}
+
+func cachedTokens(details *conversationTokenDetails) int {
+	if details == nil {
+		return 0
+	}
+	if details.CachedTokens > 0 {
+		return details.CachedTokens
+	}
+	return details.CachedTokensCamel
 }
 
 func outputContentKey(event conversationEvent, kind sigma.ContentBlockType) string {

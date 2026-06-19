@@ -244,14 +244,23 @@ func TestCompleteSetsSessionAffinityHeaderUnlessCallerOverrides(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		opts []sigma.Option
-		want string
+		name               string
+		opts               []sigma.Option
+		wantAffinity       string
+		wantPromptCacheKey string
 	}{
 		{
-			name: "session id",
-			opts: []sigma.Option{sigma.WithSessionID("session-123")},
-			want: "session-123",
+			name:               "session id",
+			opts:               []sigma.Option{sigma.WithSessionID("session-123")},
+			wantAffinity:       "session-123",
+			wantPromptCacheKey: "session-123",
+		},
+		{
+			name: "cache disabled",
+			opts: []sigma.Option{
+				sigma.WithSessionID("session-123"),
+				sigma.WithCacheRetention(sigma.CacheRetentionNone),
+			},
 		},
 		{
 			name: "caller header wins",
@@ -259,7 +268,8 @@ func TestCompleteSetsSessionAffinityHeaderUnlessCallerOverrides(t *testing.T) {
 				sigma.WithSessionID("session-123"),
 				sigma.WithHeader("X-Affinity", "caller-affinity"),
 			},
-			want: "caller-affinity",
+			wantAffinity:       "caller-affinity",
+			wantPromptCacheKey: "session-123",
 		},
 	}
 
@@ -286,7 +296,19 @@ func TestCompleteSetsSessionAffinityHeaderUnlessCallerOverrides(t *testing.T) {
 			}
 
 			request := receiveRequest(t, requests)
-			assertHeader(t, request.Headers, "X-Affinity", tt.want)
+			if tt.wantAffinity == "" {
+				assertHeaderAbsent(t, request.Headers, "X-Affinity")
+			} else {
+				assertHeader(t, request.Headers, "X-Affinity", tt.wantAffinity)
+			}
+			payload := decodePayload(t, request.Body)
+			if tt.wantPromptCacheKey == "" {
+				if _, ok := payload["prompt_cache_key"]; ok {
+					t.Fatalf("prompt_cache_key = %v, want absent", payload["prompt_cache_key"])
+				}
+			} else if got := payload["prompt_cache_key"]; got != tt.wantPromptCacheKey {
+				t.Fatalf("prompt_cache_key = %v, want %q", got, tt.wantPromptCacheKey)
+			}
 		})
 	}
 }
@@ -802,6 +824,96 @@ data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completi
 	}
 }
 
+func TestStreamingMapsCachedPromptTokens(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		usage      string
+		rawKey     string
+		rawWant    any
+		wantCached int
+	}{
+		{
+			name:       "snake prompt tokens details",
+			usage:      `{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18,"prompt_tokens_details":{"cached_tokens":3}}`,
+			rawKey:     "prompt_tokens_details",
+			wantCached: 3,
+		},
+		{
+			name:       "camel prompt tokens details",
+			usage:      `{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18,"promptTokensDetails":{"cachedTokens":4}}`,
+			rawKey:     "promptTokensDetails",
+			wantCached: 4,
+		},
+		{
+			name:       "snake cached token count",
+			usage:      `{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18,"num_cached_tokens":15}`,
+			rawKey:     "num_cached_tokens",
+			rawWant:    float64(15),
+			wantCached: 10,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeMistralSSE(t, w, `event: conversation.response.started
+data: {"type":"conversation.response.started","conversation_id":"conv_cached"}
+
+event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"id":"msg_1","content_index":0,"content":"cached"}
+
+event: conversation.response.done
+data: {"type":"conversation.response.done","usage":`+tt.usage+`}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-cache-usage-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+
+			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			events := collectEvents(t, stream)
+			if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			final, ok := stream.Final()
+			if !ok {
+				t.Fatal("stream final was not recorded")
+			}
+			if final.Usage == nil {
+				t.Fatal("final usage was nil")
+			}
+			if got, want := final.Usage.InputTokens, 10-tt.wantCached; got != want {
+				t.Fatalf("input tokens = %d, want %d", got, want)
+			}
+			if got := final.Usage.CacheReadInputTokens; got != tt.wantCached {
+				t.Fatalf("cache read input tokens = %d, want %d", got, tt.wantCached)
+			}
+			if got, want := final.Usage.TotalTokens, 18; got != want {
+				t.Fatalf("total tokens = %d, want %d", got, want)
+			}
+			if got, want := final.Cost.InputCost, float64(10-tt.wantCached)/1_000_000; got != want {
+				t.Fatalf("input cost = %v, want %v", got, want)
+			}
+			if _, ok := final.Usage.Raw[tt.rawKey]; !ok {
+				t.Fatalf("raw usage missing %q: %#v", tt.rawKey, final.Usage.Raw)
+			}
+			if tt.rawWant != nil && final.Usage.Raw[tt.rawKey] != tt.rawWant {
+				t.Fatalf("raw %s = %#v, want %#v", tt.rawKey, final.Usage.Raw[tt.rawKey], tt.rawWant)
+			}
+			if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.CacheReadInputTokens != tt.wantCached {
+				t.Fatalf("terminal usage = %#v, want cache read tokens", events[len(events)-1].Usage)
+			}
+		})
+	}
+}
+
 func TestStreamingMapsThinkingAndText(t *testing.T) {
 	t.Parallel()
 
@@ -1218,6 +1330,14 @@ func assertHeader(t *testing.T, headers http.Header, key string, want string) {
 
 	if got := headers.Get(key); got != want {
 		t.Fatalf("%s header = %q, want %q", key, got, want)
+	}
+}
+
+func assertHeaderAbsent(t *testing.T, headers http.Header, key string) {
+	t.Helper()
+
+	if got := headers.Get(key); got != "" {
+		t.Fatalf("%s header = %q, want absent", key, got)
 	}
 }
 

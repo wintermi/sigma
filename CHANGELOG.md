@@ -30,6 +30,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Text-generation usage now carries provider/model identity, provider raw usage
   payloads, normalized tool-use input tokens, and provider-reported cost when
   available, while keeping Sigma's model-metadata cost estimate separate.
+- Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
+  to both `prompt_cache_key` and `x-affinity`, and streamed Mistral cached
+  prompt tokens now populate `Usage.CacheReadInputTokens` instead of ordinary
+  input tokens.
 - `EnvironmentAuthResolver` now exposes non-secret environment credential
   discovery helpers for ordered candidate variable names and configured
   variable names, with broader built-in API-key defaults for OpenAI-compatible

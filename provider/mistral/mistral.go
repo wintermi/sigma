@@ -238,7 +238,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	for key, value := range p.headers {
 		httpReq.Header.Set(key, value)
 	}
-	if opts.SessionID != "" && httpReq.Header.Get("x-affinity") == "" && !hasHeader(opts.Headers, "x-affinity") {
+	if usePromptCaching(opts) && httpReq.Header.Get("x-affinity") == "" && !hasHeader(opts.Headers, "x-affinity") {
 		httpReq.Header.Set("x-affinity", opts.SessionID)
 	}
 	for key, value := range opts.Headers {

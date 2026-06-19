@@ -72,6 +72,9 @@ func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Option
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
+	if usePromptCaching(opts) {
+		payload["prompt_cache_key"] = opts.SessionID
+	}
 	completionArgs := completionArgs(model, opts)
 	if len(completionArgs) > 0 {
 		payload["completion_args"] = completionArgs
@@ -85,6 +88,10 @@ func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Option
 	}
 	addProviderOptions(payload, model.Provider, opts)
 	return payload, nil
+}
+
+func usePromptCaching(opts sigma.Options) bool {
+	return opts.SessionID != "" && opts.CacheRetention != sigma.CacheRetentionNone
 }
 
 func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Options) error {

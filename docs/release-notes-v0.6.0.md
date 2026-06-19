@@ -11,7 +11,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 generation, including long prompt-cache write splits, raw provider usage
 payloads for diagnostics, standalone provider/model identity on usage records,
 and a clear split between provider-reported cost and Sigma's model-metadata
-cost estimate. It also adds caller-owned GitHub Copilot OAuth helpers for
+cost estimate. Mistral Conversations now also maps cache-enabled session IDs to
+prompt-cache keys and reports provider cached prompt tokens as cache reads. It
+also adds caller-owned GitHub Copilot OAuth helpers for
 device-code login, token refresh, request-time credential resolution, and
 explicit model-policy enablement. Kimi Coding is promoted as a focused
 Anthropic-compatible provider slice with generated metadata, credential
@@ -42,6 +44,10 @@ callers can reject invalid model-emitted arguments before running tools.
   payloads when providers report usage, normalizes provider tool/connector
   token counts into `Usage.ToolUseInputTokens`, and exposes provider-reported
   cost separately from Sigma's estimated `Cost.TotalCost`.
+- Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
+  to `prompt_cache_key` and `x-affinity`, and streamed provider cached prompt
+  token fields now populate `Usage.CacheReadInputTokens` while preserving raw
+  usage payloads for diagnostics.
 - GitHub Copilot now has stdlib-only device-code OAuth login through
   `githubcopilot.LoginGitHubCopilotDeviceCode`, Copilot token refresh through
   `githubcopilot.RefreshGitHubCopilotToken`, and an in-memory token provider
@@ -97,6 +103,11 @@ callers can reject invalid model-emitted arguments before running tools.
 - Existing `sigma.Cost` component fields and `TotalCost` remain Sigma's
   estimated cost from model metadata. Provider-reported cost is additive and is
   only populated when an upstream payload contains a clear numeric cost field.
+- Mistral prompt-cache behavior is additive and uses existing
+  `sigma.WithSessionID` and `sigma.WithCacheRetention` options. Empty/default,
+  short, long, and persistent retention enable the Mistral cache key; explicit
+  `CacheRetentionNone` suppresses automatic `prompt_cache_key` and `x-affinity`
+  values.
 - GitHub Copilot OAuth credentials remain caller-owned. Sigma does not persist
   tokens, does not automatically enable model policies after login, and does
   not change the existing GitHub Copilot request dispatch path.
@@ -141,22 +152,16 @@ callers can reject invalid model-emitted arguments before running tools.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.
+- Mistral URL/file image references, built-in connector tools, append/restart
+  lifecycle operations, and broad catalog expansion remain deferred.
 - Full JSON Schema runtime support, including `$ref`, `pattern`, formats,
   `not`, conditionals, and implicit argument coercion, remains deferred.
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-06-18 with:
+Current v0.6.0 development state validated on 2026-06-19 with:
 
-- `mise run mise:validate`.
-- `mise run clean`.
-- `mise run go:generate`.
 - `mise run go:fmt`.
-- `mise run go:build`.
 - `mise run go:test`.
-- `mise run go:race`.
-- `mise run go:vet`.
-- `mise run go:fmt:check`.
-- `mise run go:lint`.
 - `mise run ci`.
 - `git diff --check`.
