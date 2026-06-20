@@ -17,6 +17,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if err := registerBuiltinImageModels(registry); err != nil {
 		t.Fatalf("registerBuiltinImageModels returned error: %v", err)
 	}
+	if err := registerBuiltinEmbeddingModels(registry); err != nil {
+		t.Fatalf("registerBuiltinEmbeddingModels returned error: %v", err)
+	}
 
 	openAI, ok := registry.Model(ProviderOpenAI, "gpt-4o-mini")
 	if !ok {
@@ -406,6 +409,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertGeneratedOpenAICompatibleProviderMetadata(t, registry)
 	assertGeneratedAnthropicCompatibleProviderMetadata(t, registry)
 	assertGeneratedVertexMetadata(t, registry)
+	assertGeneratedNVIDIAEmbeddingMetadata(t, registry)
 
 	image, ok := registry.ImageModel(ProviderOpenAI, "gpt-image-1")
 	if !ok {
@@ -522,6 +526,30 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 			t.Fatalf("generated text metadata missing provider %q", provider)
 		}
 	}
+}
+
+func assertGeneratedNVIDIAEmbeddingMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	model, ok := registry.EmbeddingModel(ProviderNVIDIA, "nvidia/nv-embedqa-e5-v5")
+	if !ok {
+		t.Fatal("fresh registry missing generated NVIDIA embedding model")
+	}
+	if model.API != EmbeddingAPIOpenAIEmbeddings {
+		t.Fatalf("NVIDIA embedding API = %q, want %q", model.API, EmbeddingAPIOpenAIEmbeddings)
+	}
+	if model.DefaultDimensions != 1024 || model.MinDimensions != 1024 || model.MaxDimensions != 1024 {
+		t.Fatalf("NVIDIA embedding dimensions = %d/%d/%d, want 1024/1024/1024",
+			model.DefaultDimensions,
+			model.MinDimensions,
+			model.MaxDimensions)
+	}
+	if model.MaxInputTokens != 8192 || model.MaxBatchInputs != 100 {
+		t.Fatalf("NVIDIA embedding limits = tokens %d batch %d, want 8192/100", model.MaxInputTokens, model.MaxBatchInputs)
+	}
+	assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://integrate.api.nvidia.com/v1")
+	assertMetadataString(t, model.ProviderMetadata, "modelFamily", "nvidia-embedding")
+	assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"NVIDIA_API_KEY"})
 }
 
 func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Registry) {

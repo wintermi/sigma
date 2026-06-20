@@ -242,6 +242,25 @@ The built-in Fireworks Anthropic-compatible routes are
 against Fireworks' `/messages` endpoint and carry compatibility metadata for
 image input, thinking levels, cache behavior, and tool use.
 
+### NVIDIA NIM
+
+```go
+registry := sigma.DefaultRegistry()
+_ = nvidia.Register(registry)
+_ = nvidia.RegisterEmbeddings(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `NVIDIA_API_KEY`.
+
+The NVIDIA NIM wrapper uses Sigma's shared OpenAI-compatible Chat Completions
+and Embeddings adapters with the direct NIM base URL. Built-in text metadata is
+available under `ProviderNVIDIA`, and built-in embedding metadata includes
+`nvidia/nv-embedqa-e5-v5`. The embedding wrapper maps
+`sigma.EmbeddingInputTypeQuery` to NVIDIA `input_type: "query"` and
+`sigma.EmbeddingInputTypeDocument` to `input_type: "passage"` unless callers
+set `EmbeddingRequest.ProviderMetadata["input_type"]` explicitly.
+
 ### Moonshot AI
 
 ```go

@@ -59,6 +59,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   Completions wrapper for direct Workers AI routes, including request-scoped
   account placeholder resolution, normal bearer-token auth, generated metadata,
   and deterministic registration/request coverage.
+- NVIDIA NIM now has first-class OpenAI-compatible Chat Completions and
+  Embeddings provider wrappers, including base URL defaults, bearer auth,
+  generated text and embedding metadata, embedding input-type mapping, and
+  deterministic registration/request coverage.
 - Moonshot AI and Moonshot AI CN now have first-class OpenAI-compatible Chat
   Completions provider wrappers, generated Kimi K2.7 Code CN and HighSpeed
   metadata, and metadata-driven omission of disabled-thinking payloads for

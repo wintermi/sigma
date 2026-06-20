@@ -220,7 +220,10 @@ metadata-only and backed by compatibility checks.
       fixtures.
 - [x] Cloudflare Workers AI — promote to a first-class provider row with
       fixtures.
-- [ ] NVIDIA NIM — promote to a first-class provider row with fixtures.
+- [x] NVIDIA NIM — promote to a first-class provider row with fixtures.
+- [ ] NVIDIA NIM — expand live-provider fixture coverage for streaming, tools,
+      usage, redaction, cancellation, and broader embedding models if the
+      provider needs behavior beyond the shared OpenAI-compatible adapters.
 - [x] Z.ai and Z.ai Coding CN — promote to first-class provider rows with
       fixtures.
 - [ ] Z.ai and Z.ai Coding CN — add broader live-provider fixture coverage for

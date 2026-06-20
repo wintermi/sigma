@@ -18296,6 +18296,29 @@
       }
     },
     {
+      "id": "nvidia/nv-embedqa-e5-v5",
+      "name": "NV EmbedQA E5 v5",
+      "provider": "nvidia",
+      "api": "openai-embeddings",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "defaultDimensions": 1024,
+      "minDimensions": 1024,
+      "maxDimensions": 1024,
+      "maxInputTokens": 8192,
+      "maxBatchInputs": 100,
+      "inputCostPerMillion": 0,
+      "currency": "USD",
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "nvidia-embedding"
+      }
+    },
+    {
       "id": "text-embedding-3-large",
       "name": "Text Embedding 3 Large",
       "provider": "openai",

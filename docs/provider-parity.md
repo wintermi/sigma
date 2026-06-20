@@ -28,6 +28,7 @@ Release scope values:
 | OpenAI-compatible Chat Completions, including OpenRouter text and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | xAI/Grok OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| NVIDIA NIM OpenAI-compatible Chat Completions and Embeddings | `openai-completions`, `openai-embeddings` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Xiaomi MiMo OpenAI-compatible Chat Completions and token-plan routes | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | OpenCode Zen and OpenCode Go OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `partial` | `intentionally omitted` |
 | OpenAI Responses | `openai-responses` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
@@ -53,6 +54,7 @@ Release scope values:
 - `openai-completions`: [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/sse/testdata/openai/text_usage.sse](../internal/sse/testdata/openai/text_usage.sse), [internal/sse/testdata/openai/tool_call.sse](../internal/sse/testdata/openai/tool_call.sse).
 - Fireworks `openai-completions`: [provider/fireworks/fireworks_test.go](../provider/fireworks/fireworks_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - xAI/Grok `openai-completions`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
+- NVIDIA NIM `openai-completions` and `openai-embeddings`: [provider/nvidia/nvidia_test.go](../provider/nvidia/nvidia_test.go), [modeldata_test.go](../modeldata_test.go).
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
 - OpenCode `openai-completions`: [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/modeldata/modeldata_test.go](../internal/modeldata/modeldata_test.go).
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
@@ -86,11 +88,15 @@ Release scope values:
 - Azure and Codex adapters are implemented provider packages, but their APIs are
   not represented by generated default model metadata yet. Vertex now has a
   representative metadata-only route.
-- OpenAI-compatible provider IDs beyond OpenAI/OpenRouter/Fireworks/xAI/Xiaomi/OpenCode,
-  GitHub Copilot, Cloudflare AI Gateway, and Cloudflare Workers AI rely on
-  shared compatibility detection or explicit `OpenAICompletionsCompat`
-  metadata. They are future-scope rows and are not independently
+- Promoted OpenAI-compatible wrappers such as Fireworks, xAI, Xiaomi, OpenCode,
+  NVIDIA NIM, GitHub Copilot, Cloudflare AI Gateway, and Cloudflare Workers AI
+  rely on shared compatibility detection or explicit `OpenAICompletionsCompat`
+  metadata; remaining unpromoted OpenAI-compatible rows are not independently
   release-complete.
+- NVIDIA NIM uses shared OpenAI-compatible text and embedding adapters through
+  a thin wrapper. Its first-class coverage is limited to direct route
+  registration, text request shape, embedding request shape, generated
+  metadata, and provider-specific embedding input-type mapping.
 - OpenCode Zen and OpenCode Go coverage is limited to curated
   `openai-completions` models. Source-package OpenCode models that route through
   OpenAI Responses, Anthropic Messages, or Google APIs are not Go parity today.

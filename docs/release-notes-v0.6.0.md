@@ -31,9 +31,12 @@ provider helpers now let callers pass Cloudflare AI Gateway placeholder values
 and Bedrock region/static credential values without mutating process
 environment. Cloudflare Workers AI is also promoted as a direct
 OpenAI-compatible Chat Completions wrapper with account placeholder resolution
-and normal bearer-token auth for the direct Workers AI endpoint. Moonshot AI
-and Moonshot AI CN are promoted as focused OpenAI-compatible Chat Completions
-wrappers with generated K2.7 Code CN and HighSpeed metadata plus
+and normal bearer-token auth for the direct Workers AI endpoint. NVIDIA NIM is
+also promoted as a focused OpenAI-compatible text and embedding wrapper with
+generated metadata, direct NIM base URL defaults, request header metadata, and
+NVIDIA-specific embedding input-type mapping. Moonshot AI and Moonshot AI CN
+are promoted as focused OpenAI-compatible Chat Completions wrappers with
+generated K2.7 Code CN and HighSpeed metadata plus
 metadata-driven handling for K2.7 routes that reject explicit disabled thinking
 payloads. Z.ai and Z.ai Coding CN are also promoted as focused
 OpenAI-compatible Chat Completions
@@ -111,6 +114,15 @@ sanitization.
   Workers AI base URL, `CLOUDFLARE_API_KEY` credential discovery,
   request-scoped `cloudflare.WithWorkersAIAccountID`, and
   `CLOUDFLARE_ACCOUNT_ID` environment fallback.
+- NVIDIA NIM can now be registered with `nvidia.Register` for
+  OpenAI-compatible Chat Completions and `nvidia.RegisterEmbeddings` for
+  OpenAI-compatible embeddings, using direct NIM base URL defaults,
+  `NVIDIA_API_KEY` credential discovery, generated text and embedding
+  metadata, and deterministic request coverage.
+- NVIDIA NIM embeddings now map `sigma.EmbeddingInputTypeQuery` to
+  `input_type: "query"` and `sigma.EmbeddingInputTypeDocument` to
+  `input_type: "passage"` unless callers set
+  `EmbeddingRequest.ProviderMetadata["input_type"]` explicitly.
 - Moonshot AI can now be registered with `moonshot.Register` or
   `moonshot.RegisterDefault`, and Moonshot AI CN can be registered with
   `moonshot.RegisterCN` or `moonshot.RegisterDefaultCN`, using the shared
@@ -202,6 +214,10 @@ sanitization.
 - Cloudflare Workers AI direct routing is additive and Chat Completions-only in
   this release. It uses normal bearer-token auth, while Cloudflare AI Gateway
   routes continue to use `cf-aig-authorization`.
+- NVIDIA NIM direct routing is additive and uses Sigma's existing
+  OpenAI-compatible text and embedding adapters through a provider-specific
+  wrapper. Endpoint overrides remain explicit through provider options or model
+  metadata; Sigma does not read `NVIDIA_BASE_URL`.
 - Moonshot direct routing is additive and Chat Completions-only in this
   release. The wrappers reuse the shared OpenAI-compatible adapter; broader
   live-provider coverage remains deferred until route-specific behavior needs
@@ -248,6 +264,10 @@ sanitization.
 - Cloudflare Workers AI Responses, Anthropic-compatible, image, embedding, and
   live validation routes remain deferred until each surface has deterministic
   request, stream, error, and metadata evidence.
+- Broader NVIDIA NIM live validation, embedding catalog expansion, and any
+  route behavior beyond the shared OpenAI-compatible adapters remain deferred
+  until each surface has deterministic request, response, error, and metadata
+  evidence.
 - Moonshot live-provider expansion beyond the focused direct Chat Completions
   wrapper and reviewed K2.7 metadata remains deferred until route-specific
   behavior needs deterministic evidence.
