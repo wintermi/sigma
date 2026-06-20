@@ -64,6 +64,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   in tool input schemas, including nested property, array item, and additional
   property schemas, so invalid composed tool arguments are rejected before tool
   execution.
+- Deterministic provider tests now cover Google stream `thoughtSignature`
+  replay on signature-only chunks and OpenAI-compatible Chat Completions replay
+  of prior thinking blocks as assistant text when `reasoning_content` is not
+  required.
 
 ## [0.5.0] - 2026-06-13
 

@@ -38,7 +38,9 @@ live provider calls into CI. Assistant results now also expose provider-neutral
 source and citation accessors for the source metadata Sigma already captures
 from grounded and citation-bearing responses. Local tool-call validation also
 now evaluates composed JSON Schema branches so callers can reject invalid
-model-emitted arguments before running tools.
+model-emitted arguments before running tools. The deterministic provider test
+suite now also locks Google stream `thoughtSignature` attachment and
+OpenAI-compatible Chat Completions thinking-block replay behavior.
 
 ## Added
 
@@ -113,6 +115,10 @@ model-emitted arguments before running tools.
 - `sigma.ValidateToolCall` now evaluates `anyOf`, `oneOf`, and `allOf` in tool
   input schemas, including nested property, array item, and additional property
   schemas, while preserving decoded-copy results and redacted validation errors.
+- Deterministic provider tests now cover Google stream `thoughtSignature`-only
+  chunks, empty signature deltas, signature updates on existing blocks, and
+  OpenAI-compatible Chat Completions replay of prior thinking blocks as
+  assistant text when `reasoning_content` is not required.
 
 ## Compatibility
 
@@ -167,6 +173,8 @@ model-emitted arguments before running tools.
 - Tool schema composition validation is additive and stricter for previously
   unchecked composed branches. It does not add primitive coercion or change the
   `ValidateToolCall` API.
+- The new replay and stream regression tests do not change public APIs,
+  provider request shapes, or persisted replay semantics.
 
 ## Deferred work
 

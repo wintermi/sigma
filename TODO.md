@@ -96,6 +96,8 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Harden OpenAI Responses reasoning defaults and OpenAI-compatible Chat
       Completions replay for empty assistant turns and opt-in tool-history
       payload requirements.
+- [x] Add deterministic OpenAI-compatible Chat Completions replay coverage for
+      prior thinking blocks on routes that serialize thinking as assistant text.
 - [x] Add Codex WebSocket transport, session caching, cleanup helpers, and SSE
       fallback while keeping the implementation stdlib-only.
 - [x] Add proxy-aware Codex WebSocket dialing for standard HTTP(S) proxy
@@ -388,6 +390,8 @@ should still come through the catalog refresh workflow.
 - [x] Normalize Google replayed tool-call IDs for model families that require
       explicit function-call IDs, and omit empty function-response IDs for
       native Gemini requests.
+- [x] Add deterministic Google stream coverage for `thoughtSignature`-only
+      chunks, empty signature deltas, and signature updates on existing blocks.
 - [x] Add focused Google Gemini API embeddings and image generation adapters
       with deterministic payload and response fixtures.
 - [x] Add focused Vertex AI embeddings and Imagen generation adapters with

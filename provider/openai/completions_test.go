@@ -721,6 +721,79 @@ func TestChatCompletionsBatchesConsecutiveToolResultImages(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsReplaysThinkingAsAssistantText(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		content     []sigma.ContentBlock
+		wantContent string
+	}{
+		{
+			name: "thinking with visible text",
+			content: []sigma.ContentBlock{
+				sigma.Thinking("internal reasoning\n", ""),
+				sigma.Text("visible answer"),
+			},
+			wantContent: "internal reasoning\nvisible answer",
+		},
+		{
+			name:        "thinking only",
+			content:     []sigma.ContentBlock{sigma.Thinking("internal reasoning", "")},
+			wantContent: "internal reasoning",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-thinking-replay-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			model.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages = sigma.OpenAICompatUnsupported
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+				sigma.UserText("hello"),
+				{
+					Role:     sigma.RoleAssistant,
+					Provider: providerID,
+					API:      sigma.APIOpenAICompletions,
+					Model:    model.ID,
+					Content:  tt.content,
+				},
+				sigma.UserText("continue"),
+			}})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload struct {
+				Messages []map[string]any `json:"messages"`
+			}
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got, want := payload.Messages[1]["role"], "assistant"; got != want {
+				t.Fatalf("assistant role = %v, want %q", got, want)
+			}
+			if got := payload.Messages[1]["reasoning_content"]; got != nil {
+				t.Fatalf("reasoning_content = %v, want absent", got)
+			}
+			if got := payload.Messages[1]["content"]; got != tt.wantContent {
+				t.Fatalf("assistant content = %#v, want %q", got, tt.wantContent)
+			}
+		})
+	}
+}
+
 func TestChatCompletionsStreamingParsesReasoningText(t *testing.T) {
 	t.Parallel()
 

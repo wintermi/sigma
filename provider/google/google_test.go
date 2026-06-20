@@ -866,6 +866,56 @@ data: {"candidates":[{"content":{"role":"model","parts":[{"text":"","thoughtSign
 	}
 }
 
+func TestStreamingThoughtSignatureOnlyPartUpdatesCurrentBlock(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeGoogleSSE(t, w, `data: {"responseId":"resp_signature","candidates":[{"content":{"role":"model","parts":[{"text":"Hello","thoughtSignature":"sig_initial"}]}}]}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":" world"}]}}]}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"","thoughtSignature":""}]}}]}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"thoughtSignature":"sig_updated"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":2,"totalTokenCount":3}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-signature-only-stream-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if got, want := len(final.Content), 1; got != want {
+		t.Fatalf("content count = %d, want %d", got, want)
+	}
+	if got, want := final.Content[0].Text, "Hello world"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].ProviderSignature, "sig_updated"; got != want {
+		t.Fatalf("provider signature = %q, want %q", got, want)
+	}
+}
+
 func TestCompleteFunctionCallArgumentsEmitToolCallEvents(t *testing.T) {
 	t.Parallel()
 
