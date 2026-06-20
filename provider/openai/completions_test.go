@@ -1268,6 +1268,60 @@ func TestStreamErrorEventIsTypedProviderError(t *testing.T) {
 	}
 }
 
+func TestStreamFinishReasonErrorsAreProviderErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		reason    string
+		wantCause error
+		wantClass sigma.ErrorClass
+	}{
+		{
+			name:      "network error",
+			reason:    "network_error",
+			wantCause: sigma.ErrProviderResponse,
+			wantClass: sigma.ErrorClassTransient,
+		},
+		{
+			name:      "context overflow",
+			reason:    "model_context_window_exceeded",
+			wantCause: sigma.ErrContextOverflow,
+			wantClass: sigma.ErrorClassContextOverflow,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{},"finish_reason":"`+tt.reason+`"}]}`+"\n\n")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-finish-error-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if err == nil {
+				t.Fatal("Complete returned nil error")
+			}
+			if !errors.Is(err, tt.wantCause) {
+				t.Fatalf("error = %v, want cause %v", err, tt.wantCause)
+			}
+			if got, want := final.StopReason, sigma.StopReasonError; got != want {
+				t.Fatalf("stop reason = %q, want %q", got, want)
+			}
+			if got := sigma.ClassifyError(err).Class; got != tt.wantClass {
+				t.Fatalf("class = %q, want %q", got, tt.wantClass)
+			}
+		})
+	}
+}
+
 func TestCancellationBeforeRequestSendDoesNotReachServer(t *testing.T) {
 	t.Parallel()
 
@@ -1483,6 +1537,75 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				if _, ok := body["enable_thinking"]; ok {
 					t.Fatalf("enable_thinking = %#v, want absent", body["enable_thinking"])
 				}
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
+				}
+			},
+		},
+		{
+			name:   "zai glm 5.2 sends mapped high reasoning effort",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			level:  sigma.ThinkingLevelHigh,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if got, want := body["reasoning_effort"], "high"; got != want {
+					t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelMinimal: "",
+				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMedium:  "high",
+				sigma.ThinkingLevelHigh:    "high",
+				sigma.ThinkingLevelXHigh:   "max",
+			},
+		},
+		{
+			name:   "zai glm 5.2 sends mapped xhigh reasoning effort",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			level:  sigma.ThinkingLevelXHigh,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if got, want := body["reasoning_effort"], "max"; got != want {
+					t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelMinimal: "",
+				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMedium:  "high",
+				sigma.ThinkingLevelHigh:    "high",
+				sigma.ThinkingLevelXHigh:   "max",
+			},
+		},
+		{
+			name:   "zai glm 5.2 minimal enables thinking without reasoning effort",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			level:  sigma.ThinkingLevelMinimal,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelMinimal: "",
+				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMedium:  "high",
+				sigma.ThinkingLevelHigh:    "high",
+				sigma.ThinkingLevelXHigh:   "max",
 			},
 		},
 		{

@@ -620,10 +620,7 @@ func jsonValue(value any) (any, error) {
 }
 
 func reasoningEffort(model sigma.Model, opts sigma.Options) string {
-	level := opts.ReasoningLevel
-	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningEffort != "" {
-		level = opts.OpenAIOptions.ReasoningEffort
-	}
+	level := requestedReasoningLevel(opts)
 	if level == "" || level == sigma.ThinkingLevelOff {
 		return ""
 	}
@@ -634,6 +631,14 @@ func reasoningEffort(model sigma.Model, opts sigma.Options) string {
 		return string(level)
 	}
 	return ""
+}
+
+func requestedReasoningLevel(opts sigma.Options) sigma.ThinkingLevel {
+	level := opts.ReasoningLevel
+	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningEffort != "" {
+		level = opts.OpenAIOptions.ReasoningEffort
+	}
+	return level
 }
 
 func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
@@ -658,7 +663,7 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
-		addZAIReasoning(payload, model, opts)
+		addZAIReasoning(payload, model, opts, compat)
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningAntLing {
@@ -708,15 +713,19 @@ func addToggleReasoning(payload map[string]any, model sigma.Model, opts sigma.Op
 	payload["enable_thinking"] = reasoningEffort(model, opts) != ""
 }
 
-func addZAIReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+func addZAIReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if !model.SupportsReasoning() {
 		return
 	}
 	state := "disabled"
-	if reasoningEffort(model, opts) != "" {
+	level := requestedReasoningLevel(opts)
+	if level != "" && level != sigma.ThinkingLevelOff {
 		state = "enabled"
 	}
 	payload["thinking"] = map[string]any{providerToolOptionTypeKey: state}
+	if effort := reasoningEffort(model, opts); state == "enabled" && compat.supportsReasoningEffort && effort != "" {
+		payload["reasoning_effort"] = effort
+	}
 }
 
 func addAntLingReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {

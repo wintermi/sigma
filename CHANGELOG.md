@@ -12,6 +12,12 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- Z.ai and Z.ai Coding CN now have first-class OpenAI-compatible Chat
+  Completions provider wrappers, including base URL defaults, bearer auth, API-key
+  discovery, and deterministic registration/request coverage.
+- Generated Z.ai and Z.ai Coding CN metadata now includes `glm-5.2` with
+  provider-specific reasoning-effort mapping, `tool_stream` support, and
+  GLM-family model metadata.
 - Xiaomi now has a first-class OpenAI-compatible provider wrapper for the
   API-billing route and regional token-plan routes, including generated
   metadata, regional API-key discovery, and deterministic registration/request
@@ -72,6 +78,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
   OpenAI-compatible Chat Completions request-shape guardrails, routed stream
   model metadata, and Google legacy tool-schema sanitization without changing
   provider APIs.
+
+### Fixed
+
+- OpenAI-compatible Chat Completions streams now surface provider
+  `finish_reason` values of `network_error` and `model_context_window_exceeded`
+  as errors instead of successful unknown stops, preserving context-overflow
+  classification for the latter.
 
 ## [0.5.0] - 2026-06-13
 
@@ -414,10 +427,10 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Agent runtime orchestration and cross-provider context handoff with
   capability-loss reporting are deferred to later integration work; this release
   exposes only provider-neutral primitives.
-- DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare, NVIDIA,
-  Z.ai, Ant Ling, Moonshot AI, MiniMax, and Kimi are not yet
-  first-class provider rows; generated metadata and routing may exist, but
-  independent provider-quality claims still need fixtures.
+- DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare, NVIDIA, Ant
+  Ling, Moonshot AI, MiniMax, and Kimi are not yet first-class provider rows;
+  generated metadata and routing may exist, but independent provider-quality
+  claims still need fixtures.
 - Future xAI/Grok catalog refreshes and provider-specific Grok
   request semantics beyond the preview Chat Completions adapter remain
   deferred until they have deterministic coverage.

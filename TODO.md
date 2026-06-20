@@ -121,6 +121,8 @@ integrations remain future work until they have the same local evidence bar.
       for OpenAI-compatible and Anthropic-compatible text routes.
 - [x] Send Z.ai reasoning requests as `thinking` objects with enabled or
       disabled types instead of the legacy `enable_thinking` toggle.
+- [x] Add GLM-5.2 Z.ai reasoning-effort metadata and surface
+      OpenAI-compatible provider finish reasons that indicate upstream errors.
 - [x] Send explicit `max_tokens` for OpenCode Zen and OpenCode Go Chat
       Completions through compatibility detection.
 - [ ] Add opt-in structured-output capability probes for OpenAI-compatible
@@ -219,8 +221,11 @@ metadata-only and backed by compatibility checks.
 - [x] Cloudflare Workers AI — promote to a first-class provider row with
       fixtures.
 - [ ] NVIDIA NIM — promote to a first-class provider row with fixtures.
-- [ ] Z.ai and Z.ai Coding CN — promote to first-class provider rows with
+- [x] Z.ai and Z.ai Coding CN — promote to first-class provider rows with
       fixtures.
+- [ ] Z.ai and Z.ai Coding CN — add broader live-provider fixture coverage for
+      streaming, tools, usage, redaction, and cancellation if the providers need
+      behavior beyond the shared OpenAI-compatible adapter.
 - [ ] Ant Ling — promote to a first-class provider row with fixtures.
 - [ ] Moonshot AI and Moonshot AI CN — promote to first-class provider rows
       with fixtures.

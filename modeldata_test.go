@@ -686,6 +686,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		{provider: ProviderXAI, id: "grok-3", baseURL: "https://api.x.ai/v1", envVars: []string{"XAI_API_KEY"}},
 		{provider: ProviderGitHubCopilot, id: "gpt-5.2-codex", baseURL: "https://api.individual.githubcopilot.com", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderZAI, id: "glm-5.1", baseURL: "https://api.z.ai/api/coding/paas/v4", envVars: []string{"ZAI_API_KEY"}},
+		{provider: ProviderZAICodingCN, id: "glm-5.2", baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVars: []string{"ZAI_CODING_CN_API_KEY"}},
 	} {
 		model, ok := registry.Model(tt.provider, tt.id)
 		if !ok {
@@ -720,6 +721,16 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		zai.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported {
 		t.Fatalf("Z.ai compat = %#v, want zai reasoning and tool_stream", zai.OpenAICompletionsCompat)
 	}
+	zai52, ok := registry.Model(ProviderZAI, "glm-5.2")
+	if !ok {
+		t.Fatal("fresh registry missing generated Z.ai GLM-5.2 model")
+	}
+	assertZAI52Model(t, zai52, "ZAI_API_KEY")
+	zaiCN52, ok := registry.Model(ProviderZAICodingCN, "glm-5.2")
+	if !ok {
+		t.Fatal("fresh registry missing generated Z.ai Coding CN GLM-5.2 model")
+	}
+	assertZAI52Model(t, zaiCN52, "ZAI_CODING_CN_API_KEY")
 
 	cloudflare, ok := registry.Model(ProviderCloudflareAIGateway, "gpt-5.4")
 	if !ok {
@@ -923,6 +934,30 @@ func assertSortedModelOrder(t *testing.T, models []Model) {
 		if modelOrderKey(models[i-1].Provider, string(models[i-1].API), models[i-1].ID) > modelOrderKey(models[i].Provider, string(models[i].API), models[i].ID) {
 			t.Fatalf("text models are not sorted at %d: %s before %s", i, models[i-1].ID, models[i].ID)
 		}
+	}
+}
+
+func assertZAI52Model(t *testing.T, model Model, envVar string) {
+	t.Helper()
+
+	if model.ContextWindow != 1000000 || model.MaxOutputTokens != 131072 {
+		t.Fatalf("Z.ai GLM-5.2 limits = %d/%d, want 1000000/131072", model.ContextWindow, model.MaxOutputTokens)
+	}
+	if model.OpenAICompletionsCompat == nil ||
+		model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningZAI ||
+		model.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported ||
+		model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
+		t.Fatalf("Z.ai GLM-5.2 compat = %#v, want zai reasoning, reasoning_effort, and tool_stream", model.OpenAICompletionsCompat)
+	}
+	assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{envVar})
+	if got, ok := model.ProviderThinkingLevel(ThinkingLevelMinimal); !ok || got != "" {
+		t.Fatalf("Z.ai GLM-5.2 minimal level = %q, %v; want empty string, true", got, ok)
+	}
+	if got, ok := model.ProviderThinkingLevel(ThinkingLevelHigh); !ok || got != "high" {
+		t.Fatalf("Z.ai GLM-5.2 high level = %q, %v; want high, true", got, ok)
+	}
+	if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
+		t.Fatalf("Z.ai GLM-5.2 xhigh level = %q, %v; want max, true", got, ok)
 	}
 }
 

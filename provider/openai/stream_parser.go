@@ -179,6 +179,9 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 			p.captureCompletionTokenDetails(choice.Usage.CompletionTokensDetails)
 		}
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
+			if err := providerFinishReasonError(p.model, *choice.FinishReason); err != nil {
+				return err
+			}
 			p.finishReason = stopReason(*choice.FinishReason)
 		}
 		if len(choice.Logprobs) > 0 && !bytes.Equal(bytes.TrimSpace(choice.Logprobs), []byte("null")) {
@@ -580,6 +583,19 @@ func stopReason(reason string) sigma.StopReason {
 		return sigma.StopReasonContentFilter
 	default:
 		return sigma.StopReasonUnknown
+	}
+}
+
+func providerFinishReasonError(model sigma.Model, reason string) error {
+	switch reason {
+	case "network_error", "model_context_window_exceeded":
+		return openAIStreamProviderError(model, sigma.APIOpenAICompletions, &streamError{
+			Message: "Provider finish_reason: " + reason,
+			Type:    reason,
+			Code:    reason,
+		})
+	default:
+		return nil
 	}
 }
 

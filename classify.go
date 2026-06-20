@@ -165,7 +165,7 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 		return ErrorClassBilling, true
 	case "rate_limit_error", "rate_limit_exceeded", "rate_limited", "too_many_requests", "throttlingexception":
 		return ErrorClassRateLimited, true
-	case "server_error", "internal_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception":
+	case "server_error", "internal_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
 		return ErrorClassTransient, true
 	case "invalid_request_error", "invalid_prompt", "validationexception":
 		return ErrorClassInvalidRequest, true

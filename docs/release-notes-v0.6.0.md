@@ -31,18 +31,22 @@ provider helpers now let callers pass Cloudflare AI Gateway placeholder values
 and Bedrock region/static credential values without mutating process
 environment. Cloudflare Workers AI is also promoted as a direct
 OpenAI-compatible Chat Completions wrapper with account placeholder resolution
-and normal bearer-token auth for the direct Workers AI endpoint. The surface
-probe command adds a credential-gated cross-provider handoff diagnostic for
-replaying small tool-call contexts across selected live routes without moving
-live provider calls into CI. Assistant results now also expose provider-neutral
-source and citation accessors for the source metadata Sigma already captures
-from grounded and citation-bearing responses. Local tool-call validation also
-now evaluates composed JSON Schema branches so callers can reject invalid
-model-emitted arguments before running tools. The deterministic provider test
-suite now also locks Google stream `thoughtSignature` attachment and
-OpenAI-compatible Chat Completions thinking-block replay behavior, plus
-request-conversion guardrails for replay IDs, Chat Completions payload shape,
-routed model metadata, and Google legacy tool-schema sanitization.
+and normal bearer-token auth for the direct Workers AI endpoint. Z.ai and Z.ai
+Coding CN are also promoted as focused OpenAI-compatible Chat Completions
+wrappers with generated GLM metadata, GLM-5.2 reasoning-effort mapping, and
+deterministic registration and request coverage. The surface probe command adds
+a credential-gated cross-provider handoff diagnostic for replaying small
+tool-call contexts across selected live routes without moving live provider
+calls into CI. Assistant results now also expose provider-neutral source and
+citation accessors for the source metadata Sigma already captures from grounded
+and citation-bearing responses. Local tool-call validation also now evaluates
+composed JSON Schema branches so callers can reject invalid model-emitted
+arguments before running tools. The deterministic provider test suite now also
+locks Google stream `thoughtSignature` attachment, OpenAI-compatible Chat
+Completions thinking-block replay behavior, and OpenAI-compatible stream error
+finish handling, plus request-conversion guardrails for replay IDs, Chat
+Completions payload shape, routed model metadata, and Google legacy tool-schema
+sanitization.
 
 ## Added
 
@@ -103,6 +107,15 @@ routed model metadata, and Google legacy tool-schema sanitization.
   Workers AI base URL, `CLOUDFLARE_API_KEY` credential discovery,
   request-scoped `cloudflare.WithWorkersAIAccountID`, and
   `CLOUDFLARE_ACCOUNT_ID` environment fallback.
+- Z.ai can now be registered with `zai.Register` or `zai.RegisterDefault`, and
+  Z.ai Coding CN can be registered with `zai.RegisterCodingCN` or
+  `zai.RegisterDefaultCodingCN`, using the shared OpenAI-compatible Chat
+  Completions adapter with direct base URL defaults and `ZAI_API_KEY` /
+  `ZAI_CODING_CN_API_KEY` credential discovery.
+- Generated Z.ai and Z.ai Coding CN metadata now includes `glm-5.2` with
+  GLM-family metadata, `tool_stream` support, and provider-specific reasoning
+  effort mapping that can enable thinking while omitting `reasoning_effort` for
+  minimal reasoning.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.
@@ -121,6 +134,10 @@ routed model metadata, and Google legacy tool-schema sanitization.
   chunks, empty signature deltas, signature updates on existing blocks, and
   OpenAI-compatible Chat Completions replay of prior thinking blocks as
   assistant text when `reasoning_content` is not required.
+- OpenAI-compatible Chat Completions streams now surface provider
+  `finish_reason` values of `network_error` and `model_context_window_exceeded`
+  as errors instead of successful unknown stops, including context-overflow
+  classification for `model_context_window_exceeded`.
 - Deterministic request-conversion tests now cover distinct OpenAI Responses
   replay IDs around reasoning items, OpenAI-compatible Chat Completions
   tool/max-token payload guardrails, provider-reported routed stream model
@@ -171,6 +188,10 @@ routed model metadata, and Google legacy tool-schema sanitization.
 - Cloudflare Workers AI direct routing is additive and Chat Completions-only in
   this release. It uses normal bearer-token auth, while Cloudflare AI Gateway
   routes continue to use `cf-aig-authorization`.
+- Z.ai direct routing is additive and Chat Completions-only in this release. The
+  Z.ai and Z.ai Coding CN wrappers reuse the shared OpenAI-compatible adapter;
+  broader live-provider coverage remains deferred until route-specific behavior
+  needs independent fixtures.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
@@ -209,6 +230,9 @@ routed model metadata, and Google legacy tool-schema sanitization.
 - Cloudflare Workers AI Responses, Anthropic-compatible, image, embedding, and
   live validation routes remain deferred until each surface has deterministic
   request, stream, error, and metadata evidence.
+- Z.ai Anthropic-compatible, image, embedding, and broader live validation
+  routes remain deferred until each surface has deterministic request, stream,
+  error, and metadata evidence.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.
