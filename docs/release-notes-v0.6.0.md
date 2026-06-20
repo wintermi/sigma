@@ -40,7 +40,9 @@ from grounded and citation-bearing responses. Local tool-call validation also
 now evaluates composed JSON Schema branches so callers can reject invalid
 model-emitted arguments before running tools. The deterministic provider test
 suite now also locks Google stream `thoughtSignature` attachment and
-OpenAI-compatible Chat Completions thinking-block replay behavior.
+OpenAI-compatible Chat Completions thinking-block replay behavior, plus
+request-conversion guardrails for replay IDs, Chat Completions payload shape,
+routed model metadata, and Google legacy tool-schema sanitization.
 
 ## Added
 
@@ -119,6 +121,11 @@ OpenAI-compatible Chat Completions thinking-block replay behavior.
   chunks, empty signature deltas, signature updates on existing blocks, and
   OpenAI-compatible Chat Completions replay of prior thinking blocks as
   assistant text when `reasoning_content` is not required.
+- Deterministic request-conversion tests now cover distinct OpenAI Responses
+  replay IDs around reasoning items, OpenAI-compatible Chat Completions
+  tool/max-token payload guardrails, provider-reported routed stream model
+  metadata, and Google legacy tool-schema sanitization without adding live
+  provider calls.
 
 ## Compatibility
 
@@ -175,6 +182,8 @@ OpenAI-compatible Chat Completions thinking-block replay behavior.
   `ValidateToolCall` API.
 - The new replay and stream regression tests do not change public APIs,
   provider request shapes, or persisted replay semantics.
+- The request-conversion regression tests are coverage-only. They preserve
+  existing public APIs and keep request-shape behavior unchanged for callers.
 
 ## Deferred work
 

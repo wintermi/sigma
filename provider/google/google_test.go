@@ -703,6 +703,36 @@ func TestLegacyGoogleToolSchemaFormatSanitizesJSONSchemaMeta(t *testing.T) {
 	providerID := sigma.ProviderID("google-legacy-schema-test")
 	model := googleTestModel(providerID)
 	client := googleTestClient(t, providerID, model, server.URL)
+	originalSchema := sigma.Schema{
+		"$schema":     "https://json-schema.org/draft/2020-12/schema",
+		"$comment":    "caller-owned schema metadata",
+		"$defs":       map[string]any{"unused": map[string]any{"type": "string"}},
+		"definitions": map[string]any{"legacy": map[string]any{"type": "number"}},
+		"type":        "object",
+		"properties": map[string]any{
+			"query": map[string]any{
+				"$id":      "urn:query",
+				"$comment": "nested metadata",
+				"$ref":     "#/$defs/query",
+				"type":     "string",
+			},
+		},
+	}
+	wantOriginal := sigma.Schema{
+		"$schema":     "https://json-schema.org/draft/2020-12/schema",
+		"$comment":    "caller-owned schema metadata",
+		"$defs":       map[string]any{"unused": map[string]any{"type": "string"}},
+		"definitions": map[string]any{"legacy": map[string]any{"type": "number"}},
+		"type":        "object",
+		"properties": map[string]any{
+			"query": map[string]any{
+				"$id":      "urn:query",
+				"$comment": "nested metadata",
+				"$ref":     "#/$defs/query",
+				"type":     "string",
+			},
+		},
+	}
 
 	_, err := client.Complete(
 		context.Background(),
@@ -712,17 +742,7 @@ func TestLegacyGoogleToolSchemaFormatSanitizesJSONSchemaMeta(t *testing.T) {
 			Tools: []sigma.Tool{{
 				Name:        "lookup",
 				Description: "Lookup records",
-				InputSchema: sigma.Schema{
-					"$schema": "https://json-schema.org/draft/2020-12/schema",
-					"$defs":   map[string]any{"unused": map[string]any{"type": "string"}},
-					"type":    "object",
-					"properties": map[string]any{
-						"query": map[string]any{
-							"$id":  "urn:query",
-							"type": "string",
-						},
-					},
-				},
+				InputSchema: originalSchema,
 			}},
 		},
 		sigma.WithProviderOptions(providerID, map[string]any{"tool_schema_format": "parameters"}),
@@ -740,15 +760,30 @@ func TestLegacyGoogleToolSchemaFormatSanitizesJSONSchemaMeta(t *testing.T) {
 	if _, ok := parameters["$schema"]; ok {
 		t.Fatal("$schema was not removed")
 	}
+	if _, ok := parameters["$comment"]; ok {
+		t.Fatal("$comment was not removed")
+	}
 	if _, ok := parameters["$defs"]; ok {
 		t.Fatal("$defs was not removed")
+	}
+	if _, ok := parameters["definitions"]; ok {
+		t.Fatal("definitions was not removed")
 	}
 	property := parameters["properties"].(map[string]any)["query"].(map[string]any)
 	if _, ok := property["$id"]; ok {
 		t.Fatal("nested $id was not removed")
 	}
+	if _, ok := property["$comment"]; ok {
+		t.Fatal("nested $comment was not removed")
+	}
+	if got, want := property["$ref"], "#/$defs/query"; got != want {
+		t.Fatalf("property $ref = %v, want %v", got, want)
+	}
 	if got, want := property["type"], "string"; got != want {
 		t.Fatalf("property type = %v, want %v", got, want)
+	}
+	if !reflect.DeepEqual(originalSchema, wantOriginal) {
+		t.Fatalf("original schema was mutated: got %#v want %#v", originalSchema, wantOriginal)
 	}
 }
 

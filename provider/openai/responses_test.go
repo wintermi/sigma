@@ -691,6 +691,74 @@ func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
 	}
 }
 
+func TestResponsesReplayGeneratesDistinctMessageIDsAroundReasoning(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-replay-split-message-id-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserText("continue"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.Text("visible first"),
+					sigma.Thinking("private reasoning", ""),
+					sigma.Text("visible second"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	var messageIDs []string
+	var contentIDs []string
+	for _, item := range payload.Input {
+		if item["type"] != "message" || item["role"] != "assistant" {
+			continue
+		}
+		id, _ := item["id"].(string)
+		messageIDs = append(messageIDs, id)
+		content, _ := item["content"].([]any)
+		if len(content) != 1 {
+			t.Fatalf("message content = %#v, want one text part", content)
+		}
+		part, _ := content[0].(map[string]any)
+		contentID, _ := part["id"].(string)
+		contentIDs = append(contentIDs, contentID)
+	}
+	if got, want := len(messageIDs), 2; got != want {
+		t.Fatalf("assistant message items = %d, want %d: %#v", got, want, payload.Input)
+	}
+	if messageIDs[0] == messageIDs[1] {
+		t.Fatalf("assistant message IDs are not distinct: %v", messageIDs)
+	}
+	for _, id := range messageIDs {
+		assertResponsesID(t, id, "msg_")
+	}
+	for _, id := range contentIDs {
+		assertResponsesID(t, id, "text_")
+	}
+}
+
 func assertResponsesID(t *testing.T, id string, prefix string) {
 	t.Helper()
 	if !strings.HasPrefix(id, prefix) {

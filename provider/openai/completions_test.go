@@ -178,6 +178,117 @@ func TestChatCompletionsSendsTypedResponseFormatAndLogprobs(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsRequestShapeGuards(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		req       sigma.Request
+		modelFunc func(sigma.Model) sigma.Model
+		opts      []sigma.Option
+		wantField string
+		wantValue float64
+	}{
+		{
+			name: "omitted tools and default max tokens",
+			req:  sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		},
+		{
+			name: "empty tools",
+			req: sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("hi")},
+				Tools:    []sigma.Tool{},
+			},
+		},
+		{
+			name: "explicit max completion tokens",
+			req:  sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			modelFunc: func(model sigma.Model) sigma.Model {
+				compat := *model.OpenAICompletionsCompat
+				compat.MaxTokensField = sigma.OpenAICompletionsMaxCompletionTokens
+				model.OpenAICompletionsCompat = &compat
+				return model
+			},
+			opts:      []sigma.Option{sigma.WithMaxTokens(1234)},
+			wantField: "max_completion_tokens",
+			wantValue: 1234,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-request-shape-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			if tt.modelFunc != nil {
+				model = tt.modelFunc(model)
+			}
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			if _, err := client.Complete(context.Background(), model, tt.req, tt.opts...); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if _, ok := payload["tools"]; ok {
+				t.Fatalf("tools = %#v, want absent", payload["tools"])
+			}
+			for _, field := range []string{"max_tokens", "max_completion_tokens"} {
+				if field == tt.wantField {
+					continue
+				}
+				if _, ok := payload[field]; ok {
+					t.Fatalf("%s = %#v, want absent", field, payload[field])
+				}
+			}
+			if tt.wantField != "" {
+				if got := payload[tt.wantField]; got != tt.wantValue {
+					t.Fatalf("%s = %v, want %v", tt.wantField, got, tt.wantValue)
+				}
+			}
+		})
+	}
+}
+
+func TestChatCompletionsPreservesRequestedAndProviderReportedModel(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_route","model":"provider/routed-model","choices":[{"index":0,"delta":{"content":"hi"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_route","model":"provider/routed-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-routed-model-test")
+	model := openAITestModel(providerID)
+	model.ID = "router/auto"
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Model, sigma.ModelID("router/auto"); got != want {
+		t.Fatalf("final model = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["model"], "provider/routed-model"; got != want {
+		t.Fatalf("provider model metadata = %v, want %q", got, want)
+	}
+}
+
 func TestChatCompletionsDerivesPromptCacheFields(t *testing.T) {
 	t.Parallel()
 

@@ -68,6 +68,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   replay on signature-only chunks and OpenAI-compatible Chat Completions replay
   of prior thinking blocks as assistant text when `reasoning_content` is not
   required.
+- Deterministic request-conversion tests now lock OpenAI Responses replay IDs,
+  OpenAI-compatible Chat Completions request-shape guardrails, routed stream
+  model metadata, and Google legacy tool-schema sanitization without changing
+  provider APIs.
 
 ## [0.5.0] - 2026-06-13
 

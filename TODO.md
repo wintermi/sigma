@@ -191,6 +191,9 @@ work until their API boundaries are explicit.
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes
       without making live provider calls part of `mise run ci`.
+- [x] Add deterministic request-conversion regression coverage for replay IDs,
+      OpenAI-compatible request-shape guardrails, routed stream model metadata,
+      and Google legacy tool-schema sanitization.
 - [ ] Keep full JSON Schema runtime support, including `$ref`, `pattern`,
       formats, `not`, conditionals, and implicit primitive coercion, deferred
       unless Sigma adds a broader validation contract.
