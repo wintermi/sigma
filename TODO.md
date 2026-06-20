@@ -211,10 +211,13 @@ metadata-only and backed by compatibility checks.
 - [ ] Keep provider packages that do not yet have Sigma-native adapters behind
       first-class row promotion, with deterministic request, stream, error,
       redaction, and cancellation coverage before registration.
-- [ ] DeepSeek — promote to a first-class provider row with fixtures.
-- [ ] Groq — promote to a first-class provider row with fixtures.
-- [ ] Cerebras — promote to a first-class provider row with fixtures.
-- [ ] Together — promote to a first-class provider row with fixtures.
+- [x] DeepSeek — promote to a first-class provider row with fixtures.
+- [x] Groq — promote to a first-class provider row with fixtures.
+- [x] Cerebras — promote to a first-class provider row with fixtures.
+- [x] Together — promote to a first-class provider row with fixtures.
+- [ ] DeepSeek, Groq, Cerebras, and Together — add broader live-provider and
+      hosted-tool coverage only if route-specific behavior needs evidence
+      beyond the shared OpenAI-compatible adapter.
 - [x] GitHub Copilot — promote to a first-class provider row with fixtures.
 - [x] Cloudflare AI Gateway — promote to a first-class provider row with
       fixtures.

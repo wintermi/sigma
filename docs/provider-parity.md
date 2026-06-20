@@ -47,7 +47,7 @@ Release scope values:
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Google Gemini API image generation | `google-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI Imagen generation | `google-vertex-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
-| Other source OpenAI-compatible provider IDs: DeepSeek, Groq, Cerebras, Together | `openai-completions` | `future` | `partial` | `partial` | `not supported by provider` | `partial` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `partial` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| DeepSeek, Groq, Cerebras, and Together OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 
 ## Evidence references
 
@@ -63,6 +63,7 @@ Release scope values:
 - GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
+- DeepSeek, Groq, Cerebras, and Together `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go), [provider/kimi/kimi_test.go](../provider/kimi/kimi_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
 - `google-vertex`: [provider/google/vertex_test.go](../provider/google/vertex_test.go).
@@ -89,10 +90,10 @@ Release scope values:
   not represented by generated default model metadata yet. Vertex now has a
   representative metadata-only route.
 - Promoted OpenAI-compatible wrappers such as Fireworks, xAI, Xiaomi, OpenCode,
-  NVIDIA NIM, GitHub Copilot, Cloudflare AI Gateway, and Cloudflare Workers AI
-  rely on shared compatibility detection or explicit `OpenAICompletionsCompat`
-  metadata; remaining unpromoted OpenAI-compatible rows are not independently
-  release-complete.
+  NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare AI
+  Gateway, and Cloudflare Workers AI rely on shared compatibility detection or
+  explicit `OpenAICompletionsCompat` metadata; unpromoted OpenAI-compatible
+  rows are not independently release-complete.
 - NVIDIA NIM uses shared OpenAI-compatible text and embedding adapters through
   a thin wrapper. Its first-class coverage is limited to direct route
   registration, text request shape, embedding request shape, generated

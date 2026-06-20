@@ -44,17 +44,21 @@ metadata-driven handling for K2.7 routes that reject explicit disabled thinking
 payloads. Z.ai and Z.ai Coding CN are also promoted as focused
 OpenAI-compatible Chat Completions
 wrappers with generated GLM metadata, GLM-5.2 reasoning-effort mapping, and
-deterministic registration and request coverage. The surface probe command adds
-a credential-gated cross-provider handoff diagnostic for replaying small
-tool-call contexts across selected live routes without moving live provider
-calls into CI. Assistant results now also expose provider-neutral source and
-citation accessors for the source metadata Sigma already captures from grounded
-and citation-bearing responses. Local tool-call validation also now evaluates
-composed JSON Schema branches so callers can reject invalid model-emitted
-arguments before running tools. The deterministic provider test suite now also
-locks Google stream `thoughtSignature` attachment, OpenAI-compatible Chat
-Completions thinking-block replay behavior, and OpenAI-compatible stream error
-finish handling, plus request-conversion guardrails for replay IDs, Chat
+deterministic registration and request coverage. DeepSeek, Groq, Cerebras, and
+Together are promoted as focused OpenAI-compatible Chat Completions wrappers
+that reuse the existing generated metadata and shared adapter with
+deterministic registration, request, error, and cancellation coverage. The
+surface probe command adds a credential-gated cross-provider handoff diagnostic
+for replaying small tool-call contexts across selected live routes without
+moving live provider calls into CI. Assistant results now also expose
+provider-neutral source and citation accessors for the source metadata Sigma
+already captures from grounded and citation-bearing responses. Local tool-call
+validation also now evaluates composed JSON Schema branches so callers can
+reject invalid model-emitted arguments before running tools. The deterministic
+provider test suite now also locks Google stream `thoughtSignature` attachment,
+OpenAI-compatible Chat Completions thinking-block replay behavior,
+OpenAI-compatible stream error finish handling, and the new promoted thin
+provider rows, plus request-conversion guardrails for replay IDs, Chat
 Completions payload shape, routed model metadata, and Google legacy tool-schema
 sanitization.
 
@@ -156,6 +160,12 @@ sanitization.
   GLM-family metadata, `tool_stream` support, and provider-specific reasoning
   effort mapping that can enable thinking while omitting `reasoning_effort` for
   minimal reasoning.
+- DeepSeek, Groq, Cerebras, and Together can now be registered with their
+  provider-local `Register` or `RegisterDefault` helpers, using the shared
+  OpenAI-compatible Chat Completions adapter with direct base URL defaults,
+  request-time bearer auth, existing generated metadata, and deterministic
+  registration, request, redaction, context-overflow, and cancellation
+  coverage.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.
@@ -244,6 +254,11 @@ sanitization.
   Z.ai and Z.ai Coding CN wrappers reuse the shared OpenAI-compatible adapter;
   broader live-provider coverage remains deferred until route-specific behavior
   needs independent fixtures.
+- DeepSeek, Groq, Cerebras, and Together direct routing is additive and Chat
+  Completions-only in this release. The wrappers reuse the shared
+  OpenAI-compatible adapter and existing generated metadata; Sigma does not add
+  provider-specific base URL environment probing or hosted-tool APIs for these
+  rows.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
@@ -292,6 +307,8 @@ sanitization.
 - Z.ai Anthropic-compatible, image, embedding, and broader live validation
   routes remain deferred until each surface has deterministic request, stream,
   error, and metadata evidence.
+- Provider-hosted tools for the newly promoted OpenAI-compatible rows remain
+  deferred until Sigma has an explicit provider-defined tool contract.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.
@@ -302,7 +319,7 @@ sanitization.
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-06-20 with:
+Current v0.6.0 development state validated on 2026-06-21 with:
 
 - `mise run go:generate`.
 - `mise run go:fmt`.
