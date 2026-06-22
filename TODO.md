@@ -215,6 +215,11 @@ metadata-only and backed by compatibility checks.
 - [x] Groq — promote to a first-class provider row with fixtures.
 - [x] Cerebras — promote to a first-class provider row with fixtures.
 - [x] Together — promote to a first-class provider row with fixtures.
+- [x] Hugging Face Router — promote to a first-class provider row with
+      fixtures and focused generated metadata.
+- [ ] Hugging Face Router — add broader live-provider and hosted-tool coverage
+      only if route-specific behavior needs evidence beyond the shared
+      OpenAI-compatible adapter.
 - [ ] DeepSeek, Groq, Cerebras, and Together — add broader live-provider and
       hosted-tool coverage only if route-specific behavior needs evidence
       beyond the shared OpenAI-compatible adapter.
@@ -340,10 +345,11 @@ upstream.
 - [x] Promote a focused Kimi Coding Anthropic-compatible provider slice with a
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.
-- [ ] Evaluate remaining provider-family catalog candidates such as Hugging
-      Face router only after deciding provider IDs, credential env vars,
-      compatibility metadata, and first-class provider-row promotion
+- [x] Add focused Hugging Face Router metadata after settling provider ID,
+      credential env var, compatibility metadata, and first-class provider-row
       requirements.
+- [ ] Expand broad Hugging Face Router metadata only through the catalog refresh
+      workflow, with deterministic diffs and reviewable routing/cost changes.
 - [ ] Expand broad Vercel AI Gateway and OpenRouter text catalogs only after
       source-aware provider/API mapping, tool-capable filtering, reasoning
       metadata, and cost/routing diff reports are in place.

@@ -190,6 +190,22 @@ available under `ProviderVercelAIGateway` for curated gateway text routes,
 including adaptive thinking and temperature compatibility metadata where
 required by the route.
 
+### Hugging Face Router
+
+```go
+registry := sigma.DefaultRegistry()
+_ = huggingface.Register(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `HF_TOKEN`.
+
+`provider/huggingface` is a thin wrapper over Sigma's shared
+OpenAI-compatible Chat Completions adapter with the Hugging Face Router base
+URL. Built-in metadata is intentionally focused on a small reviewed set of
+router text routes; broad router catalog expansion stays in the reviewed
+catalog workflow.
+
 ### Anthropic Messages
 
 ```go

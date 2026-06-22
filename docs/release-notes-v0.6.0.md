@@ -52,7 +52,11 @@ metadata reuse, Ant Ling reasoning-object compatibility, and deterministic
 registration and request coverage. DeepSeek, Groq, Cerebras, and Together are
 promoted as focused OpenAI-compatible Chat Completions wrappers that reuse the
 existing generated metadata and shared adapter with deterministic registration,
-request, error, and cancellation coverage. The surface probe command adds a
+request, error, and cancellation coverage. Hugging Face Router is also
+promoted as a focused OpenAI-compatible Chat Completions wrapper with `HF_TOKEN`
+credential discovery, focused generated metadata, and the shared adapter's
+deterministic registration, request, error, and cancellation coverage. The
+surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
 calls into CI. Assistant results now also expose provider-neutral source and
@@ -183,6 +187,12 @@ routed model metadata, and Google legacy tool-schema sanitization.
   request-time bearer auth, existing generated metadata, and deterministic
   registration, request, redaction, context-overflow, and cancellation
   coverage.
+- Hugging Face Router can now be registered with `huggingface.Register` or
+  `huggingface.RegisterDefault`, using the shared OpenAI-compatible Chat
+  Completions adapter with the router base URL, `HF_TOKEN` credential
+  discovery, and deterministic registration, request, redaction,
+  context-overflow, and cancellation coverage. Built-in metadata includes
+  focused router rows for Qwen Coder, Kimi K2.6, and GLM 5.1.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.
@@ -280,6 +290,11 @@ routed model metadata, and Google legacy tool-schema sanitization.
   OpenAI-compatible adapter and existing generated metadata; Sigma does not add
   provider-specific base URL environment probing or hosted-tool APIs for these
   rows.
+- Hugging Face Router direct routing is additive and Chat Completions-only in
+  this release. The wrapper reuses the shared OpenAI-compatible adapter with a
+  focused generated metadata subset; Sigma does not add live router discovery,
+  provider-specific base URL environment probing, or hosted-tool APIs for this
+  row.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
@@ -330,6 +345,8 @@ routed model metadata, and Google legacy tool-schema sanitization.
   error, and metadata evidence.
 - Provider-hosted tools for the newly promoted OpenAI-compatible rows remain
   deferred until Sigma has an explicit provider-defined tool contract.
+- Broad Hugging Face Router catalog expansion remains deferred until it can
+  flow through the reviewed catalog refresh workflow with deterministic diffs.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.

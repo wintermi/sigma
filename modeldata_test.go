@@ -499,6 +499,7 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 		ProviderGoogleVertexAnthropic,
 		ProviderGoogleVertexOpenAI,
 		ProviderGroq,
+		ProviderHuggingFace,
 		ProviderKimi,
 		ProviderKimiCoding,
 		ProviderMistral,
@@ -767,6 +768,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		{provider: ProviderCloudflareWorkersAI, id: "@cf/meta/llama-4-scout-17b-16e-instruct", baseURL: "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1", envVars: []string{"CLOUDFLARE_API_KEY"}},
 		{provider: ProviderCerebras, id: "llama3.1-8b", baseURL: "https://api.cerebras.ai/v1", envVars: []string{"CEREBRAS_API_KEY"}},
 		{provider: ProviderGroq, id: "llama-3.3-70b-versatile", baseURL: "https://api.groq.com/openai/v1", envVars: []string{"GROQ_API_KEY"}},
+		{provider: ProviderHuggingFace, id: "Qwen/Qwen3-Coder-480B-A35B-Instruct", baseURL: "https://router.huggingface.co/v1", envVars: []string{"HF_TOKEN"}},
 		{provider: ProviderMoonshotAI, id: "kimi-k2-thinking", baseURL: "https://api.moonshot.ai/v1", envVars: []string{"MOONSHOT_API_KEY"}},
 		{provider: ProviderNVIDIA, id: "openai/gpt-oss-20b", baseURL: "https://integrate.api.nvidia.com/v1", envVars: []string{"NVIDIA_API_KEY"}},
 		{provider: ProviderXAI, id: "grok-3", baseURL: "https://api.x.ai/v1", envVars: []string{"XAI_API_KEY"}},
@@ -780,6 +782,18 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 		assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
+	}
+
+	for _, id := range []ModelID{"Qwen/Qwen3-Coder-480B-A35B-Instruct", "moonshotai/Kimi-K2.6", "zai-org/GLM-5.1"} {
+		model, ok := registry.Model(ProviderHuggingFace, id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Hugging Face model %s", id)
+		}
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+			t.Fatalf("Hugging Face %s compat = %#v, want developer role disabled and max_tokens", id, model.OpenAICompletionsCompat)
+		}
 	}
 
 	antLing, ok := registry.Model(ProviderAntLing, "Ring-2.6-1T")

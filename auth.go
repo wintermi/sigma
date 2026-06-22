@@ -49,6 +49,7 @@ const (
 	defaultCloudflareAPIKeyEnv   = "CLOUDFLARE_API_KEY"
 	defaultGroqAPIKeyEnv         = "GROQ_API_KEY"
 	defaultTogetherAPIKeyEnv     = "TOGETHER_API_KEY"
+	defaultHuggingFaceTokenEnv   = "HF_TOKEN"
 	defaultCopilotGitHubTokenEnv = "COPILOT_GITHUB_TOKEN"
 	defaultNVIDIAAPIKeyEnv       = "NVIDIA_API_KEY"
 	defaultMoonshotAPIKeyEnv     = "MOONSHOT_API_KEY"
@@ -72,6 +73,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderCerebras:              {"CEREBRAS_API_KEY"},
 	ProviderXAI:                   {defaultXAIAPIKeyEnv},
 	ProviderTogether:              {defaultTogetherAPIKeyEnv},
+	ProviderHuggingFace:           {defaultHuggingFaceTokenEnv},
 	ProviderCloudflareAIGateway:   {defaultCloudflareAPIKeyEnv},
 	ProviderCloudflareWorkersAI:   {defaultCloudflareAPIKeyEnv},
 	ProviderGitHubCopilot:         {defaultCopilotGitHubTokenEnv},

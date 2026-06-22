@@ -16,6 +16,7 @@
 // - Fireworks Fire Pass setup: https://docs.fireworks.ai/firepass
 // - Fireworks Anthropic-compatible Messages API: https://docs.fireworks.ai/api-reference/anthropic-messages
 // - Google Gemini models: https://ai.google.dev/gemini-api/docs/models
+// - Hugging Face Router models: https://huggingface.co/docs/inference-providers/index
 // - Google Vertex AI Claude models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude
 // - Google Vertex AI Llama models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/llama/use-llama
 // - MiniMax models: https://platform.minimaxi.com/document/models

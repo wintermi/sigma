@@ -16,6 +16,7 @@
 // - Fireworks Fire Pass setup: https://docs.fireworks.ai/firepass
 // - Fireworks Anthropic-compatible Messages API: https://docs.fireworks.ai/api-reference/anthropic-messages
 // - Google Gemini models: https://ai.google.dev/gemini-api/docs/models
+// - Hugging Face Router models: https://huggingface.co/docs/inference-providers/index
 // - Google Vertex AI Claude models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude
 // - Google Vertex AI Llama models: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/llama/use-llama
 // - MiniMax models: https://platform.minimaxi.com/document/models
@@ -6400,6 +6401,82 @@ var builtinTextModels = []Model{
 			"baseURL":             "https://api.groq.com/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
+		},
+	},
+	{
+		ID:                   ModelID("Qwen/Qwen3-Coder-480B-A35B-Instruct"),
+		Provider:             ProviderID("huggingface"),
+		API:                  API("openai-completions"),
+		Name:                 "Qwen3-Coder-480B-A35B-Instruct",
+		ContextWindow:        262144,
+		MaxOutputTokens:      66536,
+		SupportedInputs:      []ContentBlockType{ContentBlockType("text")},
+		SupportsTools:        true,
+		InputCostPerMillion:  2,
+		OutputCostPerMillion: 2,
+		CostCurrency:         "USD",
+		DefaultTransport:     Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			SupportsDeveloperRole: OpenAICompatSupport("unsupported"),
+			MaxTokensField:        OpenAICompletionsMaxTokensField("max_tokens"),
+		},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"HF_TOKEN"},
+			"baseURL":             "https://router.huggingface.co/v1",
+			"headers":             map[string]string{},
+			"modelFamily":         "qwen",
+		},
+	},
+	{
+		ID:                           ModelID("moonshotai/Kimi-K2.6"),
+		Provider:                     ProviderID("huggingface"),
+		API:                          API("openai-completions"),
+		Name:                         "Kimi-K2.6",
+		ContextWindow:                262144,
+		MaxOutputTokens:              262144,
+		SupportedInputs:              []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
+		SupportsTools:                true,
+		SupportsThinking:             true,
+		InputCostPerMillion:          0.95,
+		OutputCostPerMillion:         4,
+		CacheReadInputCostPerMillion: 0.16,
+		CostCurrency:                 "USD",
+		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			SupportsDeveloperRole: OpenAICompatSupport("unsupported"),
+			MaxTokensField:        OpenAICompletionsMaxTokensField("max_tokens"),
+		},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"HF_TOKEN"},
+			"baseURL":             "https://router.huggingface.co/v1",
+			"headers":             map[string]string{},
+			"modelFamily":         "kimi",
+		},
+	},
+	{
+		ID:                           ModelID("zai-org/GLM-5.1"),
+		Provider:                     ProviderID("huggingface"),
+		API:                          API("openai-completions"),
+		Name:                         "GLM-5.1",
+		ContextWindow:                202752,
+		MaxOutputTokens:              131072,
+		SupportedInputs:              []ContentBlockType{ContentBlockType("text")},
+		SupportsTools:                true,
+		SupportsThinking:             true,
+		InputCostPerMillion:          1,
+		OutputCostPerMillion:         3.2,
+		CacheReadInputCostPerMillion: 0.2,
+		CostCurrency:                 "USD",
+		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			SupportsDeveloperRole: OpenAICompatSupport("unsupported"),
+			MaxTokensField:        OpenAICompletionsMaxTokensField("max_tokens"),
+		},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"HF_TOKEN"},
+			"baseURL":             "https://router.huggingface.co/v1",
+			"headers":             map[string]string{},
+			"modelFamily":         "glm",
 		},
 	},
 	{

@@ -19,6 +19,7 @@ import (
 	"github.com/wintermi/sigma/provider/cerebras"
 	"github.com/wintermi/sigma/provider/deepseek"
 	"github.com/wintermi/sigma/provider/groq"
+	"github.com/wintermi/sigma/provider/huggingface"
 	"github.com/wintermi/sigma/provider/together"
 )
 
@@ -215,6 +216,14 @@ func openAICompatibleProviderRows() []openAICompatibleProviderRow {
 			modelID:    "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
 			register: func(registry *sigma.Registry, baseURL string) error {
 				return together.Register(registry, together.WithBaseURL(baseURL), together.WithHeader("X-Provider", "provider"))
+			},
+		},
+		{
+			name:       "huggingface",
+			providerID: sigma.ProviderHuggingFace,
+			modelID:    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+			register: func(registry *sigma.Registry, baseURL string) error {
+				return huggingface.Register(registry, huggingface.WithBaseURL(baseURL), huggingface.WithHeader("X-Provider", "provider"))
 			},
 		},
 	}

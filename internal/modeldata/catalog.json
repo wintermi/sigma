@@ -39,6 +39,10 @@
       "url": "https://ai.google.dev/gemini-api/docs/models"
     },
     {
+      "name": "Hugging Face Router models",
+      "url": "https://huggingface.co/docs/inference-providers/index"
+    },
+    {
       "name": "Google Vertex AI Claude models",
       "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude/use-claude"
     },
@@ -8672,6 +8676,102 @@
         "low",
         "medium"
       ]
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "name": "Qwen3-Coder-480B-A35B-Instruct",
+      "provider": "huggingface",
+      "api": "openai-completions",
+      "baseURL": "https://router.huggingface.co/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 2,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 66536,
+      "headers": {},
+      "authEnvNames": [
+        "HF_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "moonshotai/Kimi-K2.6",
+      "name": "Kimi-K2.6",
+      "provider": "huggingface",
+      "api": "openai-completions",
+      "baseURL": "https://router.huggingface.co/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.16,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "HF_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "zai-org/GLM-5.1",
+      "name": "GLM-5.1",
+      "provider": "huggingface",
+      "api": "openai-completions",
+      "baseURL": "https://router.huggingface.co/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 3.2,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 202752,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "HF_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
     },
     {
       "id": "kimi-for-coding",

@@ -119,6 +119,8 @@ const (
 	ProviderXAI ProviderID = "xai"
 	// ProviderTogether identifies Together AI.
 	ProviderTogether ProviderID = "together"
+	// ProviderHuggingFace identifies Hugging Face Router.
+	ProviderHuggingFace ProviderID = "huggingface"
 	// ProviderCloudflareAIGateway identifies Cloudflare AI Gateway.
 	ProviderCloudflareAIGateway ProviderID = "cloudflare-ai-gateway"
 	// ProviderCloudflareWorkersAI identifies Cloudflare Workers AI.
