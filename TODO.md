@@ -256,7 +256,7 @@ metadata-only and backed by compatibility checks.
       streaming, tools, usage, redaction, and cancellation if the providers need
       behavior beyond the shared Anthropic-compatible adapter.
 - [x] Vercel AI Gateway — promote to a first-class provider row with fixtures.
-- [ ] Kimi — promote to a first-class provider row with fixtures.
+- [x] Kimi — promote to a first-class provider row with fixtures.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
 - [ ] For each promoted provider, add streaming, tools, usage, typed error
       classification, redaction, and cancellation coverage.

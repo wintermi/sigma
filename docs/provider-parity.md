@@ -130,10 +130,10 @@ Release scope values:
 - Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers. Typed Bedrock request controls, custom non-reserved headers, retry behavior, and response debug hooks have deterministic fixture coverage.
 - The Anthropic-compatible routing in the Anthropic row title covers Kimi,
   Kimi Coding, Fireworks, and Xiaomi compat branches. Each branch has
-  deterministic compatibility coverage in `provider/anthropic`; Kimi Coding,
-  Fireworks, MiniMax, and MiniMax CN also use thin provider wrappers over the
-  same Anthropic-compatible adapter with direct registration and endpoint-path
-  coverage. Xiaomi API-billing and token-plan rows use a separate
+  deterministic compatibility coverage in `provider/anthropic`; Kimi, Kimi
+  Coding, Fireworks, MiniMax, and MiniMax CN also use thin provider wrappers
+  over the same Anthropic-compatible adapter with direct registration and
+  endpoint-path coverage. Xiaomi API-billing and token-plan rows use a separate
   OpenAI-compatible provider wrapper with deterministic registration and
   endpoint-path coverage.
 - Mistral Conversations maps cache-enabled `sigma.WithSessionID` requests to

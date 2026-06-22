@@ -19,17 +19,18 @@ explicit model-policy enablement. Codex Responses WebSocket transport now also
 honors standard HTTP(S) proxy environment variables with `NO_PROXY` exclusions
 while keeping the existing SSE fallback, and now exposes a Codex-specific
 connect timeout plus session-cache debug stats for connection reuse, cached
-context deltas, and fallback diagnostics. Kimi Coding is promoted as a focused
-Anthropic-compatible provider slice with generated metadata, credential
-discovery, request headers, adaptive thinking metadata, and session-affinity
-support. Xiaomi is promoted as a focused OpenAI-compatible provider slice with
-API-billing and regional token-plan registration helpers, generated MiMo
-metadata, and regional API-key discovery. The environment credential resolver
-also exposes non-secret discovery helpers so applications can inspect candidate
-and configured API-key variable names before making a request, and focused
-provider helpers now let callers pass Cloudflare AI Gateway placeholder values
-and Bedrock region/static credential values without mutating process
-environment. Cloudflare Workers AI is also promoted as a direct
+context deltas, and fallback diagnostics. Kimi and Kimi Coding are promoted as
+focused Anthropic-compatible provider slices with generated metadata,
+credential discovery, request headers, adaptive thinking metadata, and
+session-affinity support. Xiaomi is promoted as a focused OpenAI-compatible
+provider slice with API-billing and regional token-plan registration helpers,
+generated MiMo metadata, and regional API-key discovery. The environment
+credential resolver also exposes non-secret discovery helpers so applications
+can inspect candidate and configured API-key variable names before making a
+request, and focused provider helpers now let callers pass Cloudflare AI
+Gateway placeholder values and Bedrock region/static credential values without
+mutating process environment.
+Cloudflare Workers AI is also promoted as a direct
 OpenAI-compatible Chat Completions wrapper with account placeholder resolution
 and normal bearer-token auth for the direct Workers AI endpoint. Vercel AI
 Gateway is promoted as a focused Anthropic-compatible Messages wrapper over
@@ -104,11 +105,12 @@ routed model metadata, and Google legacy tool-schema sanitization.
   per-session debug stats for created/reused WebSocket connections, full and
   delta context requests, previous response IDs, WebSocket failures, and SSE
   fallback activation.
-- Kimi Coding can now be registered with `kimi.RegisterCoding` or
-  `kimi.RegisterCodingDefault`, using the shared Anthropic-compatible Messages
-  adapter with Kimi Coding base URL defaults, Kimi CLI request headers,
-  `KIMI_API_KEY` credential discovery, and generated metadata for `k2p7`,
-  `kimi-for-coding`, and `kimi-k2-thinking`.
+- Kimi can now be registered with `kimi.Register` or
+  `kimi.RegisterDefault`, and Kimi Coding can be registered with
+  `kimi.RegisterCoding` or `kimi.RegisterCodingDefault`, using the shared
+  Anthropic-compatible Messages adapter with Kimi endpoint defaults, Kimi CLI
+  request headers, `KIMI_API_KEY` credential discovery, and generated metadata
+  for `kimi-for-coding`, `k2p7`, and `kimi-k2-thinking`.
 - Xiaomi can now be registered with `xiaomi.Register`,
   `xiaomi.RegisterTokenPlanCN`, `xiaomi.RegisterTokenPlanAMS`, or
   `xiaomi.RegisterTokenPlanSGP`, using the shared OpenAI-compatible Chat
@@ -250,8 +252,9 @@ routed model metadata, and Google legacy tool-schema sanitization.
   connect timeout only bounds WebSocket dial, proxy, TLS, and handshake work
   before any stream event starts. Stats reset helpers clear counters without
   closing cached sessions.
-- Kimi Coding is additive: the existing `kimi` metadata row remains available,
-  and broader router or regional endpoint catalog expansion stays deferred.
+- Kimi and Kimi Coding registration is additive: the existing metadata rows
+  remain available, and broader router or regional endpoint catalog expansion
+  stays deferred.
 - Xiaomi token-plan support is additive and uses distinct provider IDs for the
   CN, AMS, and SGP regional OpenAI-compatible routes. The API-billing
   `ProviderXiaomi` rows remain available, and `mimo-v2-flash` remains scoped to

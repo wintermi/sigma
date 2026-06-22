@@ -24,225 +24,285 @@ type capturedRequest struct {
 	Headers http.Header
 }
 
-func TestRegisterCodingReportsMessagesAPI(t *testing.T) {
-	t.Parallel()
+type providerCase struct {
+	name     string
+	provider sigma.ProviderID
+	modelIDs []sigma.ModelID
+	register func(*sigma.Registry, ...kimi.ProviderOption) error
+}
 
-	registry := sigma.NewRegistry()
-	if err := kimi.RegisterCoding(registry); err != nil {
-		t.Fatalf("RegisterCoding returned error: %v", err)
-	}
-	model := kimiTestModel()
-	if err := registry.RegisterModel(model); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-
-	providers := registry.ListProviders()
-	if got, want := providers[0].ID, sigma.ProviderKimiCoding; got != want {
-		t.Fatalf("provider ID = %q, want %q", got, want)
-	}
-	if got, want := providers[0].TextAPI, sigma.APIAnthropicMessages; got != want {
-		t.Fatalf("provider API = %q, want %q", got, want)
+func providerCases() []providerCase {
+	return []providerCase{
+		{
+			name:     "kimi",
+			provider: sigma.ProviderKimi,
+			modelIDs: []sigma.ModelID{"kimi-for-coding"},
+			register: kimi.Register,
+		},
+		{
+			name:     "kimi coding",
+			provider: sigma.ProviderKimiCoding,
+			modelIDs: []sigma.ModelID{"k2p7", "kimi-for-coding", "kimi-k2-thinking"},
+			register: kimi.RegisterCoding,
+		},
 	}
 }
 
-func TestRegisterCodingAcceptsCatalogModels(t *testing.T) {
+func TestRegisterReportsMessagesAPI(t *testing.T) {
 	t.Parallel()
 
-	for _, modelID := range []sigma.ModelID{"k2p7", "kimi-for-coding", "kimi-k2-thinking"} {
-		model, ok := sigma.DefaultRegistry().Model(sigma.ProviderKimiCoding, modelID)
-		if !ok {
-			t.Fatalf("default registry missing Kimi Coding model %q", modelID)
-		}
-		registry := sigma.NewRegistry()
-		if err := kimi.RegisterCoding(registry); err != nil {
-			t.Fatalf("RegisterCoding returned error: %v", err)
-		}
-		if err := registry.RegisterModel(model); err != nil {
-			t.Fatalf("RegisterModel(%q) returned error: %v", modelID, err)
-		}
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			model := kimiTestModel(tt.provider)
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+
+			providers := registry.ListProviders()
+			if got, want := providers[0].ID, tt.provider; got != want {
+				t.Fatalf("provider ID = %q, want %q", got, want)
+			}
+			if got, want := providers[0].TextAPI, sigma.APIAnthropicMessages; got != want {
+				t.Fatalf("provider API = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
-func TestCompleteUsesCodingDefaults(t *testing.T) {
+func TestRegisterAcceptsCatalogModels(t *testing.T) {
 	t.Parallel()
 
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		writeCompleted(t, w)
-	}))
-	t.Cleanup(server.Close)
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	model := kimiTestModel()
-	registry := sigma.NewRegistry()
-	if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL+"/coding/v1")); err != nil {
-		t.Fatalf("RegisterCoding returned error: %v", err)
+			for _, modelID := range tt.modelIDs {
+				model, ok := sigma.DefaultRegistry().Model(tt.provider, modelID)
+				if !ok {
+					t.Fatalf("default registry missing %s model %q", tt.name, modelID)
+				}
+				registry := sigma.NewRegistry()
+				if err := tt.register(registry); err != nil {
+					t.Fatalf("register returned error: %v", err)
+				}
+				if err := registry.RegisterModel(model); err != nil {
+					t.Fatalf("RegisterModel(%q) returned error: %v", modelID, err)
+				}
+			}
+		})
 	}
-	if err := registry.RegisterModel(model); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
+}
 
-	final, err := client.Complete(
-		context.Background(),
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithAPIKey("request-key"),
-	)
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
-	}
-	if got, want := final.Content[0].Text, "ok"; got != want {
-		t.Fatalf("final text = %q, want %q", got, want)
-	}
+func TestCompleteUsesDefaults(t *testing.T) {
+	t.Parallel()
 
-	request := receiveRequest(t, requests)
-	if got, want := request.Method, http.MethodPost; got != want {
-		t.Fatalf("method = %q, want %q", got, want)
-	}
-	if got, want := request.Path, "/coding/v1/messages"; got != want {
-		t.Fatalf("path = %q, want %q", got, want)
-	}
-	if got, want := request.Headers.Get("User-Agent"), kimi.DefaultUserAgent; got != want {
-		t.Fatalf("User-Agent = %q, want %q", got, want)
-	}
-	if got, want := request.Headers.Get("X-Api-Key"), "request-key"; got != want {
-		t.Fatalf("X-Api-Key header = %q, want %q", got, want)
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeCompleted(t, w)
+			}))
+			t.Cleanup(server.Close)
+
+			model := kimiTestModel(tt.provider)
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry, kimi.WithBaseURL(server.URL+"/coding/v1")); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+
+			final, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAPIKey("request-key"),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if got, want := final.Content[0].Text, "ok"; got != want {
+				t.Fatalf("final text = %q, want %q", got, want)
+			}
+
+			request := receiveRequest(t, requests)
+			if got, want := request.Method, http.MethodPost; got != want {
+				t.Fatalf("method = %q, want %q", got, want)
+			}
+			if got, want := request.Path, "/coding/v1/messages"; got != want {
+				t.Fatalf("path = %q, want %q", got, want)
+			}
+			if got, want := request.Headers.Get("User-Agent"), kimi.DefaultUserAgent; got != want {
+				t.Fatalf("User-Agent = %q, want %q", got, want)
+			}
+			if got, want := request.Headers.Get("X-Api-Key"), "request-key"; got != want {
+				t.Fatalf("X-Api-Key header = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
 func TestRequestHeaderOverridesDefaultUserAgent(t *testing.T) {
 	t.Parallel()
 
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		writeCompleted(t, w)
-	}))
-	t.Cleanup(server.Close)
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	model := kimiTestModel()
-	registry := sigma.NewRegistry()
-	if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL)); err != nil {
-		t.Fatalf("RegisterCoding returned error: %v", err)
-	}
-	if err := registry.RegisterModel(model); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeCompleted(t, w)
+			}))
+			t.Cleanup(server.Close)
 
-	_, err := client.Complete(
-		context.Background(),
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithAPIKey("request-key"),
-		sigma.WithHeader("User-Agent", "caller-agent/1.0"),
-	)
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
-	}
+			model := kimiTestModel(tt.provider)
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry, kimi.WithBaseURL(server.URL)); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
 
-	request := receiveRequest(t, requests)
-	if got, want := request.Headers.Get("User-Agent"), "caller-agent/1.0"; got != want {
-		t.Fatalf("User-Agent = %q, want %q", got, want)
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAPIKey("request-key"),
+				sigma.WithHeader("User-Agent", "caller-agent/1.0"),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			if got, want := request.Headers.Get("User-Agent"), "caller-agent/1.0"; got != want {
+				t.Fatalf("User-Agent = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
 func TestProviderErrorsAreTyped(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = io.Copy(io.Discard, r.Body)
-		http.Error(w, `{"error":{"type":"authentication_error","message":"bad key"}}`, http.StatusUnauthorized)
-	}))
-	t.Cleanup(server.Close)
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	model := kimiTestModel()
-	registry := sigma.NewRegistry()
-	if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL)); err != nil {
-		t.Fatalf("RegisterCoding returned error: %v", err)
-	}
-	if err := registry.RegisterModel(model); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.Copy(io.Discard, r.Body)
+				http.Error(w, `{"error":{"type":"authentication_error","message":"bad key"}}`, http.StatusUnauthorized)
+			}))
+			t.Cleanup(server.Close)
 
-	_, err := client.Complete(
-		context.Background(),
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithAPIKey("bad-key"),
-	)
-	if err == nil {
-		t.Fatal("Complete returned nil error")
-	}
-	if !errors.Is(err, sigma.ErrProviderResponse) {
-		t.Fatalf("error %T does not match ErrProviderResponse: %v", err, err)
-	}
-	if got, want := sigma.ClassifyError(err).Class, sigma.ErrorClassAuth; got != want {
-		t.Fatalf("error class = %q, want %q", got, want)
+			model := kimiTestModel(tt.provider)
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry, kimi.WithBaseURL(server.URL)); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAPIKey("bad-key"),
+			)
+			if err == nil {
+				t.Fatal("Complete returned nil error")
+			}
+			if !errors.Is(err, sigma.ErrProviderResponse) {
+				t.Fatalf("error %T does not match ErrProviderResponse: %v", err, err)
+			}
+			if got, want := sigma.ClassifyError(err).Class, sigma.ErrorClassAuth; got != want {
+				t.Fatalf("error class = %q, want %q", got, want)
+			}
+		})
 	}
 }
 
 func TestCancellationIsReportedAsAborted(t *testing.T) {
 	t.Parallel()
 
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		<-r.Context().Done()
-	}))
-	t.Cleanup(server.Close)
+	for _, tt := range providerCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	model := kimiTestModel()
-	registry := sigma.NewRegistry()
-	if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL)); err != nil {
-		t.Fatalf("RegisterCoding returned error: %v", err)
-	}
-	if err := registry.RegisterModel(model); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				<-r.Context().Done()
+			}))
+			t.Cleanup(server.Close)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	stream := client.Stream(
-		ctx,
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithAPIKey("request-key"),
-	)
-	defer stream.Close()
+			model := kimiTestModel(tt.provider)
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry, kimi.WithBaseURL(server.URL)); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
 
-	_ = receiveRequest(t, requests)
-	cancel()
+			ctx, cancel := context.WithCancel(context.Background())
+			stream := client.Stream(
+				ctx,
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAPIKey("request-key"),
+			)
+			defer stream.Close()
 
-	timeout := time.After(2 * time.Second)
-	for {
-		select {
-		case event, ok := <-stream.Events():
-			if !ok {
-				t.Fatal("stream closed before error event")
+			_ = receiveRequest(t, requests)
+			cancel()
+
+			timeout := time.After(2 * time.Second)
+			for {
+				select {
+				case event, ok := <-stream.Events():
+					if !ok {
+						t.Fatal("stream closed before error event")
+					}
+					if event.Kind != sigma.EventKindError {
+						continue
+					}
+					if got, want := event.StopReason, sigma.StopReasonAborted; got != want {
+						t.Fatalf("stop reason = %q, want %q", got, want)
+					}
+					if !errors.Is(stream.Err(), context.Canceled) {
+						t.Fatalf("stream error %T does not match context.Canceled: %v", stream.Err(), stream.Err())
+					}
+					return
+				case <-timeout:
+					t.Fatal("timed out waiting for cancellation error event")
+				}
 			}
-			if event.Kind != sigma.EventKindError {
-				continue
-			}
-			if got, want := event.StopReason, sigma.StopReasonAborted; got != want {
-				t.Fatalf("stop reason = %q, want %q", got, want)
-			}
-			if !errors.Is(stream.Err(), context.Canceled) {
-				t.Fatalf("stream error %T does not match context.Canceled: %v", stream.Err(), stream.Err())
-			}
-			return
-		case <-timeout:
-			t.Fatal("timed out waiting for cancellation error event")
-		}
+		})
 	}
 }
 
-func kimiTestModel() sigma.Model {
+func kimiTestModel(provider sigma.ProviderID) sigma.Model {
 	return sigma.Model{
 		ID:               "kimi-for-coding",
-		Provider:         sigma.ProviderKimiCoding,
+		Provider:         provider,
 		API:              sigma.APIAnthropicMessages,
 		Name:             "Kimi For Coding",
 		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},

@@ -19,6 +19,9 @@ const (
 	DefaultUserAgent = "KimiCLI/1.5"
 )
 
+// Provider adapts Kimi's Anthropic-compatible Messages endpoint.
+type Provider = anthropic.Provider
+
 // CodingProvider adapts Kimi Coding's Anthropic-compatible Messages endpoint.
 type CodingProvider = anthropic.Provider
 
@@ -28,8 +31,17 @@ type ProviderOption = anthropic.ProviderOption
 // MessagesCompat describes Anthropic-compatible endpoint behavior overrides.
 type MessagesCompat = anthropic.MessagesCompat
 
+// NewProvider constructs a Kimi provider.
+func NewProvider(opts ...ProviderOption) *Provider {
+	return newProvider(opts...)
+}
+
 // NewCodingProvider constructs a Kimi Coding provider.
 func NewCodingProvider(opts ...ProviderOption) *CodingProvider {
+	return newProvider(opts...)
+}
+
+func newProvider(opts ...ProviderOption) *anthropic.Provider {
 	providerOpts := append([]ProviderOption{
 		anthropic.WithBaseURL(DefaultCodingBaseURL),
 		anthropic.WithHeader("User-Agent", DefaultUserAgent),
@@ -62,12 +74,25 @@ func WithMessagesCompat(compat MessagesCompat) ProviderOption {
 	return anthropic.WithMessagesCompat(compat)
 }
 
+// Register adds a Kimi text provider to registry.
+func Register(registry *sigma.Registry, opts ...ProviderOption) error {
+	if registry == nil {
+		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
+	}
+	return registry.RegisterTextProvider(sigma.ProviderKimi, NewProvider(opts...))
+}
+
 // RegisterCoding adds a Kimi Coding text provider to registry.
 func RegisterCoding(registry *sigma.Registry, opts ...ProviderOption) error {
 	if registry == nil {
 		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
 	}
 	return registry.RegisterTextProvider(sigma.ProviderKimiCoding, NewCodingProvider(opts...))
+}
+
+// RegisterDefault adds a Kimi text provider to sigma's default registry.
+func RegisterDefault(opts ...ProviderOption) error {
+	return sigma.RegisterDefaultTextProvider(sigma.ProviderKimi, NewProvider(opts...))
 }
 
 // RegisterCodingDefault adds a Kimi Coding text provider to sigma's default registry.

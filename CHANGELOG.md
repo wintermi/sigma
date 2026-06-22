@@ -26,10 +26,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   API-billing route and regional token-plan routes, including generated
   metadata, regional API-key discovery, and deterministic registration/request
   coverage for `mimo-v2.5-pro-ultraspeed` and the token-plan MiMo rows.
-- Kimi Coding now has a first-class Anthropic-compatible provider wrapper and
-  generated metadata for `k2p7`, `kimi-for-coding`, and `kimi-k2-thinking`,
-  including `KIMI_API_KEY` discovery, Kimi CLI request headers, adaptive
-  thinking metadata, and session-affinity support.
+- Kimi and Kimi Coding now have first-class Anthropic-compatible provider
+  wrappers and generated metadata for `kimi-for-coding`, `k2p7`, and
+  `kimi-k2-thinking`, including `KIMI_API_KEY` discovery, Kimi CLI request
+  headers, adaptive thinking metadata, and session-affinity support.
 - GitHub Copilot now has stdlib-only device-code OAuth login, Copilot token
   refresh helpers, an in-memory OAuth token provider that also implements
   Sigma's auth resolver interface, and explicit opt-in helpers for enabling
