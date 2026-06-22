@@ -31,7 +31,9 @@ provider helpers now let callers pass Cloudflare AI Gateway placeholder values
 and Bedrock region/static credential values without mutating process
 environment. Cloudflare Workers AI is also promoted as a direct
 OpenAI-compatible Chat Completions wrapper with account placeholder resolution
-and normal bearer-token auth for the direct Workers AI endpoint. NVIDIA NIM is
+and normal bearer-token auth for the direct Workers AI endpoint. Vercel AI
+Gateway is promoted as a focused Anthropic-compatible Messages wrapper over
+the generated gateway model metadata with normal API-key auth. NVIDIA NIM is
 also promoted as a focused OpenAI-compatible text and embedding wrapper with
 generated metadata, direct NIM base URL defaults, request header metadata, and
 NVIDIA-specific embedding input-type mapping; its text metadata now also
@@ -123,6 +125,10 @@ routed model metadata, and Google legacy tool-schema sanitization.
   Workers AI base URL, `CLOUDFLARE_API_KEY` credential discovery,
   request-scoped `cloudflare.WithWorkersAIAccountID`, and
   `CLOUDFLARE_ACCOUNT_ID` environment fallback.
+- Vercel AI Gateway can now be registered with `vercel.Register` or
+  `vercel.RegisterDefault`, using the shared Anthropic-compatible Messages
+  adapter with Vercel AI Gateway base URL defaults, generated gateway model
+  metadata, and `AI_GATEWAY_API_KEY` credential discovery.
 - NVIDIA NIM can now be registered with `nvidia.Register` for
   OpenAI-compatible Chat Completions and `nvidia.RegisterEmbeddings` for
   OpenAI-compatible embeddings, using direct NIM base URL defaults,

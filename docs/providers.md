@@ -174,6 +174,22 @@ Environment: `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID`.
 Use `cloudflare.WithWorkersAIAccountID` for request-scoped account placeholder
 resolution when the process environment should not provide the account ID.
 
+### Vercel AI Gateway
+
+```go
+registry := sigma.DefaultRegistry()
+_ = vercel.Register(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `AI_GATEWAY_API_KEY`.
+
+The Vercel AI Gateway wrapper uses Sigma's shared Anthropic-compatible Messages
+adapter with the direct Vercel AI Gateway base URL. Built-in metadata is
+available under `ProviderVercelAIGateway` for curated gateway text routes,
+including adaptive thinking and temperature compatibility metadata where
+required by the route.
+
 ### Anthropic Messages
 
 ```go

@@ -19,6 +19,7 @@ packages and metadata fields. It should be read with
 | OpenAI Codex Responses | `openai-codex-responses` | [provider/openai](../provider/openai), `Model.OpenAICodexResponses`, `OpenAIOptions` | Codex-specific Responses wrapper with browser callback and device-code OAuth helpers, caller-owned token persistence, text verbosity, cache-retention payload fields, and transport gating. |
 | GitHub Copilot compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | [provider/githubcopilot](../provider/githubcopilot), [provider/openai](../provider/openai), [provider/anthropic](../provider/anthropic) | Convenience wrapper over shared OpenAI-compatible and Anthropic-compatible adapters with Copilot defaults, dynamic request headers, and `COPILOT_GITHUB_TOKEN` credential fallback. |
 | Cloudflare AI Gateway compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | [provider/cloudflare](../provider/cloudflare), [provider/openai](../provider/openai), [provider/anthropic](../provider/anthropic) | Convenience wrapper over shared compatible adapters with AI Gateway placeholder base URLs, `cf-aig-authorization`, and `CLOUDFLARE_API_KEY` credential fallback. |
+| Vercel AI Gateway Anthropic-compatible Messages | `anthropic-messages` | [provider/vercel](../provider/vercel), [provider/anthropic](../provider/anthropic), `Model.AnthropicMessagesCompat` | Convenience wrapper over the shared Anthropic Messages adapter with direct Vercel AI Gateway defaults and `AI_GATEWAY_API_KEY` credential fallback. |
 | Anthropic Messages | `anthropic-messages` | [provider/anthropic](../provider/anthropic), `Model.ProviderMetadata["modelFamily"]` | Text adapter for Anthropic and Anthropic-compatible variants such as Kimi, Fireworks, and Xiaomi. |
 | Google Gemini API | `google-generative-ai` | [provider/google](../provider/google) | Text adapter for Gemini API payloads, streaming, tool calls, thinking parts, and usage metadata. |
 | Google Vertex AI | `google-vertex` | [provider/google](../provider/google), Vertex provider config | Vertex routing/auth wrapper that reuses the Google payload and stream parser. |
@@ -50,10 +51,11 @@ packages and metadata fields. It should be read with
 | xAI/Grok | `xai` | `openai-completions` | Use [provider/xai](../provider/xai) for Grok Chat Completions requests. Generated metadata includes curated Grok text, image-input, and reasoning-capable routes with `XAI_API_KEY` credential metadata. |
 | GitHub Copilot | `github-copilot` | `openai-completions`, `openai-responses`, `anthropic-messages` | Use [provider/githubcopilot](../provider/githubcopilot). Generated metadata includes Copilot OpenAI-compatible and Anthropic-compatible routes with static Copilot headers and `COPILOT_GITHUB_TOKEN` credential metadata. |
 | Cloudflare AI Gateway | `cloudflare-ai-gateway` | `openai-completions`, `openai-responses`, `anthropic-messages` | Use [provider/cloudflare](../provider/cloudflare) for AI Gateway routes. Generated metadata includes OpenAI-compatible and Anthropic-compatible passthrough rows with environment-backed account/gateway placeholders and `CLOUDFLARE_API_KEY` credential metadata. |
-| DeepSeek, Groq, Cerebras, Together | `deepseek`, `groq`, `cerebras`, `together` | `openai-completions` or `openai-responses` when caller registers compatible providers | Generated metadata includes representative metadata-only routes, but first-class provider parity still needs fixtures. |
+| DeepSeek, Groq, Cerebras, Together | `deepseek`, `groq`, `cerebras`, `together` | `openai-completions` | Use the provider-local wrappers for direct Chat Completions requests. Generated metadata includes representative routes backed by shared OpenAI-compatible fixture coverage. |
 | Fireworks | `fireworks`, `fireworks-anthropic` | `openai-completions`, `anthropic-messages` | Generated metadata includes the Fire Pass Kimi K2.6 Turbo router and Kimi K2.7 Code for the OpenAI-compatible endpoint, plus Kimi K2.6 and Kimi K2.7 Code for the Anthropic-compatible Messages endpoint. |
 | Moonshot AI | `moonshotai`, `moonshotai-cn` | `openai-completions` | Use [provider/moonshot](../provider/moonshot). Generated metadata includes direct Kimi K2 rows with `MOONSHOT_API_KEY` credential metadata and K2.7 disabled-thinking compatibility metadata. |
 | Kimi Coding | `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). Generated metadata includes Kimi Coding Anthropic-compatible routes with Kimi CLI headers and `KIMI_API_KEY` credential metadata. |
+| Vercel AI Gateway | `vercel-ai-gateway` | `anthropic-messages` | Use [provider/vercel](../provider/vercel). Generated metadata includes curated gateway routes with `AI_GATEWAY_API_KEY` credential metadata and route-specific Anthropic compatibility metadata. |
 | Kimi, Xiaomi | `kimi`, `xiaomi` | `anthropic-messages` or `openai-completions` when caller registers compatible providers | Generated metadata includes representative metadata-only routes with compatibility metadata. |
 | Custom/local endpoints | `custom` or caller-defined | Usually `openai-completions` | Use explicit registry entries, `WithBaseURL`, and compatibility metadata. |
 
@@ -76,7 +78,7 @@ packages and metadata fields. It should be read with
 | OpenAI-compatible behavior | `Model.OpenAICompletionsCompat` | Chat Completions payload, compatibility detection, reasoning formats, and provider replay quirks. |
 | OpenAI request controls | `OpenAIOptions` | Chat Completions `tool_choice`; Responses/Codex reasoning, service tier, prompt cache retention, parallel tool calls, and text verbosity. |
 | OpenRouter routing | `OpenAICompletionsCompat.OpenRouterRouting` | Chat Completions provider options for OpenRouter-style routing. |
-| Vercel AI Gateway routing | `OpenAICompletionsCompat.VercelAIGatewayRouting` | Compatibility metadata; no generated built-in route today. |
+| Vercel AI Gateway routing | `OpenAICompletionsCompat.VercelAIGatewayRouting` | OpenAI-compatible gateway routing metadata for caller-registered Chat Completions routes; built-in Vercel AI Gateway text routes use `anthropic-messages`. |
 | Azure Responses configuration | `Model.AzureOpenAIResponses` | Azure endpoint, deployment, API version, and credential-source selection. |
 | Codex Responses configuration | `Model.OpenAICodexResponses` | Codex model-name override and OAuth-token provider requirement. |
 | Image shape limits | `ImageModel.MaxWidth`, `MaxHeight`, `SupportedSizes`, `SupportedFormats` | Image model discovery and request validation docs. |
@@ -92,7 +94,7 @@ packages and metadata fields. It should be read with
 - Automatic provider/model discovery is generated from curated metadata, not live provider listing calls.
 - OAuth credential persistence is intentionally absent.
 - Cross-provider context handoff and capability-loss reporting are future work.
-- Source-level provider breadth is larger than generated default models. Several provider IDs exist only for caller-registered compatible models today, Cloudflare Workers AI remains metadata-only, and OpenCode coverage is limited to curated OpenAI-compatible routes.
+- Source-level provider breadth is larger than generated default models. Several provider IDs still exist only for caller-registered compatible models today, and OpenCode coverage is limited to curated OpenAI-compatible routes.
 - Codex WebSocket proxy-aware dialing and durable session caching remain
   deferred.
 - Live-test coverage is opt-in and sparse. Standard tests must remain deterministic and credential-free.

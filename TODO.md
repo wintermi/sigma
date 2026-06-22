@@ -250,7 +250,7 @@ metadata-only and backed by compatibility checks.
 - [ ] MiniMax and MiniMax CN — add broader live-provider fixture coverage for
       streaming, tools, usage, redaction, and cancellation if the providers need
       behavior beyond the shared Anthropic-compatible adapter.
-- [ ] Vercel AI Gateway — promote to a first-class provider row with fixtures.
+- [x] Vercel AI Gateway — promote to a first-class provider row with fixtures.
 - [ ] Kimi — promote to a first-class provider row with fixtures.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
 - [ ] For each promoted provider, add streaming, tools, usage, typed error

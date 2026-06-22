@@ -37,6 +37,7 @@ Release scope values:
 | GitHub Copilot compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Cloudflare AI Gateway compatible text routes | `openai-completions`, `openai-responses`, `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Cloudflare Workers AI direct Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `partial` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| Vercel AI Gateway Anthropic-compatible Messages | `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Anthropic Messages and Anthropic-compatible Kimi/Kimi Coding/Fireworks/Xiaomi routing | `anthropic-messages` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Google Generative AI | `google-generative-ai` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI | `google-vertex` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `not supported by provider` | `partial` | `partial` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
@@ -63,6 +64,7 @@ Release scope values:
 - GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
+- Vercel AI Gateway `anthropic-messages`: [provider/vercel/vercel_test.go](../provider/vercel/vercel_test.go), [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go).
 - DeepSeek, Groq, Cerebras, and Together `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go), [provider/kimi/kimi_test.go](../provider/kimi/kimi_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
@@ -110,6 +112,10 @@ Release scope values:
 - OpenAI Responses and Codex Responses support typed prompt cache retention,
   parallel tool calls, text verbosity, bounded replay IDs, and image-capable
   tool-result replay through fixture-tested payload coverage.
+- Vercel AI Gateway uses the shared Anthropic Messages adapter through a thin
+  provider wrapper. Its first-class coverage is limited to direct route
+  registration, request shape, generated metadata reuse, provider errors, and
+  stream cancellation.
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
 - Codex Responses includes browser callback and device-code OAuth login, refresh
   helpers, a caller-wrapped token provider, and fixture-tested direct
