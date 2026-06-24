@@ -3,14 +3,6 @@
 // This source code is licensed under the MIT license found in the LICENSE file
 // in the root directory of this source tree.
 
-// Package openrouter adapts OpenRouter's image-capable Chat Completions API to
-// sigma's image provider interface.
-//
-// Limitations: this provider only implements non-streaming image generation. It
-// does not implement OpenRouter's beta image-generation server tool or a
-// dedicated image-editing endpoint. Size is translated to image_config
-// aspect_ratio where possible; quality and count are forwarded as image_config
-// values because support depends on the routed upstream model.
 package openrouter
 
 import (
@@ -38,19 +30,19 @@ const (
 	providerOptionExtraBodyGo  = "extraBody"
 )
 
-// Provider adapts OpenRouter image-capable chat completions to sigma.
-type Provider struct {
+// ImagesProvider adapts OpenRouter image-capable chat completions to sigma.
+type ImagesProvider struct {
 	baseURL string
 	client  *http.Client
 	headers map[string]string
 }
 
-// ProviderOption configures a Provider.
-type ProviderOption func(*Provider)
+// ImagesProviderOption configures an ImagesProvider.
+type ImagesProviderOption func(*ImagesProvider)
 
-// NewProvider constructs an OpenRouter image provider.
-func NewProvider(opts ...ProviderOption) *Provider {
-	provider := &Provider{baseURL: DefaultBaseURL}
+// NewImagesProvider constructs an OpenRouter image provider.
+func NewImagesProvider(opts ...ImagesProviderOption) *ImagesProvider {
+	provider := &ImagesProvider{baseURL: DefaultBaseURL}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(provider)
@@ -59,29 +51,29 @@ func NewProvider(opts ...ProviderOption) *Provider {
 	return provider
 }
 
-// WithBaseURL configures the provider base URL, for example an httptest server
-// URL ending in /api/v1.
-func WithBaseURL(baseURL string) ProviderOption {
-	return func(provider *Provider) {
+// WithImagesBaseURL configures the image provider base URL, for example an
+// httptest server URL ending in /api/v1.
+func WithImagesBaseURL(baseURL string) ImagesProviderOption {
+	return func(provider *ImagesProvider) {
 		provider.baseURL = strings.TrimRight(baseURL, "/")
 	}
 }
 
-// WithHTTPClient configures the provider fallback HTTP client.
-func WithHTTPClient(client *http.Client) ProviderOption {
-	return func(provider *Provider) {
+// WithImagesHTTPClient configures the image provider fallback HTTP client.
+func WithImagesHTTPClient(client *http.Client) ImagesProviderOption {
+	return func(provider *ImagesProvider) {
 		provider.client = client
 	}
 }
 
-// WithHeader configures a provider default request header.
-func WithHeader(key, value string) ProviderOption {
-	return WithHeaders(map[string]string{key: value})
+// WithImagesHeader configures an image provider default request header.
+func WithImagesHeader(key, value string) ImagesProviderOption {
+	return WithImagesHeaders(map[string]string{key: value})
 }
 
-// WithHeaders configures provider default request headers.
-func WithHeaders(headers map[string]string) ProviderOption {
-	return func(provider *Provider) {
+// WithImagesHeaders configures image provider default request headers.
+func WithImagesHeaders(headers map[string]string) ImagesProviderOption {
+	return func(provider *ImagesProvider) {
 		if len(headers) == 0 {
 			return
 		}
@@ -94,26 +86,26 @@ func WithHeaders(headers map[string]string) ProviderOption {
 	}
 }
 
-// Register adds an OpenRouter image provider to registry.
-func Register(registry *sigma.Registry, opts ...ProviderOption) error {
+// RegisterImages adds an OpenRouter image provider to registry.
+func RegisterImages(registry *sigma.Registry, opts ...ImagesProviderOption) error {
 	if registry == nil {
 		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
 	}
-	return registry.RegisterImageProvider(sigma.ProviderOpenRouter, NewProvider(opts...))
+	return registry.RegisterImageProvider(sigma.ProviderOpenRouter, NewImagesProvider(opts...))
 }
 
-// RegisterDefault adds an OpenRouter image provider to sigma's default registry.
-func RegisterDefault(opts ...ProviderOption) error {
-	return sigma.RegisterDefaultImageProvider(sigma.ProviderOpenRouter, NewProvider(opts...))
+// RegisterImagesDefault adds an OpenRouter image provider to sigma's default registry.
+func RegisterImagesDefault(opts ...ImagesProviderOption) error {
+	return sigma.RegisterDefaultImageProvider(sigma.ProviderOpenRouter, NewImagesProvider(opts...))
 }
 
 // API reports the OpenRouter image API surface.
-func (p *Provider) API() sigma.ImageAPI {
+func (p *ImagesProvider) API() sigma.ImageAPI {
 	return sigma.ImageAPIOpenRouterImages
 }
 
 // Generate sends req to OpenRouter's non-streaming Chat Completions image path.
-func (p *Provider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
+func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
@@ -152,7 +144,7 @@ func (p *Provider) Generate(ctx context.Context, model sigma.ImageModel, req sig
 	return decodeResponse(respBody, model)
 }
 
-func (p *Provider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
+func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
 	payload, err := payload(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -396,7 +388,7 @@ func authModel(model sigma.ImageModel) sigma.Model {
 	}
 }
 
-func (p *Provider) endpoint(opts sigma.Options) (string, error) {
+func (p *ImagesProvider) endpoint(opts sigma.Options) (string, error) {
 	options := providerOptions(opts)
 	if endpoint, ok := stringOption(options, providerOptionEndpoint); ok {
 		return endpoint, nil
@@ -418,7 +410,7 @@ func (p *Provider) endpoint(opts sigma.Options) (string, error) {
 	return baseURL + "/chat/completions", nil
 }
 
-func (p *Provider) httpClient(opts sigma.Options) *http.Client {
+func (p *ImagesProvider) httpClient(opts sigma.Options) *http.Client {
 	if opts.HTTPClient != nil {
 		return opts.HTTPClient
 	}

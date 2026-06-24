@@ -332,7 +332,7 @@ func debugImageClient(t *testing.T, baseURL string, opts ...sigma.ClientOption) 
 		API:      sigma.ImageAPIOpenRouterImages,
 	}
 	registry := sigma.NewRegistry()
-	if err := registry.RegisterImageProvider(model.Provider, openrouter.NewProvider(openrouter.WithBaseURL(baseURL))); err != nil {
+	if err := registry.RegisterImageProvider(model.Provider, openrouter.NewImagesProvider(openrouter.WithImagesBaseURL(baseURL))); err != nil {
 		t.Fatalf("RegisterImageProvider returned error: %v", err)
 	}
 	if err := registry.RegisterImageModel(model); err != nil {

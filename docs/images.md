@@ -70,7 +70,7 @@ non-streaming OpenRouter Chat Completions requests to image-capable models:
 
 ```go
 registry := sigma.NewRegistry()
-_ = openrouter.Register(registry)
+_ = openrouter.RegisterImages(registry)
 client := sigma.NewClient(sigma.WithRegistry(registry))
 ```
 

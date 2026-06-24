@@ -25,7 +25,8 @@ Release scope values:
 
 | Provider family | Built-in API | Release scope | Text | Image input | Image generation | Streaming | Tool calls | Partial tool JSON | Thinking | Cache retention | Usage | Cost | Custom headers | OAuth | Local endpoints | Live-test coverage |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OpenAI-compatible Chat Completions, including OpenRouter text and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| OpenAI-compatible Chat Completions and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| OpenRouter OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | xAI/Grok OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | NVIDIA NIM OpenAI-compatible Chat Completions and Embeddings | `openai-completions`, `openai-embeddings` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
@@ -67,6 +68,7 @@ Release scope values:
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
 - Vercel AI Gateway `anthropic-messages`: [provider/vercel/vercel_test.go](../provider/vercel/vercel_test.go), [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go).
 - Hugging Face Router `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [modeldata_test.go](../modeldata_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
+- OpenRouter `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [modeldata_test.go](../modeldata_test.go).
 - DeepSeek, Groq, Cerebras, and Together `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go), [provider/kimi/kimi_test.go](../provider/kimi/kimi_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
@@ -93,11 +95,11 @@ Release scope values:
 - Azure OpenAI Responses has generated metadata and a first-class provider
   wrapper over the existing Responses adapter. Codex Responses has generated
   metadata and remains registered through the OpenAI provider package.
-- Promoted OpenAI-compatible wrappers such as Fireworks, xAI, Xiaomi, OpenCode,
-  NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare AI
-  Gateway, and Cloudflare Workers AI rely on shared compatibility detection or
-  explicit `OpenAICompletionsCompat` metadata; unpromoted OpenAI-compatible
-  rows are not independently release-complete.
+- Promoted OpenAI-compatible wrappers such as Fireworks, OpenRouter, xAI,
+  Xiaomi, OpenCode, NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub
+  Copilot, Cloudflare AI Gateway, and Cloudflare Workers AI rely on shared
+  compatibility detection or explicit `OpenAICompletionsCompat` metadata;
+  unpromoted OpenAI-compatible rows are not independently release-complete.
 - NVIDIA NIM uses shared OpenAI-compatible text and embedding adapters through
   a thin wrapper. Its first-class coverage is limited to direct route
   registration, text request shape, embedding request shape, generated

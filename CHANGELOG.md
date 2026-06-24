@@ -82,6 +82,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
   provider wrapper, including base URL defaults, bearer auth, `HF_TOKEN`
   discovery, focused generated metadata, and deterministic registration,
   request, error, and cancellation coverage.
+- OpenRouter now has a first-class OpenAI-compatible Chat Completions provider
+  wrapper, including base URL defaults, bearer auth, `OPENROUTER_API_KEY`
+  discovery, generated text metadata reuse, OpenRouter reasoning/routing
+  compatibility, and deterministic registration, request, error, and
+  cancellation coverage.
 - NVIDIA NIM now has first-class OpenAI-compatible Chat Completions and
   Embeddings provider wrappers, including base URL defaults, bearer auth,
   generated text and embedding metadata, embedding input-type mapping,
@@ -117,6 +122,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
   OpenAI-compatible Chat Completions request-shape guardrails, routed stream
   model metadata, and Google legacy tool-schema sanitization without changing
   provider APIs.
+
+### Changed
+
+- OpenRouter image-generation registration helpers now use explicit image names:
+  `openrouter.RegisterImages`, `openrouter.RegisterImagesDefault`, and
+  `openrouter.NewImagesProvider`, leaving `openrouter.Register` and
+  `openrouter.NewProvider` for the text Chat Completions provider.
 
 ### Fixed
 

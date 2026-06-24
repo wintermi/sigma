@@ -25,8 +25,8 @@ func TestRegisterReportsImageAPI(t *testing.T) {
 	t.Parallel()
 
 	registry := sigma.NewRegistry()
-	if err := openrouter.Register(registry); err != nil {
-		t.Fatalf("Register returned error: %v", err)
+	if err := openrouter.RegisterImages(registry); err != nil {
+		t.Fatalf("RegisterImages returned error: %v", err)
 	}
 	if err := registry.RegisterImageModel(openRouterImageModel()); err != nil {
 		t.Fatalf("RegisterImageModel returned error: %v", err)
@@ -71,7 +71,7 @@ func TestGenerateImagesSendsGoldenPayloadAndMapsResponse(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := openRouterTestClient(t, server.URL, openrouter.WithHeader("X-Provider", "provider"))
+	client := openRouterTestClient(t, server.URL, openrouter.WithImagesHeader("X-Provider", "provider"))
 	req := sigma.ImageRequest{
 		Prompt:  "A ceramic robot watering herbs",
 		Size:    string(sigma.ImageSize1536x1024),
@@ -275,12 +275,12 @@ func TestGenerateImagesValidatesUnsupportedInputBeforeNetwork(t *testing.T) {
 	}
 }
 
-func openRouterTestClient(t *testing.T, baseURL string, opts ...openrouter.ProviderOption) *sigma.Client {
+func openRouterTestClient(t *testing.T, baseURL string, opts ...openrouter.ImagesProviderOption) *sigma.Client {
 	t.Helper()
 
 	registry := sigma.NewRegistry()
-	providerOpts := append([]openrouter.ProviderOption{openrouter.WithBaseURL(baseURL)}, opts...)
-	if err := registry.RegisterImageProvider(sigma.ProviderOpenRouter, openrouter.NewProvider(providerOpts...)); err != nil {
+	providerOpts := append([]openrouter.ImagesProviderOption{openrouter.WithImagesBaseURL(baseURL)}, opts...)
+	if err := registry.RegisterImageProvider(sigma.ProviderOpenRouter, openrouter.NewImagesProvider(providerOpts...)); err != nil {
 		t.Fatalf("RegisterImageProvider returned error: %v", err)
 	}
 	if err := registry.RegisterImageModel(openRouterImageModel()); err != nil {

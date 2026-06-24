@@ -20,6 +20,7 @@ import (
 	"github.com/wintermi/sigma/provider/deepseek"
 	"github.com/wintermi/sigma/provider/groq"
 	"github.com/wintermi/sigma/provider/huggingface"
+	"github.com/wintermi/sigma/provider/openrouter"
 	"github.com/wintermi/sigma/provider/together"
 )
 
@@ -224,6 +225,14 @@ func openAICompatibleProviderRows() []openAICompatibleProviderRow {
 			modelID:    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
 			register: func(registry *sigma.Registry, baseURL string) error {
 				return huggingface.Register(registry, huggingface.WithBaseURL(baseURL), huggingface.WithHeader("X-Provider", "provider"))
+			},
+		},
+		{
+			name:       "openrouter",
+			providerID: sigma.ProviderOpenRouter,
+			modelID:    "openai/gpt-4o-mini",
+			register: func(registry *sigma.Registry, baseURL string) error {
+				return openrouter.Register(registry, openrouter.WithBaseURL(baseURL), openrouter.WithHeader("X-Provider", "provider"))
 			},
 		},
 	}

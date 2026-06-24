@@ -60,7 +60,11 @@ existing generated metadata and shared adapter with deterministic registration,
 request, error, and cancellation coverage. Hugging Face Router is also
 promoted as a focused OpenAI-compatible Chat Completions wrapper with `HF_TOKEN`
 credential discovery, focused generated metadata, and the shared adapter's
-deterministic registration, request, error, and cancellation coverage. The
+deterministic registration, request, error, and cancellation coverage.
+OpenRouter is also promoted as a focused OpenAI-compatible Chat Completions
+wrapper with generated text metadata reuse, request-scoped routing
+compatibility, and deterministic registration, request, error, and cancellation
+coverage. The
 surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
@@ -211,6 +215,12 @@ routed model metadata, and Google legacy tool-schema sanitization.
   discovery, and deterministic registration, request, redaction,
   context-overflow, and cancellation coverage. Built-in metadata includes
   focused router rows for Qwen Coder, Kimi K2.6, and GLM 5.1.
+- OpenRouter can now be registered for text generation with
+  `openrouter.Register` or `openrouter.RegisterDefault`, using the shared
+  OpenAI-compatible Chat Completions adapter with the OpenRouter base URL,
+  `OPENROUTER_API_KEY` credential discovery, generated text metadata reuse,
+  OpenRouter reasoning/routing compatibility, and deterministic registration,
+  request, redaction, context-overflow, and cancellation coverage.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.
@@ -326,6 +336,15 @@ routed model metadata, and Google legacy tool-schema sanitization.
   focused generated metadata subset; Sigma does not add live router discovery,
   provider-specific base URL environment probing, or hosted-tool APIs for this
   row.
+- OpenRouter direct text routing is additive and Chat Completions-only in this
+  release. The wrapper reuses the shared OpenAI-compatible adapter, existing
+  focused text metadata, and OpenRouter compatibility handling; broad
+  OpenRouter catalog expansion remains deferred to the reviewed catalog refresh
+  workflow.
+- OpenRouter image-generation helpers now use explicit image names:
+  `openrouter.RegisterImages`, `openrouter.RegisterImagesDefault`, and
+  `openrouter.NewImagesProvider`. The generic `openrouter.Register` and
+  `openrouter.NewProvider` names now refer to text Chat Completions.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
@@ -378,6 +397,9 @@ routed model metadata, and Google legacy tool-schema sanitization.
   deferred until Sigma has an explicit provider-defined tool contract.
 - Broad Hugging Face Router catalog expansion remains deferred until it can
   flow through the reviewed catalog refresh workflow with deterministic diffs.
+- Broad OpenRouter text catalog expansion remains deferred until it can flow
+  through the reviewed catalog refresh workflow with deterministic routing,
+  pricing, and provider/API diffs.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.

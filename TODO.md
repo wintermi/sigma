@@ -225,6 +225,12 @@ metadata-only and backed by compatibility checks.
 - [ ] Hugging Face Router — add broader live-provider and hosted-tool coverage
       only if route-specific behavior needs evidence beyond the shared
       OpenAI-compatible adapter.
+- [x] OpenRouter — promote to a first-class OpenAI-compatible text provider row
+      with fixtures over the existing focused generated metadata and routing
+      compatibility.
+- [ ] OpenRouter — add broader live-provider and hosted-tool coverage only if
+      route-specific behavior needs evidence beyond the shared
+      OpenAI-compatible adapter.
 - [ ] DeepSeek, Groq, Cerebras, and Together — add broader live-provider and
       hosted-tool coverage only if route-specific behavior needs evidence
       beyond the shared OpenAI-compatible adapter.

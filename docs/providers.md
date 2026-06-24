@@ -408,11 +408,24 @@ Request headers from `sigma.WithHeader` and `sigma.WithHeaders` are applied
 before SigV4 signing; `authorization`, `host`, and `x-amz-*` headers remain
 owned by the adapter.
 
-### OpenRouter Images
+### OpenRouter Chat Completions
 
 ```go
 registry := sigma.NewRegistry()
 _ = openrouter.Register(registry)
+```
+
+Environment: `OPENROUTER_API_KEY`.
+
+OpenRouter text generation uses the shared OpenAI-compatible Chat Completions
+adapter with OpenRouter base URL defaults, generated model metadata, prompt
+cache markers, nested reasoning requests, and request-scoped routing options.
+
+### OpenRouter Images
+
+```go
+registry := sigma.NewRegistry()
+_ = openrouter.RegisterImages(registry)
 ```
 
 Environment: `OPENROUTER_API_KEY`.
