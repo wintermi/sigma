@@ -73,8 +73,8 @@ also preserve provider reasoning-detail metadata on streamed tool calls so it
 can be replayed with assistant tool-call history. The deterministic provider
 test suite now also locks Google stream `thoughtSignature` attachment,
 OpenAI-compatible Chat Completions thinking-block replay behavior,
-OpenAI-compatible stream error finish handling, and the new promoted thin
-provider rows, plus
+OpenAI-compatible stream error finish handling, OpenAI Responses terminal
+stream handling, and the new promoted thin provider rows, plus
 request-conversion guardrails for replay IDs, Chat Completions payload shape,
 routed model metadata, and Google legacy tool-schema sanitization.
 
@@ -236,6 +236,11 @@ routed model metadata, and Google legacy tool-schema sanitization.
   `finish_reason` values of `network_error` and `model_context_window_exceeded`
   as errors instead of successful unknown stops, including context-overflow
   classification for `model_context_window_exceeded`.
+- OpenAI Responses streams now require `response.completed`,
+  `response.incomplete`, or `response.failed` before EOF is treated as a
+  terminal provider response. Premature EOF now returns an error with partial
+  content preserved, and terminal incomplete responses finalize as max-token
+  stops while preserving provider usage.
 - Deterministic request-conversion tests now cover distinct OpenAI Responses
   replay IDs around reasoning items, OpenAI-compatible Chat Completions
   tool/max-token payload guardrails, provider-reported routed stream model

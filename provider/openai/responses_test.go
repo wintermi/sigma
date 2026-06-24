@@ -1263,6 +1263,114 @@ data: {"type":"error","error":{"code":"rate_limit_exceeded","message":"rate limi
 	}
 }
 
+func TestResponsesStreamEarlyEOFReturnsErrorWithPartialContent(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.created","response":{"id":"resp_early","status":"in_progress"}}
+
+data: {"type":"response.output_text.delta","response_id":"resp_early","output_index":0,"item_id":"msg_partial","delta":"partial answer"}
+
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-early-eof-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !strings.Contains(err.Error(), "stream ended before terminal response event") {
+		t.Fatalf("error = %v, want terminal response event error", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "partial answer"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["id"], "resp_early"; got != want {
+		t.Fatalf("response id = %v, want %v", got, want)
+	}
+}
+
+func TestResponsesStreamIncompleteFinalizesAsMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"resp_incomplete","model":"gpt-test-2026","status":"incomplete","output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"text_incomplete","text":"truncated"}]}],"usage":{"input_tokens":30,"input_tokens_details":{"cached_tokens":5},"output_tokens":12,"total_tokens":42}}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-incomplete-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonMaxTokens; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "truncated"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["id"], "resp_incomplete"; got != want {
+		t.Fatalf("response id = %v, want %v", got, want)
+	}
+	if got, want := final.ProviderMetadata["model"], "gpt-test-2026"; got != want {
+		t.Fatalf("provider model = %v, want %v", got, want)
+	}
+	if final.Usage == nil {
+		t.Fatal("usage was nil")
+	}
+	if got, want := final.Usage.InputTokens, 25; got != want {
+		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.CacheReadInputTokens, 5; got != want {
+		t.Fatalf("cache read tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.OutputTokens, 12; got != want {
+		t.Fatalf("output tokens = %d, want %d", got, want)
+	}
+}
+
+func TestResponsesStreamFailedTerminalIsTypedProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.failed","response":{"id":"resp_failed","status":"failed","error":{"code":"invalid_api_key","message":"bad key sk-secret123"}}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-failed-terminal-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if errorsContains(err, "sk-secret123") {
+		t.Fatalf("error leaked secret: %v", err)
+	}
+	if got, want := sigma.ClassifyError(err).ProviderCode, "invalid_api_key"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
+}
+
 func TestResponsesCancellationAbortsStreamingRequest(t *testing.T) {
 	t.Parallel()
 

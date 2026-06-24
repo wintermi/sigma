@@ -93,6 +93,8 @@ integrations remain future work until they have the same local evidence bar.
       `priority` request tiers.
 - [x] Harden OpenAI Responses replay when same-provider history crosses model
       IDs with prior function-call item IDs.
+- [x] Harden OpenAI Responses stream terminal handling so premature EOF is an
+      error and terminal incomplete responses preserve usage as max-token stops.
 - [x] Harden OpenAI Responses reasoning defaults and OpenAI-compatible Chat
       Completions replay for empty assistant turns and opt-in tool-history
       payload requirements.

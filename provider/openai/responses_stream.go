@@ -127,6 +127,7 @@ type responsesStreamParser struct {
 	responseServiceTier string
 	usage               *sigma.Usage
 	stopReason          sigma.StopReason
+	terminalResponse    bool
 }
 
 type responsesStreamOptions struct {
@@ -165,10 +166,16 @@ func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamW
 		return parser.handleSSEEvent(ctx, event)
 	})
 	if errors.Is(err, sse.ErrStop) {
+		if !parser.terminalResponse {
+			return parser.finalize(ctx), fmt.Errorf("openai responses: stream ended before terminal response event")
+		}
 		return parser.finalize(ctx), nil
 	}
 	if err != nil {
 		return parser.finalize(ctx), err
+	}
+	if !parser.terminalResponse {
+		return parser.finalize(ctx), fmt.Errorf("openai responses: stream ended before terminal response event")
 	}
 	return parser.finalize(ctx), nil
 }
@@ -216,9 +223,21 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		p.captureResponse(parsed.Response)
 		return false, p.emitStart(ctx)
 	case "response.completed":
+		p.terminalResponse = true
 		p.captureResponse(parsed.Response)
 		return true, p.emitStart(ctx)
-	case "response.failed", "response.incomplete":
+	case "response.incomplete":
+		p.terminalResponse = true
+		p.captureResponse(parsed.Response)
+		if parsed.Response.Error != nil {
+			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
+		}
+		if p.stopReason == "" || p.stopReason == sigma.StopReasonUnknown {
+			p.stopReason = sigma.StopReasonMaxTokens
+		}
+		return true, p.emitStart(ctx)
+	case "response.failed":
+		p.terminalResponse = true
 		p.captureResponse(parsed.Response)
 		if parsed.Response.Error != nil {
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
