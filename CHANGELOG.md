@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- Azure OpenAI Responses now has a first-class provider wrapper with
+  provider-scoped registration and request option helpers for endpoint,
+  deployment, API version, credential source, and caller-supplied Microsoft
+  Entra token credentials while preserving the lower-level OpenAI adapter APIs.
 - Ant Ling now has a first-class OpenAI-compatible Chat Completions provider
   wrapper, including base URL defaults, bearer auth, generated Ling/Ring
   metadata reuse, Ant Ling reasoning-object compatibility, and deterministic

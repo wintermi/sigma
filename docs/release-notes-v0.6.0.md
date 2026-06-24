@@ -52,7 +52,9 @@ wrappers with generated GLM metadata, GLM-5.2 reasoning-effort mapping, and
 deterministic registration and request coverage. Ant Ling is promoted as a
 focused OpenAI-compatible Chat Completions wrapper with generated Ling/Ring
 metadata reuse, Ant Ling reasoning-object compatibility, and deterministic
-registration and request coverage. DeepSeek, Groq, Cerebras, and Together are
+registration and request coverage. Azure OpenAI Responses is promoted as a
+focused provider wrapper with provider-scoped registration and request option
+helpers over the existing Responses adapter. DeepSeek, Groq, Cerebras, and Together are
 promoted as focused OpenAI-compatible Chat Completions wrappers that reuse the
 existing generated metadata and shared adapter with deterministic registration,
 request, error, and cancellation coverage. Hugging Face Router is also
@@ -192,6 +194,11 @@ routed model metadata, and Google legacy tool-schema sanitization.
   metadata or detected Ant Ling host shape to send `max_tokens`, omit
   unsupported prompt-cache fields, and map supported Ring reasoning levels to
   `reasoning: {"effort": ...}` without sending `reasoning_effort`.
+- Azure OpenAI Responses can now be registered with `azure.Register` or
+  `azure.RegisterDefault`, using the existing Azure Responses adapter with the
+  built-in provider ID, provider-scoped endpoint/deployment/API-version
+  helpers, API-key auth, and caller-supplied Microsoft Entra token
+  credentials.
 - DeepSeek, Groq, Cerebras, and Together can now be registered with their
   provider-local `Register` or `RegisterDefault` helpers, using the shared
   OpenAI-compatible Chat Completions adapter with direct base URL defaults,

@@ -60,7 +60,7 @@ Release scope values:
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
 - OpenCode `openai-completions`: [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/modeldata/modeldata_test.go](../internal/modeldata/modeldata_test.go).
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
-- `azure-openai-responses`: [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
+- `azure-openai-responses`: [provider/azure/azure_test.go](../provider/azure/azure_test.go), [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
 - `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go).
 - GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
@@ -90,9 +90,9 @@ Release scope values:
 - `google-vertex-images` supports Vertex Imagen `predict` generation with
   explicit project/location routing. Ambient routing and live validation remain
   outside deterministic CI.
-- Azure and Codex adapters are implemented provider packages, but their APIs are
-  not represented by generated default model metadata yet. Vertex now has a
-  representative metadata-only route.
+- Azure OpenAI Responses has generated metadata and a first-class provider
+  wrapper over the existing Responses adapter. Codex Responses has generated
+  metadata and remains registered through the OpenAI provider package.
 - Promoted OpenAI-compatible wrappers such as Fireworks, xAI, Xiaomi, OpenCode,
   NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub Copilot, Cloudflare AI
   Gateway, and Cloudflare Workers AI rely on shared compatibility detection or

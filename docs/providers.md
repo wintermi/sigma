@@ -100,15 +100,16 @@ response includes it.
 
 ```go
 registry := sigma.NewRegistry()
-_ = openai.RegisterAzureResponses(registry, sigma.ProviderID("azure-openai"))
+_ = azure.Register(registry)
 ```
 
 Environment: `AZURE_OPENAI_API_KEY` for API-key auth. Microsoft Entra auth uses
-`openai.WithAzureResponsesTokenCredential` with a caller-supplied token source.
+`azure.WithTokenCredential` with a caller-supplied token source.
 
 Model metadata should include `AzureOpenAIResponsesConfig`, or requests should
 set endpoint, deployment, API version, and credential source with the Azure
-option helpers.
+option helpers. Use `openai.RegisterAzureResponses` when registering a custom
+provider ID instead of the built-in Azure OpenAI Responses provider ID.
 
 ### OpenAI Codex Responses
 

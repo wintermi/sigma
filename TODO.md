@@ -231,6 +231,8 @@ metadata-only and backed by compatibility checks.
       fixtures.
 - [x] Cloudflare Workers AI — promote to a first-class provider row with
       fixtures.
+- [x] Azure OpenAI Responses — promote to a first-class provider row with
+      provider-scoped registration and request-option helpers.
 - [x] NVIDIA NIM — promote to a first-class provider row with fixtures.
 - [x] NVIDIA NIM — add an opt-in live surface-probe route for streaming, tools,
       usage, and request-shape diagnostics without making live calls part of
