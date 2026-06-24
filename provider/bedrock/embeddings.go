@@ -287,6 +287,7 @@ func bedrockEmbeddingRequest(ctx context.Context, config Config, modelID string,
 			httpReq.Header.Set(key, value)
 		}
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if credentials.BearerToken != "" {
 		httpReq.Header.Set("Authorization", "Bearer "+credentials.BearerToken)
 	} else {

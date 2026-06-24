@@ -198,6 +198,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
 		return nil, err
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunTextPayloadDebugHooks(ctx, opts, model.Provider, sigma.APIOpenAICompletions, model.ID, body, httpReq.Header); err != nil {
 		return nil, err
 	}

@@ -14,6 +14,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add provider-specific request configuration helpers for Cloudflare AI
       Gateway account/gateway placeholders and Bedrock request region/static
       credential values without adding a generic environment override surface.
+- [x] Add request-scoped final header suppression across text, image, and
+      embedding calls without adding generic environment overrides or changing
+      credential resolution.
 - [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
       unless they get separate public API contracts.
 

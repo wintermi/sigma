@@ -282,6 +282,9 @@ func mergeOptions(base Options, override Options) Options {
 			merged.Headers[key] = value
 		}
 	}
+	if len(override.SuppressedHeaders) > 0 {
+		merged.SuppressedHeaders = append(merged.SuppressedHeaders, override.SuppressedHeaders...)
+	}
 	if override.Timeout != nil {
 		merged.Timeout = cloneDurationPtr(override.Timeout)
 	}

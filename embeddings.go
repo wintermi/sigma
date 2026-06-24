@@ -185,6 +185,16 @@ func WithEmbeddingHeaders(headers map[string]string) EmbeddingOption {
 	return embeddingOptionFromOption(WithHeaders(headers))
 }
 
+// WithEmbeddingSuppressedHeader removes a final outgoing embedding request header.
+func WithEmbeddingSuppressedHeader(key string) EmbeddingOption {
+	return embeddingOptionFromOption(WithSuppressedHeader(key))
+}
+
+// WithEmbeddingSuppressedHeaders removes final outgoing embedding request headers.
+func WithEmbeddingSuppressedHeaders(keys ...string) EmbeddingOption {
+	return embeddingOptionFromOption(WithSuppressedHeaders(keys...))
+}
+
 // WithEmbeddingTimeout configures the per-request embedding provider timeout.
 func WithEmbeddingTimeout(timeout time.Duration) EmbeddingOption {
 	return embeddingOptionFromOption(WithTimeout(timeout))

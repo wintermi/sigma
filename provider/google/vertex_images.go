@@ -120,6 +120,7 @@ func (p *VertexImagesProvider) newRequest(ctx context.Context, model sigma.Image
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunImagePayloadDebugHooks(ctx, opts, model.Provider, sigma.ImageAPIGoogleVertexImages, model.ID, body, httpReq.Header); err != nil {
 		return nil, fmt.Errorf("google vertex images: payload debug hooks: %w", err)
 	}

@@ -172,6 +172,7 @@ func (p *CodexResponsesProvider) newRequest(ctx context.Context, model sigma.Mod
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunTextPayloadDebugHooks(ctx, opts, model.Provider, sigma.APIOpenAICodexResponses, model.ID, body, httpReq.Header); err != nil {
 		return nil, err
 	}

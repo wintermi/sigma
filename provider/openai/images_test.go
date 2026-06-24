@@ -84,6 +84,7 @@ func TestGenerateImagesSendsGoldenPayloadAndMapsResponse(t *testing.T) {
 		},
 		sigma.WithImageAPIKey("request-key"),
 		sigma.WithImageHeader("X-Custom", "custom"),
+		sigma.WithImageSuppressedHeader("X-Custom"),
 		sigma.WithImageProviderOptions(sigma.ProviderOpenAI, map[string]any{
 			"organization": "org_123",
 			"project":      "proj_123",
@@ -139,7 +140,7 @@ func TestGenerateImagesSendsGoldenPayloadAndMapsResponse(t *testing.T) {
 	assertHeader(t, request.Headers, "OpenAI-Project", "proj_123")
 	assertHeader(t, request.Headers, "X-Client", "client")
 	assertHeader(t, request.Headers, "X-Provider", "provider")
-	assertHeader(t, request.Headers, "X-Custom", "custom")
+	assertHeaderAbsent(t, request.Headers, "X-Custom")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/images/basic_payload.json")
 }
 

@@ -576,6 +576,7 @@ func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, mode
 	for key, value := range opts.Headers {
 		req.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(req.Header, opts)
 	return req.Header, nil
 }
 

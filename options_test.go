@@ -8,6 +8,7 @@ package sigma_test
 import (
 	"context"
 	stderrors "errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -119,6 +120,7 @@ func TestOptionsMergeHeadersAndProviderOptions(t *testing.T) {
 				"x-default-option": "default-option",
 				"x-override":       "default-option",
 			}),
+			sigma.WithSuppressedHeader("x-default-suppressed"),
 			sigma.WithProviderOptions(sigma.ProviderOpenAI, map[string]any{
 				"tier":     "default",
 				"priority": "low",
@@ -134,6 +136,7 @@ func TestOptionsMergeHeadersAndProviderOptions(t *testing.T) {
 		sigma.WithProviderOptions(sigma.ProviderOpenAI, map[string]any{
 			"priority": "high",
 		}),
+		sigma.WithSuppressedHeaders("x-call-suppressed", " "),
 	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -143,11 +146,22 @@ func TestOptionsMergeHeadersAndProviderOptions(t *testing.T) {
 	assertHeader(t, provider.opts.Headers, "x-default-option", "default-option")
 	assertHeader(t, provider.opts.Headers, "x-call", "call")
 	assertHeader(t, provider.opts.Headers, "x-override", "call")
+	if got, want := provider.opts.SuppressedHeaders, []string{"x-default-suppressed", "x-call-suppressed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("suppressed headers = %#v, want %#v", got, want)
+	}
 	if got, want := provider.opts.ProviderOptions[sigma.ProviderOpenAI]["tier"], "default"; got != want {
 		t.Fatalf("provider option tier = %v, want %v", got, want)
 	}
 	if got, want := provider.opts.ProviderOptions[sigma.ProviderOpenAI]["priority"], "high"; got != want {
 		t.Fatalf("provider option priority = %v, want %v", got, want)
+	}
+
+	provider.opts.SuppressedHeaders[0] = "mutated"
+	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
+		t.Fatalf("second Complete returned error: %v", err)
+	}
+	if got, want := provider.opts.SuppressedHeaders, []string{"x-default-suppressed"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("suppressed headers after mutation = %#v, want %#v", got, want)
 	}
 }
 

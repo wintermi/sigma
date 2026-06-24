@@ -182,6 +182,7 @@ func (p *ImagesProvider) newRequestWithStream(ctx context.Context, model sigma.I
 	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
 		return nil, err
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunImagePayloadDebugHooks(ctx, opts, model.Provider, sigma.ImageAPIOpenAIImages, model.ID, body, httpReq.Header); err != nil {
 		return nil, err
 	}

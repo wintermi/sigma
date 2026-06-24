@@ -125,6 +125,42 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/completions/rich_payload.json")
 }
 
+func TestChatCompletionsSuppressesFinalHeaders(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-header-suppression-test")
+	model := openAITestModel(providerID)
+	model.ProviderMetadata = map[string]any{
+		"baseURL": server.URL,
+		"headers": map[string]string{
+			"X-Model": "model",
+		},
+	}
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithHeader("X-Custom", "custom"),
+		sigma.WithSuppressedHeaders("x-model", "X-Custom", "authorization"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	assertHeader(t, request.Headers, "Authorization", "Bearer resolved-key")
+	assertHeaderAbsent(t, request.Headers, "X-Model")
+	assertHeaderAbsent(t, request.Headers, "X-Custom")
+}
+
 func TestChatCompletionsSendsTypedResponseFormatAndLogprobs(t *testing.T) {
 	t.Parallel()
 

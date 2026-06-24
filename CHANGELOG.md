@@ -62,6 +62,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   discovery helpers for ordered candidate variable names and configured
   variable names, with broader built-in API-key defaults for OpenAI-compatible
   provider IDs that previously relied only on generated model metadata.
+- Request options now support final outgoing header suppression across text,
+  image, and embedding calls, letting callers remove provider/default
+  compatibility headers without adding a generic environment override surface
+  or changing credential resolution.
 - Cloudflare AI Gateway and Amazon Bedrock now expose provider-specific
   request configuration helpers for AI Gateway account/gateway placeholder
   resolution, Bedrock request regions, and Bedrock request-scoped static AWS

@@ -174,6 +174,7 @@ func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel,
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunImagePayloadDebugHooks(ctx, opts, model.Provider, sigma.ImageAPIOpenRouterImages, model.ID, body, httpReq.Header); err != nil {
 		return nil, err
 	}

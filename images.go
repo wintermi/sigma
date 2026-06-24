@@ -81,6 +81,16 @@ func WithImageHeaders(headers map[string]string) ImageOption {
 	return imageOptionFromOption(WithHeaders(headers))
 }
 
+// WithImageSuppressedHeader removes a final outgoing image request header.
+func WithImageSuppressedHeader(key string) ImageOption {
+	return imageOptionFromOption(WithSuppressedHeader(key))
+}
+
+// WithImageSuppressedHeaders removes final outgoing image request headers.
+func WithImageSuppressedHeaders(keys ...string) ImageOption {
+	return imageOptionFromOption(WithSuppressedHeaders(keys...))
+}
+
 // WithImageTimeout configures the per-request image provider timeout.
 func WithImageTimeout(timeout time.Duration) ImageOption {
 	return imageOptionFromOption(WithTimeout(timeout))

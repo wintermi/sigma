@@ -127,6 +127,7 @@ func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.Embeddi
 	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
 		return nil, err
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunEmbeddingPayloadDebugHooks(ctx, opts, model.Provider, sigma.EmbeddingAPIOpenAIEmbeddings, model.ID, body, httpReq.Header); err != nil {
 		return nil, fmt.Errorf("openai embeddings: payload debug hooks: %w", err)
 	}

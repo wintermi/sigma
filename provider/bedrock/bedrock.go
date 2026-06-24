@@ -425,6 +425,7 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 					httpReq.Header.Set(key, value)
 				}
 			}
+			sigma.ApplySuppressedHeaders(httpReq.Header, c.opts)
 			if c.credentials.BearerToken != "" {
 				httpReq.Header.Set("Authorization", "Bearer "+c.credentials.BearerToken)
 			} else {

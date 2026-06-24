@@ -135,6 +135,7 @@ func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.Embeddi
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunEmbeddingPayloadDebugHooks(ctx, opts, model.Provider, sigma.EmbeddingAPIGoogleEmbeddings, model.ID, body, httpReq.Header); err != nil {
 		return nil, fmt.Errorf("google embeddings: payload debug hooks: %w", err)
 	}

@@ -32,6 +32,10 @@ can inspect candidate and configured API-key variable names before making a
 request, and focused provider helpers now let callers pass Cloudflare AI
 Gateway placeholder values and Bedrock region/static credential values without
 mutating process environment.
+Request-scoped header suppression now also lets callers remove final outgoing
+compatibility/default headers across text, image, and embedding requests while
+preserving credential resolution and avoiding a generic environment override
+surface.
 Cloudflare Workers AI is also promoted as a direct
 OpenAI-compatible Chat Completions wrapper with account placeholder resolution
 and normal bearer-token auth for the direct Workers AI endpoint. Vercel AI
@@ -136,6 +140,11 @@ routed model metadata, and Google legacy tool-schema sanitization.
   helpers for model-aware environment credential discovery. They return ordered
   variable names only, respect model metadata before provider defaults, and add
   built-in fallback names for additional OpenAI-compatible provider IDs.
+- `sigma.WithSuppressedHeader` and `sigma.WithSuppressedHeaders` now remove
+  final outgoing request headers after provider defaults, model metadata
+  headers, dynamic compatibility headers, and caller headers are merged. Image
+  and embedding requests expose matching `WithImageSuppressed*` and
+  `WithEmbeddingSuppressed*` helpers.
 - `cloudflare.WithAIGatewayAccountID` and `cloudflare.WithAIGatewayID` now
   provide request-scoped Cloudflare AI Gateway placeholder values before the
   existing `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_GATEWAY_ID` environment
@@ -300,6 +309,9 @@ routed model metadata, and Google legacy tool-schema sanitization.
 - Environment credential discovery is additive and non-secret. `Resolve`
   remains the API that returns credential values, and the new helper methods do
   not probe ambient cloud credentials or OAuth token stores.
+- Header suppression is additive and request-scoped. Header names are matched
+  case-insensitively after final merge; credential-bearing auth headers are
+  retained so suppression does not create keyless request semantics.
 - Cloudflare and Bedrock request configuration helpers are provider-specific
   request options. They do not add a root-level environment override map, and
   existing process environment fallback behavior remains available.

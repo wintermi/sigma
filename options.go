@@ -7,6 +7,7 @@ package sigma
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -173,6 +174,7 @@ type Options struct {
 	CacheRetention              CacheRetention
 	SessionID                   string
 	Headers                     map[string]string
+	SuppressedHeaders           []string
 	Timeout                     *time.Duration
 	MaxRetries                  *int
 	MaxRetryDelay               *time.Duration
@@ -262,6 +264,29 @@ func WithHeaders(headers map[string]string) Option {
 		}
 		for key, value := range headers {
 			options.Headers[key] = value
+		}
+	}
+}
+
+// WithSuppressedHeader removes a final outgoing request header by name.
+//
+// Suppression applies after provider, model, and caller headers are merged.
+// Credential-bearing auth headers are not suppressed.
+func WithSuppressedHeader(key string) Option {
+	return WithSuppressedHeaders(key)
+}
+
+// WithSuppressedHeaders removes final outgoing request headers by name.
+//
+// Header names are matched case-insensitively. Empty names are ignored.
+func WithSuppressedHeaders(keys ...string) Option {
+	return func(options *Options) {
+		for _, key := range keys {
+			trimmed := strings.TrimSpace(key)
+			if trimmed == "" {
+				continue
+			}
+			options.SuppressedHeaders = append(options.SuppressedHeaders, trimmed)
 		}
 	}
 }
@@ -429,6 +454,7 @@ func cloneOptions(options Options) Options {
 		CacheRetention:              options.CacheRetention,
 		SessionID:                   options.SessionID,
 		Headers:                     copyStringStringMap(options.Headers),
+		SuppressedHeaders:           append([]string(nil), options.SuppressedHeaders...),
 		Timeout:                     cloneDurationPtr(options.Timeout),
 		MaxRetries:                  cloneIntPtr(options.MaxRetries),
 		MaxRetryDelay:               cloneDurationPtr(options.MaxRetryDelay),

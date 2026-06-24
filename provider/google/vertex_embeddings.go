@@ -137,6 +137,7 @@ func (p *VertexEmbeddingsProvider) newRequest(ctx context.Context, model sigma.E
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunEmbeddingPayloadDebugHooks(ctx, opts, model.Provider, sigma.EmbeddingAPIGoogleVertexEmbeddings, model.ID, body, httpReq.Header); err != nil {
 		return nil, fmt.Errorf("google vertex embeddings: payload debug hooks: %w", err)
 	}

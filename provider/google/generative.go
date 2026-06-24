@@ -236,6 +236,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
+	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunTextPayloadDebugHooks(ctx, opts, model.Provider, sigma.APIGoogleGenerativeAI, model.ID, body, httpReq.Header); err != nil {
 		return nil, err
 	}

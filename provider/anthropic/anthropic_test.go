@@ -115,6 +115,41 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/rich_payload.json")
 }
 
+func TestCompleteSuppressesFinalHeaders(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-header-suppression-test")
+	model := anthropicTestModel(providerID)
+	model.ProviderMetadata = map[string]any{
+		"headers": map[string]string{
+			"X-Model": "model",
+		},
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithProviderOption(providerID, "anthropic_beta", "test-beta"),
+		sigma.WithSuppressedHeaders("anthropic-beta", "x-model", "x-api-key"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	assertHeader(t, request.Headers, "X-Api-Key", "resolved-key")
+	assertHeaderAbsent(t, request.Headers, "Anthropic-Beta")
+	assertHeaderAbsent(t, request.Headers, "X-Model")
+}
+
 func TestCompleteUsesModelBaseURLAndHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -2020,6 +2055,14 @@ func assertHeader(t *testing.T, headers http.Header, key string, want string) {
 
 	if got := headers.Get(key); got != want {
 		t.Fatalf("%s header = %q, want %q", key, got, want)
+	}
+}
+
+func assertHeaderAbsent(t *testing.T, headers http.Header, key string) {
+	t.Helper()
+
+	if got := headers.Get(key); got != "" {
+		t.Fatalf("%s header = %q, want absent", key, got)
 	}
 }
 

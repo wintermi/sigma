@@ -756,6 +756,9 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 		"X-Custom":      "custom",
 		"Authorization": "evil",
 		"X-Amz-Date":    "evil",
+	}, SuppressedHeaders: []string{
+		"x-custom",
+		"authorization",
 	}}, CredentialInfo{
 		Source:          CredentialSourceAuthResolver,
 		AccessKeyID:     "AKIAFAKE",
@@ -783,8 +786,8 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	if !strings.HasPrefix(gotAuthorization, "AWS4-HMAC-SHA256 Credential=AKIAFAKE/") {
 		t.Fatalf("Authorization = %q, want SigV4 credential", gotAuthorization)
 	}
-	if got, want := gotCustomHeader, "custom"; got != want {
-		t.Fatalf("custom header = %q, want %q", got, want)
+	if gotCustomHeader != "" {
+		t.Fatalf("custom header = %q, want absent", gotCustomHeader)
 	}
 	if gotAmzDate == "evil" {
 		t.Fatalf("reserved x-amz-date header was overwritten by caller")
