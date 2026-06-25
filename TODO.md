@@ -585,19 +585,19 @@ should still come through the catalog refresh workflow.
 
 - [ ] Add agent runtime integration on top of the provider-neutral primitives
       `sigma` exposes (orchestration is deferred to later integration cards).
-- [ ] Implement cross-provider context handoff beyond diagnostic surface probes.
+- [x] Implement cross-provider context handoff beyond diagnostic surface probes.
       Expose public helpers to adapt conversation messages (assistant provenance,
       thinking, tool calls/results including images) for a target model. Reuse and
       promote internal transform logic for thinking-to-tagged-text conversion
       (when target lacks reasoning support or API families differ), image
       downgrade or explicit rejection for non-vision targets, developer role
       normalization, tool name repair, and unanswered call cleanup.
-- [ ] Produce explicit capability-loss reports from handoff transforms (counts
+- [x] Produce explicit capability-loss reports from handoff transforms (counts
       or details of converted thinking blocks, elided/rejected images, other
       degradations) so callers can surface changes rather than experiencing
       silent behavior shift. Support both whole-request and incremental message
       list adaptation.
-- [ ] Cover handoff surfaces with deterministic sigmatest-based behavioural
+- [x] Cover handoff surfaces with deterministic behavioural
       tests (text+thinking+tools+image cases to non-supporting targets, error
       paths, provenance preservation) meeting the evidence bar in RELEASING.md.
 - [ ] Implement durable credential storage for OAuth and stored API-key flows.

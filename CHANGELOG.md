@@ -115,6 +115,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - `cmd/sigma-surface-probe` now has an opt-in cross-provider handoff diagnostic
   that builds small tool-call contexts and replays them pairwise across selected
   live routes without adding live provider calls to CI.
+- `sigma.TransformRequestForModel` and `sigma.TransformMessagesForModel` now
+  expose opt-in cross-provider handoff helpers that adapt replayed messages for
+  a target model, including thinking-to-text conversion, unsupported-image
+  replacement options, tool-history repair, unanswered tool-call cleanup, and
+  explicit capability-loss reports.
 - Assistant messages and content blocks now expose provider-neutral source and
   citation accessors, letting callers read normalized URLs, URIs, titles,
   offsets, cited text, and copied provider metadata without scraping opaque
@@ -167,11 +172,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   metadata, and provider adapters) for matching capabilities. Identified
   user-visible gaps (durable credential storage with atomic modify semantics,
   runtime/dynamic model list refresh for custom sources, and public
-  cross-provider handoff with message adaptation + explicit capability loss
-  reporting) that align with items already tracked in TODO.md. The highest
-  priority for subsequent work is public cross-provider handoff support.
-  Updates are recorded in the v0.6.0 release notes deferred section and TODO.md;
-  no implementation changes land in this release.
+  cross-provider handoff with message adaptation plus explicit capability-loss
+  reporting) that align with items already tracked in TODO.md. The public
+  handoff slice now ships as opt-in helpers; durable credential storage and
+  runtime/dynamic model refresh remain deferred.
 
 ## [0.5.0] - 2026-06-13
 

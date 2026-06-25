@@ -72,7 +72,10 @@ coverage. The
 surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
-calls into CI. Assistant results now also expose provider-neutral source and
+calls into CI. Public handoff helpers now also let callers adapt persisted or
+incremental conversation context for a target model with explicit
+capability-loss reporting, while keeping orchestration and provider execution
+caller-owned. Assistant results now also expose provider-neutral source and
 citation accessors for the source metadata Sigma already captures from grounded
 and citation-bearing responses, plus a text response ID accessor over captured
 provider response metadata. Local tool-call validation also now evaluates
@@ -253,6 +256,14 @@ catalog and generated files untouched until the diff is reviewed.
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so
   replay failures can be attributed without making handoff checks part of CI.
+- `sigma.TransformRequestForModel` and `sigma.TransformMessagesForModel` now
+  adapt conversation context for a target text model without invoking a
+  provider. The helpers preserve same-model thinking blocks, convert foreign or
+  unsupported thinking to tagged text, reject unsupported image content by
+  default, optionally replace unsupported image blocks with caller-supplied
+  text, repair tool-result names where target metadata requires them, remove
+  unanswered local tool calls interrupted by a user/developer turn, and return
+  a `HandoffReport` describing every lossy or compatibility-driven change.
 - `sigma.AssistantMessage.Sources`, `sigma.ContentBlock.Citations`, and
   `sigma.AssistantMessage.Citations` now expose normalized source and citation
   entries from provider metadata, including URLs, URIs, titles, offsets, cited
@@ -396,6 +407,10 @@ catalog and generated files untouched until the diff is reviewed.
 - `AssistantMessage.ResponseID` is an additive accessor over existing provider
   metadata. It does not add a serialized text result field or change provider
   request, stream, replay, or persistence behavior.
+- Public handoff helpers are additive and opt-in. They transform copied
+  requests or message slices before callers submit them; they do not change
+  `Client.Complete`, `Client.Stream`, provider dispatch, persisted message
+  shape, live probes, credential handling, or model registry contents.
 - Tool schema composition validation is additive and stricter for previously
   unchecked composed branches. It does not add primitive coercion or change the
   `ValidateToolCall` API.
@@ -413,10 +428,11 @@ accounting including long-cache and thinking tokens, auth resolvers and
 OAuthTokenProvider, internal request/message transforms, provider adapters,
 persistence, embeddings+retrieval, images, sigmatest, and generated metadata)
 identified additional user-visible capability gaps that align with existing
-deferred items. The highest-priority item for future work is public
-cross-provider handoff support. See the expanded bullets below and [TODO.md](../TODO.md)
-for the current list. All candidate work remains subject to the deterministic
-evidence, fixture, and cancellation bar described in [RELEASING.md](../RELEASING.md).
+deferred items. Public handoff support now ships as a narrow helper surface;
+durable credential storage and runtime/dynamic model refresh remain deferred.
+See the expanded bullets below and [TODO.md](../TODO.md) for the current list.
+All candidate work remains subject to the deterministic evidence, fixture, and
+cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 - OAuth token persistence remains deferred and caller-owned. Deferred work
   continues to be tracked in [TODO.md](../TODO.md).
@@ -426,12 +442,11 @@ evidence, fixture, and cancellation bar described in [RELEASING.md](../RELEASING
 - Billing reconciliation, subscription analytics, and UI presentation of usage
   totals remain caller-owned. Sigma normalizes and preserves provider data but
   does not claim invoice-grade billing accuracy.
-- Cross-provider handoff remains a diagnostic probe (via the opt-in surface
-  probe command), not a public orchestration runtime. Public helpers for
-  adapting conversation contexts across providers (thinking block conversion to
-  tagged text, image capability handling, tool repair, etc.) and explicit
-  capability-loss reporting remain deferred. See the expanded description and
-  test requirements in [TODO.md](../TODO.md).
+- Cross-provider handoff is now available as public request/message adaptation
+  helpers plus the existing opt-in surface probe diagnostic, but full agent
+  orchestration remains deferred. Sigma does not automatically run transformed
+  requests, select fallback models, persist handoff state, or hide reported
+  capability loss from callers.
 - Non-Codex WebSocket transport support remains deferred until route-specific
   wire protocols have deterministic fixtures. The Codex preview transport now
   has request contexts, explicit session cleanup helpers, standard HTTP(S)
