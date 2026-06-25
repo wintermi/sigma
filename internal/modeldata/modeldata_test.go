@@ -9,6 +9,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -81,5 +83,91 @@ func TestCatalogValidationReportsMissingRequiredFields(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), `textModels[0] "missing-base-url": baseURL is required`) {
 		t.Fatalf("Decode error = %q, want missing baseURL context", err)
+	}
+}
+
+func TestWriteValidatesAndOrdersCatalog(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "catalog.json")
+	catalog := Catalog{
+		SchemaVersion: 1,
+		SnapshotDate:  "2026-06-25",
+		Sources:       []Source{{Name: "test", URL: "https://example.test/models"}},
+		TextModels: []TextModel{
+			{
+				ID:              "z-model",
+				Name:            "Z Model",
+				Provider:        "z-provider",
+				API:             "chat",
+				BaseURL:         "https://z.example.test",
+				SupportedInputs: []string{"text"},
+				Cost:            Cost{InputPerMillion: 1, OutputPerMillion: 2, Currency: "USD"},
+				ContextWindow:   4096,
+				MaxOutputTokens: 1024,
+				AuthEnvNames:    []string{"Z_API_KEY"},
+			},
+			{
+				ID:              "a-model",
+				Name:            "A Model",
+				Provider:        "a-provider",
+				API:             "chat",
+				BaseURL:         "https://a.example.test",
+				SupportedInputs: []string{"text"},
+				Cost:            Cost{InputPerMillion: 1, OutputPerMillion: 2, Currency: "USD"},
+				ContextWindow:   4096,
+				MaxOutputTokens: 1024,
+				AuthEnvNames:    []string{"A_API_KEY"},
+			},
+		},
+		ImageModels: []ImageModel{
+			{
+				ID:               "image-test",
+				Name:             "Image Test",
+				Provider:         "openai",
+				API:              "openai-images",
+				BaseURL:          "https://api.openai.com/v1",
+				MaxWidth:         1024,
+				MaxHeight:        1024,
+				SupportedSizes:   []string{"1024x1024"},
+				SupportedFormats: []string{"image/png"},
+				Cost:             ImageCost{Unit: "image", Currency: "USD", Values: map[string]float64{"image": 1}},
+				AuthEnvNames:     []string{"OPENAI_API_KEY"},
+			},
+		},
+		EmbeddingModels: []EmbeddingModel{
+			{
+				ID:                  "embedding-test",
+				Name:                "Embedding Test",
+				Provider:            "openai",
+				API:                 "openai-embeddings",
+				BaseURL:             "https://api.openai.com/v1",
+				DefaultDimensions:   1536,
+				MinDimensions:       1,
+				MaxDimensions:       1536,
+				MaxInputTokens:      8192,
+				InputCostPerMillion: 0.02,
+				Currency:            "USD",
+				AuthEnvNames:        []string{"OPENAI_API_KEY"},
+			},
+		},
+	}
+
+	if err := Write(path, catalog); err != nil {
+		t.Fatalf("Write returned error: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if !strings.Contains(string(data), "\n  \"textModels\": [\n") {
+		t.Fatalf("catalog was not written with stable indentation:\n%s", data)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if got, want := []string{loaded.TextModels[0].ID, loaded.TextModels[1].ID}, []string{"a-model", "z-model"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("text model order = %#v, want %#v", got, want)
 	}
 }

@@ -104,6 +104,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   catalog with a validated candidate catalog and reports added, removed,
   changed, and unchanged text, image, and embedding rows without writing
   generated files.
+- `cmd/sigma-generate-models -refresh-catalog` now writes a validated
+  review-only candidate catalog from an explicit `models.dev` snapshot path or
+  opt-in network source, preserving the checked-in catalog and generated Go
+  files until maintainers review the deterministic diff.
 - Moonshot AI and Moonshot AI CN now have first-class OpenAI-compatible Chat
   Completions provider wrappers, generated Kimi K2.7 Code CN and HighSpeed
   metadata, and metadata-driven omission of disabled-thinking payloads for

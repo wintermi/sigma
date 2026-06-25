@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
+	"io"
 	"os"
 	"reflect"
 	"sort"
@@ -29,54 +30,90 @@ const generatedHeader = `// Copyright (c) 2026 Matthew Winter
 `
 
 func main() {
+	if err := runGenerateModels(os.Args[1:], os.Stdout, os.Stderr); err != nil {
+		fmt.Fprintln(os.Stderr, "sigma-generate-models: "+strings.TrimSuffix(err.Error(), "\n"))
+		os.Exit(1)
+	}
+}
+
+func runGenerateModels(args []string, stdout io.Writer, stderr io.Writer) error {
 	var inputPath string
 	var modelsPath string
 	var imageModelsPath string
 	var embeddingModelsPath string
 	var diffCatalogPath string
+	var refreshCatalogPath string
+	var modelsDevSource string
+	var refreshSnapshotDate string
+	var allowNetwork bool
 	var report bool
 	var validateNVIDIALive bool
 
-	flag.StringVar(&inputPath, "input", "internal/modeldata/catalog.json", "model metadata catalog JSON")
-	flag.StringVar(&modelsPath, "models", "models_generated.go", "generated text model Go file")
-	flag.StringVar(&imageModelsPath, "image-models", "image_models_generated.go", "generated image model Go file")
-	flag.StringVar(&embeddingModelsPath, "embedding-models", "embedding_models_generated.go", "generated embedding model Go file")
-	flag.StringVar(&diffCatalogPath, "diff-catalog", "", "validated candidate catalog JSON to compare without generating files")
-	flag.BoolVar(&report, "report", false, "print a deterministic catalog summary")
-	flag.BoolVar(&validateNVIDIALive, "validate-nvidia-live", false, "fetch NVIDIA NIM /models and report direct text catalog drift")
-	flag.Parse()
+	flags := flag.NewFlagSet("sigma-generate-models", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	flags.StringVar(&inputPath, "input", "internal/modeldata/catalog.json", "model metadata catalog JSON")
+	flags.StringVar(&modelsPath, "models", "models_generated.go", "generated text model Go file")
+	flags.StringVar(&imageModelsPath, "image-models", "image_models_generated.go", "generated image model Go file")
+	flags.StringVar(&embeddingModelsPath, "embedding-models", "embedding_models_generated.go", "generated embedding model Go file")
+	flags.StringVar(&diffCatalogPath, "diff-catalog", "", "validated candidate catalog JSON to compare without generating files")
+	flags.StringVar(&refreshCatalogPath, "refresh-catalog", "", "write a validated candidate catalog JSON without generating Go files")
+	flags.StringVar(&modelsDevSource, "models-dev-source", "https://models.dev/api.json", "models.dev API snapshot path or URL for -refresh-catalog")
+	flags.StringVar(&refreshSnapshotDate, "refresh-snapshot-date", "", "snapshot date for -refresh-catalog candidate output, in YYYY-MM-DD format")
+	flags.BoolVar(&allowNetwork, "allow-network", false, "allow HTTP(S) catalog source reads for refresh modes")
+	flags.BoolVar(&report, "report", false, "print a deterministic catalog summary")
+	flags.BoolVar(&validateNVIDIALive, "validate-nvidia-live", false, "fetch NVIDIA NIM /models and report direct text catalog drift")
+	if err := flags.Parse(args); err != nil {
+		return fmt.Errorf("parse flags: %w", err)
+	}
 
 	catalog, err := modeldata.Load(inputPath)
 	if err != nil {
-		fatalf("load catalog: %v", err)
+		return fmt.Errorf("load catalog: %w", err)
 	}
 	if diffCatalogPath != "" {
 		candidate, err := modeldata.Load(diffCatalogPath)
 		if err != nil {
-			fatalf("load diff catalog: %v", err)
+			return fmt.Errorf("load diff catalog: %w", err)
 		}
-		fmt.Print(renderCatalogDiff(catalog, candidate))
-		return
+		if _, err := fmt.Fprint(stdout, renderCatalogDiff(catalog, candidate)); err != nil {
+			return fmt.Errorf("write catalog diff: %w", err)
+		}
+		return nil
+	}
+	if refreshCatalogPath != "" {
+		candidate, err := buildModelsDevCandidateCatalog(catalog, modelsDevSource, refreshSnapshotDate, allowNetwork)
+		if err != nil {
+			return fmt.Errorf("refresh catalog: %w", err)
+		}
+		if err := modeldata.Write(refreshCatalogPath, candidate); err != nil {
+			return fmt.Errorf("write refresh catalog: %w", err)
+		}
+		return nil
 	}
 	if validateNVIDIALive {
 		output, err := renderNVIDIALiveValidation(catalog, true, fetchNVIDIALiveModelIDs)
 		if err != nil {
-			fatalf("validate nvidia live catalog: %v", err)
+			return fmt.Errorf("validate nvidia live catalog: %w", err)
 		}
-		fmt.Fprint(os.Stderr, output)
+		if _, err := fmt.Fprint(stderr, output); err != nil {
+			return fmt.Errorf("write nvidia live validation: %w", err)
+		}
 	}
 	if err := writeGoFile(modelsPath, renderTextModels(catalog)); err != nil {
-		fatalf("write text models: %v", err)
+		return fmt.Errorf("write text models: %w", err)
 	}
 	if err := writeGoFile(imageModelsPath, renderImageModels(catalog)); err != nil {
-		fatalf("write image models: %v", err)
+		return fmt.Errorf("write image models: %w", err)
 	}
 	if err := writeGoFile(embeddingModelsPath, renderEmbeddingModels(catalog)); err != nil {
-		fatalf("write embedding models: %v", err)
+		return fmt.Errorf("write embedding models: %w", err)
 	}
 	if report {
-		fmt.Print(renderCatalogReport(catalog))
+		if _, err := fmt.Fprint(stdout, renderCatalogReport(catalog)); err != nil {
+			return fmt.Errorf("write catalog report: %w", err)
+		}
 	}
+	return nil
 }
 
 func renderTextModels(catalog modeldata.Catalog) []byte {
@@ -875,10 +912,4 @@ func mapKey(key string) string {
 
 func formatFloat(value float64) string {
 	return strconv.FormatFloat(value, 'g', -1, 64)
-}
-
-func fatalf(format string, args ...any) {
-	message := strings.TrimSuffix(fmt.Sprintf(format, args...), "\n")
-	fmt.Fprintln(os.Stderr, "sigma-generate-models: "+message)
-	os.Exit(1)
 }

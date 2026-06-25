@@ -341,13 +341,15 @@ upstream.
       rejected disabled `thinking` objects.
 - [x] Add disabled-thinking compatibility metadata to the generated Claude
       Fable 5 row so thinking-off requests omit the rejected disabled payload.
-- [ ] Add an offline-friendly refresh command that can ingest `models.dev` and
-      provider catalog APIs into a candidate catalog file without replacing the
-      checked-in review step.
+- [x] Add an offline-friendly refresh command that ingests explicit
+      `models.dev` snapshots into a validated candidate catalog without
+      replacing the checked-in review step or generated files.
 - [ ] Keep explicit source precedence and override rules near the generator:
       `models.dev` for broad text model discovery, provider APIs for surfaces
       not covered there, and hand-curated overrides for known endpoint behavior
       mismatches.
+- [ ] Add provider-catalog overlay inputs only after each source has explicit
+      precedence, reviewable diffs, and deterministic fixture coverage.
 - [x] Extend the local summary into a candidate catalog diff report that lists
       added, removed, changed, and unchanged text, image, and embedding rows so
       catalog review is tractable before generated files are written.

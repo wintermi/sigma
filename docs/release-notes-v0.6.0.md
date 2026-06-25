@@ -87,7 +87,10 @@ thin provider rows, plus request-conversion guardrails for replay IDs, Chat
 Completions payload shape, routed model metadata, and Google legacy
 tool-schema sanitization. The model metadata generator can now also compare
 the checked-in catalog with a validated candidate catalog and print a
-deterministic added/removed/changed report without writing generated files.
+deterministic added/removed/changed report without writing generated files. It
+can also write a validated review-only candidate catalog from an explicit
+`models.dev` snapshot path or opt-in network source, leaving the checked-in
+catalog and generated files untouched until the diff is reviewed.
 
 ## Added
 
@@ -182,6 +185,11 @@ deterministic added/removed/changed report without writing generated files.
   catalog with a validated candidate catalog and prints deterministic added,
   removed, changed, and unchanged counts for text, image, and embedding rows
   without writing generated files.
+- `cmd/sigma-generate-models -refresh-catalog` now writes a validated
+  review-only candidate catalog from an explicit `models.dev` snapshot path or
+  opt-in network source. Refresh mode requires an explicit
+  `-refresh-snapshot-date`, preserves existing image and embedding rows, and
+  exits before writing generated Go files.
 - `cmd/sigma-surface-probe` now includes an opt-in `nvidia` route that uses
   `NVIDIA_API_KEY`, the direct NIM base URL, the NVIDIA provider wrapper, and
   `nvidia/nemotron-3-super-120b-a12b` as its default probe model when callers

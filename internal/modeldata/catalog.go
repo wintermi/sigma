@@ -196,6 +196,27 @@ func Load(path string) (Catalog, error) {
 	return Decode(file)
 }
 
+// Write validates and writes catalog JSON in deterministic order.
+func Write(path string, catalog Catalog) error {
+	catalog.Sort()
+	if err := catalog.Validate(); err != nil {
+		return fmt.Errorf("validate catalog: %w", err)
+	}
+
+	file, err := os.Create(path) // #nosec G304 -- catalog path is supplied by trusted generator/test code.
+	if err != nil {
+		return fmt.Errorf("create catalog file: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(catalog); err != nil {
+		return fmt.Errorf("encode catalog: %w", err)
+	}
+	return nil
+}
+
 // Decode reads and validates catalog JSON.
 func Decode(r io.Reader) (Catalog, error) {
 	decoder := json.NewDecoder(r)
