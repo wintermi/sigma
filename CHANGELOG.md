@@ -112,6 +112,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   review-only candidate catalog from an explicit `models.dev` snapshot path or
   opt-in network source, preserving the checked-in catalog and generated Go
   files until maintainers review the deterministic diff.
+- Registries can now accept provider-scoped runtime text model sources through
+  `RegisterTextModelSource`, and `Registry.RefreshTextModels` /
+  `Client.RefreshTextModels` refresh app-owned dynamic model listings while
+  preserving Sigma's curated built-in catalog as the offline default.
 - Moonshot AI and Moonshot AI CN now have first-class OpenAI-compatible Chat
   Completions provider wrappers, generated Kimi K2.7 Code CN and HighSpeed
   metadata, and metadata-driven omission of disabled-thinking payloads for
@@ -178,8 +182,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   runtime/dynamic model list refresh for custom sources, and public
   cross-provider handoff with message adaptation plus explicit capability-loss
   reporting) that align with items already tracked in TODO.md. The public
-  handoff slice now ships as opt-in helpers; durable credential storage and
-  runtime/dynamic model refresh remain deferred.
+  handoff slice now ships as opt-in helpers, and runtime text model refresh now
+  supports app-owned sources; durable credential storage and non-text/live
+  model discovery remain deferred.
 
 ## [0.5.0] - 2026-06-13
 

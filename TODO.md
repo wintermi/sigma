@@ -609,8 +609,11 @@ should still come through the catalog refresh workflow.
       caller-supplied stores participate in EnvironmentAuthResolver paths and
       provider OAuth login/refresh (Anthropic, GitHub Copilot, OpenAI Codex)
       without changing existing caller-owned default behaviour.
-- [ ] Support runtime/dynamic model discovery and refresh for custom or
+- [x] Support runtime/dynamic text model discovery and refresh for custom or
       provider-registered sources (local inference servers, routers with live
       catalogs) so Client.Models and registry contents are not limited to the
-      static generated catalog; preserve curated metadata as the reliable
+      static generated catalog while preserving curated metadata as the reliable
       offline baseline and reviewable default.
+- [ ] Extend runtime/dynamic refresh beyond text models only after image,
+      embedding, built-in live provider catalog refresh, and credential-backed
+      discovery semantics are settled separately.

@@ -57,6 +57,31 @@ func (p testEmbeddingProvider) Embed(context.Context, sigma.EmbeddingModel, sigm
 	return sigma.Embeddings{}, nil
 }
 
+type testTextModelSource struct {
+	mu     sync.Mutex
+	models []sigma.Model
+	err    error
+}
+
+func (s *testTextModelSource) TextModels(context.Context) ([]sigma.Model, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.err != nil {
+		return nil, s.err
+	}
+	models := make([]sigma.Model, len(s.models))
+	copy(models, s.models)
+	return models, nil
+}
+
+func (s *testTextModelSource) Set(models ...sigma.Model) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.models = append([]sigma.Model(nil), models...)
+}
+
 func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
 	t.Parallel()
 
@@ -113,6 +138,335 @@ func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
 	models := registry.ListModels()
 	if got, want := []sigma.ModelID{models[0].ID, models[1].ID}, []sigma.ModelID{"gpt-custom", "mistral-custom"}; got[0] != want[0] || got[1] != want[1] {
 		t.Fatalf("model order = %v, want %v", got, want)
+	}
+}
+
+func TestRegistryTextModelSourceDuplicateHandlingRequiresOverride(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	source := &testTextModelSource{}
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(provider, source); err == nil {
+		t.Fatal("duplicate text model source registration returned nil error")
+	}
+	if err := registry.RegisterTextModelSource(provider, source, sigma.WithOverride()); err != nil {
+		t.Fatalf("override text model source registration returned error: %v", err)
+	}
+}
+
+func TestRegistryRefreshTextModelsReplacesOnlySourceOwnedModels(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(sigma.Model{
+		ID:       "manual",
+		Provider: provider,
+		API:      sigma.APIOpenAICompletions,
+		Name:     "Manual",
+	}); err != nil {
+		t.Fatalf("RegisterModel(manual) returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(
+		sigma.Model{ID: "source-old", Provider: provider, API: sigma.APIOpenAICompletions},
+		sigma.Model{ID: "source-keep", Provider: provider, API: sigma.APIOpenAICompletions},
+	)
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("first RefreshTextModels returned error: %v", err)
+	}
+
+	source.Set(
+		sigma.Model{ID: "source-new", Provider: provider, API: sigma.APIOpenAICompletions},
+		sigma.Model{ID: "source-keep", Provider: provider, API: sigma.APIOpenAICompletions, Name: "updated"},
+	)
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("second RefreshTextModels returned error: %v", err)
+	}
+
+	models := registry.ListModels()
+	got := make([]sigma.ModelID, 0, len(models))
+	for _, model := range models {
+		got = append(got, model.ID)
+	}
+	want := []sigma.ModelID{"manual", "source-new", "source-keep"}
+	if len(got) != len(want) {
+		t.Fatalf("model ids = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("model ids = %v, want %v", got, want)
+		}
+	}
+	if _, ok := registry.Model(provider, "source-old"); ok {
+		t.Fatal("stale source-owned model remained registered")
+	}
+	updated, ok := registry.Model(provider, "source-keep")
+	if !ok {
+		t.Fatal("updated source model was not registered")
+	}
+	if got, want := updated.Name, "updated"; got != want {
+		t.Fatalf("updated source model name = %q, want %q", got, want)
+	}
+}
+
+func TestRegistryRefreshTextModelsPreservesCallerOwnedConflicts(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	manual := sigma.Model{ID: "manual", Provider: provider, API: sigma.APIOpenAICompletions, Name: "manual"}
+	if err := registry.RegisterModel(manual); err != nil {
+		t.Fatalf("RegisterModel(manual) returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "manual", Provider: provider, API: sigma.APIOpenAICompletions, Name: "source"})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	if err := registry.RefreshTextModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshTextModels with caller-owned id conflict returned nil error")
+	}
+	got, ok := registry.Model(provider, "manual")
+	if !ok {
+		t.Fatal("caller-owned model was removed after refresh conflict")
+	}
+	if got.Name != "manual" {
+		t.Fatalf("caller-owned model name = %q, want manual", got.Name)
+	}
+}
+
+func TestRegistryRegisterModelOverrideTakesSourceOwnership(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "source", Provider: provider, API: sigma.APIOpenAICompletions, Name: "source"})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("RefreshTextModels returned error: %v", err)
+	}
+
+	if err := registry.RegisterModel(sigma.Model{
+		ID:       "source",
+		Provider: provider,
+		API:      sigma.APIOpenAICompletions,
+		Name:     "manual",
+	}, sigma.WithOverride()); err != nil {
+		t.Fatalf("RegisterModel override returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshTextModels after caller override returned nil conflict")
+	}
+	got, ok := registry.Model(provider, "source")
+	if !ok {
+		t.Fatal("caller-overridden source model was removed")
+	}
+	if got.Name != "manual" {
+		t.Fatalf("model name = %q, want manual", got.Name)
+	}
+}
+
+func TestRegistryRefreshTextModelsValidatesBeforeApplying(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "good", Provider: provider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RefreshTextModels returned error: %v", err)
+	}
+
+	source.Set(
+		sigma.Model{ID: "bad-api", Provider: provider, API: sigma.API("wrong-api")},
+		sigma.Model{ID: "new", Provider: provider, API: sigma.APIOpenAICompletions},
+	)
+	if err := registry.RefreshTextModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshTextModels with invalid model returned nil error")
+	}
+	if _, ok := registry.Model(provider, "good"); !ok {
+		t.Fatal("existing source model was removed after failed refresh")
+	}
+	if _, ok := registry.Model(provider, "new"); ok {
+		t.Fatal("new model from failed refresh was registered")
+	}
+}
+
+func TestRegistryRefreshTextModelsRejectsDuplicateAndWrongProviderModels(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name   string
+		models []sigma.Model
+	}{
+		{
+			name: "duplicate model",
+			models: []sigma.Model{
+				{ID: "same", Provider: sigma.ProviderID("dynamic"), API: sigma.APIOpenAICompletions},
+				{ID: "same", Provider: sigma.ProviderID("dynamic"), API: sigma.APIOpenAICompletions},
+			},
+		},
+		{
+			name: "wrong provider",
+			models: []sigma.Model{
+				{ID: "other", Provider: sigma.ProviderID("other"), API: sigma.APIOpenAICompletions},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registry := sigma.NewRegistry()
+			provider := sigma.ProviderID("dynamic")
+			if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+				t.Fatalf("RegisterTextProvider returned error: %v", err)
+			}
+			source := &testTextModelSource{}
+			source.Set(tt.models...)
+			if err := registry.RegisterTextModelSource(provider, source); err != nil {
+				t.Fatalf("RegisterTextModelSource returned error: %v", err)
+			}
+			if err := registry.RefreshTextModels(context.Background(), provider); err == nil {
+				t.Fatal("RefreshTextModels returned nil error")
+			}
+			if got := len(registry.ListModels()); got != 0 {
+				t.Fatalf("model count = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestRegistryRefreshTextModelsSupportsMetadataOnlySources(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("metadata-only")
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "listed", Provider: provider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(provider, source, sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("RefreshTextModels returned error: %v", err)
+	}
+	if _, ok := registry.Model(provider, "listed"); !ok {
+		t.Fatal("metadata-only source model was not registered")
+	}
+}
+
+func TestRegistryRefreshTextModelsJoinsErrorsAndAppliesSuccessfulSources(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	goodProvider := sigma.ProviderID("good")
+	badProvider := sigma.ProviderID("bad")
+	if err := registry.RegisterTextProvider(goodProvider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider(good) returned error: %v", err)
+	}
+	if err := registry.RegisterTextProvider(badProvider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider(bad) returned error: %v", err)
+	}
+	good := &testTextModelSource{}
+	good.Set(sigma.Model{ID: "fresh", Provider: goodProvider, API: sigma.APIOpenAICompletions})
+	bad := &testTextModelSource{err: context.Canceled}
+	if err := registry.RegisterTextModelSource(goodProvider, good); err != nil {
+		t.Fatalf("RegisterTextModelSource(good) returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(badProvider, bad); err != nil {
+		t.Fatalf("RegisterTextModelSource(bad) returned error: %v", err)
+	}
+
+	if err := registry.RefreshTextModels(context.Background()); err == nil {
+		t.Fatal("RefreshTextModels returned nil error")
+	}
+	if _, ok := registry.Model(goodProvider, "fresh"); !ok {
+		t.Fatal("successful source was not applied when another source failed")
+	}
+}
+
+func TestRegistryRefreshTextModelsCancellationLeavesExistingModels(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "good", Provider: provider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RefreshTextModels returned error: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := registry.RegisterTextModelSource(provider, sigma.TextModelSourceFunc(func(ctx context.Context) ([]sigma.Model, error) {
+		return nil, ctx.Err()
+	}), sigma.WithOverride()); err != nil {
+		t.Fatalf("override RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(ctx, provider); err == nil {
+		t.Fatal("RefreshTextModels with canceled context returned nil error")
+	}
+	if _, ok := registry.Model(provider, "good"); !ok {
+		t.Fatal("existing source model was removed after canceled refresh")
+	}
+}
+
+func TestClientRefreshTextModelsUpdatesConfiguredRegistry(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	source := &testTextModelSource{}
+	source.Set(sigma.Model{ID: "fresh", Provider: provider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if err := client.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("client RefreshTextModels returned error: %v", err)
+	}
+	models := client.Models()
+	if got, want := len(models), 1; got != want {
+		t.Fatalf("client model count = %d, want %d", got, want)
+	}
+	if got, want := models[0].ID, sigma.ModelID("fresh"); got != want {
+		t.Fatalf("client model id = %q, want %q", got, want)
 	}
 }
 

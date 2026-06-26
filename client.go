@@ -125,6 +125,17 @@ func (c *Client) Models(filters ...ModelFilter) []Model {
 	return filtered
 }
 
+// RefreshTextModels refreshes runtime text model sources on the client's registry.
+func (c *Client) RefreshTextModels(ctx context.Context, providers ...ProviderID) error {
+	if c == nil {
+		c = NewClient()
+	}
+	if c.registry == nil {
+		return registryError("registry is required")
+	}
+	return c.registry.RefreshTextModels(ctx, providers...)
+}
+
 // Stream starts a provider stream for model.
 func (c *Client) Stream(ctx context.Context, model Model, req Request, opts ...Option) *Stream {
 	if ctx == nil {

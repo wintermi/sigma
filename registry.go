@@ -6,6 +6,8 @@
 package sigma
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -18,6 +20,22 @@ type RegisterOption func(*registerOptions)
 type registerOptions struct {
 	override     bool
 	metadataOnly bool
+}
+
+// TextModelSource lists text models for a provider-owned runtime source.
+type TextModelSource interface {
+	TextModels(context.Context) ([]Model, error)
+}
+
+// TextModelSourceFunc adapts a function into a TextModelSource.
+type TextModelSourceFunc func(context.Context) ([]Model, error)
+
+// TextModels calls f.
+func (f TextModelSourceFunc) TextModels(ctx context.Context) ([]Model, error) {
+	if f == nil {
+		return nil, registryError("text model source is required")
+	}
+	return f(ctx)
 }
 
 // ModelFilter reports whether a model should be included in a model list.
@@ -65,12 +83,21 @@ type providerRegistration struct {
 	embeddingSet bool
 }
 
+type textModelSourceRegistration struct {
+	source       TextModelSource
+	metadataOnly bool
+}
+
 // Registry stores provider implementations and model metadata.
 type Registry struct {
 	mu sync.RWMutex
 
 	providers     map[ProviderID]providerRegistration
 	providerOrder []ProviderID
+
+	textModelSources     map[ProviderID]textModelSourceRegistration
+	textModelSourceOrder []ProviderID
+	textModelSourceRefs  map[ProviderID]map[ModelRef]struct{}
 
 	models     map[ModelRef]Model
 	modelOrder []ModelRef
@@ -140,6 +167,14 @@ func RegisterModel(registry *Registry, model Model, opts ...RegisterOption) erro
 	return registry.RegisterModel(model, opts...)
 }
 
+// RegisterTextModelSource registers a runtime text model source on registry.
+func RegisterTextModelSource(registry *Registry, provider ProviderID, source TextModelSource, opts ...RegisterOption) error {
+	if registry == nil {
+		return registryError("registry is required")
+	}
+	return registry.RegisterTextModelSource(provider, source, opts...)
+}
+
 // RegisterEmbeddingModel registers embedding model metadata on registry.
 func RegisterEmbeddingModel(registry *Registry, model EmbeddingModel, opts ...RegisterOption) error {
 	if registry == nil {
@@ -178,6 +213,34 @@ func (r *Registry) RegisterTextProvider(id ProviderID, provider TextProvider, op
 	registration.textAPI = api
 	registration.textSet = true
 	r.providers[id] = registration
+	return nil
+}
+
+// RegisterTextModelSource registers a runtime text model source for provider.
+func (r *Registry) RegisterTextModelSource(provider ProviderID, source TextModelSource, opts ...RegisterOption) error {
+	if provider == "" {
+		return registryError("provider id is required")
+	}
+	if source == nil {
+		return registryError("text model source is required")
+	}
+
+	options := applyRegisterOptions(opts)
+	r.ensure()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.textModelSources[provider]; ok && !options.override {
+		return registryConflict("text model source already registered")
+	}
+	if _, ok := r.textModelSources[provider]; !ok {
+		r.textModelSourceOrder = append(r.textModelSourceOrder, provider)
+	}
+	r.textModelSources[provider] = textModelSourceRegistration{
+		source:       source,
+		metadataOnly: options.metadataOnly,
+	}
 	return nil
 }
 
@@ -270,6 +333,7 @@ func (r *Registry) RegisterModel(model Model, opts ...RegisterOption) error {
 		r.modelOrder = append(r.modelOrder, key)
 	}
 	r.models[key] = cloneModel(model)
+	r.removeTextModelSourceRefLocked(model.Provider, key)
 	return nil
 }
 
@@ -323,6 +387,32 @@ func (r *Registry) RegisterEmbeddingModel(model EmbeddingModel, opts ...Register
 	}
 	r.embeddingModels[key] = cloneEmbeddingModel(model)
 	return nil
+}
+
+// RefreshTextModels refreshes text models from registered runtime sources.
+func (r *Registry) RefreshTextModels(ctx context.Context, providers ...ProviderID) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.ensure()
+
+	sources, err := r.textSourcesForRefresh(providers)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, source := range sources {
+		models, err := source.registration.source.TextModels(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("refresh text models for %s: %w", source.provider, err))
+			continue
+		}
+		if err := r.applyTextModelRefresh(source.provider, source.registration, models); err != nil {
+			errs = append(errs, fmt.Errorf("refresh text models for %s: %w", source.provider, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // TextProvider returns the registered text provider for id.
@@ -474,6 +564,13 @@ func (r *Registry) Clone() *Registry {
 	for id, registration := range r.providers {
 		clone.providers[id] = registration
 	}
+	clone.textModelSourceOrder = append(clone.textModelSourceOrder, r.textModelSourceOrder...)
+	for provider, source := range r.textModelSources {
+		clone.textModelSources[provider] = source
+	}
+	for provider, refs := range r.textModelSourceRefs {
+		clone.textModelSourceRefs[provider] = copyModelRefSet(refs)
+	}
 	clone.modelOrder = append(clone.modelOrder, r.modelOrder...)
 	for key, model := range r.models {
 		clone.models[key] = cloneModel(model)
@@ -509,10 +606,12 @@ func newDefaultRegistry() *Registry {
 
 func newRegistry() *Registry {
 	return &Registry{
-		providers:       make(map[ProviderID]providerRegistration),
-		models:          make(map[ModelRef]Model),
-		imageModels:     make(map[ModelRef]ImageModel),
-		embeddingModels: make(map[ModelRef]EmbeddingModel),
+		providers:           make(map[ProviderID]providerRegistration),
+		textModelSources:    make(map[ProviderID]textModelSourceRegistration),
+		textModelSourceRefs: make(map[ProviderID]map[ModelRef]struct{}),
+		models:              make(map[ModelRef]Model),
+		imageModels:         make(map[ModelRef]ImageModel),
+		embeddingModels:     make(map[ModelRef]EmbeddingModel),
 	}
 }
 
@@ -527,6 +626,12 @@ func (r *Registry) ensure() {
 	if r.providers == nil {
 		r.providers = make(map[ProviderID]providerRegistration)
 	}
+	if r.textModelSources == nil {
+		r.textModelSources = make(map[ProviderID]textModelSourceRegistration)
+	}
+	if r.textModelSourceRefs == nil {
+		r.textModelSourceRefs = make(map[ProviderID]map[ModelRef]struct{})
+	}
 	if r.models == nil {
 		r.models = make(map[ModelRef]Model)
 	}
@@ -536,6 +641,154 @@ func (r *Registry) ensure() {
 	if r.embeddingModels == nil {
 		r.embeddingModels = make(map[ModelRef]EmbeddingModel)
 	}
+}
+
+func (r *Registry) removeTextModelSourceRefLocked(provider ProviderID, ref ModelRef) {
+	refs := r.textModelSourceRefs[provider]
+	if len(refs) == 0 {
+		return
+	}
+	delete(refs, ref)
+	if len(refs) == 0 {
+		delete(r.textModelSourceRefs, provider)
+	}
+}
+
+type textSourceForRefresh struct {
+	provider     ProviderID
+	registration textModelSourceRegistration
+}
+
+func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceForRefresh, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if len(providers) == 0 {
+		sources := make([]textSourceForRefresh, 0, len(r.textModelSourceOrder))
+		for _, provider := range r.textModelSourceOrder {
+			registration, ok := r.textModelSources[provider]
+			if !ok {
+				continue
+			}
+			sources = append(sources, textSourceForRefresh{
+				provider:     provider,
+				registration: registration,
+			})
+		}
+		return sources, nil
+	}
+
+	sources := make([]textSourceForRefresh, 0, len(providers))
+	for _, provider := range providers {
+		if provider == "" {
+			return nil, registryError("provider id is required")
+		}
+		registration, ok := r.textModelSources[provider]
+		if !ok {
+			return nil, registryError("text model source is not registered")
+		}
+		sources = append(sources, textSourceForRefresh{
+			provider:     provider,
+			registration: registration,
+		})
+	}
+	return sources, nil
+}
+
+func (r *Registry) applyTextModelRefresh(provider ProviderID, source textModelSourceRegistration, models []Model) error {
+	refs, copied, err := r.validateTextModelRefresh(provider, source.metadataOnly, models)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	owned := r.textModelSourceRefs[provider]
+	for _, ref := range refs {
+		if _, exists := r.models[ref]; exists {
+			if _, ok := owned[ref]; !ok {
+				return registryConflict("text model source returned model already registered outside source")
+			}
+		}
+	}
+
+	ownedRefs := r.textModelSourceRefs[provider]
+	if len(ownedRefs) > 0 {
+		for ref := range ownedRefs {
+			delete(r.models, ref)
+		}
+		r.modelOrder = removeModelRefs(r.modelOrder, ownedRefs)
+	}
+	for index, ref := range refs {
+		r.models[ref] = copied[index]
+		r.modelOrder = append(r.modelOrder, ref)
+	}
+	r.textModelSourceRefs[provider] = modelRefSet(refs)
+	return nil
+}
+
+func (r *Registry) validateTextModelRefresh(provider ProviderID, metadataOnly bool, models []Model) ([]ModelRef, []Model, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	refs := make([]ModelRef, 0, len(models))
+	copied := make([]Model, 0, len(models))
+	seen := make(map[ModelRef]struct{}, len(models))
+	for _, model := range models {
+		if model.Provider != provider {
+			return nil, nil, registryError("text model source returned model for different provider")
+		}
+		if err := validateModel(model); err != nil {
+			return nil, nil, err
+		}
+		if err := r.validateTextModelProviderLocked(model, metadataOnly); err != nil {
+			return nil, nil, err
+		}
+		ref := ModelRef{Provider: model.Provider, ID: model.ID}
+		if _, ok := seen[ref]; ok {
+			return nil, nil, registryConflict("text model source returned duplicate model")
+		}
+		seen[ref] = struct{}{}
+		refs = append(refs, ref)
+		copied = append(copied, cloneModel(model))
+	}
+	return refs, copied, nil
+}
+
+func modelRefSet(refs []ModelRef) map[ModelRef]struct{} {
+	if len(refs) == 0 {
+		return nil
+	}
+	set := make(map[ModelRef]struct{}, len(refs))
+	for _, ref := range refs {
+		set[ref] = struct{}{}
+	}
+	return set
+}
+
+func copyModelRefSet(refs map[ModelRef]struct{}) map[ModelRef]struct{} {
+	if len(refs) == 0 {
+		return nil
+	}
+	copied := make(map[ModelRef]struct{}, len(refs))
+	for ref := range refs {
+		copied[ref] = struct{}{}
+	}
+	return copied
+}
+
+func removeModelRefs(refs []ModelRef, remove map[ModelRef]struct{}) []ModelRef {
+	if len(remove) == 0 {
+		return refs
+	}
+	filtered := refs[:0]
+	for _, ref := range refs {
+		if _, ok := remove[ref]; !ok {
+			filtered = append(filtered, ref)
+		}
+	}
+	return filtered
 }
 
 func (r *Registry) validateTextModelProviderLocked(model Model, metadataOnly bool) error {

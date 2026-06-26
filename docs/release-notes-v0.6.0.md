@@ -98,6 +98,9 @@ deterministic added/removed/changed report without writing generated files. It
 can also write a validated review-only candidate catalog from an explicit
 `models.dev` snapshot path or opt-in network source, leaving the checked-in
 catalog and generated files untouched until the diff is reviewed.
+Registries can now also refresh app-owned dynamic text model sources at
+runtime, so local servers and routers with live catalogs can update
+`Client.Models` without changing Sigma's curated built-in catalog.
 
 ## Added
 
@@ -202,6 +205,10 @@ catalog and generated files untouched until the diff is reviewed.
   opt-in network source. Refresh mode requires an explicit
   `-refresh-snapshot-date`, preserves existing image and embedding rows, and
   exits before writing generated Go files.
+- `sigma.TextModelSource` and `sigma.TextModelSourceFunc` now let applications
+  attach provider-scoped runtime text model sources to a registry, and
+  `Registry.RefreshTextModels` / `Client.RefreshTextModels` refresh those
+  app-owned listings atomically after local validation.
 - `cmd/sigma-surface-probe` now includes an opt-in `nvidia` route that uses
   `NVIDIA_API_KEY`, the direct NIM base URL, the NVIDIA provider wrapper, and
   `nvidia/nemotron-3-super-120b-a12b` as its default probe model when callers
@@ -426,6 +433,11 @@ catalog and generated files untouched until the diff is reviewed.
   provider request shapes, or persisted replay semantics.
 - The request-conversion regression tests are coverage-only. They preserve
   existing public APIs and keep request-shape behavior unchanged for callers.
+- Runtime text model refresh is additive and app-owned. Sources are registered
+  per provider, fetched outside the registry write lock, validated before
+  applying changes, and only replace models previously owned by that source.
+  Caller-registered models, built-in metadata, image models, and embedding
+  models are not refreshed by this text-only surface.
 
 ## Deferred work
 
@@ -436,8 +448,10 @@ accounting including long-cache and thinking tokens, auth resolvers and
 OAuthTokenProvider, internal request/message transforms, provider adapters,
 persistence, embeddings+retrieval, images, sigmatest, and generated metadata)
 identified additional user-visible capability gaps that align with existing
-deferred items. Public handoff support now ships as a narrow helper surface;
-durable credential storage and runtime/dynamic model refresh remain deferred.
+deferred items. Public handoff support now ships as a narrow helper surface,
+and runtime text model refresh now supports app-owned sources; durable
+credential storage and non-text or built-in live model discovery remain
+deferred.
 See the expanded bullets below and [TODO.md](../TODO.md) for the current list.
 All candidate work remains subject to the deterministic evidence, fixture, and
 cancellation bar described in [RELEASING.md](../RELEASING.md).
@@ -483,6 +497,9 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 - Broad OpenRouter text catalog expansion remains deferred until it can flow
   through the reviewed catalog refresh workflow with deterministic routing,
   pricing, and provider/API diffs.
+- Runtime image model refresh, embedding model refresh, built-in live provider
+  catalog refresh, and credential-backed discovery remain deferred until each
+  surface has explicit ownership and validation semantics.
 - Provider-neutral document/PDF content blocks, source ranking, citation
   rendering, and provider-specific citation UI policy remain deferred and
   caller-owned.
