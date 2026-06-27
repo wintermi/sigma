@@ -603,12 +603,15 @@ should still come through the catalog refresh workflow.
 - [x] Cover handoff surfaces with deterministic behavioural
       tests (text+thinking+tools+image cases to non-supporting targets, error
       paths, provenance preservation) meeting the evidence bar in RELEASING.md.
-- [ ] Implement durable credential storage for OAuth and stored API-key flows.
+- [x] Implement durable credential storage for OAuth and stored API-key flows.
       Provide a CredentialStore interface (read, modify-with-fn for serialized
       atomic updates during refresh, delete) plus in-memory default. Integrate so
       caller-supplied stores participate in EnvironmentAuthResolver paths and
       provider OAuth login/refresh (Anthropic, GitHub Copilot, OpenAI Codex)
       without changing existing caller-owned default behaviour.
+- [ ] Add file-backed, encrypted, OS keychain, or UI-driven credential
+      persistence only as separate caller-owned integrations on top of
+      CredentialStore; keep Sigma's built-in store process-local.
 - [x] Support runtime/dynamic text model discovery and refresh for custom or
       provider-registered sources (local inference servers, routers with live
       catalogs) so Client.Models and registry contents are not limited to the

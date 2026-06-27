@@ -1137,7 +1137,7 @@ func (c *Client) embeddingRequestOptions(opts []EmbeddingOption) Options {
 	}
 	options = mergeOptions(options, c.defaultOptions)
 	options = applyEmbeddingOptions(options, opts)
-	clientResolver := c.authResolver
+	clientResolver := c.clientAuthResolver()
 	if options.AuthResolver != nil {
 		clientResolver = options.AuthResolver
 	}

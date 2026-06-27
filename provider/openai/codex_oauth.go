@@ -106,6 +106,74 @@ type CodexOAuthTokenProviderOptions struct {
 	OnRefresh     func(context.Context, CodexOAuthCredentials) error
 }
 
+// CodexProviderAuth returns OpenAI Codex OAuth auth descriptors for provider.
+func CodexProviderAuth(provider sigma.ProviderID, opts CodexOAuthTokenProviderOptions) sigma.ProviderAuth {
+	return sigma.ProviderAuth{
+		OAuth: &sigma.OAuthAuth{
+			Name:          "OpenAI Codex OAuth",
+			RefreshBefore: opts.RefreshBefore,
+			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
+				refreshed, err := RefreshOpenAICodexToken(ctx, stored.RefreshToken, opts)
+				if err != nil {
+					return sigma.StoredCredential{}, err
+				}
+				return storedCodexOAuthCredential(provider, refreshed, stored), nil
+			},
+			Credential: func(_ context.Context, model sigma.Model, _ sigma.Options, stored sigma.StoredCredential) (sigma.Credential, error) {
+				if stored.Value == "" {
+					return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"openai-codex-oauth"}}
+				}
+				metadata := copyAnyMap(stored.Metadata)
+				accountID := storedStringMetadata(metadata, codexOAuthCredentialAccountID)
+				if accountID == "" {
+					accountID = storedStringMetadata(metadata, codexOAuthCredentialChatGPTAcctID)
+				}
+				if accountID == "" {
+					var err error
+					accountID, err = codexAccountIDFromToken(stored.Value)
+					if err != nil {
+						return sigma.Credential{}, err
+					}
+					if metadata == nil {
+						metadata = make(map[string]any)
+					}
+					metadata[codexOAuthCredentialAccountID] = accountID
+					metadata[codexOAuthCredentialChatGPTAcctID] = accountID
+				}
+				source := stored.Source
+				if source == "" {
+					source = "credential-store:" + string(provider)
+				}
+				return sigma.Credential{
+					Type:     sigma.CredentialTypeOAuthToken,
+					Value:    stored.Value,
+					Expiry:   stored.Expiry,
+					Source:   source,
+					Metadata: metadata,
+				}, nil
+			},
+		},
+	}
+}
+
+// RegisterCodexProviderAuth registers OpenAI Codex auth descriptors on registry.
+func RegisterCodexProviderAuth(registry *sigma.Registry, provider sigma.ProviderID, opts CodexOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterProviderAuth(registry, provider, CodexProviderAuth(provider, opts), registerOpts...); err != nil {
+		return fmt.Errorf("openai codex auth: register provider auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterDefaultCodexProviderAuth registers OpenAI Codex auth descriptors on the default registry.
+func RegisterDefaultCodexProviderAuth(provider sigma.ProviderID, opts CodexOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterDefaultProviderAuth(provider, CodexProviderAuth(provider, opts), registerOpts...); err != nil {
+		return fmt.Errorf("openai codex auth: register default provider auth: %w", err)
+	}
+	return nil
+}
+
 type codexDeviceAuthInfo struct {
 	deviceAuthID string
 	userCode     string
@@ -246,6 +314,48 @@ func NewCodexOAuthTokenProvider(credentials CodexOAuthCredentials, opts CodexOAu
 		onRefresh:     opts.OnRefresh,
 		credentials:   credentials,
 	}
+}
+
+func storedCodexOAuthCredential(provider sigma.ProviderID, credentials CodexOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {
+	source := previous.Source
+	if source == "" {
+		source = "credential-store:" + string(provider)
+	}
+	metadata := copyAnyMap(previous.Metadata)
+	if metadata == nil {
+		metadata = make(map[string]any)
+	}
+	if credentials.AccountID != "" {
+		metadata[codexOAuthCredentialAccountID] = credentials.AccountID
+		metadata[codexOAuthCredentialChatGPTAcctID] = credentials.AccountID
+	}
+	return sigma.StoredCredential{
+		Type:         sigma.CredentialTypeOAuthToken,
+		Value:        credentials.AccessToken,
+		RefreshToken: credentials.RefreshToken,
+		Expiry:       credentials.Expiry,
+		Source:       source,
+		ProviderEnv:  copyStoredStringMap(previous.ProviderEnv),
+		Metadata:     metadata,
+	}
+}
+
+func copyStoredStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
+func storedStringMetadata(metadata map[string]any, key string) string {
+	if value, ok := metadata[key].(string); ok {
+		return value
+	}
+	return ""
 }
 
 func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {

@@ -50,6 +50,39 @@ func TestOpenAICodexBrowserAuthorizationURL(t *testing.T) {
 	}
 }
 
+func TestCodexProviderAuthResolvesStoredOAuthAccountMetadata(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	access := codexTestJWT("acct_store")
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderOpenAICodex, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:         sigma.CredentialTypeOAuthToken,
+			Value:        access,
+			RefreshToken: "refresh-token",
+			Expiry:       time.Now().Add(time.Hour),
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+	registry := sigma.NewRegistry()
+	if err := RegisterCodexProviderAuth(registry, sigma.ProviderOpenAICodex, CodexOAuthTokenProviderOptions{}); err != nil {
+		t.Fatalf("RegisterCodexProviderAuth returned error: %v", err)
+	}
+	credential, err := (sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}).Resolve(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderOpenAICodex, ID: "gpt-test"},
+		sigma.Options{},
+	)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Metadata[codexOAuthCredentialAccountID], "acct_store"; got != want {
+		t.Fatalf("account metadata = %v, want %q", got, want)
+	}
+}
+
 func TestLoginOpenAICodexBrowserCallbackSuccess(t *testing.T) {
 	withCodexBrowserTestServer(t)
 

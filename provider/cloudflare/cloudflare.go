@@ -6,6 +6,8 @@
 package cloudflare
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/wintermi/sigma"
@@ -127,12 +129,127 @@ func WithWorkersAIAccountID(accountID string) sigma.Option {
 	return sigma.WithProviderOption(sigma.ProviderCloudflareWorkersAI, workersAIAccountIDOption, accountID)
 }
 
+// AIGatewayProviderAuth returns Cloudflare AI Gateway auth descriptors.
+func AIGatewayProviderAuth() sigma.ProviderAuth {
+	return sigma.ProviderAuth{
+		APIKey: &sigma.APIKeyAuth{
+			Name:    "Cloudflare API key",
+			EnvVars: []string{"CLOUDFLARE_API_KEY"},
+			Resolve: func(ctx context.Context, model sigma.Model, opts sigma.Options, stored sigma.StoredCredential, storedOK bool) (sigma.AuthResolution, bool, error) {
+				return resolveCloudflareAuth(ctx, model, opts, stored, storedOK, true)
+			},
+		},
+	}
+}
+
+// WorkersAIProviderAuth returns Cloudflare Workers AI auth descriptors.
+func WorkersAIProviderAuth() sigma.ProviderAuth {
+	return sigma.ProviderAuth{
+		APIKey: &sigma.APIKeyAuth{
+			Name:    "Cloudflare API key",
+			EnvVars: []string{"CLOUDFLARE_API_KEY"},
+			Resolve: func(ctx context.Context, model sigma.Model, opts sigma.Options, stored sigma.StoredCredential, storedOK bool) (sigma.AuthResolution, bool, error) {
+				return resolveCloudflareAuth(ctx, model, opts, stored, storedOK, false)
+			},
+		},
+	}
+}
+
+// RegisterAIGatewayAuth registers Cloudflare AI Gateway auth descriptors.
+func RegisterAIGatewayAuth(registry *sigma.Registry, opts ...sigma.RegisterOption) error {
+	opts = append([]sigma.RegisterOption{sigma.WithOverride()}, opts...)
+	if err := sigma.RegisterProviderAuth(registry, sigma.ProviderCloudflareAIGateway, AIGatewayProviderAuth(), opts...); err != nil {
+		return fmt.Errorf("cloudflare auth: register ai gateway auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterWorkersAIAuth registers Cloudflare Workers AI auth descriptors.
+func RegisterWorkersAIAuth(registry *sigma.Registry, opts ...sigma.RegisterOption) error {
+	opts = append([]sigma.RegisterOption{sigma.WithOverride()}, opts...)
+	if err := sigma.RegisterProviderAuth(registry, sigma.ProviderCloudflareWorkersAI, WorkersAIProviderAuth(), opts...); err != nil {
+		return fmt.Errorf("cloudflare auth: register workers ai auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterDefaultAIGatewayAuth registers Cloudflare AI Gateway auth descriptors on the default registry.
+func RegisterDefaultAIGatewayAuth(opts ...sigma.RegisterOption) error {
+	opts = append([]sigma.RegisterOption{sigma.WithOverride()}, opts...)
+	if err := sigma.RegisterDefaultProviderAuth(sigma.ProviderCloudflareAIGateway, AIGatewayProviderAuth(), opts...); err != nil {
+		return fmt.Errorf("cloudflare auth: register default ai gateway auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterDefaultWorkersAIAuth registers Cloudflare Workers AI auth descriptors on the default registry.
+func RegisterDefaultWorkersAIAuth(opts ...sigma.RegisterOption) error {
+	opts = append([]sigma.RegisterOption{sigma.WithOverride()}, opts...)
+	if err := sigma.RegisterDefaultProviderAuth(sigma.ProviderCloudflareWorkersAI, WorkersAIProviderAuth(), opts...); err != nil {
+		return fmt.Errorf("cloudflare auth: register default workers ai auth: %w", err)
+	}
+	return nil
+}
+
 // RegisterAIGateway adds a Cloudflare AI Gateway Chat Completions provider to registry.
 func RegisterAIGateway(registry *sigma.Registry, opts ...ProviderOption) error {
 	if registry == nil {
 		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
 	}
 	return registry.RegisterTextProvider(sigma.ProviderCloudflareAIGateway, NewAIGatewayProvider(opts...))
+}
+
+func resolveCloudflareAuth(
+	ctx context.Context,
+	model sigma.Model,
+	opts sigma.Options,
+	stored sigma.StoredCredential,
+	storedOK bool,
+	gateway bool,
+) (sigma.AuthResolution, bool, error) {
+	base := sigma.EnvironmentAPIKeyAuth("Cloudflare API key", "CLOUDFLARE_API_KEY")
+	resolution, ok, err := base.Resolve(ctx, model, opts, stored, storedOK)
+	if err != nil {
+		return resolution, false, fmt.Errorf("cloudflare auth: resolve api key: %w", err)
+	}
+	if !ok {
+		return resolution, false, nil
+	}
+
+	accountID := stored.ProviderEnv["CLOUDFLARE_ACCOUNT_ID"]
+	gatewayID := stored.ProviderEnv["CLOUDFLARE_GATEWAY_ID"]
+	resolution.ProviderEnv = copyStringMap(stored.ProviderEnv)
+	resolution.ProviderOptions = cloudflareProviderOptions(accountID, gatewayID, gateway)
+	return resolution, true, nil
+}
+
+func cloudflareProviderOptions(accountID string, gatewayID string, gateway bool) map[string]any {
+	options := map[string]any{}
+	if gateway {
+		if accountID != "" {
+			options[aiGatewayAccountIDOption] = accountID
+		}
+		if gatewayID != "" {
+			options[aiGatewayIDOption] = gatewayID
+		}
+	} else if accountID != "" {
+		options[workersAIAccountIDOption] = accountID
+	}
+	if len(options) == 0 {
+		return nil
+	}
+	return options
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
 }
 
 // RegisterWorkersAI adds a Cloudflare Workers AI Chat Completions provider to registry.

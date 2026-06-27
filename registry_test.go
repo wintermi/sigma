@@ -514,6 +514,60 @@ func TestRegistryDuplicateHandlingRequiresOverride(t *testing.T) {
 	}
 }
 
+func TestRegistryProviderAuthRegistrationCloneAndSnapshot(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	auth := sigma.ProviderAuth{
+		APIKey: sigma.EnvironmentAPIKeyAuth("Test API key", "TEST_API_KEY"),
+	}
+	if err := registry.RegisterProviderAuth(sigma.ProviderOpenAI, auth); err != nil {
+		t.Fatalf("RegisterProviderAuth returned error: %v", err)
+	}
+	if err := registry.RegisterProviderAuth(sigma.ProviderOpenAI, auth); err == nil {
+		t.Fatal("duplicate provider auth registration returned nil error")
+	}
+	withOAuth := sigma.ProviderAuth{
+		APIKey: sigma.EnvironmentAPIKeyAuth("Test API key", "TEST_API_KEY"),
+		OAuth:  &sigma.OAuthAuth{Name: "Test OAuth"},
+	}
+	if err := registry.RegisterProviderAuth(sigma.ProviderOpenAI, withOAuth, sigma.WithOverride()); err != nil {
+		t.Fatalf("override provider auth registration returned error: %v", err)
+	}
+
+	registered, ok := registry.ProviderAuth(sigma.ProviderOpenAI)
+	if !ok {
+		t.Fatal("provider auth was not registered")
+	}
+	if registered.APIKey == nil || registered.OAuth == nil {
+		t.Fatalf("registered auth = %#v, want api-key and oauth", registered)
+	}
+	registered.APIKey.EnvVars[0] = "MUTATED"
+	again, ok := registry.ProviderAuth(sigma.ProviderOpenAI)
+	if !ok {
+		t.Fatal("provider auth was not registered after mutation")
+	}
+	if got, want := again.APIKey.EnvVars[0], "TEST_API_KEY"; got != want {
+		t.Fatalf("provider auth env var = %q, want %q", got, want)
+	}
+
+	clone := registry.Clone()
+	if err := clone.RegisterProviderAuth(sigma.ProviderAnthropic, auth); err != nil {
+		t.Fatalf("clone RegisterProviderAuth returned error: %v", err)
+	}
+	if _, ok := registry.ProviderAuth(sigma.ProviderAnthropic); ok {
+		t.Fatal("clone provider auth leaked into original registry")
+	}
+
+	snapshot := registry.Snapshot()
+	if got, want := len(snapshot.ProviderAuths), 1; got != want {
+		t.Fatalf("snapshot provider auth count = %d, want %d", got, want)
+	}
+	if got := snapshot.ProviderAuths[0]; got.ID != sigma.ProviderOpenAI || !got.APIKey || !got.OAuth {
+		t.Fatalf("snapshot provider auth = %#v, want openai api-key+oauth", got)
+	}
+}
+
 func TestRegistryValidatesModelProviderAPI(t *testing.T) {
 	t.Parallel()
 

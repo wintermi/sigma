@@ -66,6 +66,77 @@ type GitHubCopilotOAuthTokenProviderOptions struct {
 	OnRefresh        func(context.Context, GitHubCopilotOAuthCredentials) error
 }
 
+// ProviderAuth returns GitHub Copilot API-key and OAuth auth descriptors.
+func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAuth {
+	return sigma.ProviderAuth{
+		APIKey: sigma.EnvironmentAPIKeyAuth("GitHub Copilot token", "COPILOT_GITHUB_TOKEN"),
+		OAuth: &sigma.OAuthAuth{
+			Name:          "GitHub Copilot OAuth",
+			RefreshBefore: opts.RefreshBefore,
+			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
+				refreshed, err := RefreshGitHubCopilotToken(ctx, stored.RefreshToken, opts)
+				if err != nil {
+					return sigma.StoredCredential{}, err
+				}
+				return storedGitHubCopilotOAuthCredential(refreshed, stored), nil
+			},
+			Credential: func(_ context.Context, model sigma.Model, _ sigma.Options, stored sigma.StoredCredential) (sigma.Credential, error) {
+				if stored.Value == "" {
+					return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"github-copilot-oauth"}}
+				}
+				metadata := copyStoredMetadata(stored.Metadata)
+				baseURL := stringMetadata(metadata, "baseURL")
+				enterpriseDomain := stringMetadata(metadata, "enterpriseDomain")
+				if enterpriseDomain == "" {
+					enterpriseDomain = opts.EnterpriseDomain
+				}
+				if baseURL == "" {
+					baseURL = GitHubCopilotBaseURL(stored.Value, enterpriseDomain)
+					if metadata == nil {
+						metadata = make(map[string]any)
+					}
+					metadata["baseURL"] = baseURL
+				}
+				if enterpriseDomain != "" {
+					if metadata == nil {
+						metadata = make(map[string]any)
+					}
+					metadata["enterpriseDomain"] = enterpriseDomain
+				}
+				source := stored.Source
+				if source == "" {
+					source = "credential-store:" + string(sigma.ProviderGitHubCopilot)
+				}
+				return sigma.Credential{
+					Type:     sigma.CredentialTypeOAuthToken,
+					Value:    stored.Value,
+					Expiry:   stored.Expiry,
+					Source:   source,
+					Metadata: metadata,
+				}, nil
+			},
+		},
+	}
+}
+
+// RegisterAuth registers GitHub Copilot auth descriptors on registry.
+func RegisterAuth(registry *sigma.Registry, opts GitHubCopilotOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterProviderAuth(registry, sigma.ProviderGitHubCopilot, ProviderAuth(opts), registerOpts...); err != nil {
+		return fmt.Errorf("github copilot auth: register provider auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterDefaultAuth registers GitHub Copilot auth descriptors on the default registry.
+func RegisterDefaultAuth(opts GitHubCopilotOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterDefaultProviderAuth(sigma.ProviderGitHubCopilot, ProviderAuth(opts), registerOpts...); err != nil {
+		return fmt.Errorf("github copilot auth: register default provider auth: %w", err)
+	}
+	return nil
+}
+
 // GitHubCopilotModelEnableOptions configures GitHub Copilot model-policy
 // enablement helpers.
 type GitHubCopilotModelEnableOptions struct {
@@ -222,6 +293,61 @@ func NewGitHubCopilotOAuthTokenProvider(credentials GitHubCopilotOAuthCredential
 		onRefresh:     opts.OnRefresh,
 		credentials:   credentials,
 	}
+}
+
+func storedGitHubCopilotOAuthCredential(credentials GitHubCopilotOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {
+	source := previous.Source
+	if source == "" {
+		source = "credential-store:" + string(sigma.ProviderGitHubCopilot)
+	}
+	metadata := copyStoredMetadata(previous.Metadata)
+	if metadata == nil {
+		metadata = make(map[string]any)
+	}
+	if credentials.BaseURL != "" {
+		metadata["baseURL"] = credentials.BaseURL
+	}
+	if credentials.EnterpriseDomain != "" {
+		metadata["enterpriseDomain"] = credentials.EnterpriseDomain
+	}
+	return sigma.StoredCredential{
+		Type:         sigma.CredentialTypeOAuthToken,
+		Value:        credentials.AccessToken,
+		RefreshToken: credentials.RefreshToken,
+		Expiry:       credentials.Expiry,
+		Source:       source,
+		ProviderEnv:  copyStringMap(previous.ProviderEnv),
+		Metadata:     metadata,
+	}
+}
+
+func copyStoredMetadata(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
+func stringMetadata(metadata map[string]any, key string) string {
+	if value, ok := metadata[key].(string); ok {
+		return value
+	}
+	return ""
 }
 
 // Resolve implements sigma.AuthResolver.

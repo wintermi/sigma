@@ -15,11 +15,13 @@ type ClientOption func(*Client)
 
 // Client coordinates model lookup and generation requests.
 type Client struct {
-	registry       *Registry
-	authResolver   AuthResolver
-	httpClient     *http.Client
-	defaultHeaders map[string]string
-	defaultOptions Options
+	registry             *Registry
+	authResolver         AuthResolver
+	credentialStore      CredentialStore
+	providerAuthResolver bool
+	httpClient           *http.Client
+	defaultHeaders       map[string]string
+	defaultOptions       Options
 }
 
 // NewClient constructs a Client.
@@ -59,6 +61,22 @@ func WithHTTPClient(httpClient *http.Client) ClientOption {
 func WithAuthResolver(resolver AuthResolver) ClientOption {
 	return func(client *Client) {
 		client.authResolver = resolver
+	}
+}
+
+// WithCredentialStore configures stored credentials for opt-in provider auth.
+//
+// The store is inert unless WithStoredProviderAuth is also configured.
+func WithCredentialStore(store CredentialStore) ClientOption {
+	return func(client *Client) {
+		client.credentialStore = store
+	}
+}
+
+// WithStoredProviderAuth enables store-backed provider auth resolution.
+func WithStoredProviderAuth() ClientOption {
+	return func(client *Client) {
+		client.providerAuthResolver = true
 	}
 }
 
@@ -220,11 +238,26 @@ func (c *Client) requestOptions(model Model, opts []Option) Options {
 	options = mergeOptions(options, c.defaultOptions)
 	options = mergeOptions(options, modelDefaultOptions(model))
 	options = applyOptions(options, opts)
+	clientResolver := c.clientAuthResolver()
 	options.AuthResolver = ChainAuthResolver{
-		Client:            c.authResolver,
+		Client:            clientResolver,
 		ProviderCallbacks: options.ProviderAuthResolvers,
 	}
 	return options
+}
+
+func (c *Client) clientAuthResolver() AuthResolver {
+	if c == nil {
+		return nil
+	}
+	if !c.providerAuthResolver {
+		return c.authResolver
+	}
+	return StoredCredentialAuthResolver{
+		Store:    c.credentialStore,
+		Registry: c.registry,
+		Fallback: c.authResolver,
+	}
 }
 
 func defaultClient() *Client {

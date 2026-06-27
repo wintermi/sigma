@@ -66,6 +66,12 @@ See [release notes](docs/release-notes-v0.6.0.md).
   discovery helpers for ordered candidate variable names and configured
   variable names, with broader built-in API-key defaults for OpenAI-compatible
   provider IDs that previously relied only on generated model metadata.
+- Sigma now exposes opt-in credential stores and provider auth descriptors for
+  stored API-key and OAuth flows. `CredentialStore`,
+  `InMemoryCredentialStore`, registered `ProviderAuth` descriptors, and
+  `WithStoredProviderAuth` let applications resolve stored credentials and
+  serialize OAuth refreshes without changing default environment-based
+  credential behavior.
 - Request options now support final outgoing header suppression across text,
   image, and embedding calls, letting callers remove provider/default
   compatibility headers without adding a generic environment override surface

@@ -63,12 +63,20 @@ type ProviderInfo struct {
 	EmbeddingAPI EmbeddingAPI `json:"embeddingApi,omitempty"`
 }
 
+// ProviderAuthInfo is a copyable view of registered provider auth capabilities.
+type ProviderAuthInfo struct {
+	ID     ProviderID `json:"id"`
+	APIKey bool       `json:"apiKey,omitempty"`
+	OAuth  bool       `json:"oauth,omitempty"`
+}
+
 // RegistrySnapshot is an immutable-by-convention copy of registry state.
 type RegistrySnapshot struct {
-	Providers       []ProviderInfo   `json:"providers,omitempty"`
-	Models          []Model          `json:"models,omitempty"`
-	ImageModels     []ImageModel     `json:"imageModels,omitempty"`
-	EmbeddingModels []EmbeddingModel `json:"embeddingModels,omitempty"`
+	Providers       []ProviderInfo     `json:"providers,omitempty"`
+	ProviderAuths   []ProviderAuthInfo `json:"providerAuths,omitempty"`
+	Models          []Model            `json:"models,omitempty"`
+	ImageModels     []ImageModel       `json:"imageModels,omitempty"`
+	EmbeddingModels []EmbeddingModel   `json:"embeddingModels,omitempty"`
 }
 
 type providerRegistration struct {
@@ -98,6 +106,9 @@ type Registry struct {
 	textModelSources     map[ProviderID]textModelSourceRegistration
 	textModelSourceOrder []ProviderID
 	textModelSourceRefs  map[ProviderID]map[ModelRef]struct{}
+
+	providerAuths     map[ProviderID]ProviderAuth
+	providerAuthOrder []ProviderID
 
 	models     map[ModelRef]Model
 	modelOrder []ModelRef
@@ -134,6 +145,11 @@ func RegisterDefaultImageProvider(id ProviderID, provider ImageProvider, opts ..
 // RegisterDefaultEmbeddingProvider registers an embedding provider on the default registry.
 func RegisterDefaultEmbeddingProvider(id ProviderID, provider EmbeddingProvider, opts ...RegisterOption) error {
 	return defaultRegistry.RegisterEmbeddingProvider(id, provider, opts...)
+}
+
+// RegisterDefaultProviderAuth registers provider auth on the default registry.
+func RegisterDefaultProviderAuth(id ProviderID, auth ProviderAuth, opts ...RegisterOption) error {
+	return defaultRegistry.RegisterProviderAuth(id, auth, opts...)
 }
 
 // RegisterDefaultModel registers a text model on the default registry.
@@ -173,6 +189,14 @@ func RegisterTextModelSource(registry *Registry, provider ProviderID, source Tex
 		return registryError("registry is required")
 	}
 	return registry.RegisterTextModelSource(provider, source, opts...)
+}
+
+// RegisterProviderAuth registers auth metadata on registry.
+func RegisterProviderAuth(registry *Registry, provider ProviderID, auth ProviderAuth, opts ...RegisterOption) error {
+	if registry == nil {
+		return registryError("registry is required")
+	}
+	return registry.RegisterProviderAuth(provider, auth, opts...)
 }
 
 // RegisterEmbeddingModel registers embedding model metadata on registry.
@@ -307,6 +331,31 @@ func (r *Registry) RegisterEmbeddingProvider(id ProviderID, provider EmbeddingPr
 	registration.embeddingAPI = api
 	registration.embeddingSet = true
 	r.providers[id] = registration
+	return nil
+}
+
+// RegisterProviderAuth registers auth metadata for provider.
+func (r *Registry) RegisterProviderAuth(provider ProviderID, auth ProviderAuth, opts ...RegisterOption) error {
+	if provider == "" {
+		return registryError("provider id is required")
+	}
+	if auth.APIKey == nil && auth.OAuth == nil {
+		return registryError("provider auth is required")
+	}
+
+	options := applyRegisterOptions(opts)
+	r.ensure()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.providerAuths[provider]; ok && !options.override {
+		return registryConflict("provider auth already registered")
+	}
+	if _, ok := r.providerAuths[provider]; !ok {
+		r.providerAuthOrder = append(r.providerAuthOrder, provider)
+	}
+	r.providerAuths[provider] = cloneProviderAuth(auth)
 	return nil
 }
 
@@ -448,6 +497,17 @@ func (r *Registry) EmbeddingProvider(id ProviderID) (EmbeddingProvider, bool) {
 	return registration.embedding, ok && registration.embeddingSet
 }
 
+// ProviderAuth returns registered auth metadata for provider.
+func (r *Registry) ProviderAuth(provider ProviderID) (ProviderAuth, bool) {
+	r.ensure()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	auth, ok := r.providerAuths[provider]
+	return cloneProviderAuth(auth), ok
+}
+
 // ListProviders returns providers in first-registration order.
 func (r *Registry) ListProviders() []ProviderInfo {
 	r.ensure()
@@ -466,6 +526,25 @@ func (r *Registry) ListProviders() []ProviderInfo {
 		})
 	}
 	return providers
+}
+
+// ListProviderAuths returns registered provider auth metadata in registration order.
+func (r *Registry) ListProviderAuths() []ProviderAuthInfo {
+	r.ensure()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	auths := make([]ProviderAuthInfo, 0, len(r.providerAuthOrder))
+	for _, id := range r.providerAuthOrder {
+		auth := r.providerAuths[id]
+		auths = append(auths, ProviderAuthInfo{
+			ID:     id,
+			APIKey: auth.APIKey != nil,
+			OAuth:  auth.OAuth != nil,
+		})
+	}
+	return auths
 }
 
 // ListModels returns text models in registration order.
@@ -571,6 +650,10 @@ func (r *Registry) Clone() *Registry {
 	for provider, refs := range r.textModelSourceRefs {
 		clone.textModelSourceRefs[provider] = copyModelRefSet(refs)
 	}
+	clone.providerAuthOrder = append(clone.providerAuthOrder, r.providerAuthOrder...)
+	for provider, auth := range r.providerAuths {
+		clone.providerAuths[provider] = cloneProviderAuth(auth)
+	}
 	clone.modelOrder = append(clone.modelOrder, r.modelOrder...)
 	for key, model := range r.models {
 		clone.models[key] = cloneModel(model)
@@ -590,6 +673,7 @@ func (r *Registry) Clone() *Registry {
 func (r *Registry) Snapshot() RegistrySnapshot {
 	return RegistrySnapshot{
 		Providers:       r.ListProviders(),
+		ProviderAuths:   r.ListProviderAuths(),
 		Models:          r.ListModels(),
 		ImageModels:     r.ListImageModels(),
 		EmbeddingModels: r.ListEmbeddingModels(),
@@ -601,6 +685,7 @@ func newDefaultRegistry() *Registry {
 	_ = registerBuiltinTextModels(registry)
 	_ = registerBuiltinImageModels(registry)
 	_ = registerBuiltinEmbeddingModels(registry)
+	registerBuiltinProviderAuths(registry)
 	return registry
 }
 
@@ -609,6 +694,7 @@ func newRegistry() *Registry {
 		providers:           make(map[ProviderID]providerRegistration),
 		textModelSources:    make(map[ProviderID]textModelSourceRegistration),
 		textModelSourceRefs: make(map[ProviderID]map[ModelRef]struct{}),
+		providerAuths:       make(map[ProviderID]ProviderAuth),
 		models:              make(map[ModelRef]Model),
 		imageModels:         make(map[ModelRef]ImageModel),
 		embeddingModels:     make(map[ModelRef]EmbeddingModel),
@@ -631,6 +717,9 @@ func (r *Registry) ensure() {
 	}
 	if r.textModelSourceRefs == nil {
 		r.textModelSourceRefs = make(map[ProviderID]map[ModelRef]struct{})
+	}
+	if r.providerAuths == nil {
+		r.providerAuths = make(map[ProviderID]ProviderAuth)
 	}
 	if r.models == nil {
 		r.models = make(map[ModelRef]Model)

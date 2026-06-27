@@ -35,6 +35,10 @@ can inspect candidate and configured API-key variable names before making a
 request, and focused provider helpers now let callers pass Cloudflare AI
 Gateway placeholder values and Bedrock region/static credential values without
 mutating process environment.
+Credential stores and provider auth descriptors now give applications an
+opt-in way to resolve stored API keys, serialize OAuth refreshes, and preserve
+rotated credentials while leaving Sigma's default environment-based credential
+resolution unchanged.
 Request-scoped header suppression now also lets callers remove final outgoing
 compatibility/default headers across text, image, and embedding requests while
 preserving credential resolution and avoiding a generic environment override
@@ -161,6 +165,13 @@ runtime, so local servers and routers with live catalogs can update
   helpers for model-aware environment credential discovery. They return ordered
   variable names only, respect model metadata before provider defaults, and add
   built-in fallback names for additional OpenAI-compatible provider IDs.
+- `sigma.CredentialStore`, `sigma.InMemoryCredentialStore`,
+  `sigma.ProviderAuth`, and `sigma.WithStoredProviderAuth` now provide an
+  opt-in stored credential layer for API-key and OAuth credentials. Store
+  updates use serialized modify callbacks, registries can carry provider auth
+  descriptors independently from provider implementations, and Anthropic,
+  GitHub Copilot, OpenAI Codex, and Cloudflare helpers expose focused
+  descriptors over their existing auth behavior.
 - `sigma.WithSuppressedHeader` and `sigma.WithSuppressedHeaders` now remove
   final outgoing request headers after provider defaults, model metadata
   headers, dynamic compatibility headers, and caller headers are merged. Image
@@ -438,6 +449,12 @@ runtime, so local servers and routers with live catalogs can update
   applying changes, and only replace models previously owned by that source.
   Caller-registered models, built-in metadata, image models, and embedding
   models are not refreshed by this text-only surface.
+- Stored credential auth is additive and opt-in. Existing clients keep the
+  same request API-key, client resolver, environment, and provider-callback
+  behavior unless they configure both a credential store and
+  `WithStoredProviderAuth`. Sigma provides an in-memory store and provider auth
+  descriptors, but does not add built-in file, keychain, or encrypted
+  persistence.
 
 ## Deferred work
 
@@ -449,15 +466,18 @@ OAuthTokenProvider, internal request/message transforms, provider adapters,
 persistence, embeddings+retrieval, images, sigmatest, and generated metadata)
 identified additional user-visible capability gaps that align with existing
 deferred items. Public handoff support now ships as a narrow helper surface,
-and runtime text model refresh now supports app-owned sources; durable
-credential storage and non-text or built-in live model discovery remain
-deferred.
+runtime text model refresh now supports app-owned sources, and opt-in
+CredentialStore-based auth now covers stored API-key and OAuth resolution;
+file-backed or encrypted persistence plus non-text or built-in live model
+discovery remain deferred.
 See the expanded bullets below and [TODO.md](../TODO.md) for the current list.
 All candidate work remains subject to the deterministic evidence, fixture, and
 cancellation bar described in [RELEASING.md](../RELEASING.md).
 
-- OAuth token persistence remains deferred and caller-owned. Deferred work
-  continues to be tracked in [TODO.md](../TODO.md).
+- File-backed, encrypted, OS keychain, and UI-driven credential persistence
+  remain deferred and caller-owned. Sigma now defines the store interface and
+  process-local in-memory store, but applications still own where durable
+  credentials are persisted.
 - Ambient cloud credential probing, OAuth token stores, AWS profiles, SSO, web
   identity, IMDS, and shared-config loading remain deferred. Applications that
   need those flows should continue to resolve credentials before calling Sigma.
@@ -510,7 +530,7 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-06-21 with:
+Current v0.6.0 development state validated on 2026-06-28 with:
 
 - `mise run go:generate`.
 - `mise run go:fmt`.

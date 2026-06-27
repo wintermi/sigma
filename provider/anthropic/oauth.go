@@ -80,6 +80,58 @@ type AnthropicOAuthTokenProviderOptions struct {
 	OnRefresh     func(context.Context, AnthropicOAuthCredentials) error
 }
 
+// ProviderAuth returns Anthropic API-key and OAuth auth descriptors.
+func ProviderAuth(opts AnthropicOAuthTokenProviderOptions) sigma.ProviderAuth {
+	return sigma.ProviderAuth{
+		APIKey: sigma.EnvironmentAPIKeyAuth("Anthropic API key", "ANTHROPIC_API_KEY"),
+		OAuth: &sigma.OAuthAuth{
+			Name:          "Anthropic OAuth",
+			RefreshBefore: opts.RefreshBefore,
+			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
+				refreshed, err := RefreshAnthropicToken(ctx, stored.RefreshToken, opts)
+				if err != nil {
+					return sigma.StoredCredential{}, err
+				}
+				return storedAnthropicOAuthCredential(refreshed, stored), nil
+			},
+			Credential: func(_ context.Context, _ sigma.Model, _ sigma.Options, stored sigma.StoredCredential) (sigma.Credential, error) {
+				if stored.Value == "" {
+					return sigma.Credential{}, &sigma.CredentialUnavailableError{Sources: []string{"anthropic-oauth"}}
+				}
+				source := stored.Source
+				if source == "" {
+					source = "credential-store:" + string(sigma.ProviderAnthropic)
+				}
+				return sigma.Credential{
+					Type:     sigma.CredentialTypeOAuthToken,
+					Value:    stored.Value,
+					Expiry:   stored.Expiry,
+					Source:   source,
+					Metadata: copyStoredMetadata(stored.Metadata),
+				}, nil
+			},
+		},
+	}
+}
+
+// RegisterAuth registers Anthropic auth descriptors on registry.
+func RegisterAuth(registry *sigma.Registry, opts AnthropicOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterProviderAuth(registry, sigma.ProviderAnthropic, ProviderAuth(opts), registerOpts...); err != nil {
+		return fmt.Errorf("anthropic auth: register provider auth: %w", err)
+	}
+	return nil
+}
+
+// RegisterDefaultAuth registers Anthropic auth descriptors on the default registry.
+func RegisterDefaultAuth(opts AnthropicOAuthTokenProviderOptions, registerOpts ...sigma.RegisterOption) error {
+	registerOpts = append([]sigma.RegisterOption{sigma.WithOverride()}, registerOpts...)
+	if err := sigma.RegisterDefaultProviderAuth(sigma.ProviderAnthropic, ProviderAuth(opts), registerOpts...); err != nil {
+		return fmt.Errorf("anthropic auth: register default provider auth: %w", err)
+	}
+	return nil
+}
+
 type anthropicBrowserCallbackServer struct {
 	server      *http.Server
 	done        chan anthropicBrowserCallbackResult
@@ -174,6 +226,44 @@ func NewAnthropicOAuthTokenProvider(credentials AnthropicOAuthCredentials, opts 
 		onRefresh:     opts.OnRefresh,
 		credentials:   credentials,
 	}
+}
+
+func storedAnthropicOAuthCredential(credentials AnthropicOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {
+	source := previous.Source
+	if source == "" {
+		source = "credential-store:" + string(sigma.ProviderAnthropic)
+	}
+	return sigma.StoredCredential{
+		Type:         sigma.CredentialTypeOAuthToken,
+		Value:        credentials.AccessToken,
+		RefreshToken: credentials.RefreshToken,
+		Expiry:       credentials.Expiry,
+		Source:       source,
+		ProviderEnv:  copyStringMap(previous.ProviderEnv),
+		Metadata:     copyStoredMetadata(previous.Metadata),
+	}
+}
+
+func copyStoredMetadata(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]any, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	return copied
 }
 
 func (p *anthropicOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {

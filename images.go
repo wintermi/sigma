@@ -282,7 +282,7 @@ func (c *Client) imageRequestOptions(opts []ImageOption) Options {
 	}
 	options = mergeOptions(options, c.defaultOptions)
 	options = applyImageOptions(options, opts)
-	clientResolver := c.authResolver
+	clientResolver := c.clientAuthResolver()
 	if options.AuthResolver != nil {
 		clientResolver = options.AuthResolver
 	}

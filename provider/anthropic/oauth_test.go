@@ -51,6 +51,41 @@ func TestAnthropicAuthorizationURL(t *testing.T) {
 	}
 }
 
+func TestProviderAuthResolvesStoredAnthropicOAuthCredential(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderAnthropic, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:         sigma.CredentialTypeOAuthToken,
+			Value:        "oauth-token",
+			RefreshToken: "refresh-token",
+			Expiry:       time.Now().Add(time.Hour),
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+	registry := sigma.NewRegistry()
+	if err := RegisterAuth(registry, AnthropicOAuthTokenProviderOptions{}); err != nil {
+		t.Fatalf("RegisterAuth returned error: %v", err)
+	}
+	credential, err := (sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}).Resolve(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderAnthropic, ID: "claude-test"},
+		sigma.Options{},
+	)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Type, sigma.CredentialTypeOAuthToken; got != want {
+		t.Fatalf("credential type = %q, want %q", got, want)
+	}
+	if got, want := credential.Value, "oauth-token"; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+}
+
 func TestLoginAnthropicBrowserCallbackSuccess(t *testing.T) {
 	withAnthropicBrowserTestServer(t)
 

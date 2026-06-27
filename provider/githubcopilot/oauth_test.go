@@ -89,6 +89,42 @@ func TestLoginGitHubCopilotDeviceCodeReportsDeviceAndReturnsCredentials(t *testi
 	}
 }
 
+func TestProviderAuthResolvesStoredGitHubCopilotOAuthMetadata(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	access := "tid=abc;exp=123;proxy-ep=proxy.business.githubcopilot.com;rest"
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderGitHubCopilot, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:         sigma.CredentialTypeOAuthToken,
+			Value:        access,
+			RefreshToken: "refresh-token",
+			Expiry:       time.Now().Add(time.Hour),
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+	registry := sigma.NewRegistry()
+	if err := githubcopilot.RegisterAuth(registry, githubcopilot.GitHubCopilotOAuthTokenProviderOptions{}); err != nil {
+		t.Fatalf("RegisterAuth returned error: %v", err)
+	}
+	credential, err := (sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}).Resolve(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderGitHubCopilot, ID: "copilot-test"},
+		sigma.Options{},
+	)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, access; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+	if got, want := credential.Metadata["baseURL"], "https://api.business.githubcopilot.com"; got != want {
+		t.Fatalf("baseURL metadata = %v, want %q", got, want)
+	}
+}
+
 func TestLoginGitHubCopilotDeviceCodeRejectsUnsafeVerificationURI(t *testing.T) {
 	t.Parallel()
 
