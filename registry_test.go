@@ -63,6 +63,12 @@ type testTextModelSource struct {
 	err    error
 }
 
+type testImageModelSource struct {
+	mu     sync.Mutex
+	models []sigma.ImageModel
+	err    error
+}
+
 func (s *testTextModelSource) TextModels(context.Context) ([]sigma.Model, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -80,6 +86,25 @@ func (s *testTextModelSource) Set(models ...sigma.Model) {
 	defer s.mu.Unlock()
 
 	s.models = append([]sigma.Model(nil), models...)
+}
+
+func (s *testImageModelSource) ImageModels(context.Context) ([]sigma.ImageModel, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.err != nil {
+		return nil, s.err
+	}
+	models := make([]sigma.ImageModel, len(s.models))
+	copy(models, s.models)
+	return models, nil
+}
+
+func (s *testImageModelSource) Set(models ...sigma.ImageModel) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.models = append([]sigma.ImageModel(nil), models...)
 }
 
 func TestRegistryRegistersProvidersAndModelsInOrder(t *testing.T) {
@@ -467,6 +492,335 @@ func TestClientRefreshTextModelsUpdatesConfiguredRegistry(t *testing.T) {
 	}
 	if got, want := models[0].ID, sigma.ModelID("fresh"); got != want {
 		t.Fatalf("client model id = %q, want %q", got, want)
+	}
+}
+
+func TestRegistryImageModelSourceDuplicateHandlingRequiresOverride(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	source := &testImageModelSource{}
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RegisterImageModelSource(provider, source); err == nil {
+		t.Fatal("duplicate image model source registration returned nil error")
+	}
+	if err := registry.RegisterImageModelSource(provider, source, sigma.WithOverride()); err != nil {
+		t.Fatalf("override image model source registration returned error: %v", err)
+	}
+}
+
+func TestRegistryRefreshImageModelsReplacesOnlySourceOwnedModels(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	if err := registry.RegisterImageModel(sigma.ImageModel{
+		ID:       "manual",
+		Provider: provider,
+		API:      sigma.ImageAPIOpenAIImages,
+		Name:     "Manual",
+	}); err != nil {
+		t.Fatalf("RegisterImageModel(manual) returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(
+		sigma.ImageModel{ID: "source-old", Provider: provider, API: sigma.ImageAPIOpenAIImages},
+		sigma.ImageModel{ID: "source-keep", Provider: provider, API: sigma.ImageAPIOpenAIImages},
+	)
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("first RefreshImageModels returned error: %v", err)
+	}
+
+	source.Set(
+		sigma.ImageModel{ID: "source-new", Provider: provider, API: sigma.ImageAPIOpenAIImages},
+		sigma.ImageModel{ID: "source-keep", Provider: provider, API: sigma.ImageAPIOpenAIImages, Name: "updated"},
+	)
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("second RefreshImageModels returned error: %v", err)
+	}
+
+	models := registry.ListImageModels()
+	got := make([]sigma.ModelID, 0, len(models))
+	for _, model := range models {
+		got = append(got, model.ID)
+	}
+	want := []sigma.ModelID{"manual", "source-new", "source-keep"}
+	if len(got) != len(want) {
+		t.Fatalf("image model ids = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("image model ids = %v, want %v", got, want)
+		}
+	}
+	if _, ok := registry.ImageModel(provider, "source-old"); ok {
+		t.Fatal("stale source-owned image model remained registered")
+	}
+	updated, ok := registry.ImageModel(provider, "source-keep")
+	if !ok {
+		t.Fatal("updated source image model was not registered")
+	}
+	if got, want := updated.Name, "updated"; got != want {
+		t.Fatalf("updated source image model name = %q, want %q", got, want)
+	}
+}
+
+func TestRegistryRefreshImageModelsPreservesCallerOwnedConflicts(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	manual := sigma.ImageModel{ID: "manual", Provider: provider, API: sigma.ImageAPIOpenAIImages, Name: "manual"}
+	if err := registry.RegisterImageModel(manual); err != nil {
+		t.Fatalf("RegisterImageModel(manual) returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "manual", Provider: provider, API: sigma.ImageAPIOpenAIImages, Name: "source"})
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+
+	if err := registry.RefreshImageModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshImageModels with caller-owned id conflict returned nil error")
+	}
+	got, ok := registry.ImageModel(provider, "manual")
+	if !ok {
+		t.Fatal("caller-owned image model was removed after refresh conflict")
+	}
+	if got.Name != "manual" {
+		t.Fatalf("caller-owned image model name = %q, want manual", got.Name)
+	}
+}
+
+func TestRegistryRegisterImageModelOverrideTakesSourceOwnership(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "source", Provider: provider, API: sigma.ImageAPIOpenAIImages, Name: "source"})
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("RefreshImageModels returned error: %v", err)
+	}
+
+	if err := registry.RegisterImageModel(sigma.ImageModel{
+		ID:       "source",
+		Provider: provider,
+		API:      sigma.ImageAPIOpenAIImages,
+		Name:     "manual",
+	}, sigma.WithOverride()); err != nil {
+		t.Fatalf("RegisterImageModel override returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshImageModels after caller override returned nil conflict")
+	}
+	got, ok := registry.ImageModel(provider, "source")
+	if !ok {
+		t.Fatal("caller-overridden source image model was removed")
+	}
+	if got.Name != "manual" {
+		t.Fatalf("image model name = %q, want manual", got.Name)
+	}
+}
+
+func TestRegistryRefreshImageModelsValidatesBeforeApplying(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "good", Provider: provider, API: sigma.ImageAPIOpenAIImages})
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RefreshImageModels returned error: %v", err)
+	}
+
+	source.Set(
+		sigma.ImageModel{ID: "bad-api", Provider: provider, API: sigma.ImageAPIGoogleImages},
+		sigma.ImageModel{ID: "new", Provider: provider, API: sigma.ImageAPIOpenAIImages},
+	)
+	if err := registry.RefreshImageModels(context.Background(), provider); err == nil {
+		t.Fatal("RefreshImageModels with invalid image model returned nil error")
+	}
+	if _, ok := registry.ImageModel(provider, "good"); !ok {
+		t.Fatal("existing source image model was removed after failed refresh")
+	}
+	if _, ok := registry.ImageModel(provider, "new"); ok {
+		t.Fatal("new image model from failed refresh was registered")
+	}
+}
+
+func TestRegistryRefreshImageModelsRejectsDuplicateAndWrongProviderModels(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name   string
+		models []sigma.ImageModel
+	}{
+		{
+			name: "duplicate image model",
+			models: []sigma.ImageModel{
+				{ID: "same", Provider: sigma.ProviderID("dynamic-images"), API: sigma.ImageAPIOpenAIImages},
+				{ID: "same", Provider: sigma.ProviderID("dynamic-images"), API: sigma.ImageAPIOpenAIImages},
+			},
+		},
+		{
+			name: "wrong provider",
+			models: []sigma.ImageModel{
+				{ID: "other", Provider: sigma.ProviderID("other"), API: sigma.ImageAPIOpenAIImages},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registry := sigma.NewRegistry()
+			provider := sigma.ProviderID("dynamic-images")
+			if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+				t.Fatalf("RegisterImageProvider returned error: %v", err)
+			}
+			source := &testImageModelSource{}
+			source.Set(tt.models...)
+			if err := registry.RegisterImageModelSource(provider, source); err != nil {
+				t.Fatalf("RegisterImageModelSource returned error: %v", err)
+			}
+			if err := registry.RefreshImageModels(context.Background(), provider); err == nil {
+				t.Fatal("RefreshImageModels returned nil error")
+			}
+			if got := len(registry.ListImageModels()); got != 0 {
+				t.Fatalf("image model count = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestRegistryRefreshImageModelsSupportsMetadataOnlySources(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("metadata-only-images")
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "listed", Provider: provider, API: sigma.ImageAPIOpenAIImages})
+	if err := registry.RegisterImageModelSource(provider, source, sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("RefreshImageModels returned error: %v", err)
+	}
+	if _, ok := registry.ImageModel(provider, "listed"); !ok {
+		t.Fatal("metadata-only source image model was not registered")
+	}
+}
+
+func TestRegistryRefreshImageModelsJoinsErrorsAndAppliesSuccessfulSources(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	goodProvider := sigma.ProviderID("good-images")
+	badProvider := sigma.ProviderID("bad-images")
+	if err := registry.RegisterImageProvider(goodProvider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider(good) returned error: %v", err)
+	}
+	if err := registry.RegisterImageProvider(badProvider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider(bad) returned error: %v", err)
+	}
+	good := &testImageModelSource{}
+	good.Set(sigma.ImageModel{ID: "fresh", Provider: goodProvider, API: sigma.ImageAPIOpenAIImages})
+	bad := &testImageModelSource{err: context.Canceled}
+	if err := registry.RegisterImageModelSource(goodProvider, good); err != nil {
+		t.Fatalf("RegisterImageModelSource(good) returned error: %v", err)
+	}
+	if err := registry.RegisterImageModelSource(badProvider, bad); err != nil {
+		t.Fatalf("RegisterImageModelSource(bad) returned error: %v", err)
+	}
+
+	if err := registry.RefreshImageModels(context.Background()); err == nil {
+		t.Fatal("RefreshImageModels returned nil error")
+	}
+	if _, ok := registry.ImageModel(goodProvider, "fresh"); !ok {
+		t.Fatal("successful image source was not applied when another source failed")
+	}
+}
+
+func TestRegistryRefreshImageModelsCancellationLeavesExistingModels(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "good", Provider: provider, API: sigma.ImageAPIOpenAIImages})
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RefreshImageModels returned error: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := registry.RegisterImageModelSource(provider, sigma.ImageModelSourceFunc(func(ctx context.Context) ([]sigma.ImageModel, error) {
+		return nil, ctx.Err()
+	}), sigma.WithOverride()); err != nil {
+		t.Fatalf("override RegisterImageModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshImageModels(ctx, provider); err == nil {
+		t.Fatal("RefreshImageModels with canceled context returned nil error")
+	}
+	if _, ok := registry.ImageModel(provider, "good"); !ok {
+		t.Fatal("existing source image model was removed after canceled refresh")
+	}
+}
+
+func TestClientRefreshImageModelsUpdatesConfiguredRegistry(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("dynamic-images")
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	source := &testImageModelSource{}
+	source.Set(sigma.ImageModel{ID: "fresh", Provider: provider, API: sigma.ImageAPIOpenAIImages})
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if err := client.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("client RefreshImageModels returned error: %v", err)
+	}
+	models := client.ImageModels()
+	if got, want := len(models), 1; got != want {
+		t.Fatalf("client image model count = %d, want %d", got, want)
+	}
+	if got, want := models[0].ID, sigma.ModelID("fresh"); got != want {
+		t.Fatalf("client image model id = %q, want %q", got, want)
 	}
 }
 

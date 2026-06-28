@@ -265,6 +265,17 @@ func (c *Client) ImageModels() []ImageModel {
 	return c.registry.ListImageModels()
 }
 
+// RefreshImageModels refreshes runtime image model sources on the client's registry.
+func (c *Client) RefreshImageModels(ctx context.Context, providers ...ProviderID) error {
+	if c == nil {
+		c = NewClient()
+	}
+	if c.registry == nil {
+		return registryError("registry is required")
+	}
+	return c.registry.RefreshImageModels(ctx, providers...)
+}
+
 // GetImageModel returns an image model from the default registry.
 func GetImageModel(provider ProviderID, id ModelID) (ImageModel, bool) {
 	return defaultClient().GetImageModel(provider, id)

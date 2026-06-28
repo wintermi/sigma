@@ -27,13 +27,29 @@ type TextModelSource interface {
 	TextModels(context.Context) ([]Model, error)
 }
 
+// ImageModelSource lists image models for a provider-owned runtime source.
+type ImageModelSource interface {
+	ImageModels(context.Context) ([]ImageModel, error)
+}
+
 // TextModelSourceFunc adapts a function into a TextModelSource.
 type TextModelSourceFunc func(context.Context) ([]Model, error)
+
+// ImageModelSourceFunc adapts a function into an ImageModelSource.
+type ImageModelSourceFunc func(context.Context) ([]ImageModel, error)
 
 // TextModels calls f.
 func (f TextModelSourceFunc) TextModels(ctx context.Context) ([]Model, error) {
 	if f == nil {
 		return nil, registryError("text model source is required")
+	}
+	return f(ctx)
+}
+
+// ImageModels calls f.
+func (f ImageModelSourceFunc) ImageModels(ctx context.Context) ([]ImageModel, error) {
+	if f == nil {
+		return nil, registryError("image model source is required")
 	}
 	return f(ctx)
 }
@@ -96,6 +112,11 @@ type textModelSourceRegistration struct {
 	metadataOnly bool
 }
 
+type imageModelSourceRegistration struct {
+	source       ImageModelSource
+	metadataOnly bool
+}
+
 // Registry stores provider implementations and model metadata.
 type Registry struct {
 	mu sync.RWMutex
@@ -115,6 +136,10 @@ type Registry struct {
 
 	imageModels     map[ModelRef]ImageModel
 	imageModelOrder []ModelRef
+
+	imageModelSources     map[ProviderID]imageModelSourceRegistration
+	imageModelSourceOrder []ProviderID
+	imageModelSourceRefs  map[ProviderID]map[ModelRef]struct{}
 
 	embeddingModels     map[ModelRef]EmbeddingModel
 	embeddingModelOrder []ModelRef
@@ -191,6 +216,14 @@ func RegisterTextModelSource(registry *Registry, provider ProviderID, source Tex
 	return registry.RegisterTextModelSource(provider, source, opts...)
 }
 
+// RegisterImageModelSource registers a runtime image model source on registry.
+func RegisterImageModelSource(registry *Registry, provider ProviderID, source ImageModelSource, opts ...RegisterOption) error {
+	if registry == nil {
+		return registryError("registry is required")
+	}
+	return registry.RegisterImageModelSource(provider, source, opts...)
+}
+
 // RegisterProviderAuth registers auth metadata on registry.
 func RegisterProviderAuth(registry *Registry, provider ProviderID, auth ProviderAuth, opts ...RegisterOption) error {
 	if registry == nil {
@@ -262,6 +295,34 @@ func (r *Registry) RegisterTextModelSource(provider ProviderID, source TextModel
 		r.textModelSourceOrder = append(r.textModelSourceOrder, provider)
 	}
 	r.textModelSources[provider] = textModelSourceRegistration{
+		source:       source,
+		metadataOnly: options.metadataOnly,
+	}
+	return nil
+}
+
+// RegisterImageModelSource registers a runtime image model source for provider.
+func (r *Registry) RegisterImageModelSource(provider ProviderID, source ImageModelSource, opts ...RegisterOption) error {
+	if provider == "" {
+		return registryError("provider id is required")
+	}
+	if source == nil {
+		return registryError("image model source is required")
+	}
+
+	options := applyRegisterOptions(opts)
+	r.ensure()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.imageModelSources[provider]; ok && !options.override {
+		return registryConflict("image model source already registered")
+	}
+	if _, ok := r.imageModelSources[provider]; !ok {
+		r.imageModelSourceOrder = append(r.imageModelSourceOrder, provider)
+	}
+	r.imageModelSources[provider] = imageModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
 	}
@@ -409,6 +470,7 @@ func (r *Registry) RegisterImageModel(model ImageModel, opts ...RegisterOption) 
 		r.imageModelOrder = append(r.imageModelOrder, key)
 	}
 	r.imageModels[key] = cloneImageModel(model)
+	r.removeImageModelSourceRefLocked(model.Provider, key)
 	return nil
 }
 
@@ -459,6 +521,32 @@ func (r *Registry) RefreshTextModels(ctx context.Context, providers ...ProviderI
 		}
 		if err := r.applyTextModelRefresh(source.provider, source.registration, models); err != nil {
 			errs = append(errs, fmt.Errorf("refresh text models for %s: %w", source.provider, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// RefreshImageModels refreshes image models from registered runtime sources.
+func (r *Registry) RefreshImageModels(ctx context.Context, providers ...ProviderID) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.ensure()
+
+	sources, err := r.imageSourcesForRefresh(providers)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, source := range sources {
+		models, err := source.registration.source.ImageModels(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("refresh image models for %s: %w", source.provider, err))
+			continue
+		}
+		if err := r.applyImageModelRefresh(source.provider, source.registration, models); err != nil {
+			errs = append(errs, fmt.Errorf("refresh image models for %s: %w", source.provider, err))
 		}
 	}
 	return errors.Join(errs...)
@@ -662,6 +750,13 @@ func (r *Registry) Clone() *Registry {
 	for key, model := range r.imageModels {
 		clone.imageModels[key] = cloneImageModel(model)
 	}
+	clone.imageModelSourceOrder = append(clone.imageModelSourceOrder, r.imageModelSourceOrder...)
+	for provider, source := range r.imageModelSources {
+		clone.imageModelSources[provider] = source
+	}
+	for provider, refs := range r.imageModelSourceRefs {
+		clone.imageModelSourceRefs[provider] = copyModelRefSet(refs)
+	}
 	clone.embeddingModelOrder = append(clone.embeddingModelOrder, r.embeddingModelOrder...)
 	for key, model := range r.embeddingModels {
 		clone.embeddingModels[key] = cloneEmbeddingModel(model)
@@ -691,13 +786,15 @@ func newDefaultRegistry() *Registry {
 
 func newRegistry() *Registry {
 	return &Registry{
-		providers:           make(map[ProviderID]providerRegistration),
-		textModelSources:    make(map[ProviderID]textModelSourceRegistration),
-		textModelSourceRefs: make(map[ProviderID]map[ModelRef]struct{}),
-		providerAuths:       make(map[ProviderID]ProviderAuth),
-		models:              make(map[ModelRef]Model),
-		imageModels:         make(map[ModelRef]ImageModel),
-		embeddingModels:     make(map[ModelRef]EmbeddingModel),
+		providers:            make(map[ProviderID]providerRegistration),
+		textModelSources:     make(map[ProviderID]textModelSourceRegistration),
+		textModelSourceRefs:  make(map[ProviderID]map[ModelRef]struct{}),
+		providerAuths:        make(map[ProviderID]ProviderAuth),
+		models:               make(map[ModelRef]Model),
+		imageModels:          make(map[ModelRef]ImageModel),
+		imageModelSources:    make(map[ProviderID]imageModelSourceRegistration),
+		imageModelSourceRefs: make(map[ProviderID]map[ModelRef]struct{}),
+		embeddingModels:      make(map[ModelRef]EmbeddingModel),
 	}
 }
 
@@ -727,6 +824,12 @@ func (r *Registry) ensure() {
 	if r.imageModels == nil {
 		r.imageModels = make(map[ModelRef]ImageModel)
 	}
+	if r.imageModelSources == nil {
+		r.imageModelSources = make(map[ProviderID]imageModelSourceRegistration)
+	}
+	if r.imageModelSourceRefs == nil {
+		r.imageModelSourceRefs = make(map[ProviderID]map[ModelRef]struct{})
+	}
 	if r.embeddingModels == nil {
 		r.embeddingModels = make(map[ModelRef]EmbeddingModel)
 	}
@@ -743,9 +846,25 @@ func (r *Registry) removeTextModelSourceRefLocked(provider ProviderID, ref Model
 	}
 }
 
+func (r *Registry) removeImageModelSourceRefLocked(provider ProviderID, ref ModelRef) {
+	refs := r.imageModelSourceRefs[provider]
+	if len(refs) == 0 {
+		return
+	}
+	delete(refs, ref)
+	if len(refs) == 0 {
+		delete(r.imageModelSourceRefs, provider)
+	}
+}
+
 type textSourceForRefresh struct {
 	provider     ProviderID
 	registration textModelSourceRegistration
+}
+
+type imageSourceForRefresh struct {
+	provider     ProviderID
+	registration imageModelSourceRegistration
 }
 
 func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceForRefresh, error) {
@@ -777,6 +896,42 @@ func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceFo
 			return nil, registryError("text model source is not registered")
 		}
 		sources = append(sources, textSourceForRefresh{
+			provider:     provider,
+			registration: registration,
+		})
+	}
+	return sources, nil
+}
+
+func (r *Registry) imageSourcesForRefresh(providers []ProviderID) ([]imageSourceForRefresh, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if len(providers) == 0 {
+		sources := make([]imageSourceForRefresh, 0, len(r.imageModelSourceOrder))
+		for _, provider := range r.imageModelSourceOrder {
+			registration, ok := r.imageModelSources[provider]
+			if !ok {
+				continue
+			}
+			sources = append(sources, imageSourceForRefresh{
+				provider:     provider,
+				registration: registration,
+			})
+		}
+		return sources, nil
+	}
+
+	sources := make([]imageSourceForRefresh, 0, len(providers))
+	for _, provider := range providers {
+		if provider == "" {
+			return nil, registryError("provider id is required")
+		}
+		registration, ok := r.imageModelSources[provider]
+		if !ok {
+			return nil, registryError("image model source is not registered")
+		}
+		sources = append(sources, imageSourceForRefresh{
 			provider:     provider,
 			registration: registration,
 		})
@@ -817,6 +972,39 @@ func (r *Registry) applyTextModelRefresh(provider ProviderID, source textModelSo
 	return nil
 }
 
+func (r *Registry) applyImageModelRefresh(provider ProviderID, source imageModelSourceRegistration, models []ImageModel) error {
+	refs, copied, err := r.validateImageModelRefresh(provider, source.metadataOnly, models)
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	owned := r.imageModelSourceRefs[provider]
+	for _, ref := range refs {
+		if _, exists := r.imageModels[ref]; exists {
+			if _, ok := owned[ref]; !ok {
+				return registryConflict("image model source returned model already registered outside source")
+			}
+		}
+	}
+
+	ownedRefs := r.imageModelSourceRefs[provider]
+	if len(ownedRefs) > 0 {
+		for ref := range ownedRefs {
+			delete(r.imageModels, ref)
+		}
+		r.imageModelOrder = removeModelRefs(r.imageModelOrder, ownedRefs)
+	}
+	for index, ref := range refs {
+		r.imageModels[ref] = copied[index]
+		r.imageModelOrder = append(r.imageModelOrder, ref)
+	}
+	r.imageModelSourceRefs[provider] = modelRefSet(refs)
+	return nil
+}
+
 func (r *Registry) validateTextModelRefresh(provider ProviderID, metadataOnly bool, models []Model) ([]ModelRef, []Model, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -841,6 +1029,34 @@ func (r *Registry) validateTextModelRefresh(provider ProviderID, metadataOnly bo
 		seen[ref] = struct{}{}
 		refs = append(refs, ref)
 		copied = append(copied, cloneModel(model))
+	}
+	return refs, copied, nil
+}
+
+func (r *Registry) validateImageModelRefresh(provider ProviderID, metadataOnly bool, models []ImageModel) ([]ModelRef, []ImageModel, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	refs := make([]ModelRef, 0, len(models))
+	copied := make([]ImageModel, 0, len(models))
+	seen := make(map[ModelRef]struct{}, len(models))
+	for _, model := range models {
+		if model.Provider != provider {
+			return nil, nil, registryError("image model source returned model for different provider")
+		}
+		if err := validateImageModel(model); err != nil {
+			return nil, nil, err
+		}
+		if err := r.validateImageModelProviderLocked(model, metadataOnly); err != nil {
+			return nil, nil, err
+		}
+		ref := ModelRef{Provider: model.Provider, ID: model.ID}
+		if _, ok := seen[ref]; ok {
+			return nil, nil, registryConflict("image model source returned duplicate model")
+		}
+		seen[ref] = struct{}{}
+		refs = append(refs, ref)
+		copied = append(copied, cloneImageModel(model))
 	}
 	return refs, copied, nil
 }

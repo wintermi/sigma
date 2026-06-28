@@ -122,6 +122,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
   `RegisterTextModelSource`, and `Registry.RefreshTextModels` /
   `Client.RefreshTextModels` refresh app-owned dynamic model listings while
   preserving Sigma's curated built-in catalog as the offline default.
+- Registries can now accept provider-scoped runtime image model sources through
+  `RegisterImageModelSource`, and `Registry.RefreshImageModels` /
+  `Client.RefreshImageModels` refresh app-owned dynamic image model listings
+  while preserving Sigma's curated built-in image catalog as the offline
+  default.
 - Moonshot AI and Moonshot AI CN now have first-class OpenAI-compatible Chat
   Completions provider wrappers, generated Kimi K2.7 Code CN and HighSpeed
   metadata, and metadata-driven omission of disabled-thinking payloads for

@@ -26,6 +26,9 @@ cancellation/error coverage (see the coverage standards in
       boundary and update release docs accordingly.
 - [x] Add focused Google Gemini API and Vertex AI image generation adapters for
       Imagen/Gemini image output through the provider-neutral image surface.
+- [x] Add provider-scoped runtime image model sources and refresh helpers so
+      applications can update app-owned dynamic image model listings without
+      replacing Sigma's curated offline catalog.
 - [ ] Add live OpenAI image validation probes for generation, edits,
       reference-only JSON edits, variations, streaming partial images, and
       Responses image-generation tool output without making live provider calls
