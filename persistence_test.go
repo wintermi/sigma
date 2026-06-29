@@ -46,6 +46,9 @@ func TestRequestPersistenceRoundTripCoversReplayContent(t *testing.T) {
 	if got, want := toolCall.ProviderSignature, "opaque-tool-signature"; got != want {
 		t.Fatalf("tool-call provider signature = %q, want %q", got, want)
 	}
+	if roundTripped.Messages[1].Usage == nil || roundTripped.Messages[1].Usage.Total() != 123 {
+		t.Fatalf("assistant usage after round trip = %#v, want total usage 123", roundTripped.Messages[1].Usage)
+	}
 }
 
 func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
@@ -104,6 +107,15 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 				Content: []sigma.ContentBlock{sigma.Text("hello")},
 			}}},
 			errorText: "requires provider metadata",
+		},
+		{
+			name: "usage on non-assistant message",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleUser,
+				Content: []sigma.ContentBlock{sigma.Text("hello")},
+				Usage:   &sigma.Usage{InputTokens: 1},
+			}}},
+			errorText: "assistant usage requires role",
 		},
 	}
 
@@ -322,6 +334,7 @@ func persistedReplayRequest() sigma.Request {
 					toolCall,
 				},
 				StopReason: sigma.StopReasonToolCalls,
+				Usage:      &sigma.Usage{InputTokens: 100, OutputTokens: 23},
 			},
 			sigma.ToolResult("call_weather", "18 C"),
 			{

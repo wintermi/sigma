@@ -79,6 +79,9 @@ func validateMessage(message Message, index int, toolCalls map[string]string) er
 	if message.Role != RoleAssistant && (message.Provider != "" || message.API != "" || message.Model != "" || message.StopReason != "") {
 		return invalidRequestError("message %d: assistant metadata requires role %q", index, RoleAssistant)
 	}
+	if message.Role != RoleAssistant && message.Usage != nil {
+		return invalidRequestError("message %d: assistant usage requires role %q", index, RoleAssistant)
+	}
 	if message.Role == RoleAssistant {
 		if err := validateAssistantMetadata(message, index); err != nil {
 			return err

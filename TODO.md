@@ -574,6 +574,8 @@ should still come through the catalog refresh workflow.
 
 - [x] Separate OpenAI Responses cached input tokens from ordinary input tokens
       when provider usage includes cache-read details.
+- [x] Add deterministic approximate request token estimates that can anchor on
+      persisted assistant usage without adding provider tokenizer dependencies.
 - [ ] Add tokenizer-based token estimates as an alternative to provider-reported
       usage.
 - [ ] Reconcile tokenizer estimates against provider usage data and model

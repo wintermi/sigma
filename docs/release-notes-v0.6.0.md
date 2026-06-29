@@ -11,7 +11,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 generation, including long prompt-cache write splits, raw provider usage
 payloads for diagnostics, standalone provider/model identity on usage records,
 and a clear split between provider-reported cost and Sigma's model-metadata
-cost estimate. Mistral Conversations now also maps cache-enabled session IDs to
+cost estimate. Persisted assistant messages can now also carry optional usage
+metadata, and deterministic request-estimate helpers let callers approximate
+context size before dispatch, anchoring on the latest successful
+provider-reported usage when available. Mistral Conversations now also maps
+cache-enabled session IDs to
 prompt-cache keys, reports provider cached prompt tokens as cache reads, and
 accepts URL-backed image references for image-capable chat inputs and
 image-bearing tool results. It also adds caller-owned GitHub Copilot OAuth
@@ -120,6 +124,11 @@ while Sigma's built-in image metadata remains curated and offline by default.
   payloads when providers report usage, normalizes provider tool/connector
   token counts into `Usage.ToolUseInputTokens`, and exposes provider-reported
   cost separately from Sigma's estimated `Cost.TotalCost`.
+- Persisted assistant messages now accept optional `Usage` metadata, and
+  `sigma.EstimateRequestTokens`, `EstimateMessageTokens`,
+  `EstimateContentTokens`, and `EstimateTextTokens` provide deterministic
+  approximate token estimates using provider-reported usage as the latest
+  successful assistant-turn anchor when available.
 - Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
   to `prompt_cache_key` and `x-affinity`, and streamed provider cached prompt
   token fields now populate `Usage.CacheReadInputTokens` while preserving raw
@@ -348,6 +357,10 @@ while Sigma's built-in image metadata remains curated and offline by default.
 - Usage remains optional: `AssistantMessage.Usage == nil` and terminal
   `Event.Usage == nil` still mean no usage was supplied, while a non-nil
   zero-valued usage means the provider explicitly reported zero values.
+- Request token estimates are approximate and caller-facing. They use
+  deterministic character and image heuristics plus persisted assistant usage
+  anchors; they do not call provider tokenizers, affect provider dispatch, or
+  change cost accounting.
 - OpenAI-compatible Chat Completions streams now treat EOF before a terminal
   `finish_reason` as an error for every compatible route. This avoids silently
   accepting truncated streams while preserving partial content and usage for

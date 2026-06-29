@@ -52,6 +52,7 @@ history = append(history, sigma.Message{
 	API:        model.API,
 	Model:      final.Model,
 	StopReason: final.StopReason,
+	Usage:      final.Usage,
 })
 ```
 
@@ -62,6 +63,11 @@ For tool loops, append the assistant message first, then append one
 For canceled streams, only persist the aborted assistant message if the partial
 content was visible to the user or needed for a later continue request. See
 [Cancellation](cancellation.md).
+
+Persisting assistant usage is optional. When present on the latest successful
+assistant message, `sigma.EstimateRequestTokens` uses it as an anchor and only
+estimates messages that follow it. Usage on non-assistant messages is rejected
+by `ValidateRequest`.
 
 ## Storage concerns
 

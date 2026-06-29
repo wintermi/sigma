@@ -55,6 +55,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Text-generation usage now carries provider/model identity, provider raw usage
   payloads, normalized tool-use input tokens, and provider-reported cost when
   available, while keeping Sigma's model-metadata cost estimate separate.
+- Persisted assistant messages can now carry optional usage metadata, and
+  `EstimateRequestTokens` plus related helpers provide deterministic
+  approximate request token estimates anchored on the latest successful
+  provider-reported usage when available.
 - Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
   to both `prompt_cache_key` and `x-affinity`, and streamed Mistral cached
   prompt tokens now populate `Usage.CacheReadInputTokens` instead of ordinary

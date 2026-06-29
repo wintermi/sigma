@@ -425,6 +425,7 @@ type Message struct {
 	API        API            `json:"api,omitempty"`
 	Model      ModelID        `json:"model,omitempty"`
 	StopReason StopReason     `json:"stopReason,omitempty"`
+	Usage      *Usage         `json:"usage,omitempty"`
 }
 
 // ContentBlock is a discriminated unit of message content.
