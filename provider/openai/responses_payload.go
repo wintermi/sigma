@@ -89,7 +89,7 @@ func responsesInput(model sigma.Model, req sigma.Request) ([]map[string]any, err
 func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
-		content, err := responsesInputContent(message)
+		content, err := responsesInputContent(model, message)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 	}
 }
 
-func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
+func responsesInputContent(model sigma.Model, message sigma.Message) ([]map[string]any, error) {
 	if len(message.Content) == 0 {
 		return []map[string]any{{"type": "input_text", providerOptionText: ""}}, nil
 	}
@@ -139,11 +139,29 @@ func responsesInputContent(message sigma.Message) ([]map[string]any, error) {
 				"type":      "input_image",
 				"image_url": url,
 			})
+		case sigma.ContentBlockDocument:
+			if !model.SupportsDocuments() {
+				return nil, unsupportedDocumentInputError(model, "openai responses")
+			}
+			file, err := responsesInputFile(block)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, file)
 		default:
 			return nil, fmt.Errorf("openai responses: unsupported input content block %q", block.Type)
 		}
 	}
 	return parts, nil
+}
+
+func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
+	file, err := openAIFile(block)
+	if err != nil {
+		return nil, fmt.Errorf("openai responses: %w", err)
+	}
+	file["type"] = "input_file"
+	return file, nil
 }
 
 func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int) ([]map[string]any, error) {
@@ -502,6 +520,15 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 				"type":      "input_image",
 				"image_url": url,
 			})
+		case sigma.ContentBlockDocument:
+			if !model.SupportsDocuments() {
+				return nil, unsupportedDocumentInputError(model, "openai responses")
+			}
+			file, err := responsesInputFile(block)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, file)
 		default:
 			return nil, fmt.Errorf("openai responses: unsupported tool result content block %q", block.Type)
 		}

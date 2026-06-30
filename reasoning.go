@@ -86,6 +86,11 @@ func (model Model) SupportsImages() bool {
 	return model.SupportsInput(ContentBlockImage)
 }
 
+// SupportsDocuments reports whether model accepts document content as input.
+func (model Model) SupportsDocuments() bool {
+	return model.SupportsInput(ContentBlockDocument)
+}
+
 // CacheEnabled reports whether this retention requests provider-side prompt
 // caching. Empty retention and CacheRetentionNone both mean no cache.
 func (retention CacheRetention) CacheEnabled() bool {

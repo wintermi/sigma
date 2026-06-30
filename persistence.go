@@ -149,6 +149,10 @@ func validateContentBlock(role Role, block ContentBlock, messageIndex int, conte
 		if err := validateImageBlock(block); err != nil {
 			return invalidRequestError("message %d content %d: %v", messageIndex, contentIndex, err)
 		}
+	case ContentBlockDocument:
+		if err := validateDocumentBlock(block); err != nil {
+			return invalidRequestError("message %d content %d: %v", messageIndex, contentIndex, err)
+		}
 	case ContentBlockToolCall:
 		if block.ToolCallID == "" {
 			return invalidRequestError("message %d content %d: tool call id is required", messageIndex, contentIndex)
@@ -168,13 +172,13 @@ func validateContentBlock(role Role, block ContentBlock, messageIndex int, conte
 func roleAllowsContentBlock(role Role, blockType ContentBlockType) bool {
 	switch role {
 	case RoleUser:
-		return blockType == ContentBlockText || blockType == ContentBlockImage
+		return blockType == ContentBlockText || blockType == ContentBlockImage || blockType == ContentBlockDocument
 	case RoleDeveloper:
 		return blockType == ContentBlockText
 	case RoleAssistant:
 		return blockType == ContentBlockText || blockType == ContentBlockThinking || blockType == ContentBlockToolCall
 	case RoleTool:
-		return blockType == ContentBlockText || blockType == ContentBlockImage
+		return blockType == ContentBlockText || blockType == ContentBlockImage || blockType == ContentBlockDocument
 	default:
 		return false
 	}
@@ -201,6 +205,38 @@ func validateImageBlock(block ContentBlock) error {
 			return fmt.Errorf("image source is required")
 		}
 		return fmt.Errorf("unsupported image source %q", block.ImageSource)
+	}
+	return nil
+}
+
+func validateDocumentBlock(block ContentBlock) error {
+	if block.MIMEType == "" {
+		return fmt.Errorf("document MIME type is required")
+	}
+	if block.Filename == "" {
+		return fmt.Errorf("document filename is required")
+	}
+	switch block.DocumentSource {
+	case "base64":
+		if block.Data == "" {
+			return fmt.Errorf("base64 document data is required")
+		}
+		if _, err := base64.StdEncoding.DecodeString(block.Data); err != nil {
+			return fmt.Errorf("base64 document data is invalid: %w", err)
+		}
+	case "url":
+		if block.URL == "" {
+			return fmt.Errorf("document URL is required")
+		}
+	case "file_id":
+		if block.FileID == "" {
+			return fmt.Errorf("document file id is required")
+		}
+	default:
+		if block.DocumentSource == "" {
+			return fmt.Errorf("document source is required")
+		}
+		return fmt.Errorf("unsupported document source %q", block.DocumentSource)
 	}
 	return nil
 }

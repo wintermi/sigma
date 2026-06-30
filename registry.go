@@ -1465,7 +1465,7 @@ func validateCosts(model Model) error {
 func validateSupportedInputs(inputs []ContentBlockType) error {
 	for _, input := range inputs {
 		switch input {
-		case ContentBlockText, ContentBlockImage:
+		case ContentBlockText, ContentBlockImage, ContentBlockDocument:
 		default:
 			return registryError(fmt.Sprintf("unsupported model input %q", input))
 		}

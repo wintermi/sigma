@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	estimateCharsPerToken = 4
-	estimateImageTokens   = 1200
+	estimateCharsPerToken  = 4
+	estimateImageTokens    = 1200
+	estimateDocumentTokens = 1200
 )
 
 // TokenEstimate reports an approximate request token count.
@@ -44,6 +45,8 @@ func EstimateContentTokens(blocks []ContentBlock) int {
 			tokens += EstimateTextTokens(block.ThinkingText)
 		case ContentBlockImage:
 			tokens += estimateImageTokens
+		case ContentBlockDocument:
+			tokens += estimateDocumentTokens
 		case ContentBlockToolCall:
 			tokens += EstimateTextTokens(block.ToolName)
 			tokens += EstimateTextTokens(stableEstimateJSON(block.ToolArguments))

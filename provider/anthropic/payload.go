@@ -50,7 +50,7 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		return nil, err
 	}
 
-	messages, err := anthropicMessages(transformed, opts.CacheRetention, compat)
+	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat)
 	if err != nil {
 		return nil, err
 	}
@@ -124,14 +124,14 @@ func claudeCodeSystem(prompt string, retention sigma.CacheRetention, compat mess
 	return blocks
 }
 
-func anthropicMessages(req sigma.Request, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
+func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages))
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
 			blocks := make([]map[string]any, 0, 1)
 			for index < len(req.Messages) && req.Messages[index].Role == sigma.RoleTool {
-				block, err := anthropicToolResultBlock(req.Messages[index], retention, compat)
+				block, err := anthropicToolResultBlock(model, req.Messages[index], retention, compat)
 				if err != nil {
 					return nil, err
 				}
@@ -142,7 +142,7 @@ func anthropicMessages(req sigma.Request, retention sigma.CacheRetention, compat
 			messages = append(messages, map[string]any{"role": "user", "content": blocks})
 			continue
 		}
-		converted, err := anthropicMessage(message, retention, compat)
+		converted, err := anthropicMessage(model, message, retention, compat)
 		if err != nil {
 			return nil, err
 		}
@@ -151,10 +151,10 @@ func anthropicMessages(req sigma.Request, retention sigma.CacheRetention, compat
 	return messages, nil
 }
 
-func anthropicMessage(message sigma.Message, retention sigma.CacheRetention, compat messagesCompat) (map[string]any, error) {
+func anthropicMessage(model sigma.Model, message sigma.Message, retention sigma.CacheRetention, compat messagesCompat) (map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
-		content, err := anthropicInputContent(message.Content, false)
+		content, err := anthropicInputContent(model, message.Content, false)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +167,7 @@ func anthropicMessage(message sigma.Message, retention sigma.CacheRetention, com
 		}
 		return map[string]any{"role": "assistant", "content": content}, nil
 	case sigma.RoleTool:
-		block, err := anthropicToolResultBlock(message, retention, compat)
+		block, err := anthropicToolResultBlock(model, message, retention, compat)
 		if err != nil {
 			return nil, err
 		}
@@ -177,8 +177,8 @@ func anthropicMessage(message sigma.Message, retention sigma.CacheRetention, com
 	}
 }
 
-func anthropicToolResultBlock(message sigma.Message, retention sigma.CacheRetention, compat messagesCompat) (map[string]any, error) {
-	content, err := anthropicToolResultContent(message)
+func anthropicToolResultBlock(model sigma.Model, message sigma.Message, retention sigma.CacheRetention, compat messagesCompat) (map[string]any, error) {
+	content, err := anthropicToolResultContent(model, message)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func anthropicToolResultBlock(message sigma.Message, retention sigma.CacheRetent
 	return block, nil
 }
 
-func anthropicInputContent(blocks []sigma.ContentBlock, toolResult bool) ([]map[string]any, error) {
+func anthropicInputContent(model sigma.Model, blocks []sigma.ContentBlock, toolResult bool) ([]map[string]any, error) {
 	if len(blocks) == 0 {
 		return []map[string]any{{"type": "text", "text": ""}}, nil
 	}
@@ -212,6 +212,15 @@ func anthropicInputContent(blocks []sigma.ContentBlock, toolResult bool) ([]map[
 				return nil, err
 			}
 			content = append(content, image)
+		case sigma.ContentBlockDocument:
+			if !model.SupportsDocuments() {
+				return nil, unsupportedDocumentInputError(model, "anthropic messages")
+			}
+			document, err := anthropicDocument(block)
+			if err != nil {
+				return nil, err
+			}
+			content = append(content, document)
 		default:
 			if toolResult {
 				return nil, fmt.Errorf("anthropic messages: unsupported tool-result content block %q", block.Type)
@@ -222,11 +231,11 @@ func anthropicInputContent(blocks []sigma.ContentBlock, toolResult bool) ([]map[
 	return content, nil
 }
 
-func anthropicToolResultContent(message sigma.Message) (any, error) {
+func anthropicToolResultContent(model sigma.Model, message sigma.Message) (any, error) {
 	if len(message.Content) == 1 && message.Content[0].Type == sigma.ContentBlockText {
 		return providertext.Clean(message.Content[0].Text), nil
 	}
-	return anthropicInputContent(message.Content, true)
+	return anthropicInputContent(model, message.Content, true)
 }
 
 func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompat) ([]map[string]any, error) {
@@ -329,6 +338,59 @@ func anthropicImage(block sigma.ContentBlock) (map[string]any, error) {
 		}, nil
 	default:
 		return nil, fmt.Errorf("anthropic messages: unsupported image source %q", block.ImageSource)
+	}
+}
+
+func anthropicDocument(block sigma.ContentBlock) (map[string]any, error) {
+	document := map[string]any{
+		"type":  "document",
+		"title": block.Filename,
+	}
+	switch block.DocumentSource {
+	case "base64":
+		if block.Data == "" {
+			return nil, fmt.Errorf("anthropic messages: document data is required")
+		}
+		if _, err := base64.StdEncoding.DecodeString(block.Data); err != nil {
+			return nil, fmt.Errorf("anthropic messages: document data must be base64: %w", err)
+		}
+		mimeType := block.MIMEType
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		document["source"] = map[string]any{
+			"type":       "base64",
+			"media_type": mimeType,
+			"data":       block.Data,
+		}
+	case "url":
+		if block.URL == "" {
+			return nil, fmt.Errorf("anthropic messages: document URL is required")
+		}
+		document["source"] = map[string]any{
+			"type": "url",
+			"url":  block.URL,
+		}
+	case "file_id":
+		if block.FileID == "" {
+			return nil, fmt.Errorf("anthropic messages: document file id is required")
+		}
+		document["source"] = map[string]any{
+			"type":    "file",
+			"file_id": block.FileID,
+		}
+	default:
+		return nil, fmt.Errorf("anthropic messages: unsupported document source %q", block.DocumentSource)
+	}
+	return document, nil
+}
+
+func unsupportedDocumentInputError(model sigma.Model, provider string) error {
+	return &sigma.Error{
+		Code:     sigma.ErrorUnsupported,
+		Message:  provider + ": document content is not supported by model metadata",
+		Provider: model.Provider,
+		Model:    model.ID,
 	}
 }
 

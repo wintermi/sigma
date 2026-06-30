@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- Provider-neutral document/PDF request content blocks now support base64,
+  URL, and provider file-ID sources, with initial OpenAI Responses, OpenAI Chat
+  Completions, and Anthropic Messages payload support.
 - Azure OpenAI Responses now has a first-class provider wrapper with
   provider-scoped registration and request option helpers for endpoint,
   deployment, API version, credential source, and caller-supplied Microsoft

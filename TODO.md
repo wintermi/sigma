@@ -199,13 +199,15 @@ work until their API boundaries are explicit.
 - [x] Add strict local tool-call validation for composed JSON Schema branches
       using `anyOf`, `oneOf`, and `allOf` without adding implicit argument
       coercion.
-- [ ] Add provider-neutral document/PDF content blocks only after settling
-      request, replay, debug-redaction, and provider compatibility semantics.
+- [x] Add provider-neutral document/PDF request content blocks with base64,
+      URL, and provider file-ID sources plus initial OpenAI and Anthropic
+      payload compatibility.
 - [x] Add typed Anthropic native `output_format` and parallel-tool suppression
       controls without adding provider-neutral structured-output semantics.
 - [x] Add provider-neutral source/citation result APIs over existing
       OpenAI-compatible, Anthropic, and Google metadata while keeping
-      provider-specific rendering and document/PDF content blocks deferred.
+      provider-specific rendering and advanced document/PDF citation policy
+      deferred.
 - [x] Add a provider-neutral text response ID accessor over existing
       provider response metadata without changing serialized assistant message
       shape.

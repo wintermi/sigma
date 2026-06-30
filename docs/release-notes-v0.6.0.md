@@ -92,7 +92,10 @@ capability-loss reporting, while keeping orchestration and provider execution
 caller-owned. Assistant results now also expose provider-neutral source and
 citation accessors for the source metadata Sigma already captures from grounded
 and citation-bearing responses, plus text response ID and routed response model
-accessors over captured provider response metadata. Local tool-call validation
+accessors over captured provider response metadata. Request content now also
+supports provider-neutral document/PDF blocks backed by base64 data, URLs, or
+provider file IDs, with initial OpenAI Responses, OpenAI Chat Completions, and
+Anthropic Messages payload support. Local tool-call validation
 also now evaluates composed JSON Schema branches so callers can reject invalid
 model-emitted arguments before running tools. OpenAI-compatible Chat
 Completions streams now
@@ -563,9 +566,8 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 - Runtime image model refresh, embedding model refresh, built-in live provider
   catalog refresh, and credential-backed discovery remain deferred until each
   surface has explicit ownership and validation semantics.
-- Provider-neutral document/PDF content blocks, source ranking, citation
-  rendering, and provider-specific citation UI policy remain deferred and
-  caller-owned.
+- Source ranking, citation rendering, provider-specific citation UI policy, and
+  broader document/PDF processing remain deferred and caller-owned.
 - Mistral file image references, built-in connector tools, append/restart
   lifecycle operations, and broad catalog expansion remain deferred.
 - Full JSON Schema runtime support, including `$ref`, `pattern`, formats,
@@ -573,14 +575,11 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-06-28 with:
+Current v0.6.0 development state validated on 2026-06-30 with:
 
-- `mise run go:generate`.
 - `mise run go:fmt`.
 - `mise run go:fmt:check`.
 - `mise run go:test`.
 - `mise run go:vet`.
-- `mise run go:lint`.
-- `mise run go:race`.
 - `mise run ci`.
 - `git diff --check`.

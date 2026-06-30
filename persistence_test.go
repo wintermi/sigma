@@ -100,6 +100,46 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 			errorText: "unsupported image source",
 		},
 		{
+			name: "missing document MIME type",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleUser,
+				Content: []sigma.ContentBlock{sigma.DocumentBase64("", "input.pdf", "JVBERi0xLjQ=")},
+			}}},
+			errorText: "document MIME type is required",
+		},
+		{
+			name: "missing document filename",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleUser,
+				Content: []sigma.ContentBlock{sigma.DocumentBase64("application/pdf", "", "JVBERi0xLjQ=")},
+			}}},
+			errorText: "document filename is required",
+		},
+		{
+			name: "invalid document source",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleUser,
+				Content: []sigma.ContentBlock{{Type: sigma.ContentBlockDocument, MIMEType: "application/pdf", DocumentSource: "file", Filename: "input.pdf", Data: "/tmp/input.pdf"}},
+			}}},
+			errorText: "unsupported document source",
+		},
+		{
+			name: "invalid base64 document data",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleUser,
+				Content: []sigma.ContentBlock{sigma.DocumentBase64("application/pdf", "input.pdf", "not base64")},
+			}}},
+			errorText: "base64 document data is invalid",
+		},
+		{
+			name: "assistant document block",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.DocumentBase64("application/pdf", "input.pdf", "JVBERi0xLjQ=")},
+			}}},
+			errorText: `role "assistant" cannot contain "document" blocks`,
+		},
+		{
 			name: "inconsistent assistant metadata",
 			req: sigma.Request{Messages: []sigma.Message{{
 				Role:    sigma.RoleAssistant,
@@ -175,7 +215,14 @@ func TestPersistedRequestCanBeUsedForCompletion(t *testing.T) {
 				Role:    sigma.RoleAssistant,
 				Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_weather", "weather", map[string]any{"city": "Melbourne"})},
 			},
-			sigma.ToolResult("call_weather", "18 C"),
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_weather",
+				Content: []sigma.ContentBlock{
+					sigma.Text("18 C"),
+					sigma.DocumentFileID("application/pdf", "forecast.pdf", "file_forecast"),
+				},
+			},
 			sigma.UserText("Summarize it."),
 		},
 		Tools: []sigma.Tool{{
@@ -317,6 +364,7 @@ func persistedReplayRequest() sigma.Request {
 				sigma.Text("What is the weather?"),
 				sigma.ImageBase64("image/png", "aGVsbG8="),
 				sigma.ImageURL("image/jpeg", "https://example.test/input.jpg"),
+				sigma.DocumentBase64("application/pdf", "forecast.pdf", "JVBERi0xLjQ="),
 			),
 			{
 				Role:     sigma.RoleAssistant,

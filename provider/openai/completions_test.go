@@ -868,6 +868,99 @@ func TestChatCompletionsBatchesConsecutiveToolResultImages(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsSendsDocumentContentBlocks(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-document-input-test")
+	model := openAITestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{
+		sigma.ContentBlockText,
+		sigma.ContentBlockImage,
+		sigma.ContentBlockDocument,
+	}
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserContent(
+			sigma.Text("Review these documents."),
+			sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ="),
+			sigma.DocumentURL("application/pdf", "remote.pdf", "https://example.test/remote.pdf"),
+			sigma.DocumentFileID("application/pdf", "uploaded.pdf", "file_123"),
+		)}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	parts := payload.Messages[0]["content"].([]any)
+	if got, want := len(parts), 4; got != want {
+		t.Fatalf("content parts = %d, want %d", got, want)
+	}
+	inline := parts[1].(map[string]any)
+	if got, want := inline["type"], "file"; got != want {
+		t.Fatalf("inline document type = %v, want %q", got, want)
+	}
+	inlineFile := inline["file"].(map[string]any)
+	if got, want := inlineFile["filename"], "inline.pdf"; got != want {
+		t.Fatalf("inline filename = %v, want %q", got, want)
+	}
+	if got, want := inlineFile["file_data"], "data:application/pdf;base64,JVBERi0xLjQ="; got != want {
+		t.Fatalf("inline file_data = %v, want %q", got, want)
+	}
+	remoteFile := parts[2].(map[string]any)["file"].(map[string]any)
+	if got, want := remoteFile["file_url"], "https://example.test/remote.pdf"; got != want {
+		t.Fatalf("remote file_url = %v, want %q", got, want)
+	}
+	uploadedFile := parts[3].(map[string]any)["file"].(map[string]any)
+	if got, want := uploadedFile["file_id"], "file_123"; got != want {
+		t.Fatalf("uploaded file_id = %v, want %q", got, want)
+	}
+}
+
+func TestChatCompletionsRejectsDocumentWithoutModelCapability(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server received request despite unsupported document input")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-document-unsupported-test")
+	model := openAITestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserContent(
+			sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ="),
+		)}},
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorUnsupported {
+		t.Fatalf("error = %v, want unsupported sigma error", err)
+	}
+}
+
 func TestChatCompletionsReplaysThinkingAsAssistantText(t *testing.T) {
 	t.Parallel()
 

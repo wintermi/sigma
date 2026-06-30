@@ -242,6 +242,8 @@ const (
 	ContentBlockThinking ContentBlockType = "thinking"
 	// ContentBlockImage identifies an image content block.
 	ContentBlockImage ContentBlockType = "image"
+	// ContentBlockDocument identifies a document content block.
+	ContentBlockDocument ContentBlockType = "document"
 	// ContentBlockToolCall identifies a tool-call content block.
 	ContentBlockToolCall ContentBlockType = "tool-call"
 )
@@ -432,8 +434,9 @@ type Message struct {
 //
 // Text blocks use Text. Thinking blocks use ThinkingText plus optional
 // Signature, Redacted, and ProviderSignature. Image blocks use MIMEType,
-// ImageSource, Data, and URL. Tool-call blocks use ToolCallID, ToolName, and
-// ToolArguments. ProviderMetadata carries opaque provider fields for later
+// ImageSource, Data, and URL. Document blocks use MIMEType, DocumentSource,
+// Filename, Data, URL, and FileID. Tool-call blocks use ToolCallID, ToolName,
+// and ToolArguments. ProviderMetadata carries opaque provider fields for later
 // replay without requiring provider-specific conversion in this package.
 type ContentBlock struct {
 	Type              ContentBlockType `json:"type"`
@@ -443,6 +446,9 @@ type ContentBlock struct {
 	Redacted          bool             `json:"redacted,omitempty"`
 	MIMEType          string           `json:"mimeType,omitempty"`
 	ImageSource       string           `json:"imageSource,omitempty"`
+	DocumentSource    string           `json:"documentSource,omitempty"`
+	Filename          string           `json:"filename,omitempty"`
+	FileID            string           `json:"fileID,omitempty"`
 	Data              string           `json:"data,omitempty"`
 	URL               string           `json:"url,omitempty"`
 	ToolCallID        string           `json:"toolCallID,omitempty"`
@@ -558,6 +564,39 @@ func ImageURL(mimeType string, url string) ContentBlock {
 		MIMEType:    mimeType,
 		ImageSource: "url",
 		URL:         url,
+	}
+}
+
+// DocumentBase64 constructs a document content block backed by base64 data.
+func DocumentBase64(mimeType string, filename string, data string) ContentBlock {
+	return ContentBlock{
+		Type:           ContentBlockDocument,
+		MIMEType:       mimeType,
+		DocumentSource: "base64",
+		Filename:       filename,
+		Data:           data,
+	}
+}
+
+// DocumentURL constructs a document content block backed by a URL.
+func DocumentURL(mimeType string, filename string, url string) ContentBlock {
+	return ContentBlock{
+		Type:           ContentBlockDocument,
+		MIMEType:       mimeType,
+		DocumentSource: "url",
+		Filename:       filename,
+		URL:            url,
+	}
+}
+
+// DocumentFileID constructs a document content block backed by a provider file ID.
+func DocumentFileID(mimeType string, filename string, fileID string) ContentBlock {
+	return ContentBlock{
+		Type:           ContentBlockDocument,
+		MIMEType:       mimeType,
+		DocumentSource: "file_id",
+		Filename:       filename,
+		FileID:         fileID,
 	}
 }
 

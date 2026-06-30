@@ -31,6 +31,7 @@ func TestEstimateRequestTokensWithoutUsageAnchor(t *testing.T) {
 			sigma.UserContent(
 				sigma.Text("12345"),
 				sigma.ImageURL("image/png", "https://example.test/image.png"),
+				sigma.DocumentFileID("application/pdf", "input.pdf", "file_123"),
 			),
 			{
 				Role: sigma.RoleAssistant,
@@ -44,7 +45,7 @@ func TestEstimateRequestTokensWithoutUsageAnchor(t *testing.T) {
 	}
 
 	estimate := sigma.EstimateRequestTokens(req)
-	if got, want := estimate.Tokens, 1211; got != want {
+	if got, want := estimate.Tokens, 2411; got != want {
 		t.Fatalf("EstimateRequestTokens tokens = %d, want %d", got, want)
 	}
 	if estimate.LastUsageMessageIndex != nil {

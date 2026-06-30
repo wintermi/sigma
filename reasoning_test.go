@@ -107,23 +107,33 @@ func TestModelInputCapabilities(t *testing.T) {
 	if textOnly.SupportsImages() {
 		t.Fatal("model without explicit image input support reported SupportsImages")
 	}
+	if textOnly.SupportsDocuments() {
+		t.Fatal("model without explicit document input support reported SupportsDocuments")
+	}
 	if got, want := textOnly.MaxOutputTokens, 4096; got != want {
 		t.Fatalf("max output tokens = %d, want %d", got, want)
 	}
 
-	vision := sigma.Model{
+	multimodal := sigma.Model{
 		SupportedInputs: []sigma.ContentBlockType{
 			sigma.ContentBlockText,
 			sigma.ContentBlockImage,
+			sigma.ContentBlockDocument,
 		},
 	}
-	if !vision.SupportsInput(sigma.ContentBlockImage) {
+	if !multimodal.SupportsInput(sigma.ContentBlockImage) {
 		t.Fatal("vision model did not support image input")
 	}
-	if !vision.SupportsImages() {
+	if !multimodal.SupportsImages() {
 		t.Fatal("vision model did not report SupportsImages")
 	}
-	if vision.SupportsInput(sigma.ContentBlockToolCall) {
+	if !multimodal.SupportsInput(sigma.ContentBlockDocument) {
+		t.Fatal("multimodal model did not support document input")
+	}
+	if !multimodal.SupportsDocuments() {
+		t.Fatal("multimodal model did not report SupportsDocuments")
+	}
+	if multimodal.SupportsInput(sigma.ContentBlockToolCall) {
 		t.Fatal("tool-call content was supported as model input")
 	}
 }

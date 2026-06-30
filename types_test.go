@@ -31,6 +31,14 @@ func TestMessageJSONRoundTrip(t *testing.T) {
 			),
 		},
 		{
+			name: "user document",
+			message: sigma.UserContent(
+				sigma.DocumentBase64("application/pdf", "input.pdf", "JVBERi0xLjQ="),
+				sigma.DocumentURL("application/pdf", "remote.pdf", "https://example.test/input.pdf"),
+				sigma.DocumentFileID("application/pdf", "uploaded.pdf", "file_123"),
+			),
+		},
+		{
 			name: "assistant text",
 			message: sigma.Message{
 				Role:    sigma.RoleAssistant,

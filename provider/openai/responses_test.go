@@ -691,6 +691,118 @@ func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
 	}
 }
 
+func TestResponsesSendsDocumentContentBlocks(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-document-input-test")
+	model := responsesTestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{
+		sigma.ContentBlockText,
+		sigma.ContentBlockImage,
+		sigma.ContentBlockDocument,
+	}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserContent(
+				sigma.Text("Review these documents."),
+				sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ="),
+				sigma.DocumentURL("application/pdf", "remote.pdf", "https://example.test/remote.pdf"),
+				sigma.DocumentFileID("application/pdf", "uploaded.pdf", "file_123"),
+			),
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_docs", "lookup", map[string]any{"path": "report.pdf"})},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_docs",
+				Content: []sigma.ContentBlock{
+					sigma.Text("Found the requested report."),
+					sigma.DocumentFileID("application/pdf", "report.pdf", "file_report"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	userContent := payload.Input[0]["content"].([]any)
+	if got, want := len(userContent), 4; got != want {
+		t.Fatalf("user content parts = %d, want %d", got, want)
+	}
+	inline := userContent[1].(map[string]any)
+	if got, want := inline["type"], "input_file"; got != want {
+		t.Fatalf("inline document type = %v, want %q", got, want)
+	}
+	if got, want := inline["file_data"], "data:application/pdf;base64,JVBERi0xLjQ="; got != want {
+		t.Fatalf("inline file_data = %v, want %q", got, want)
+	}
+	if got, want := userContent[2].(map[string]any)["file_url"], "https://example.test/remote.pdf"; got != want {
+		t.Fatalf("remote file_url = %v, want %q", got, want)
+	}
+	if got, want := userContent[3].(map[string]any)["file_id"], "file_123"; got != want {
+		t.Fatalf("uploaded file_id = %v, want %q", got, want)
+	}
+
+	var toolOutput []any
+	for _, item := range payload.Input {
+		if item["type"] == "function_call_output" {
+			toolOutput, _ = item["output"].([]any)
+		}
+	}
+	if got, want := len(toolOutput), 2; got != want {
+		t.Fatalf("tool output parts = %d, want %d", got, want)
+	}
+	toolDocument := toolOutput[1].(map[string]any)
+	if got, want := toolDocument["type"], "input_file"; got != want {
+		t.Fatalf("tool document type = %v, want %q", got, want)
+	}
+	if got, want := toolDocument["file_id"], "file_report"; got != want {
+		t.Fatalf("tool document file_id = %v, want %q", got, want)
+	}
+}
+
+func TestResponsesRejectsDocumentWithoutModelCapability(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server received request despite unsupported document input")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-document-unsupported-test")
+	model := responsesTestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+		sigma.UserContent(sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ=")),
+	}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorUnsupported {
+		t.Fatalf("error = %v, want unsupported sigma error", err)
+	}
+}
+
 func TestResponsesReplayGeneratesDistinctMessageIDsAroundReasoning(t *testing.T) {
 	t.Parallel()
 

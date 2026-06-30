@@ -228,7 +228,7 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 			index = nextIndex
 			continue
 		}
-		converted, err := chatMessage(message, retention, compat, toolNames)
+		converted, err := chatMessage(model, message, retention, compat, toolNames)
 		if err != nil {
 			return nil, err
 		}
@@ -244,34 +244,44 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 }
 
 func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (int, error) {
-	var imageParts []map[string]any
+	var mediaParts []map[string]any
 	index := start
 	for ; index < len(input) && input[index].Role == sigma.RoleTool; index++ {
 		toolMessage := input[index]
-		converted, err := chatMessage(toolMessage, retention, compat, toolNames)
+		converted, err := chatMessage(model, toolMessage, retention, compat, toolNames)
 		if err != nil {
 			return start, err
 		}
 		*messages = append(*messages, converted)
-		if !model.SupportsImages() {
+		if model.SupportsImages() {
+			parts, err := toolResultImageParts(toolMessage)
+			if err != nil {
+				return start, err
+			}
+			mediaParts = append(mediaParts, parts...)
+		}
+		if !model.SupportsDocuments() {
+			if hasDocumentContent(toolMessage.Content) {
+				return start, unsupportedDocumentInputError(model, "openai completions")
+			}
 			continue
 		}
-		parts, err := toolResultImageParts(toolMessage)
+		parts, err := toolResultDocumentParts(toolMessage)
 		if err != nil {
 			return start, err
 		}
-		imageParts = append(imageParts, parts...)
+		mediaParts = append(mediaParts, parts...)
 	}
-	if len(imageParts) > 0 {
-		*messages = append(*messages, toolResultImageMessage(imageParts))
+	if len(mediaParts) > 0 {
+		*messages = append(*messages, toolResultMediaMessage(mediaParts))
 	}
 	return index - 1, nil
 }
 
-func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (map[string]any, error) {
+func chatMessage(model sigma.Model, message sigma.Message, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
-		content, err := inputContent(message)
+		content, err := inputContent(model, message)
 		if err != nil {
 			return nil, err
 		}
@@ -311,6 +321,9 @@ func chatMessage(message sigma.Message, retention sigma.CacheRetention, compat c
 		content := textContent(message.Content)
 		if content == "" && hasImageContent(message.Content) {
 			content = "(see attached image)"
+		}
+		if content == "" && hasDocumentContent(message.Content) {
+			content = "(see attached document)"
 		}
 		converted := map[string]any{
 			"role":         "tool",
@@ -362,7 +375,7 @@ func hasToolHistory(messages []sigma.Message) bool {
 	return false
 }
 
-func inputContent(message sigma.Message) (any, error) {
+func inputContent(model sigma.Model, message sigma.Message) (any, error) {
 	if len(message.Content) == 0 {
 		return "", nil
 	}
@@ -392,6 +405,18 @@ func inputContent(message sigma.Message) (any, error) {
 					"url": url,
 				},
 			})
+		case sigma.ContentBlockDocument:
+			if !model.SupportsDocuments() {
+				return nil, unsupportedDocumentInputError(model, "openai completions")
+			}
+			file, err := openAIFile(block)
+			if err != nil {
+				return nil, fmt.Errorf("openai completions: %w", err)
+			}
+			parts = append(parts, map[string]any{
+				providerToolOptionTypeKey: "file",
+				"file":                    file,
+			})
 		default:
 			return nil, fmt.Errorf("openai completions: unsupported input content block %q", block.Type)
 		}
@@ -420,6 +445,58 @@ func imageURL(block sigma.ContentBlock) (string, error) {
 		return "data:" + mimeType + ";base64," + block.Data, nil
 	default:
 		return "", fmt.Errorf("openai completions: unsupported image source %q", block.ImageSource)
+	}
+}
+
+func openAIFile(block sigma.ContentBlock) (map[string]any, error) {
+	switch block.DocumentSource {
+	case "base64":
+		if block.Data == "" {
+			return nil, fmt.Errorf("document data is required")
+		}
+		if _, err := base64.StdEncoding.DecodeString(block.Data); err != nil {
+			return nil, fmt.Errorf("document data must be base64: %w", err)
+		}
+		mimeType := block.MIMEType
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		file := map[string]any{
+			"file_data": "data:" + mimeType + ";base64," + block.Data,
+		}
+		if block.Filename != "" {
+			file["filename"] = block.Filename
+		}
+		return file, nil
+	case "url":
+		if block.URL == "" {
+			return nil, fmt.Errorf("document URL is required")
+		}
+		file := map[string]any{"file_url": block.URL}
+		if block.Filename != "" {
+			file["filename"] = block.Filename
+		}
+		return file, nil
+	case "file_id":
+		if block.FileID == "" {
+			return nil, fmt.Errorf("document file id is required")
+		}
+		file := map[string]any{"file_id": block.FileID}
+		if block.Filename != "" {
+			file["filename"] = block.Filename
+		}
+		return file, nil
+	default:
+		return nil, fmt.Errorf("unsupported document source %q", block.DocumentSource)
+	}
+}
+
+func unsupportedDocumentInputError(model sigma.Model, provider string) error {
+	return &sigma.Error{
+		Code:     sigma.ErrorUnsupported,
+		Message:  provider + ": document content is not supported by model metadata",
+		Provider: model.Provider,
+		Model:    model.ID,
 	}
 }
 
@@ -529,6 +606,15 @@ func hasImageContent(blocks []sigma.ContentBlock) bool {
 	return false
 }
 
+func hasDocumentContent(blocks []sigma.ContentBlock) bool {
+	for _, block := range blocks {
+		if block.Type == sigma.ContentBlockDocument {
+			return true
+		}
+	}
+	return false
+}
+
 func toolResultImageParts(message sigma.Message) ([]map[string]any, error) {
 	var parts []map[string]any
 	for _, block := range message.Content {
@@ -549,13 +635,31 @@ func toolResultImageParts(message sigma.Message) ([]map[string]any, error) {
 	return parts, nil
 }
 
-func toolResultImageMessage(imageParts []map[string]any) map[string]any {
-	parts := make([]map[string]any, 0, 1+len(imageParts))
+func toolResultDocumentParts(message sigma.Message) ([]map[string]any, error) {
+	var parts []map[string]any
+	for _, block := range message.Content {
+		if block.Type != sigma.ContentBlockDocument {
+			continue
+		}
+		file, err := openAIFile(block)
+		if err != nil {
+			return nil, fmt.Errorf("openai completions: %w", err)
+		}
+		parts = append(parts, map[string]any{
+			providerToolOptionTypeKey: "file",
+			"file":                    file,
+		})
+	}
+	return parts, nil
+}
+
+func toolResultMediaMessage(mediaParts []map[string]any) map[string]any {
+	parts := make([]map[string]any, 0, 1+len(mediaParts))
 	parts = append(parts, map[string]any{
 		providerToolOptionTypeKey: "text",
-		"text":                    "Attached image(s) from tool result:",
+		"text":                    "Attached media from tool result:",
 	})
-	parts = append(parts, imageParts...)
+	parts = append(parts, mediaParts...)
 	return map[string]any{
 		"role":    "user",
 		"content": parts,

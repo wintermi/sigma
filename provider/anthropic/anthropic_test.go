@@ -276,6 +276,122 @@ func TestMessagesPayloadDropsUnansweredToolCallsBeforeUserTurn(t *testing.T) {
 	}
 }
 
+func TestMessagesSendsDocumentContentBlocks(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-document-input-test")
+	model := anthropicTestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{
+		sigma.ContentBlockText,
+		sigma.ContentBlockImage,
+		sigma.ContentBlockDocument,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserContent(
+				sigma.Text("Review these documents."),
+				sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ="),
+				sigma.DocumentURL("application/pdf", "remote.pdf", "https://example.test/remote.pdf"),
+				sigma.DocumentFileID("application/pdf", "uploaded.pdf", "file_123"),
+			),
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.ToolCallBlock("toolu_docs", "lookup", map[string]any{"path": "report.pdf"})},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "toolu_docs",
+				Content: []sigma.ContentBlock{
+					sigma.Text("Found the requested report."),
+					sigma.DocumentFileID("application/pdf", "report.pdf", "file_report"),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	messages := payload["messages"].([]any)
+	userContent := messages[0].(map[string]any)["content"].([]any)
+	if got, want := len(userContent), 4; got != want {
+		t.Fatalf("user content parts = %d, want %d", got, want)
+	}
+	inline := userContent[1].(map[string]any)
+	if got, want := inline["type"], "document"; got != want {
+		t.Fatalf("inline document type = %v, want %q", got, want)
+	}
+	if got, want := inline["title"], "inline.pdf"; got != want {
+		t.Fatalf("inline document title = %v, want %q", got, want)
+	}
+	inlineSource := inline["source"].(map[string]any)
+	if got, want := inlineSource["type"], "base64"; got != want {
+		t.Fatalf("inline source type = %v, want %q", got, want)
+	}
+	if got, want := inlineSource["media_type"], "application/pdf"; got != want {
+		t.Fatalf("inline media type = %v, want %q", got, want)
+	}
+	if got, want := inlineSource["data"], "JVBERi0xLjQ="; got != want {
+		t.Fatalf("inline data = %v, want %q", got, want)
+	}
+	remoteSource := userContent[2].(map[string]any)["source"].(map[string]any)
+	if got, want := remoteSource["url"], "https://example.test/remote.pdf"; got != want {
+		t.Fatalf("remote URL = %v, want %q", got, want)
+	}
+	uploadedSource := userContent[3].(map[string]any)["source"].(map[string]any)
+	if got, want := uploadedSource["file_id"], "file_123"; got != want {
+		t.Fatalf("uploaded file_id = %v, want %q", got, want)
+	}
+
+	toolMessage := messages[2].(map[string]any)
+	toolBlocks := toolMessage["content"].([]any)
+	toolResult := toolBlocks[0].(map[string]any)
+	toolContent := toolResult["content"].([]any)
+	toolDocument := toolContent[1].(map[string]any)
+	toolSource := toolDocument["source"].(map[string]any)
+	if got, want := toolSource["type"], "file"; got != want {
+		t.Fatalf("tool document source = %v, want %q", got, want)
+	}
+	if got, want := toolSource["file_id"], "file_report"; got != want {
+		t.Fatalf("tool document file_id = %v, want %q", got, want)
+	}
+}
+
+func TestMessagesRejectsDocumentWithoutModelCapability(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server received request despite unsupported document input")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-document-unsupported-test")
+	model := anthropicTestModel(providerID)
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+		sigma.UserContent(sigma.DocumentBase64("application/pdf", "inline.pdf", "JVBERi0xLjQ=")),
+	}})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorUnsupported {
+		t.Fatalf("error = %v, want unsupported sigma error", err)
+	}
+}
+
 func TestMessagesPayloadNormalizesProviderText(t *testing.T) {
 	t.Parallel()
 
