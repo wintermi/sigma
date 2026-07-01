@@ -138,3 +138,80 @@ func TestEstimateRequestTokensUsesUsageTotalFallback(t *testing.T) {
 		t.Fatalf("EstimateRequestTokens tokens = %d, want %d", got, want)
 	}
 }
+
+func TestMaxTokensForContextUsesRequestedCapWhenContextAllows(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 5000, MaxOutputTokens: 1000}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 100), 100; got != want {
+		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
+	}
+}
+
+func TestMaxTokensForContextClampsToAvailableContext(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 5000, MaxOutputTokens: 1000}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 1000), 902; got != want {
+		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
+	}
+}
+
+func TestMaxTokensForContextUsesUsageAnchoredEstimate(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 5000, MaxOutputTokens: 1000}
+	req := sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("covered by provider usage"),
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonEndTurn,
+			Usage:      &sigma.Usage{TotalTokens: 800},
+		},
+		sigma.UserText("12345678"),
+	}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 1000), 102; got != want {
+		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
+	}
+}
+
+func TestMaxTokensForContextKeepsPositiveBudgetForOverfullContext(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 4098, MaxOutputTokens: 1000}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("123456789")}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 1000), 1; got != want {
+		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
+	}
+}
+
+func TestMaxTokensForContextUnknownContextOnlyAppliesOutputCap(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{MaxOutputTokens: 500}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 250), 250; got != want {
+		t.Fatalf("MaxTokensForContext requested cap = %d, want %d", got, want)
+	}
+	if got, want := sigma.MaxTokensForContext(model, req, 0), 500; got != want {
+		t.Fatalf("MaxTokensForContext model cap = %d, want %d", got, want)
+	}
+}
+
+func TestMaxTokensForContextWithoutUsableCapReturnsZero(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 5000}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if got := sigma.MaxTokensForContext(model, req, 0); got != 0 {
+		t.Fatalf("MaxTokensForContext = %d, want 0", got)
+	}
+}

@@ -18,7 +18,10 @@ provider-reported usage when available. Mistral Conversations now also maps
 cache-enabled session IDs to
 prompt-cache keys, reports provider cached prompt tokens as cache reads, and
 accepts URL-backed image references for image-capable chat inputs and
-image-bearing tool results. It also adds caller-owned GitHub Copilot OAuth
+image-bearing tool results. Context-aware max-output-token helpers now let
+callers opt in to output budgeting from model metadata and deterministic
+request estimates without changing provider dispatch defaults. It also adds
+caller-owned GitHub Copilot OAuth
 helpers for
 device-code login, token refresh, request-time credential resolution, and
 explicit model-policy enablement. Codex Responses WebSocket transport now also
@@ -135,6 +138,10 @@ catalogs.
   `EstimateContentTokens`, and `EstimateTextTokens` provide deterministic
   approximate token estimates using provider-reported usage as the latest
   successful assistant-turn anchor when available.
+- `sigma.MaxTokensForContext` and `sigma.WithMaxTokensForContext` now combine
+  model context/output metadata with `EstimateRequestTokens` to produce an
+  opt-in max-output-token cap for callers that want context-aware budgeting
+  before dispatch.
 - Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
   to `prompt_cache_key` and `x-affinity`, and streamed provider cached prompt
   token fields now populate `Usage.CacheReadInputTokens` while preserving raw
@@ -377,6 +384,11 @@ catalogs.
   deterministic character and image heuristics plus persisted assistant usage
   anchors; they do not call provider tokenizers, affect provider dispatch, or
   change cost accounting.
+- Context-aware max-token helpers are also caller-facing and opt-in. They use a
+  fixed safety margin plus the same deterministic request estimate, leave
+  `MaxTokens` unset when no usable output cap exists, and do not change
+  `Client.Complete`, `Client.Stream`, provider payload builders, or
+  tokenizer behavior unless callers apply the returned option.
 - OpenAI-compatible Chat Completions streams now treat EOF before a terminal
   `finish_reason` as an error for every compatible route. This avoids silently
   accepting truncated streams while preserving partial content and usage for
@@ -526,6 +538,9 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 - Billing reconciliation, subscription analytics, and UI presentation of usage
   totals remain caller-owned. Sigma normalizes and preserves provider data but
   does not claim invoice-grade billing accuracy.
+- Tokenizer-exact context budgeting and automatic dispatch-time output-token
+  clamping remain deferred until Sigma has explicit tokenizer, precedence,
+  observability, and override semantics.
 - Cross-provider handoff is now available as public request/message adaptation
   helpers plus the existing opt-in surface probe diagnostic, but full agent
   orchestration remains deferred. Sigma does not automatically run transformed
@@ -577,8 +592,9 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-06-30 with:
+Current v0.6.0 development state validated on 2026-07-01 with:
 
+- `mise run mise:validate`.
 - `mise run go:fmt`.
 - `mise run go:fmt:check`.
 - `mise run go:test`.

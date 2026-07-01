@@ -62,6 +62,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   `EstimateRequestTokens` plus related helpers provide deterministic
   approximate request token estimates anchored on the latest successful
   provider-reported usage when available.
+- `MaxTokensForContext` and `WithMaxTokensForContext` now provide opt-in
+  context-aware max-output-token budgeting from model metadata and
+  deterministic request estimates without changing provider dispatch defaults.
 - Mistral Conversations now maps cache-enabled `sigma.WithSessionID` requests
   to both `prompt_cache_key` and `x-affinity`, and streamed Mistral cached
   prompt tokens now populate `Usage.CacheReadInputTokens` instead of ordinary

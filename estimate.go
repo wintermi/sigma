@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	estimateCharsPerToken  = 4
-	estimateImageTokens    = 1200
-	estimateDocumentTokens = 1200
+	estimateCharsPerToken       = 4
+	estimateImageTokens         = 1200
+	estimateDocumentTokens      = 1200
+	estimateContextSafetyTokens = 4096
 )
 
 // TokenEstimate reports an approximate request token count.
@@ -90,6 +91,45 @@ func EstimateRequestTokens(req Request) TokenEstimate {
 		tokens += EstimateMessageTokens(message)
 	}
 	return TokenEstimate{Tokens: tokens, TrailingTokens: tokens}
+}
+
+// MaxTokensForContext returns an opt-in max output token cap for req and model.
+//
+// requestedMaxTokens is used when positive; otherwise model.MaxOutputTokens is
+// used. A zero return means no usable output cap was available. The helper uses
+// EstimateRequestTokens and a fixed safety margin; it does not call provider
+// tokenizers or affect dispatch unless the caller applies the returned value.
+func MaxTokensForContext(model Model, req Request, requestedMaxTokens int) int {
+	maxTokens := requestedMaxTokens
+	if maxTokens <= 0 {
+		maxTokens = model.MaxOutputTokens
+	}
+	if maxTokens <= 0 {
+		return 0
+	}
+	if model.ContextWindow <= 0 {
+		return maxTokens
+	}
+
+	available := model.ContextWindow - EstimateRequestTokens(req).Tokens - estimateContextSafetyTokens
+	if available < 1 {
+		available = 1
+	}
+	if available < maxTokens {
+		return available
+	}
+	return maxTokens
+}
+
+// WithMaxTokensForContext configures MaxTokens from MaxTokensForContext.
+//
+// If MaxTokensForContext returns zero, this option leaves MaxTokens unset.
+func WithMaxTokensForContext(model Model, req Request, requestedMaxTokens int) Option {
+	return func(options *Options) {
+		if maxTokens := MaxTokensForContext(model, req, requestedMaxTokens); maxTokens > 0 {
+			options.MaxTokens = intPtr(maxTokens)
+		}
+	}
 }
 
 func latestUsageAnchor(messages []Message) (int, int, bool) {

@@ -205,6 +205,33 @@ func TestOptionsInvalidValuesShortCircuitProviderDispatch(t *testing.T) {
 	}
 }
 
+func TestWithMaxTokensForContextSetsOnlyUsableBudget(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t,
+		sigma.WithDefaultOptions(sigma.WithMaxTokens(300)),
+	)
+	model.ContextWindow = 5000
+	model.MaxOutputTokens = 1000
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithMaxTokensForContext(model, req, 1000)); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 902; got != want {
+		t.Fatalf("max tokens = %d, want %d", got, want)
+	}
+
+	model.ContextWindow = 0
+	model.MaxOutputTokens = 0
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithMaxTokensForContext(model, req, 0)); err != nil {
+		t.Fatalf("Complete with empty context budget returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 300; got != want {
+		t.Fatalf("max tokens after empty context budget = %d, want default %d", got, want)
+	}
+}
+
 func TestOptionsAPIKeyOverrideDoesNotLeakIntoDefaults(t *testing.T) {
 	t.Parallel()
 
