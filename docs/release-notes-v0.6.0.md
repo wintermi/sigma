@@ -96,8 +96,9 @@ accessors over captured provider response metadata. Request content now also
 supports provider-neutral document/PDF blocks backed by base64 data, URLs, or
 provider file IDs, with initial OpenAI Responses, OpenAI Chat Completions, and
 Anthropic Messages payload support. Local tool-call validation
-also now evaluates composed JSON Schema branches so callers can reject invalid
-model-emitted arguments before running tools. OpenAI-compatible Chat
+also now evaluates composed JSON Schema branches, string patterns, and `not`
+schemas so callers can reject invalid model-emitted arguments before running
+tools. OpenAI-compatible Chat
 Completions streams now
 also preserve provider reasoning-detail metadata on streamed tool calls so it
 can be replayed with assistant tool-call history. The deterministic provider
@@ -330,9 +331,10 @@ catalogs.
 - `sigma.AssistantMessage.ResponseModel` now exposes captured routed
   provider model IDs from existing assistant metadata without requiring callers
   to inspect provider metadata maps directly.
-- `sigma.ValidateToolCall` now evaluates `anyOf`, `oneOf`, and `allOf` in tool
-  input schemas, including nested property, array item, and additional property
-  schemas, while preserving decoded-copy results and redacted validation errors.
+- `sigma.ValidateToolCall` now evaluates `anyOf`, `oneOf`, `allOf`, `pattern`,
+  and `not` in tool input schemas, including nested property, array item, and
+  additional property schemas, while preserving decoded-copy results and
+  redacted validation errors.
 - Deterministic provider tests now cover Google stream `thoughtSignature`-only
   chunks, empty signature deltas, signature updates on existing blocks, and
   OpenAI-compatible Chat Completions replay of prior thinking blocks as
@@ -570,8 +572,8 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
   broader document/PDF processing remain deferred and caller-owned.
 - Mistral file image references, built-in connector tools, append/restart
   lifecycle operations, and broad catalog expansion remain deferred.
-- Full JSON Schema runtime support, including `$ref`, `pattern`, formats,
-  `not`, conditionals, and implicit argument coercion, remains deferred.
+- Full JSON Schema runtime support, including `$ref`, formats, conditionals,
+  and implicit argument coercion, remains deferred.
 
 ## Validation status
 

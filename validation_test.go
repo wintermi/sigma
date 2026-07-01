@@ -197,6 +197,34 @@ func TestValidateToolCallReportsValidationFailures(t *testing.T) {
 			expected: "length <= 3",
 		},
 		{
+			name: "string pattern",
+			tools: []sigma.Tool{{
+				Name: "label",
+				InputSchema: sigma.Schema{
+					"type":       "object",
+					"properties": map[string]any{"code": map[string]any{"type": "string", "pattern": `^[A-Z]{3}-\d{3}$`}},
+				},
+			}},
+			call:     sigma.ToolCall{Name: "label", Arguments: map[string]any{"code": "abc-123"}},
+			path:     "$.code",
+			reason:   "pattern violation",
+			expected: `match pattern ^[A-Z]{3}-\d{3}$`,
+		},
+		{
+			name: "not schema",
+			tools: []sigma.Tool{{
+				Name: "label",
+				InputSchema: sigma.Schema{
+					"type":       "object",
+					"properties": map[string]any{"status": map[string]any{"type": "string", "not": map[string]any{"enum": []any{"disabled"}}}},
+				},
+			}},
+			call:     sigma.ToolCall{Name: "label", Arguments: map[string]any{"status": "disabled"}},
+			path:     "$.status",
+			reason:   "not violation",
+			expected: "value not matching schema",
+		},
+		{
 			name: "additional property",
 			tools: []sigma.Tool{{
 				Name: "weather",
@@ -248,6 +276,68 @@ func TestValidateToolCallReportsValidationFailures(t *testing.T) {
 				t.Fatalf("error leaked secret: %q", err.Error())
 			}
 		})
+	}
+}
+
+func TestValidateToolCallValidatesPatternAndNotSchemas(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"code": map[string]any{
+				"type":    "string",
+				"pattern": `^[A-Z]{3}-\d{3}$`,
+			},
+			"tags": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type":    "string",
+					"pattern": `^[a-z]+$`,
+				},
+			},
+			"labels": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"allOf": []any{
+						map[string]any{"type": "string", "pattern": `^[a-z]+$`},
+						map[string]any{"not": map[string]any{"enum": []any{"secret"}}},
+					},
+				},
+			},
+			"mode": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "string", "pattern": `^auto$`},
+					map[string]any{"type": "string", "pattern": `^manual$`},
+				},
+			},
+		},
+		"required": []any{"code", "tags", "labels", "mode"},
+	}
+	args := map[string]any{
+		"code":   "ABC-123",
+		"tags":   []any{"alpha", "beta"},
+		"labels": map[string]any{"tier": "public"},
+		"mode":   "manual",
+	}
+	schemaBefore := mustJSON(t, schema)
+	argsBefore := mustJSON(t, args)
+
+	decoded, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{Name: "classify", InputSchema: schema}},
+		sigma.ToolCall{Name: "classify", Arguments: args},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCall returned error: %v", err)
+	}
+	if got, want := decoded["code"], "ABC-123"; got != want {
+		t.Fatalf("code = %v, want %v", got, want)
+	}
+	if got := mustJSON(t, schema); got != schemaBefore {
+		t.Fatalf("schema mutated:\nbefore %s\nafter  %s", schemaBefore, got)
+	}
+	if got := mustJSON(t, args); got != argsBefore {
+		t.Fatalf("arguments mutated:\nbefore %s\nafter  %s", argsBefore, got)
 	}
 }
 
@@ -482,6 +572,10 @@ func TestValidateToolCallRejectsMalformedSchemas(t *testing.T) {
 		{name: "schema is not object", schema: []any{"object"}},
 		{name: "required is not array", schema: sigma.Schema{"type": "object", "required": "city"}},
 		{name: "items is not schema", schema: sigma.Schema{"type": "object", "properties": map[string]any{"tags": map[string]any{"type": "array", "items": []any{}}}}},
+		{name: "pattern is not string", schema: sigma.Schema{"type": "object", "properties": map[string]any{"city": map[string]any{"type": "string", "pattern": 7}}}},
+		{name: "pattern is invalid", schema: sigma.Schema{"type": "object", "properties": map[string]any{"city": map[string]any{"type": "string", "pattern": "["}}}},
+		{name: "not is not schema", schema: sigma.Schema{"type": "object", "properties": map[string]any{"city": map[string]any{"type": "string", "not": []any{}}}}},
+		{name: "not branch is malformed", schema: sigma.Schema{"type": "object", "properties": map[string]any{"city": map[string]any{"type": "string", "not": map[string]any{"type": 7}}}}},
 	}
 
 	for _, tt := range tests {

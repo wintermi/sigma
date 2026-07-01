@@ -9,9 +9,9 @@ package sigma
 //
 // ValidateToolCall supports the subset commonly emitted for model tools:
 // type, properties, required, enum, items, additionalProperties, minimum,
-// maximum, minLength, and maxLength. Unsupported JSON Schema keywords are
-// ignored; $ref, oneOf/anyOf/allOf, pattern, formats, and conditional schemas
-// are not evaluated.
+// maximum, minLength, maxLength, pattern, not, and oneOf/anyOf/allOf.
+// Unsupported JSON Schema keywords are ignored; $ref, formats, and conditional
+// schemas are not evaluated.
 type Schema map[string]any
 
 // Tool describes a callable model tool.

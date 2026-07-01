@@ -199,6 +199,8 @@ work until their API boundaries are explicit.
 - [x] Add strict local tool-call validation for composed JSON Schema branches
       using `anyOf`, `oneOf`, and `allOf` without adding implicit argument
       coercion.
+- [x] Add strict local tool-call validation for string `pattern` constraints
+      and `not` schemas without adding implicit argument coercion.
 - [x] Add provider-neutral document/PDF request content blocks with base64,
       URL, and provider file-ID sources plus initial OpenAI and Anthropic
       payload compatibility.
@@ -224,9 +226,9 @@ work until their API boundaries are explicit.
 - [x] Add deterministic request-conversion regression coverage for replay IDs,
       OpenAI-compatible request-shape guardrails, routed stream model metadata,
       and Google legacy tool-schema sanitization.
-- [ ] Keep full JSON Schema runtime support, including `$ref`, `pattern`,
-      formats, `not`, conditionals, and implicit primitive coercion, deferred
-      unless Sigma adds a broader validation contract.
+- [ ] Keep full JSON Schema runtime support, including `$ref`, formats,
+      conditionals, and implicit primitive coercion, deferred unless Sigma adds
+      a broader validation contract.
 
 ## First-class provider rows
 

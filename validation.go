@@ -13,6 +13,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -246,7 +247,10 @@ func validateComposedSchemas(schema map[string]any, value any, path string, tool
 	if err := validateAnyOf(schema, value, path, toolName); err != nil {
 		return err
 	}
-	return validateOneOf(schema, value, path, toolName)
+	if err := validateOneOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	return validateNot(schema, value, path, toolName)
 }
 
 func validateAllOf(schema map[string]any, value any, path string, toolName string) error {
@@ -336,6 +340,25 @@ func schemaBranches(schema map[string]any, keyword string) ([]map[string]any, bo
 		branches = append(branches, branch)
 	}
 	return branches, true, nil
+}
+
+func validateNot(schema map[string]any, value any, path string, toolName string) error {
+	raw, ok := schema["not"]
+	if !ok {
+		return nil
+	}
+	branch, ok := raw.(map[string]any)
+	if !ok {
+		return toolValidationError(toolName, path, "not schema object", raw, "schema is malformed", nil)
+	}
+	err := validateValue(branch, value, path, toolName)
+	if err == nil {
+		return toolValidationError(toolName, path, "value not matching schema", value, "not violation", nil)
+	}
+	if isMalformedSchemaError(err) {
+		return err
+	}
+	return nil
 }
 
 func isMalformedSchemaError(err error) bool {
@@ -567,7 +590,10 @@ func validateString(schema map[string]any, text string, path string, toolName st
 	if err := validateStringBound(schema, "minLength", text, path, toolName); err != nil {
 		return err
 	}
-	return validateStringBound(schema, "maxLength", text, path, toolName)
+	if err := validateStringBound(schema, "maxLength", text, path, toolName); err != nil {
+		return err
+	}
+	return validateStringPattern(schema, text, path, toolName)
 }
 
 func validateStringBound(schema map[string]any, keyword string, text string, path string, toolName string) error {
@@ -585,6 +611,25 @@ func validateStringBound(schema map[string]any, keyword string, text string, pat
 	}
 	if keyword == "maxLength" && length > limit {
 		return toolValidationError(toolName, path, "length <= "+strconv.Itoa(limit), text, "string is too long", nil)
+	}
+	return nil
+}
+
+func validateStringPattern(schema map[string]any, text string, path string, toolName string) error {
+	raw, ok := schema["pattern"]
+	if !ok {
+		return nil
+	}
+	pattern, ok := raw.(string)
+	if !ok {
+		return toolValidationError(toolName, path, "pattern string", raw, "schema is malformed", nil)
+	}
+	matched, err := regexp.MatchString(pattern, text)
+	if err != nil {
+		return toolValidationError(toolName, path, "valid regex pattern", raw, "schema is malformed", err)
+	}
+	if !matched {
+		return toolValidationError(toolName, path, "match pattern "+pattern, text, "pattern violation", nil)
 	}
 	return nil
 }
