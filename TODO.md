@@ -155,7 +155,7 @@ integrations remain future work until they have the same local evidence bar.
       `finish_reason`.
 - [x] Send explicit `max_tokens` for OpenCode Zen and OpenCode Go Chat
       Completions through compatibility detection.
-- [ ] Add opt-in structured-output capability probes for OpenAI-compatible
+- [x] Add opt-in structured-output capability probes for OpenAI-compatible
       routes so JSON object and strict JSON Schema support can be refreshed
       from live evidence without making provider calls part of `mise run ci`.
 

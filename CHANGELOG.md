@@ -160,6 +160,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - `cmd/sigma-surface-probe` now has an opt-in cross-provider handoff diagnostic
   that builds small tool-call contexts and replays them pairwise across selected
   live routes without adding live provider calls to CI.
+- `cmd/sigma-surface-probe -structured-output` now runs focused
+  OpenAI-compatible JSON object and strict JSON Schema capability probes,
+  emitting reviewable hints for supported schema output, JSON-object fallback,
+  and prompt-only JSON fallback without updating generated metadata.
 - `sigma.TransformRequestForModel` and `sigma.TransformMessagesForModel` now
   expose opt-in cross-provider handoff helpers that adapt replayed messages for
   a target model, including thinking-to-text conversion, unsupported-image

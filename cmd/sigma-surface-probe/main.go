@@ -100,6 +100,7 @@ type config struct {
 	codexOAuth         bool
 	codexOAuthBrowser  bool
 	handoff            bool
+	structuredOutput   bool
 }
 
 type routeCredential struct {
@@ -281,6 +282,7 @@ func parseConfig() config {
 	var codexOAuth bool
 	var codexOAuthBrowser bool
 	var handoff bool
+	var structuredOutput bool
 	flag.StringVar(&routeList, "routes", "zen,go", "comma-separated routes: openai,openai-codex,zen,go,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
@@ -288,6 +290,7 @@ func parseConfig() config {
 	flag.BoolVar(&codexOAuth, "codex-oauth", false, "run OpenAI Codex device-code OAuth for the openai-codex route")
 	flag.BoolVar(&codexOAuthBrowser, "codex-oauth-browser", false, "run OpenAI Codex browser callback OAuth for the openai-codex route")
 	flag.BoolVar(&handoff, "handoff", false, "run cross-provider replay handoff diagnostics instead of per-route surface cases")
+	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
 	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
 	flag.Parse()
 
@@ -300,6 +303,7 @@ func parseConfig() config {
 		codexOAuth:         codexOAuth,
 		codexOAuthBrowser:  codexOAuthBrowser,
 		handoff:            handoff,
+		structuredOutput:   structuredOutput,
 	}
 }
 
@@ -476,12 +480,30 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		return
 	}
 
-	client := probeClient(route, modelID)
 	model := route.Model(route, modelID)
+	if cfg.structuredOutput && model.API != sigma.APIOpenAICompletions {
+		emit(probeResult{
+			Route:   route.Name,
+			Model:   modelID,
+			Case:    "structured_output",
+			Attempt: "unsupported_api",
+			Outcome: "skipped",
+		})
+		return
+	}
+
+	client := probeClient(route, modelID)
 	cases := route.Cases(route, model)
+	if cfg.structuredOutput {
+		cases = structuredOutputProbeCases(cases)
+	}
 	for _, testCase := range cases {
 		result := runCase(ctx, route, client, model, testCase, credential, testCase.Name)
-		if result.Outcome == "ok" || !cfg.repair {
+		if result.Outcome == "ok" {
+			emit(annotateStructuredOutputResult(cfg, result))
+			continue
+		}
+		if !cfg.repair && !cfg.structuredOutput {
 			emit(result)
 			continue
 		}
@@ -514,8 +536,33 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		if !repairedByVariant && availability.Outcome != "" {
 			repaired = availability
 		}
+		repaired = annotateStructuredOutputResult(cfg, repaired)
 		emit(repaired)
 	}
+}
+
+func structuredOutputProbeCases(cases []probeCase) []probeCase {
+	out := make([]probeCase, 0, 2)
+	for _, testCase := range cases {
+		switch testCase.Name {
+		case "json_object", "json_schema":
+			out = append(out, testCase)
+		}
+	}
+	return out
+}
+
+func annotateStructuredOutputResult(cfg config, result probeResult) probeResult {
+	if !cfg.structuredOutput || result.Hint != "" || result.Outcome != "ok" {
+		return result
+	}
+	switch result.Case {
+	case "json_object":
+		result.Hint = "json_object_supported"
+	case "json_schema":
+		result.Hint = "json_schema_supported"
+	}
+	return result
 }
 
 func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
@@ -1485,12 +1532,16 @@ func recommendationFor(result probeResult) (probeRecommendation, bool) {
 	if result.Hint == "" {
 		return probeRecommendation{}, false
 	}
+	evidence := fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt)
+	if result.Outcome == "ok" {
+		evidence = fmt.Sprintf("%s supported by %s", result.Case, result.Attempt)
+	}
 	return probeRecommendation{
 		Route:    result.Route,
 		Model:    result.Model,
 		Case:     result.Case,
 		Hint:     result.Hint,
-		Evidence: fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt),
+		Evidence: evidence,
 	}, true
 }
 

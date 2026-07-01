@@ -96,10 +96,13 @@ coverage. The
 surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
-calls into CI. Public handoff helpers now also let callers adapt persisted or
-incremental conversation context for a target model with explicit
-capability-loss reporting, while keeping orchestration and provider execution
-caller-owned. Assistant results now also expose provider-neutral source and
+calls into CI. It also adds a focused structured-output probe mode for
+OpenAI-compatible routes, reporting JSON object and strict JSON Schema support
+or fallback behavior without updating generated metadata. Public handoff
+helpers now also let callers adapt persisted or incremental conversation
+context for a target model with explicit capability-loss reporting, while
+keeping orchestration and provider execution caller-owned. Assistant results
+now also expose provider-neutral source and
 citation accessors for the source metadata Sigma already captures from grounded
 and citation-bearing responses, plus text response ID and routed response model
 accessors over captured provider response metadata. Request content now also
@@ -336,6 +339,11 @@ catalogs.
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so
   replay failures can be attributed without making handoff checks part of CI.
+- `cmd/sigma-surface-probe -structured-output` now runs only the
+  OpenAI-compatible JSON object and strict JSON Schema cases, emitting JSONL
+  results and summary recommendations that identify schema support, JSON-object
+  fallback, and prompt-only JSON fallback without making live probes part of CI
+  or changing generated metadata.
 - `sigma.TransformRequestForModel` and `sigma.TransformMessagesForModel` now
   adapt conversation context for a target text model without invoking a
   provider. The helpers preserve same-model thinking blocks, convert foreign or

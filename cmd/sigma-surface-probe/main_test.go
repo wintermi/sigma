@@ -298,6 +298,21 @@ func TestOpenAICompatibleProbeCasesUseRouteProviderOptions(t *testing.T) {
 	}
 }
 
+func TestStructuredOutputProbeCasesSelectsJSONOnly(t *testing.T) {
+	t.Parallel()
+
+	cases := structuredOutputProbeCases(openAICompatibleProbeCases(routes["xai"], sigma.Model{}))
+	if len(cases) != 2 {
+		t.Fatalf("cases length = %d, want 2", len(cases))
+	}
+	if got, want := cases[0].Name, "json_object"; got != want {
+		t.Fatalf("first case = %q, want %q", got, want)
+	}
+	if got, want := cases[1].Name, "json_schema"; got != want {
+		t.Fatalf("second case = %q, want %q", got, want)
+	}
+}
+
 func TestFireworksOpenAIProbeCasesSkipScalarThinkingControls(t *testing.T) {
 	t.Parallel()
 
@@ -484,6 +499,25 @@ func TestParseConfigEnablesHandoff(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg.routes, []string{"sigmatest"}) {
 		t.Fatalf("routes = %v, want sigmatest", cfg.routes)
+	}
+}
+
+func TestParseConfigEnablesStructuredOutput(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	oldArgs := os.Args
+	flag.CommandLine = flag.NewFlagSet("sigma-surface-probe-test", flag.ContinueOnError)
+	os.Args = []string{"sigma-surface-probe", "-structured-output", "-routes=zen"}
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		os.Args = oldArgs
+	})
+
+	cfg := parseConfig()
+	if !cfg.structuredOutput {
+		t.Fatal("structuredOutput = false, want true")
+	}
+	if !reflect.DeepEqual(cfg.routes, []string{"zen"}) {
+		t.Fatalf("routes = %v, want zen", cfg.routes)
 	}
 }
 
@@ -785,6 +819,71 @@ func TestProbeModelEachEmitsEachCompletedCase(t *testing.T) {
 	}
 }
 
+func TestStructuredOutputProbeModelEachRunsOnlyStructuredCases(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("basic_text", "basic case", basicRequest("basic"), nil),
+		singleTurnCase("json_object", "JSON object mode", basicRequest("json object"), nil),
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
+	}, sigmatest.Script{}, sigmatest.Script{})
+
+	var emitted []probeResult
+	probeModelEach(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true}, func(result probeResult) {
+		emitted = append(emitted, result)
+	})
+	if len(emitted) != 2 {
+		t.Fatalf("emitted length = %d, want 2", len(emitted))
+	}
+	if got, want := emitted[0].Case, "json_object"; got != want {
+		t.Fatalf("first case = %q, want %q", got, want)
+	}
+	if got, want := emitted[0].Hint, "json_object_supported"; got != want {
+		t.Fatalf("first hint = %q, want %q", got, want)
+	}
+	if got, want := emitted[1].Case, "json_schema"; got != want {
+		t.Fatalf("second case = %q, want %q", got, want)
+	}
+	if got, want := emitted[1].Hint, "json_schema_supported"; got != want {
+		t.Fatalf("second hint = %q, want %q", got, want)
+	}
+	recommendation, ok := recommendationFor(emitted[1])
+	if !ok {
+		t.Fatal("recommendationFor returned false")
+	}
+	if got, want := recommendation.Evidence, "json_schema supported by json_schema"; got != want {
+		t.Fatalf("evidence = %q, want %q", got, want)
+	}
+}
+
+func TestStructuredOutputProbeModelEachSkipsNonOpenAICompatibleModels(t *testing.T) {
+	t.Parallel()
+
+	route := sigmatestProbeRouteWithCases(t, []probeCase{
+		singleTurnCase("json_object", "JSON object mode", basicRequest("json object"), nil),
+	}, sigmatest.Script{})
+
+	var emitted []probeResult
+	probeModelEach(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true}, func(result probeResult) {
+		emitted = append(emitted, result)
+	})
+	if len(emitted) != 1 {
+		t.Fatalf("emitted length = %d, want 1", len(emitted))
+	}
+	if got, want := emitted[0].Case, "structured_output"; got != want {
+		t.Fatalf("case = %q, want %q", got, want)
+	}
+	if got, want := emitted[0].Attempt, "unsupported_api"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if got, want := emitted[0].Outcome, "skipped"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if _, ok := recommendationFor(emitted[0]); ok {
+		t.Fatal("recommendationFor returned true for incompatible API skip")
+	}
+}
+
 func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
 	t.Parallel()
 
@@ -825,6 +924,68 @@ func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
 		recommendation.Evidence != "json_schema repaired by json_schema_more_tokens" {
 		t.Fatalf("recommendation = %+v", recommendation)
 	}
+}
+
+func TestStructuredOutputProbeReportsJSONSchemaFallbackToJSONObject(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
+	},
+		sigmatest.Script{Err: errors.New("strict schema failed")},
+		sigmatest.Script{},
+		sigmatest.Script{Err: errors.New("larger schema failed")},
+		sigmatest.Script{},
+	)
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true})
+	if len(results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(results))
+	}
+	if got, want := results[0].Outcome, "fixed_by_repair_variant"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if got, want := results[0].Attempt, "json_object_fallback"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if got, want := results[0].Hint, "json_schema_rejected_json_object_ok"; got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
+		{Attempt: "json_schema", Error: "strict schema failed"},
+		{Attempt: "json_schema_more_tokens", Error: "larger schema failed"},
+	})
+}
+
+func TestStructuredOutputProbeReportsPromptJSONFallback(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
+	},
+		sigmatest.Script{Err: errors.New("strict schema failed")},
+		sigmatest.Script{},
+		sigmatest.Script{Err: errors.New("larger schema failed")},
+		sigmatest.Script{Err: errors.New("json object failed")},
+		sigmatest.Script{},
+	)
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true})
+	if len(results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(results))
+	}
+	if got, want := results[0].Outcome, "fixed_by_repair_variant"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if got, want := results[0].Attempt, "manual_json"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if got, want := results[0].Hint, "structured_output_rejected_prompt_json_ok"; got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
+		{Attempt: "json_schema", Error: "strict schema failed"},
+		{Attempt: "json_schema_more_tokens", Error: "larger schema failed"},
+		{Attempt: "json_object_fallback", Error: "json object failed"},
+	})
 }
 
 func TestProbeModelReportsAvailabilityCheckSeparately(t *testing.T) {
@@ -1035,6 +1196,38 @@ func sigmatestProbeRoute(t *testing.T, scripts ...sigmatest.Script) routeSpec {
 	return sigmatestProbeRouteWithCases(t, []probeCase{
 		singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), nil),
 	}, scripts...)
+}
+
+func openAICompatibleSigmatestProbeRoute(t *testing.T, cases []probeCase, scripts ...sigmatest.Script) routeSpec {
+	t.Helper()
+
+	provider := openAICompatibleFauxProvider{sigmatest.NewFauxProvider(scripts...)}
+	return routeSpec{
+		Name:      "sigmatest-openai",
+		Provider:  sigmatest.ProviderID,
+		BaseURL:   "https://example.test",
+		APIKeyEnv: "SIGMATEST_API_KEY",
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
+		},
+		Model: func(_ routeSpec, id string) sigma.Model {
+			model := sigmatest.TextModel()
+			model.ID = sigma.ModelID(id)
+			model.API = sigma.APIOpenAICompletions
+			return model
+		},
+		Cases: func(routeSpec, sigma.Model) []probeCase {
+			return cases
+		},
+	}
+}
+
+type openAICompatibleFauxProvider struct {
+	*sigmatest.FauxProvider
+}
+
+func (p openAICompatibleFauxProvider) API() sigma.API {
+	return sigma.APIOpenAICompletions
 }
 
 func sigmatestProbeRouteWithCases(t *testing.T, cases []probeCase, scripts ...sigmatest.Script) routeSpec {
