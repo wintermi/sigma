@@ -183,6 +183,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   `pattern`, and `not` in tool input schemas, including nested property, array
   item, and additional property schemas, so invalid composed or constrained
   tool arguments are rejected before tool execution.
+- `sigma.ValidateToolCallWithOptions` now lets callers opt into primitive tool
+  argument coercion on decoded argument copies before strict validation, while
+  leaving `ValidateToolCall` strict by default.
 - Deterministic provider tests now cover Google stream `thoughtSignature`
   replay on signature-only chunks and OpenAI-compatible Chat Completions replay
   of prior thinking blocks as assistant text when `reasoning_content` is not

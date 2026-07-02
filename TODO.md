@@ -214,6 +214,8 @@ work until their API boundaries are explicit.
       coercion.
 - [x] Add strict local tool-call validation for string `pattern` constraints
       and `not` schemas without adding implicit argument coercion.
+- [x] Add opt-in primitive argument coercion for local tool-call validation
+      while keeping strict `ValidateToolCall` behavior as the default.
 - [x] Add provider-neutral document/PDF request content blocks with base64,
       URL, and provider file-ID sources plus initial OpenAI and Anthropic
       payload compatibility.
@@ -240,7 +242,7 @@ work until their API boundaries are explicit.
       OpenAI-compatible request-shape guardrails, routed stream model metadata,
       and Google legacy tool-schema sanitization.
 - [ ] Keep full JSON Schema runtime support, including `$ref`, formats,
-      conditionals, and implicit primitive coercion, deferred unless Sigma adds
+      conditionals, and default primitive coercion, deferred unless Sigma adds
       a broader validation contract.
 
 ## First-class provider rows

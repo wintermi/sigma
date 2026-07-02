@@ -111,7 +111,8 @@ provider file IDs, with initial OpenAI Responses, OpenAI Chat Completions, and
 Anthropic Messages payload support. Local tool-call validation
 also now evaluates composed JSON Schema branches, string patterns, and `not`
 schemas so callers can reject invalid model-emitted arguments before running
-tools. OpenAI-compatible Chat
+tools, with an opt-in validation mode for conservative primitive argument
+coercion on decoded argument copies. OpenAI-compatible Chat
 Completions streams now
 also preserve provider reasoning-detail metadata on streamed tool calls so it
 can be replayed with assistant tool-call history. The deterministic provider
@@ -366,6 +367,10 @@ catalogs.
   and `not` in tool input schemas, including nested property, array item, and
   additional property schemas, while preserving decoded-copy results and
   redacted validation errors.
+- `sigma.ValidateToolCallWithOptions` now accepts
+  `sigma.ToolValidationOptions{CoercePrimitives: true}` so callers can opt
+  into conservative primitive argument coercion before strict tool validation,
+  without changing the default `ValidateToolCall` behavior.
 - Deterministic provider tests now cover Google stream `thoughtSignature`-only
   chunks, empty signature deltas, signature updates on existing blocks, and
   OpenAI-compatible Chat Completions replay of prior thinking blocks as
@@ -515,9 +520,9 @@ catalogs.
   requests or message slices before callers submit them; they do not change
   `Client.Complete`, `Client.Stream`, provider dispatch, persisted message
   shape, live probes, credential handling, or model registry contents.
-- Tool schema composition validation is additive and stricter for previously
-  unchecked composed branches. It does not add primitive coercion or change the
-  `ValidateToolCall` API.
+- Tool schema composition validation and primitive argument coercion are
+  additive. `ValidateToolCall` remains strict by default; callers must use
+  `ValidateToolCallWithOptions` to request coercion.
 - The new replay and stream regression tests do not change public APIs,
   provider request shapes, or persisted replay semantics.
 - The request-conversion regression tests are coverage-only. They preserve
@@ -612,7 +617,7 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 - Mistral file image references, built-in connector tools, append/restart
   lifecycle operations, and broad catalog expansion remain deferred.
 - Full JSON Schema runtime support, including `$ref`, formats, conditionals,
-  and implicit argument coercion, remains deferred.
+  and default argument coercion, remains deferred.
 
 ## Validation status
 

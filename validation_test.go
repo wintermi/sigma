@@ -359,6 +359,211 @@ func TestValidateToolCallAcceptsRawJSONArguments(t *testing.T) {
 	}
 }
 
+func TestValidateToolCallKeepsPrimitiveValidationStrictByDefault(t *testing.T) {
+	t.Parallel()
+
+	_, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{
+			Name: "scale",
+			InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"count": map[string]any{"type": "integer"}},
+			},
+		}},
+		sigma.ToolCall{Name: "scale", Arguments: map[string]any{"count": "42"}},
+	)
+	if err == nil {
+		t.Fatal("ValidateToolCall returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrToolValidation) {
+		t.Fatalf("error does not match ErrToolValidation: %v", err)
+	}
+	var validationErr *sigma.ToolValidationError
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("error type = %T, want ToolValidationError", err)
+	}
+	if got, want := validationErr.Reason, "wrong primitive type"; got != want {
+		t.Fatalf("reason = %q, want %q", got, want)
+	}
+}
+
+func TestValidateToolCallWithOptionsCoercesPrimitiveArguments(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"count": map[string]any{
+				"type":    "integer",
+				"enum":    []any{42},
+				"minimum": 1,
+			},
+			"ratio":    map[string]any{"type": "number"},
+			"enabled":  map[string]any{"type": "boolean"},
+			"disabled": map[string]any{"type": "boolean"},
+			"empty":    map[string]any{"type": "null"},
+			"label":    map[string]any{"type": "string", "pattern": `^true$`},
+			"items":    map[string]any{"type": "array", "items": map[string]any{"type": "boolean"}},
+			"extra": map[string]any{
+				"type":                 "object",
+				"additionalProperties": map[string]any{"type": "number"},
+			},
+			"existingUnion": map[string]any{"type": []any{"number", "string"}},
+			"coercedUnion":  map[string]any{"type": []any{"boolean", "number"}},
+		},
+		"required": []any{"count", "ratio", "enabled", "disabled", "empty", "label", "items", "extra", "existingUnion", "coercedUnion"},
+	}
+	args := map[string]any{
+		"count":         "42",
+		"ratio":         true,
+		"enabled":       "true",
+		"disabled":      0,
+		"empty":         "",
+		"label":         true,
+		"items":         []any{"false", 1},
+		"extra":         map[string]any{"score": "9.5"},
+		"existingUnion": "1",
+		"coercedUnion":  "1",
+	}
+	schemaBefore := mustJSON(t, schema)
+	argsBefore := mustJSON(t, args)
+
+	decoded, err := sigma.ValidateToolCallWithOptions(
+		[]sigma.Tool{{Name: "coerce", InputSchema: schema}},
+		sigma.ToolCall{Name: "coerce", Arguments: args},
+		sigma.ToolValidationOptions{CoercePrimitives: true},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCallWithOptions returned error: %v", err)
+	}
+
+	want := map[string]any{
+		"count":         42,
+		"ratio":         1,
+		"enabled":       true,
+		"disabled":      false,
+		"empty":         nil,
+		"label":         "true",
+		"items":         []any{false, true},
+		"extra":         map[string]any{"score": 9.5},
+		"existingUnion": "1",
+		"coercedUnion":  1,
+	}
+	if gotJSON, wantJSON := mustJSON(t, decoded), mustJSON(t, want); gotJSON != wantJSON {
+		t.Fatalf("decoded arguments = %s, want %s", gotJSON, wantJSON)
+	}
+	if got := mustJSON(t, schema); got != schemaBefore {
+		t.Fatalf("schema mutated:\nbefore %s\nafter  %s", schemaBefore, got)
+	}
+	if got := mustJSON(t, args); got != argsBefore {
+		t.Fatalf("arguments mutated:\nbefore %s\nafter  %s", argsBefore, got)
+	}
+}
+
+func TestValidateToolCallWithOptionsCoercesComposedSchemas(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"all": map[string]any{
+				"allOf": []any{
+					map[string]any{"type": "string"},
+					map[string]any{"type": "string", "pattern": `^true$`},
+				},
+			},
+			"any": map[string]any{
+				"anyOf": []any{
+					map[string]any{"type": "integer", "minimum": 40},
+					map[string]any{"type": "boolean"},
+				},
+			},
+			"one": map[string]any{
+				"oneOf": []any{
+					map[string]any{"type": "boolean"},
+					map[string]any{"type": "integer", "minimum": 1},
+				},
+			},
+		},
+		"required": []any{"all", "any", "one"},
+	}
+
+	decoded, err := sigma.ValidateToolCallWithOptions(
+		[]sigma.Tool{{Name: "compose", InputSchema: schema}},
+		sigma.ToolCall{Name: "compose", Arguments: map[string]any{
+			"all": true,
+			"any": "42",
+			"one": "false",
+		}},
+		sigma.ToolValidationOptions{CoercePrimitives: true},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCallWithOptions returned error: %v", err)
+	}
+
+	want := map[string]any{"all": "true", "any": 42, "one": false}
+	if gotJSON, wantJSON := mustJSON(t, decoded), mustJSON(t, want); gotJSON != wantJSON {
+		t.Fatalf("decoded arguments = %s, want %s", gotJSON, wantJSON)
+	}
+}
+
+func TestValidateToolCallWithOptionsRejectsInvalidPrimitiveCoercions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema sigma.Schema
+		value  any
+	}{
+		{
+			name:   "fractional integer",
+			schema: sigma.Schema{"type": "integer"},
+			value:  "42.1",
+		},
+		{
+			name:   "numeric boolean string",
+			schema: sigma.Schema{"type": "boolean"},
+			value:  "1",
+		},
+		{
+			name:   "text null",
+			schema: sigma.Schema{"type": "null"},
+			value:  "null",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := sigma.ValidateToolCallWithOptions(
+				[]sigma.Tool{{
+					Name: "coerce",
+					InputSchema: sigma.Schema{
+						"type":       "object",
+						"properties": map[string]any{"value": tt.schema},
+					},
+				}},
+				sigma.ToolCall{Name: "coerce", Arguments: map[string]any{"value": tt.value}},
+				sigma.ToolValidationOptions{CoercePrimitives: true},
+			)
+			if err == nil {
+				t.Fatal("ValidateToolCallWithOptions returned nil error")
+			}
+			if !errors.Is(err, sigma.ErrToolValidation) {
+				t.Fatalf("error does not match ErrToolValidation: %v", err)
+			}
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("error type = %T, want ToolValidationError", err)
+			}
+			if got, want := validationErr.Reason, "wrong primitive type"; got != want {
+				t.Fatalf("reason = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestValidateToolCallValidatesComposedSchemas(t *testing.T) {
 	t.Parallel()
 

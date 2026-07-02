@@ -45,6 +45,13 @@ type ToolValidationError struct {
 	Err      error
 }
 
+// ToolValidationOptions configures local tool-call validation.
+type ToolValidationOptions struct {
+	// CoercePrimitives converts common model-emitted primitive mismatches on the
+	// decoded argument copy before strict schema validation.
+	CoercePrimitives bool
+}
+
 func (e *ToolValidationError) Error() string {
 	if e == nil {
 		return ""
@@ -89,6 +96,14 @@ func (e *ToolValidationError) Is(target error) bool {
 // arguments on success and never mutates the supplied tool schema or call
 // arguments.
 func ValidateToolCall(tools []Tool, call ToolCall) (map[string]any, error) {
+	return ValidateToolCallWithOptions(tools, call, ToolValidationOptions{})
+}
+
+// ValidateToolCallWithOptions validates a model-emitted tool call against the
+// matching tool's JSON Schema-compatible InputSchema. It returns a decoded copy
+// of the arguments on success and never mutates the supplied tool schema or
+// call arguments.
+func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValidationOptions) (map[string]any, error) {
 	tool, ok := findTool(tools, call.Name)
 	if !ok {
 		return nil, toolValidationError(call.Name, "$", "registered tool name", call.Name, "tool is not registered", nil)
@@ -104,10 +119,322 @@ func ValidateToolCall(tools []Tool, call ToolCall) (map[string]any, error) {
 		return nil, toolValidationError(call.Name, "$", "JSON object arguments", call.Arguments, "arguments are malformed", err)
 	}
 
+	if options.CoercePrimitives {
+		coerced, err := coerceValue(schema, args, "$", call.Name)
+		if err != nil {
+			return nil, err
+		}
+		if coercedArgs, ok := coerced.(map[string]any); ok {
+			args = coercedArgs
+		}
+	}
+
 	if err := validateValue(schema, args, "$", call.Name); err != nil {
 		return nil, err
 	}
 	return args, nil
+}
+
+func coerceValue(schema map[string]any, value any, path string, toolName string) (any, error) {
+	if coerced, changed, err := coerceAllOf(schema, value, path, toolName); err != nil {
+		return nil, err
+	} else if changed {
+		value = coerced
+	}
+	if coerced, changed, err := coerceAnyOf(schema, value, path, toolName); err != nil {
+		return nil, err
+	} else if changed {
+		value = coerced
+	}
+	if coerced, changed, err := coerceOneOf(schema, value, path, toolName); err != nil {
+		return nil, err
+	} else if changed {
+		value = coerced
+	}
+
+	types, err := schemaTypes(schema)
+	if err != nil {
+		return nil, toolValidationError(toolName, path, "valid schema type", schema["type"], "schema is malformed", err)
+	}
+	if len(types) == 0 {
+		types = inferredTypes(schema)
+	}
+	if len(types) > 1 && valueMatchesAnyType(value, types) {
+		return coerceNestedValue(schema, value, types, path, toolName)
+	}
+	if len(types) > 0 && !valueMatchesAnyType(value, types) {
+		for _, typ := range types {
+			coerced, changed := coercePrimitiveByType(value, typ)
+			if changed {
+				value = coerced
+				break
+			}
+		}
+	}
+	return coerceNestedValue(schema, value, types, path, toolName)
+}
+
+func coerceAllOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+	branches, ok, err := schemaBranches(schema, "allOf")
+	if err != nil {
+		return nil, false, toolValidationError(toolName, path, "allOf schema array", schema["allOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return value, false, nil
+	}
+	coerced := value
+	changed := false
+	for _, branch := range branches {
+		next, err := coerceValue(branch, coerced, path, toolName)
+		if err != nil {
+			return nil, false, err
+		}
+		if !reflect.DeepEqual(next, coerced) {
+			changed = true
+		}
+		coerced = next
+	}
+	return coerced, changed, nil
+}
+
+func coerceAnyOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+	branches, ok, err := schemaBranches(schema, "anyOf")
+	if err != nil {
+		return nil, false, toolValidationError(toolName, path, "anyOf schema array", schema["anyOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return value, false, nil
+	}
+	for _, branch := range branches {
+		candidate := cloneAnyValue(value)
+		coerced, err := coerceValue(branch, candidate, path, toolName)
+		if err != nil {
+			return nil, false, err
+		}
+		if err := validateValue(branch, coerced, path, toolName); err == nil {
+			return coerced, !reflect.DeepEqual(coerced, value), nil
+		} else if isMalformedSchemaError(err) {
+			return nil, false, err
+		}
+	}
+	return value, false, nil
+}
+
+func coerceOneOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+	branches, ok, err := schemaBranches(schema, "oneOf")
+	if err != nil {
+		return nil, false, toolValidationError(toolName, path, "oneOf schema array", schema["oneOf"], "schema is malformed", err)
+	}
+	if !ok {
+		return value, false, nil
+	}
+	for _, branch := range branches {
+		candidate := cloneAnyValue(value)
+		coerced, err := coerceValue(branch, candidate, path, toolName)
+		if err != nil {
+			return nil, false, err
+		}
+		if err := validateValue(branch, coerced, path, toolName); err == nil {
+			return coerced, !reflect.DeepEqual(coerced, value), nil
+		} else if isMalformedSchemaError(err) {
+			return nil, false, err
+		}
+	}
+	return value, false, nil
+}
+
+func coerceNestedValue(schema map[string]any, value any, types []string, path string, toolName string) (any, error) {
+	for _, typ := range types {
+		switch typ {
+		case "object":
+			object, ok := value.(map[string]any)
+			if !ok {
+				continue
+			}
+			if err := coerceObject(schema, object, path, toolName); err != nil {
+				return nil, err
+			}
+		case "array":
+			array, ok := value.([]any)
+			if !ok {
+				continue
+			}
+			if err := coerceArray(schema, array, path, toolName); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return value, nil
+}
+
+func coerceObject(schema map[string]any, object map[string]any, path string, toolName string) error {
+	properties, err := schemaProperties(schema)
+	if err != nil {
+		return toolValidationError(toolName, path, "properties object", schema["properties"], "schema is malformed", err)
+	}
+	for name, propertySchema := range properties {
+		value, ok := object[name]
+		if !ok {
+			continue
+		}
+		coerced, err := coerceValue(propertySchema, value, joinPath(path, name), toolName)
+		if err != nil {
+			return err
+		}
+		object[name] = coerced
+	}
+
+	raw, declared := schema["additionalProperties"]
+	if !declared {
+		return nil
+	}
+	additionalSchema, ok := raw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	for _, name := range sortedKeys(object) {
+		if _, ok := properties[name]; ok {
+			continue
+		}
+		coerced, err := coerceValue(additionalSchema, object[name], joinPath(path, name), toolName)
+		if err != nil {
+			return err
+		}
+		object[name] = coerced
+	}
+	return nil
+}
+
+func coerceArray(schema map[string]any, array []any, path string, toolName string) error {
+	raw, ok := schema["items"]
+	if !ok {
+		return nil
+	}
+	itemSchema, ok := raw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	for i, item := range array {
+		coerced, err := coerceValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName)
+		if err != nil {
+			return err
+		}
+		array[i] = coerced
+	}
+	return nil
+}
+
+func coercePrimitiveByType(value any, typ string) (any, bool) {
+	switch typ {
+	case "number":
+		return coerceNumber(value, false)
+	case "integer":
+		return coerceNumber(value, true)
+	case "boolean":
+		return coerceBoolean(value)
+	case "string":
+		return coerceString(value)
+	case "null":
+		return coerceNull(value)
+	default:
+		return value, false
+	}
+}
+
+func coerceNumber(value any, integer bool) (any, bool) {
+	if value == nil {
+		return json.Number("0"), true
+	}
+	switch v := value.(type) {
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return value, false
+		}
+		number, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
+			return value, false
+		}
+		if integer && math.Trunc(number) != number {
+			return value, false
+		}
+		return json.Number(formatNumber(number)), true
+	case bool:
+		if v {
+			return json.Number("1"), true
+		}
+		return json.Number("0"), true
+	default:
+		return value, false
+	}
+}
+
+func coerceBoolean(value any) (any, bool) {
+	if value == nil {
+		return false, true
+	}
+	switch v := value.(type) {
+	case string:
+		switch v {
+		case "true":
+			return true, true
+		case "false":
+			return false, true
+		default:
+			return value, false
+		}
+	default:
+		number, ok := numberFloat(value)
+		if !ok {
+			return value, false
+		}
+		switch number {
+		case 1:
+			return true, true
+		case 0:
+			return false, true
+		default:
+			return value, false
+		}
+	}
+}
+
+func coerceString(value any) (any, bool) {
+	if value == nil {
+		return "", true
+	}
+	switch v := value.(type) {
+	case string:
+		return value, false
+	case bool:
+		if v {
+			return "true", true
+		}
+		return "false", true
+	default:
+		if number, ok := numberFloat(value); ok {
+			return formatNumber(number), true
+		}
+		return value, false
+	}
+}
+
+func coerceNull(value any) (any, bool) {
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return nil, true
+		}
+	case bool:
+		if !v {
+			return nil, true
+		}
+	default:
+		if number, ok := numberFloat(value); ok && number == 0 {
+			return nil, true
+		}
+	}
+	return value, false
 }
 
 // ToolErrorMessage converts a tool validation failure into text suitable for a
