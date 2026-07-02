@@ -173,6 +173,8 @@ images, `GenerateImages` dispatches to a registered image provider and returns
   blocks.
 - [Errors](docs/errors.md) covers typed errors, cancellation, retries, and
   redaction-safe diagnostics.
+- [Routing decisions](docs/routing.md) covers deterministic request
+  classification, tiered model selection, and fallback advice.
 - [Custom models](docs/custom-models.md) covers local OpenAI-compatible models
   and routers.
 - [Testing](docs/testing.md) covers `sigmatest`, `httptest`, and live-test

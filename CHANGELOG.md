@@ -12,6 +12,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- Deterministic routing decisions now ship as pure helpers: `ClassifyRequest`
+  scores requests into route tiers with weighted rule-based signals,
+  `RoutePolicy.Select` picks the first usable tier candidate with escalation
+  and exclusions, and `RoutePolicy.Fallback` turns classified upstream errors
+  into retry, fallback, or abort advice, including larger-context candidate
+  selection on context overflow. Sigma only decides; callers execute requests
+  and own health tracking.
 - Provider-neutral document/PDF request content blocks now support base64,
   URL, and provider file-ID sources, with initial OpenAI Responses, OpenAI Chat
   Completions, and Anthropic Messages payload support.

@@ -131,6 +131,10 @@ Registries can now also refresh app-owned dynamic text, image, and embedding
 model sources at runtime, so local servers and routers with live catalogs can
 update client model listings without changing Sigma's curated built-in
 catalogs.
+Deterministic routing-decision helpers now classify requests into route tiers
+with weighted rule-based signals, select tier candidates from caller-defined
+policies, and turn classified upstream errors into retry, fallback, or abort
+advice without adding any execution loop or configuration format to Sigma.
 
 ## Added
 
@@ -394,6 +398,13 @@ catalogs.
   tool/max-token payload guardrails, provider-reported routed stream model
   metadata, and Google legacy tool-schema sanitization without adding live
   provider calls.
+- `sigma.ClassifyRequest`, `sigma.RoutePolicy.Select`, and
+  `sigma.RoutePolicy.Fallback` now provide deterministic routing decisions:
+  weighted rule-based request classification into route tiers, tiered
+  candidate selection with escalation and caller-supplied exclusions, and
+  classified-error fallback advice including larger-context candidate
+  selection on context overflow. Sigma only decides; callers execute requests
+  and own health/cooldown state.
 
 ## Compatibility
 
