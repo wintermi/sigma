@@ -887,7 +887,7 @@ func signAWSSigV4(req *http.Request, body []byte, accessKey string, secretKey st
 
 	canonicalRequest := strings.Join([]string{
 		req.Method,
-		uriEncodePath(req.URL.Path),
+		sigV4CanonicalURI(req.URL),
 		req.URL.RawQuery,
 		canonicalHeaders.String(),
 		strings.Join(signedHeaders, ";"),
@@ -911,22 +911,15 @@ func signAWSSigV4(req *http.Request, body []byte, accessKey string, secretKey st
 	))
 }
 
-func uriEncodePath(path string) string {
-	var encoded strings.Builder
-	for i := 0; i < len(path); i++ {
-		c := path[i]
-		if c == '/' || isUnreserved(c) {
-			encoded.WriteByte(c)
-			continue
-		}
-		_, _ = fmt.Fprintf(&encoded, "%%%02X", c)
+func sigV4CanonicalURI(u *url.URL) string {
+	if u == nil {
+		return "/"
 	}
-	return encoded.String()
-}
-
-func isUnreserved(c byte) bool {
-	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-		(c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~'
+	path := u.EscapedPath()
+	if path == "" {
+		return "/"
+	}
+	return path
 }
 
 func sha256Hex(data []byte) string {

@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -82,6 +83,33 @@ func TestTitanV2EmbeddingsInvokeModelPayloadAndResponse(t *testing.T) {
 	if gotNormalize, want := payload["normalize"], true; gotNormalize != want {
 		t.Fatalf("normalize = %v, want %v", gotNormalize, want)
 	}
+}
+
+func TestBedrockEmbeddingRequestSignsInferenceProfileARNWithEscapedPath(t *testing.T) {
+	t.Parallel()
+
+	const arn = "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/my-profile"
+	body := []byte(`{"inputText":"alpha"}`)
+	req, err := bedrockEmbeddingRequest(
+		context.Background(),
+		Config{Region: "us-east-1", Endpoint: "https://bedrock-runtime.us-east-1.amazonaws.com"},
+		arn,
+		body,
+		sigma.Options{},
+		CredentialInfo{
+			Source:          CredentialSourceStaticCredentials,
+			AccessKeyID:     "AKIAFAKE",
+			SecretAccessKey: "secret",
+		},
+	)
+	if err != nil {
+		t.Fatalf("bedrockEmbeddingRequest returned error: %v", err)
+	}
+	wantPath := "/model/" + url.PathEscape(arn) + "/invoke"
+	if got := req.URL.EscapedPath(); got != wantPath {
+		t.Fatalf("escaped path = %q, want %q", got, wantPath)
+	}
+	assertBedrockSigV4Signature(t, req, body, wantPath, "secret", "us-east-1", "bedrock")
 }
 
 func TestCohereEmbeddingsBatchPayloadAndNestedVectors(t *testing.T) {

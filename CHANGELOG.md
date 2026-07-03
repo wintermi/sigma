@@ -215,6 +215,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Fixed
 
+- Amazon Bedrock SigV4 signing now canonicalizes the escaped wire path for
+  model IDs with encoded slash segments, so inference-profile ARNs sign
+  consistently across Converse Stream and Bedrock embeddings.
 - Anthropic Messages prompt-cache markers are now bounded to the system prompt,
   final cacheable user-side block, and final tool definition, avoiding
   API-rejected payloads when cache-enabled agent loops include multiple user

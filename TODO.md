@@ -547,6 +547,9 @@ should still come through the catalog refresh workflow.
 - [x] Add request-scoped Bedrock region and static AWS credential helpers before
       environment fallback while keeping AWS profile, SSO, web identity, IMDS,
       and shared-config loading deferred.
+- [x] Keep Bedrock SigV4 canonical request paths aligned with escaped model-ID
+      wire paths for inference-profile ARNs across Converse Stream and
+      embeddings.
 - [x] Replace blank required user/tool-result text with a placeholder and drop
       blank replayed assistant text blocks that Bedrock Converse rejects.
 - [x] Append the AWS data-retention documentation link to Bedrock provider

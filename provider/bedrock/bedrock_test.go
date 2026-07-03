@@ -9,12 +9,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"hash/crc32"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -812,6 +814,63 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	}
 }
 
+func TestHTTPConverseStreamClientSignsInferenceProfileARNWithEscapedPath(t *testing.T) {
+	t.Parallel()
+
+	const arn = "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/my-profile"
+	requests := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read request body: %v", err)
+		}
+		wantPath := "/model/" + url.PathEscape(arn) + "/converse-stream"
+		if got := r.URL.EscapedPath(); got != wantPath {
+			t.Fatalf("escaped path = %q, want %q", got, wantPath)
+		}
+		assertBedrockSigV4Signature(t, r, body, wantPath, "secret", "us-east-1", "bedrock")
+		requests <- struct{}{}
+		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+		_, _ = w.Write(bedrockEventStream(
+			bedrockEventStreamFrame("messageStart", []byte(`{"role":"assistant"}`)),
+			bedrockEventStreamFrame("contentBlockDelta", []byte(`{"contentBlockIndex":0,"delta":{"text":"ok"}}`)),
+			bedrockEventStreamFrame("messageStop", []byte(`{"stopReason":"end_turn"}`)),
+		))
+	}))
+	defer server.Close()
+
+	client, err := newHTTPConverseStreamClient(context.Background(), Config{
+		Region:   "us-east-1",
+		Endpoint: server.URL,
+	}, sigma.Options{}, CredentialInfo{
+		Source:          CredentialSourceStaticCredentials,
+		AccessKeyID:     "AKIAFAKE",
+		SecretAccessKey: "secret",
+	})
+	if err != nil {
+		t.Fatalf("newHTTPConverseStreamClient returned error: %v", err)
+	}
+	stream, err := client.ConverseStream(context.Background(), ConverseRequest{
+		ModelID:  arn,
+		Messages: []ConverseMessage{{Role: "user", Content: []ConverseContentBlock{{Type: converseBlockText, Text: "hi"}}}},
+	})
+	if err != nil {
+		t.Fatalf("ConverseStream returned error: %v", err)
+	}
+	events := readConverseEvents(stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream err = %v", err)
+	}
+	if got, want := events[1].TextDelta, "ok"; got != want {
+		t.Fatalf("text delta = %q, want %q", got, want)
+	}
+	select {
+	case <-requests:
+	default:
+		t.Fatal("server did not receive request")
+	}
+}
+
 func TestRequestStaticCredentialsSignHTTPRequests(t *testing.T) {
 	var gotAuthorization string
 	var gotSecurityToken string
@@ -854,6 +913,78 @@ func TestRequestStaticCredentialsSignHTTPRequests(t *testing.T) {
 	if got, want := gotSecurityToken, "request-session"; got != want {
 		t.Fatalf("security token = %q, want %q", got, want)
 	}
+}
+
+func assertBedrockSigV4Signature(t *testing.T, r *http.Request, body []byte, canonicalURI string, secretKey string, region string, service string) {
+	t.Helper()
+
+	authorization := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authorization, "AWS4-HMAC-SHA256 ") {
+		t.Fatalf("Authorization = %q, want SigV4 header", authorization)
+	}
+	signedHeaders := sigV4AuthorizationParameter(t, authorization, "SignedHeaders")
+	signature := sigV4AuthorizationParameter(t, authorization, "Signature")
+	if signedHeaders == "" || signature == "" {
+		t.Fatalf("Authorization = %q, missing signed headers or signature", authorization)
+	}
+	amzDate := r.Header.Get("X-Amz-Date")
+	if len(amzDate) < len("20060102") {
+		t.Fatalf("X-Amz-Date = %q, want SigV4 date", amzDate)
+	}
+	payloadHash := sha256Hex(body)
+	if got := r.Header.Get("X-Amz-Content-Sha256"); got != payloadHash {
+		t.Fatalf("X-Amz-Content-Sha256 = %q, want %q", got, payloadHash)
+	}
+
+	var canonicalHeaders strings.Builder
+	for _, header := range strings.Split(signedHeaders, ";") {
+		value := r.Header.Get(header)
+		if header == "host" {
+			value = r.Host
+			if value == "" {
+				value = r.URL.Host
+			}
+		}
+		canonicalHeaders.WriteString(header)
+		canonicalHeaders.WriteString(":")
+		canonicalHeaders.WriteString(strings.TrimSpace(value))
+		canonicalHeaders.WriteString("\n")
+	}
+
+	canonicalRequest := strings.Join([]string{
+		r.Method,
+		canonicalURI,
+		r.URL.RawQuery,
+		canonicalHeaders.String(),
+		signedHeaders,
+		payloadHash,
+	}, "\n")
+	dateStamp := amzDate[:len("20060102")]
+	credentialScope := dateStamp + "/" + region + "/" + service + "/aws4_request"
+	stringToSign := "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope + "\n" + sha256Hex([]byte(canonicalRequest))
+	signingKey := hmacSHA256(hmacSHA256(hmacSHA256(hmacSHA256(
+		[]byte("AWS4"+secretKey), []byte(dateStamp)),
+		[]byte(region)),
+		[]byte(service)),
+		[]byte("aws4_request"))
+	wantSignature := hex.EncodeToString(hmacSHA256(signingKey, []byte(stringToSign)))
+	if signature != wantSignature {
+		t.Fatalf("SigV4 signature = %q, want %q for canonical URI %q", signature, wantSignature, canonicalURI)
+	}
+}
+
+func sigV4AuthorizationParameter(t *testing.T, authorization string, key string) string {
+	t.Helper()
+
+	const prefix = "AWS4-HMAC-SHA256 "
+	fields := strings.Split(strings.TrimPrefix(authorization, prefix), ",")
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if value, ok := strings.CutPrefix(field, key+"="); ok {
+			return value
+		}
+	}
+	return ""
 }
 
 // TestHTTPConverseStreamCloseReleasesBlockedForward is a regression test for a

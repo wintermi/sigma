@@ -52,6 +52,8 @@ mutating process environment.
 Generated Bedrock metadata now also includes focused EU Anthropic Claude
 regional rows that reuse the existing `eu.` inference-profile endpoint fallback
 for the EU runtime route.
+Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
+for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an
 opt-in way to resolve stored API keys, serialize OAuth refreshes, and preserve
 rotated credentials while leaving Sigma's default environment-based credential
@@ -544,6 +546,10 @@ advice without adding any execution loop or configuration format to Sigma.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
+- Bedrock SigV4 path canonicalization now matches the escaped model-ID path
+  sent on the wire for inference-profile ARNs. This is a bug fix with no public
+  API change, and bearer-token Bedrock requests keep their existing unsigned
+  authorization behavior.
 - Source and citation accessors are additive views over existing provider
   metadata. They do not change persisted request shape, replay behavior,
   provider dispatch, or the raw `ProviderMetadata` maps.
