@@ -98,6 +98,40 @@ func TestAzureResponsesCompleteSendsDeploymentURLHeadersAndPayload(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/openai/azure_responses/basic_payload.json")
 }
 
+func TestAzureResponsesDoesNotUseSessionIDAsPreviousResponseID(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan azureCapturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureAzureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("azure-responses-session-test")
+	model := azureResponsesTestModel(providerID)
+	model.AzureOpenAIResponses.Endpoint = server.URL
+	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID("session-123"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveAzureRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if _, ok := payload["previous_response_id"]; ok {
+		t.Fatalf("previous_response_id was sent from session id: %#v", payload)
+	}
+}
+
 func TestAzureResponsesUsesTokenCredentialHeader(t *testing.T) {
 	t.Parallel()
 

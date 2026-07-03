@@ -69,7 +69,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 		}
 		payload["tools"] = tools
 	}
-	addResponsesSession(payload, model.Provider, opts)
+	addResponsesPreviousResponseID(payload, model.Provider, opts)
 	addResponsesProviderOptions(payload, model.Provider, opts)
 	return payload, nil
 }
@@ -406,7 +406,7 @@ func anyMap(value any) map[string]any {
 	return out
 }
 
-func addResponsesSession(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
+func addResponsesPreviousResponseID(payload map[string]any, provider sigma.ProviderID, opts sigma.Options) {
 	options := providerOptions(opts, provider)
 	if previous, ok := stringOption(options, providerOptionPreviousID); ok {
 		payload["previous_response_id"] = previous
@@ -415,9 +415,6 @@ func addResponsesSession(payload map[string]any, provider sigma.ProviderID, opts
 	if previous, ok := stringOption(options, providerOptionPreviousIDGo); ok {
 		payload["previous_response_id"] = previous
 		return
-	}
-	if opts.SessionID != "" {
-		payload["previous_response_id"] = opts.SessionID
 	}
 }
 

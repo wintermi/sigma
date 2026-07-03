@@ -407,6 +407,10 @@ advice without adding any execution loop or configuration format to Sigma.
   terminal provider response. Premature EOF now returns an error with partial
   content preserved, and terminal incomplete responses finalize as max-token
   stops while preserving provider usage.
+- OpenAI and Azure OpenAI Responses request payloads now keep
+  `previous_response_id` limited to explicit provider options, so
+  cache-affinity `sigma.WithSessionID` values are not sent as provider
+  continuation IDs.
 - Deterministic request-conversion tests now cover distinct OpenAI Responses
   replay IDs around reasoning items, OpenAI-compatible Chat Completions
   tool/max-token payload guardrails, provider-reported routed stream model
@@ -442,6 +446,9 @@ advice without adding any execution loop or configuration format to Sigma.
   `finish_reason` as an error for every compatible route. This avoids silently
   accepting truncated streams while preserving partial content and usage for
   diagnostics.
+- For OpenAI and Azure OpenAI Responses, `sigma.WithSessionID` remains a cache
+  and session-affinity hint. Responses continuation must use a real `resp_*`
+  value supplied through `previous_response_id` provider options.
 - Existing `sigma.Cost` component fields and `TotalCost` remain Sigma's
   estimated cost from model metadata. Provider-reported cost is additive and is
   only populated when an upstream payload contains a clear numeric cost field.
@@ -645,7 +652,7 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-07-01 with:
+Current v0.6.0 development state validated on 2026-07-03 with:
 
 - `mise run mise:validate`.
 - `mise run go:fmt`.

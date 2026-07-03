@@ -226,6 +226,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - OpenAI Responses streams now require a terminal provider response event before
   treating EOF as success, preserve partial content on premature EOF errors, and
   finalize terminal incomplete responses as max-token stops with usage intact.
+- OpenAI and Azure OpenAI Responses no longer send cache-affinity
+  `sigma.WithSessionID` values as `previous_response_id`; callers can still pass
+  real `resp_*` continuation IDs through explicit provider options.
 - OpenAI-compatible Chat Completions streams now surface provider
   `finish_reason` values of `network_error` and `model_context_window_exceeded`
   as errors instead of successful unknown stops, preserving context-overflow

@@ -60,7 +60,7 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 		responsesRichRequest(),
 		sigma.WithTemperature(0.2),
 		sigma.WithMaxTokens(123),
-		sigma.WithSessionID("resp_prev"),
+		sigma.WithSessionID("session-123"),
 		sigma.WithHeader("X-Custom", "custom"),
 		sigma.WithMetadataValue("trace", "abc"),
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
@@ -73,12 +73,13 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 			TextVerbosity:        "low",
 		}),
 		sigma.WithProviderOptions(providerID, map[string]any{
-			"session_id_header": "X-Session-ID",
-			"store":             false,
-			"include":           []any{"reasoning.encrypted_content"},
-			"text":              map[string]any{"format": map[string]any{"type": "text"}},
-			"truncation":        "auto",
-			"prompt_cache_key":  "cache-key",
+			"session_id_header":    "X-Session-ID",
+			"store":                false,
+			"include":              []any{"reasoning.encrypted_content"},
+			"previous_response_id": "resp_prev",
+			"text":                 map[string]any{"format": map[string]any{"type": "text"}},
+			"truncation":           "auto",
+			"prompt_cache_key":     "cache-key",
 		}),
 	)
 	if err != nil {
@@ -96,11 +97,11 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Client", "client")
 	assertHeader(t, request.Headers, "X-Provider", "provider")
 	assertHeader(t, request.Headers, "X-Custom", "custom")
-	assertHeader(t, request.Headers, "X-Session-ID", "resp_prev")
+	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
-func TestResponsesDerivesPromptCacheKeyWithoutOverridingProviderOption(t *testing.T) {
+func TestResponsesPromptCacheDoesNotUseSessionIDAsPreviousResponseID(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
@@ -136,8 +137,8 @@ func TestResponsesDerivesPromptCacheKeyWithoutOverridingProviderOption(t *testin
 	if got, want := payload["prompt_cache_retention"], "24h"; got != want {
 		t.Fatalf("prompt_cache_retention = %v, want %q", got, want)
 	}
-	if got, want := payload["previous_response_id"], strings.Repeat("x", 70); got != want {
-		t.Fatalf("previous_response_id = %v, want session id", got)
+	if _, ok := payload["previous_response_id"]; ok {
+		t.Fatalf("previous_response_id was sent from session id: %#v", payload)
 	}
 }
 
