@@ -14,18 +14,8 @@
       "type": "function.call"
     },
     {
-      "name": "screenshot",
       "object": "entry",
-      "result": [
-        {
-          "text": "(see attached image)",
-          "type": "text"
-        },
-        {
-          "imageUrl": "https://example.test/screenshot.png",
-          "type": "image_url"
-        }
-      ],
+      "result": "Image: https://example.test/screenshot.png",
       "tool_call_id": "66c7c5b6f",
       "type": "function.result"
     }

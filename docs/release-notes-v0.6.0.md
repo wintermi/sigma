@@ -18,7 +18,7 @@ provider-reported usage when available. Mistral Conversations now also maps
 cache-enabled session IDs to
 prompt-cache keys, reports provider cached prompt tokens as cache reads, and
 accepts URL-backed image references for image-capable chat inputs and
-image-bearing tool results. Context-aware max-output-token helpers now let
+stringified image-bearing tool results. Context-aware max-output-token helpers now let
 callers opt in to output budgeting from model metadata and deterministic
 request estimates without changing provider dispatch defaults. Reasoning
 budget planning helpers now also let callers opt in to planning visible output
@@ -176,8 +176,9 @@ advice without adding any execution loop or configuration format to Sigma.
   usage payloads for diagnostics.
 - Mistral Conversations now accepts URL-backed `sigma.ImageURL` blocks in user
   messages and tool-result messages when the target model declares image input
-  support, using the provider's `image_url` content shape without changing the
-  existing base64 image path.
+  support. User image chunks use the provider's `image_url` content shape, and
+  tool-result images replay as string image references so `function.result`
+  remains schema-valid.
 - GitHub Copilot now has stdlib-only device-code OAuth login through
   `githubcopilot.LoginGitHubCopilotDeviceCode`, Copilot token refresh through
   `githubcopilot.RefreshGitHubCopilotToken`, and an in-memory token provider
@@ -459,8 +460,14 @@ advice without adding any execution loop or configuration format to Sigma.
   values.
 - Mistral URL image support is additive and uses the existing
   `sigma.ImageURL` content block. Base64 image blocks keep their existing data
-  URL encoding, and unsupported image sources continue to return explicit
-  request-conversion errors.
+  URL encoding for user image chunks, image-bearing tool results are flattened
+  to string references, and unsupported image sources continue to return
+  explicit request-conversion errors.
+- Mistral Conversations request-shape validation now matches the
+  `/v1/conversations` schema. Function results omit Chat Completions-only
+  `name` and `is_error` fields, native Magistral reasoning sends top-level
+  `prompt_mode`, and typed named-tool choices are rejected locally because
+  Conversations accepts only `auto`, `none`, `any`, or `required`.
 - GitHub Copilot OAuth credentials remain caller-owned. Sigma does not persist
   tokens, does not automatically enable model policies after login, and does
   not change the existing GitHub Copilot request dispatch path.

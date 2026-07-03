@@ -1,7 +1,4 @@
 {
-  "completion_args": {
-    "prompt_mode": "reasoning"
-  },
   "inputs": [
     {
       "content": "Think carefully.",
@@ -11,5 +8,6 @@
     }
   ],
   "model": "magistral-medium-latest",
+  "prompt_mode": "reasoning",
   "stream": true
 }

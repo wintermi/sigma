@@ -75,6 +75,9 @@ func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Option
 	if usePromptCaching(opts) {
 		payload["prompt_cache_key"] = opts.SessionID
 	}
+	if promptMode := mistralPromptMode(model, opts); promptMode != "" {
+		payload["prompt_mode"] = promptMode
+	}
 	completionArgs := completionArgs(model, opts)
 	if len(completionArgs) > 0 {
 		payload["completion_args"] = completionArgs
@@ -176,12 +179,6 @@ func conversationInput(model sigma.Model, message sigma.Message, ids *toolCallID
 			payloadKeyType: "function.result",
 			"tool_call_id": ids.normalize(message.ToolCallID),
 			"result":       result,
-		}
-		if message.ToolName != "" {
-			entry["name"] = message.ToolName
-		}
-		if message.IsError {
-			entry["is_error"] = true
 		}
 		return []map[string]any{entry}, nil
 	default:
@@ -357,16 +354,25 @@ func addMistralReasoningArgs(args map[string]any, model sigma.Model, opts sigma.
 	if !ok {
 		return
 	}
-	switch mode {
-	case providerOptionReasoningModePrompt:
-		args["prompt_mode"] = "reasoning"
-	case providerOptionReasoningModeEffort:
-		value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel)
-		if !ok || value == "" {
-			value = "high"
-		}
-		args["reasoning_effort"] = value
+	if mode != providerOptionReasoningModeEffort {
+		return
 	}
+	value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel)
+	if !ok || value == "" {
+		value = "high"
+	}
+	args["reasoning_effort"] = value
+}
+
+func mistralPromptMode(model sigma.Model, opts sigma.Options) string {
+	if opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		return ""
+	}
+	mode, ok := mistralReasoningMode(model)
+	if !ok || mode != providerOptionReasoningModePrompt {
+		return ""
+	}
+	return "reasoning"
 }
 
 func mistralToolChoice(opts sigma.Options) (any, bool) {
@@ -374,14 +380,6 @@ func mistralToolChoice(opts sigma.Options) (any, bool) {
 		return nil, false
 	}
 	choice := opts.MistralOptions.ToolChoice
-	if choice.Type == sigma.MistralToolChoiceTool {
-		return map[string]any{
-			payloadKeyType: "function",
-			"function": map[string]any{
-				"name": choice.Name,
-			},
-		}, true
-	}
 	return string(choice.Type), true
 }
 
@@ -433,20 +431,31 @@ func conversationMessageContent(model sigma.Model, blocks []sigma.ContentBlock) 
 }
 
 func conversationToolResult(model sigma.Model, blocks []sigma.ContentBlock) (any, error) {
-	chunks, hasImage, err := conversationContentChunks(model, blocks)
-	if err != nil {
-		return nil, err
+	return conversationToolResultText(model, blocks)
+}
+
+func conversationToolResultText(model sigma.Model, blocks []sigma.ContentBlock) (string, error) {
+	parts := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		switch block.Type {
+		case sigma.ContentBlockText:
+			if text := providertext.Clean(block.Text); text != "" {
+				parts = append(parts, text)
+			}
+		case sigma.ContentBlockImage:
+			if !model.SupportsImages() {
+				return "", unsupportedError(model, "target model does not declare image input support")
+			}
+			imageURL, err := conversationImageURL(block)
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, "Image: "+imageURL)
+		default:
+			return "", fmt.Errorf("mistral conversations: unsupported tool result content block %q", block.Type)
+		}
 	}
-	if !hasImage {
-		return textContent(blocks), nil
-	}
-	if textContent(blocks) == "" {
-		chunks = append([]map[string]any{{
-			payloadKeyType:   payloadValueText,
-			payloadValueText: "(see attached image)",
-		}}, chunks...)
-	}
-	return chunks, nil
+	return strings.Join(parts, "\n"), nil
 }
 
 func conversationContentChunks(model sigma.Model, blocks []sigma.ContentBlock) ([]map[string]any, bool, error) {
@@ -486,7 +495,7 @@ func conversationImage(model sigma.Model, block sigma.ContentBlock) (map[string]
 	}
 	return map[string]any{
 		payloadKeyType: "image_url",
-		"imageUrl":     imageURL,
+		"image_url":    imageURL,
 	}, nil
 }
 

@@ -7,7 +7,7 @@
           "type": "text"
         },
         {
-          "imageUrl": "https://example.test/image.png",
+          "image_url": "https://example.test/image.png",
           "type": "image_url"
         }
       ],

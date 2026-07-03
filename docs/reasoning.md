@@ -82,6 +82,6 @@ Reasoning support is provider- and model-specific:
 - Anthropic, Google, Bedrock, and Mistral have fixture-tested thinking paths.
 - Mistral Conversations maps adjustable-reasoning models to
   `completion_args.reasoning_effort` and native Magistral models to
-  `completion_args.prompt_mode`.
+  top-level `prompt_mode`.
 
 See [provider parity](provider-parity.md) for current status.

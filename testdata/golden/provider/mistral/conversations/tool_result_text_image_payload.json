@@ -14,18 +14,8 @@
       "type": "function.call"
     },
     {
-      "name": "screenshot",
       "object": "entry",
-      "result": [
-        {
-          "text": "Screenshot captured.",
-          "type": "text"
-        },
-        {
-          "imageUrl": "data:image/png;base64,aW1hZ2U=",
-          "type": "image_url"
-        }
-      ],
+      "result": "Screenshot captured.\nImage: data:image/png;base64,aW1hZ2U=",
       "tool_call_id": "66c7c5b6f",
       "type": "function.result"
     }

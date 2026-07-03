@@ -504,14 +504,18 @@ should still come through the catalog refresh workflow.
 ## Mistral parity
 
 - [x] Add typed Mistral Conversations tool-choice controls for automatic,
-      required, disabled, any-tool, and named-tool selection while preserving
-      raw provider options for advanced request fields.
+      required, disabled, and any-tool selection while preserving raw provider
+      options for advanced request fields.
 - [x] Add Mistral Conversations base64 image input and image-bearing tool
       results for direct Pixtral models with deterministic payload fixtures.
 - [x] Add Mistral Conversations prompt-cache keys and cached-token usage
       accounting for cache-enabled session requests.
 - [x] Add Mistral URL image references for image-capable Conversations models
       with deterministic user-input and tool-result payload fixtures.
+- [x] Harden Mistral Conversations payloads against Chat Completions-only field
+      shapes: image chunks use `image_url`, tool results stay string-valued,
+      native Magistral `prompt_mode` is top-level, and named tool choice is
+      rejected locally.
 - [ ] Add Mistral file image references only after Sigma defines an explicit
       chat-level file-loading policy.
 - [ ] Add Mistral built-in connector tools such as web search, code interpreter,

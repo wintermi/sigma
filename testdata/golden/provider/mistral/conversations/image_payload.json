@@ -7,7 +7,7 @@
           "type": "text"
         },
         {
-          "imageUrl": "data:image/png;base64,aW1hZ2U=",
+          "image_url": "data:image/png;base64,aW1hZ2U=",
           "type": "image_url"
         }
       ],

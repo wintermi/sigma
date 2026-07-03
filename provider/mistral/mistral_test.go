@@ -319,7 +319,7 @@ func TestTypedMistralToolChoicePayloads(t *testing.T) {
 	tests := []struct {
 		name string
 		opts sigma.MistralOptions
-		want any
+		want string
 	}{
 		{
 			name: "auto",
@@ -330,16 +330,6 @@ func TestTypedMistralToolChoicePayloads(t *testing.T) {
 			name: "required",
 			opts: sigma.MistralOptions{ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceRequired}},
 			want: "required",
-		},
-		{
-			name: "named tool",
-			opts: sigma.MistralOptions{ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"}},
-			want: map[string]any{
-				"type": "function",
-				"function": map[string]any{
-					"name": "lookup",
-				},
-			},
 		},
 	}
 
@@ -373,10 +363,48 @@ func TestTypedMistralToolChoicePayloads(t *testing.T) {
 
 			payload := decodePayload(t, receiveRequest(t, requests).Body)
 			completionArgs := payload["completion_args"].(map[string]any)
-			if got := completionArgs["tool_choice"]; !reflect.DeepEqual(got, tt.want) {
+			if got := completionArgs["tool_choice"]; got != tt.want {
 				t.Fatalf("tool choice = %#v, want %#v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestTypedMistralNamedToolChoiceRejected(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-named-tool-choice-rejected")
+	model := mistralTestModel(providerID)
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithMistralOptions(sigma.MistralOptions{
+			ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"},
+		}),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !strings.Contains(err.Error(), "mistral tool choice must be auto, none, any, or required") {
+		t.Fatalf("error = %v, want Mistral tool choice validation", err)
+	}
+	select {
+	case request := <-requests:
+		t.Fatalf("unexpected provider request: %#v", request)
+	default:
 	}
 }
 
@@ -746,6 +774,104 @@ func TestConversationImagePayloads(t *testing.T) {
 	}
 }
 
+func TestConversationImageChunkUsesSnakeCaseField(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-image-field-shape")
+	model := mistralTestModel(providerID)
+	model.ID = "pixtral-12b"
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage}
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserContent(
+				sigma.Text("Describe this image."),
+				sigma.ImageBase64("image/png", "aW1hZ2U="),
+			),
+		},
+	}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	inputs := payload["inputs"].([]any)
+	first := inputs[0].(map[string]any)
+	content := first["content"].([]any)
+	image := content[1].(map[string]any)
+	if got, want := image["image_url"], "data:image/png;base64,aW1hZ2U="; got != want {
+		t.Fatalf("image_url = %v, want %q", got, want)
+	}
+	if _, ok := image["imageUrl"]; ok {
+		t.Fatalf("imageUrl = %v, want absent", image["imageUrl"])
+	}
+}
+
+func TestConversationToolResultUsesSchemaFields(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-tool-result-field-shape")
+	model := mistralTestModel(providerID)
+	model.ID = "pixtral-12b"
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage}
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserText("Inspect the screenshot."),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("call_screenshot", "screenshot", map[string]any{"target": "screen"}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "call_screenshot",
+				ToolName:   "screenshot",
+				IsError:    true,
+				Content: []sigma.ContentBlock{
+					sigma.Text("Screenshot captured."),
+					sigma.ImageURL("image/png", "https://example.test/screenshot.png"),
+				},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	inputs := payload["inputs"].([]any)
+	result := inputs[2].(map[string]any)
+	if _, ok := result["name"]; ok {
+		t.Fatalf("name = %v, want absent", result["name"])
+	}
+	if _, ok := result["is_error"]; ok {
+		t.Fatalf("is_error = %v, want absent", result["is_error"])
+	}
+	text, ok := result["result"].(string)
+	if !ok {
+		t.Fatalf("result type = %T, want string", result["result"])
+	}
+	if got, want := text, "Screenshot captured.\nImage: https://example.test/screenshot.png"; got != want {
+		t.Fatalf("result = %q, want %q", got, want)
+	}
+}
+
 func TestConversationReasoningPayloads(t *testing.T) {
 	t.Parallel()
 
@@ -802,6 +928,26 @@ func TestConversationReasoningPayloads(t *testing.T) {
 			}
 			request := receiveRequest(t, requests)
 			goldentest.AssertJSON(t, request.Body, tt.golden)
+			payload := decodePayload(t, request.Body)
+			switch tt.name {
+			case "adjustable reasoning":
+				completionArgs := payload["completion_args"].(map[string]any)
+				if got, want := completionArgs["reasoning_effort"], "high"; got != want {
+					t.Fatalf("reasoning_effort = %v, want %q", got, want)
+				}
+				if _, ok := payload["prompt_mode"]; ok {
+					t.Fatalf("prompt_mode = %v, want absent", payload["prompt_mode"])
+				}
+			case "native reasoning":
+				if got, want := payload["prompt_mode"], "reasoning"; got != want {
+					t.Fatalf("prompt_mode = %v, want %q", got, want)
+				}
+				if completionArgs, ok := payload["completion_args"].(map[string]any); ok {
+					if _, ok := completionArgs["prompt_mode"]; ok {
+						t.Fatalf("completion_args.prompt_mode = %v, want absent", completionArgs["prompt_mode"])
+					}
+				}
+			}
 		})
 	}
 }

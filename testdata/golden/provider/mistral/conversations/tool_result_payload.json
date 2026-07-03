@@ -14,7 +14,6 @@
       "type": "function.call"
     },
     {
-      "name": "weather",
       "object": "entry",
       "result": "Sunny",
       "tool_call_id": "23336afc7",

@@ -83,9 +83,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   to both `prompt_cache_key` and `x-affinity`, and streamed Mistral cached
   prompt tokens now populate `Usage.CacheReadInputTokens` instead of ordinary
   input tokens.
-- Mistral Conversations now accepts URL-backed `sigma.ImageURL` chat inputs and
-  image-bearing tool results for image-capable models, while preserving
-  existing base64 image payload behavior.
+- Mistral Conversations now accepts URL-backed `sigma.ImageURL` chat inputs for
+  image-capable models and replays image-bearing tool results as schema-valid
+  string references, while preserving existing base64 image input behavior.
 - `EnvironmentAuthResolver` now exposes non-secret environment credential
   discovery helpers for ordered candidate variable names and configured
   variable names, with broader built-in API-key defaults for OpenAI-compatible
@@ -223,6 +223,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
   Vercel AI Gateway, GitHub Copilot, and Cloudflare AI Gateway metadata and
   wrapper defaults, so Sigma dispatches to `/v1/messages`-shaped endpoints
   instead of provider-root `/messages` paths.
+- Mistral Conversations no longer emits Chat Completions-only request fields on
+  `/v1/conversations`: image chunks use `image_url`, function results omit
+  `name` and `is_error`, native Magistral `prompt_mode` is top-level, and typed
+  named-tool choices are rejected locally because Conversations only accepts
+  `auto`, `none`, `any`, or `required`.
 - OpenAI Responses streams now require a terminal provider response event before
   treating EOF as success, preserve partial content on premature EOF errors, and
   finalize terminal incomplete responses as max-token stops with usage intact.
@@ -265,8 +270,8 @@ See [release notes](docs/release-notes-v0.5.0.md).
   typed Bedrock options, taking precedence over auth resolvers and environment
   credential fallbacks.
 - Mistral Conversations now has typed tool-choice controls for automatic,
-  required, disabled, any-tool, and named-tool selection while preserving raw
-  provider options for advanced request fields.
+  required, disabled, and any-tool selection while preserving raw provider
+  options for advanced request fields.
 - The model metadata generator now has an opt-in deterministic catalog summary
   report covering source count, text/image/embedding totals, text
   tool/reasoning counts, and provider/API buckets, with embedding generation

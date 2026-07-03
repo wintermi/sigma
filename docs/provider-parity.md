@@ -142,8 +142,9 @@ Release scope values:
   Mistral `prompt_cache_key` and `x-affinity`, and streamed cached prompt
   tokens are accounted as cache reads. Duration-specific retention choices are
   still limited by the provider's Conversations API.
-- Mistral Conversations supports base64 image input and image-bearing tool
-  results for image-capable models. URL/file image references, built-in
+- Mistral Conversations supports base64 and URL image input for image-capable
+  models, and replays image-bearing tool results as string image references.
+  File image references, built-in
   connector tools, append, and restart remain deferred.
 - Anthropic Messages supports Claude Pro/Max OAuth: browser callback login with
   a manual code-paste fallback, refresh helpers, an in-memory OAuth token
