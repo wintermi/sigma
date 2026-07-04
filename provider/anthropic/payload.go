@@ -56,7 +56,10 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		return nil, err
 	}
 
-	maxTokens := 1024
+	maxTokens := model.MaxOutputTokens
+	if maxTokens <= 0 {
+		maxTokens = 1024
+	}
 	if opts.MaxTokens != nil {
 		maxTokens = *opts.MaxTokens
 	}
@@ -71,12 +74,14 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	} else if transformed.SystemPrompt != "" {
 		payload["system"] = anthropicSystem(transformed.SystemPrompt, opts.CacheRetention, compat)
 	}
-	thinkingEnabled := addThinking(payload, model, opts, compat)
+	thinkingEnabled := addThinking(payload, model, opts, compat, maxTokens)
 	if opts.Temperature != nil && !thinkingEnabled && compat.supportsTemperature {
 		payload["temperature"] = *opts.Temperature
 	}
 	if len(opts.Metadata) > 0 {
-		payload["metadata"] = copyAnyMap(opts.Metadata)
+		if userID, ok := opts.Metadata["user_id"].(string); ok {
+			payload["metadata"] = map[string]any{"user_id": userID}
+		}
 	}
 	if len(transformed.Tools) > 0 {
 		tools, err := anthropicTools(transformed.Tools, opts.CacheRetention, compat)
@@ -438,7 +443,7 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 	return converted, nil
 }
 
-func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, compat messagesCompat) bool {
+func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, compat messagesCompat, maxTokens int) bool {
 	if !model.SupportsReasoning() {
 		return false
 	}
@@ -453,7 +458,14 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 		}
 		return true
 	}
-	budget := thinkingBudget(model, opts, compat)
+	budget := thinkingBudget(model, opts)
+	if budget <= 0 {
+		if compat.supportsDisabledThinking {
+			payload["thinking"] = map[string]any{"type": "disabled"}
+		}
+		return false
+	}
+	budget = minInt(budget, maxInt(0, maxTokens-1024))
 	if budget <= 0 {
 		if compat.supportsDisabledThinking {
 			payload["thinking"] = map[string]any{"type": "disabled"}
@@ -523,7 +535,7 @@ func adaptiveEffort(model sigma.Model, opts sigma.Options) string {
 	}
 }
 
-func thinkingBudget(model sigma.Model, opts sigma.Options, compat messagesCompat) int {
+func thinkingBudget(model sigma.Model, opts sigma.Options) int {
 	if opts.AnthropicOptions != nil && opts.AnthropicOptions.ThinkingBudgetTokens != nil {
 		return *opts.AnthropicOptions.ThinkingBudgetTokens
 	}
@@ -537,9 +549,6 @@ func thinkingBudget(model sigma.Model, opts sigma.Options, compat messagesCompat
 		if tokens, err := strconv.Atoi(value); err == nil {
 			return tokens
 		}
-	}
-	if !compat.adaptiveThinking {
-		return 0
 	}
 	switch opts.ReasoningLevel {
 	case sigma.ThinkingLevelMinimal:
@@ -663,12 +672,25 @@ func cacheControl(retention sigma.CacheRetention, compat messagesCompat) map[str
 	}
 	control := map[string]any{"type": "ephemeral"}
 	if retention.CacheLongLived() {
-		if !compat.longCacheRetention {
-			return nil
+		if compat.longCacheRetention {
+			control["ttl"] = "1h"
 		}
-		control["ttl"] = "1h"
 	}
 	return control
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func providerOptions(opts sigma.Options, provider sigma.ProviderID) map[string]any {

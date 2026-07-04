@@ -13,10 +13,11 @@ import (
 )
 
 type eventStreamFrame struct {
-	MessageType string
-	EventType   string
-	ContentType string
-	Payload     []byte
+	MessageType   string
+	EventType     string
+	ContentType   string
+	ExceptionType string
+	Payload       []byte
 }
 
 type eventStreamDecoder struct {
@@ -105,6 +106,8 @@ func parseEventStreamHeaders(headers []byte, frame *eventStreamFrame) error {
 				frame.EventType = value
 			case ":content-type":
 				frame.ContentType = value
+			case ":exception-type":
+				frame.ExceptionType = value
 			}
 		case 0, 1:
 		case 2:

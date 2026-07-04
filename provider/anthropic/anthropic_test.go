@@ -77,7 +77,7 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 		model,
 		richRequest(),
 		sigma.WithTemperature(0.2),
-		sigma.WithMaxTokens(123),
+		sigma.WithMaxTokens(4096),
 		sigma.WithCacheRetention(sigma.CacheRetentionLong),
 		sigma.WithSessionID("session-123"),
 		sigma.WithHeader("X-Custom", "custom"),
@@ -877,6 +877,85 @@ func TestAdaptiveThinkingPayloadUsesOutputConfigEffort(t *testing.T) {
 	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
 }
 
+func TestBudgetThinkingLevelFallbackAndMetadataFiltering(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-budget-thinking-test")
+	model := anthropicTestModel(providerID)
+	model.MaxOutputTokens = 10000
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithReasoningLevel(sigma.ThinkingLevelMedium),
+		sigma.WithMetadataValue("trace", "internal"),
+		sigma.WithMetadataValue("user_id", "user-123"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	thinking := payload["thinking"].(map[string]any)
+	if got, want := thinking["type"], "enabled"; got != want {
+		t.Fatalf("thinking type = %v, want %q", got, want)
+	}
+	if got, want := thinking["budget_tokens"], float64(4096); got != want {
+		t.Fatalf("budget_tokens = %v, want %v", got, want)
+	}
+	if got, want := payload["max_tokens"], float64(10000); got != want {
+		t.Fatalf("max_tokens = %v, want %v", got, want)
+	}
+	metadata := payload["metadata"].(map[string]any)
+	if got, want := metadata["user_id"], "user-123"; got != want {
+		t.Fatalf("metadata user_id = %v, want %q", got, want)
+	}
+	if _, ok := metadata["trace"]; ok {
+		t.Fatalf("metadata trace was forwarded: %#v", metadata)
+	}
+}
+
+func TestThinkingBudgetClampsAgainstMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-thinking-clamp-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithMaxTokens(5000),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	thinking := payload["thinking"].(map[string]any)
+	if got, want := thinking["budget_tokens"], float64(3976); got != want {
+		t.Fatalf("budget_tokens = %v, want %v", got, want)
+	}
+}
+
 func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
 	t.Parallel()
 
@@ -889,6 +968,7 @@ func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
 
 	providerID := sigma.ProviderID("anthropic-typed-options-test")
 	model := anthropicTestModel(providerID)
+	model.MaxOutputTokens = 8192
 	client := anthropicTestClient(t, providerID, model, server.URL)
 	budget := 2048
 
@@ -1460,6 +1540,7 @@ func TestDetectedCompatibleVariantsAddAdaptiveThinkingAndSessionHeader(t *testin
 				Provider:         tt.provider,
 				API:              sigma.APIAnthropicMessages,
 				SupportsThinking: true,
+				MaxOutputTokens:  10000,
 			}
 			client := anthropicTestClient(t, tt.provider, model, server.URL)
 
@@ -1497,7 +1578,10 @@ event: content_block_delta
 data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Checked "}}
 
 event: content_block_delta
-data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"think_sig"}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"think_"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig"}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}

@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -1243,13 +1244,51 @@ func TestEventStreamDecoderReportsMalformedFrame(t *testing.T) {
 	}
 }
 
+func TestConverseEventFromFrameParsesExceptionType(t *testing.T) {
+	t.Parallel()
+
+	event, ok := converseEventFromFrame(&eventStreamFrame{
+		MessageType:   "exception",
+		ExceptionType: "ThrottlingException",
+		Payload:       []byte(`{"message":"slow down"}`),
+	})
+	if !ok {
+		t.Fatal("converseEventFromFrame returned ok=false")
+	}
+	if event.Kind != ConverseEventError {
+		t.Fatalf("event kind = %q, want error", event.Kind)
+	}
+	classification := sigma.ClassifyError(event.Err)
+	if got, want := classification.Class, sigma.ErrorClassRateLimited; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if got, want := classification.ProviderCode, "ThrottlingException"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
+}
+
+func TestAWSReasoningBlockUsesRedactedContent(t *testing.T) {
+	t.Parallel()
+
+	block := awsReasoningBlock(&ConverseReasoningBlock{Redacted: true, ProviderSignature: "opaque"})
+	reasoning := block["reasoningContent"].(map[string]any)
+	redacted := reasoning["redactedContent"].(map[string]any)
+	if got, want := redacted["data"], "opaque"; got != want {
+		t.Fatalf("redacted data = %v, want %q", got, want)
+	}
+	if _, ok := reasoning["redactedReasoning"]; ok {
+		t.Fatalf("redactedReasoning was sent: %#v", reasoning)
+	}
+}
+
 func TestStreamingMapsThinkingToolCallsUsageAndStopReason(t *testing.T) {
 	t.Parallel()
 
 	stream := fakeStream(
 		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
 		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ThinkingDelta: "plan"},
-		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ThinkingSignature: "sig"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ThinkingSignature: "si"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ThinkingSignature: "g"},
 		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, TextDelta: "Use "},
 		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, TextDelta: "tool"},
 		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 2, ToolUseID: "tool_1", ToolName: "lookup"},
@@ -1669,6 +1708,127 @@ func TestDefaultCredentialDetectorUsesStaticEnvironmentCredentials(t *testing.T)
 	}
 }
 
+func TestDefaultCredentialDetectorUsesSharedProfileCredentials(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	t.Setenv("AWS_PROFILE", "dev")
+	credentialsFile := filepath.Join(t.TempDir(), "credentials")
+	if err := os.WriteFile(credentialsFile, []byte(`[dev]
+aws_access_key_id = AKIA_PROFILE
+aws_secret_access_key = profile-secret
+aws_session_token = profile-token
+`), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", credentialsFile)
+
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.AccessKeyID, "AKIA_PROFILE"; got != want {
+		t.Fatalf("access key = %q, want %q", got, want)
+	}
+	if got, want := info.SessionToken, "profile-token"; got != want {
+		t.Fatalf("session token = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultCredentialDetectorUsesECSCredentials(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `{"AccessKeyId":"AKIA_ECS","SecretAccessKey":"ecs-secret","Token":"ecs-token"}`)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("AWS_CONTAINER_CREDENTIALS_FULL_URI", server.URL)
+
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.AccessKeyID, "AKIA_ECS"; got != want {
+		t.Fatalf("access key = %q, want %q", got, want)
+	}
+	if got, want := info.SessionToken, "ecs-token"; got != want {
+		t.Fatalf("session token = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultCredentialDetectorUsesWebIdentityCredentials(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	tokenFile := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(tokenFile, []byte("web-token"), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("ParseForm returned error: %v", err)
+		}
+		if got, want := r.FormValue("Action"), "AssumeRoleWithWebIdentity"; got != want {
+			t.Fatalf("Action = %q, want %q", got, want)
+		}
+		_, _ = io.WriteString(w, `<AssumeRoleWithWebIdentityResponse><AssumeRoleWithWebIdentityResult><Credentials><AccessKeyId>AKIA_WEB</AccessKeyId><SecretAccessKey>web-secret</SecretAccessKey><SessionToken>web-session</SessionToken></Credentials></AssumeRoleWithWebIdentityResult></AssumeRoleWithWebIdentityResponse>`)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("AWS_WEB_IDENTITY_TOKEN_FILE", tokenFile)
+	t.Setenv("AWS_ROLE_ARN", "arn:aws:iam::123456789012:role/test")
+	t.Setenv("AWS_STS_ENDPOINT", server.URL)
+
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.AccessKeyID, "AKIA_WEB"; got != want {
+		t.Fatalf("access key = %q, want %q", got, want)
+	}
+	if got, want := info.SessionToken, "web-session"; got != want {
+		t.Fatalf("session token = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultCredentialDetectorUsesIMDSCredentials(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest/api/token":
+			_, _ = io.WriteString(w, "imds-token")
+		case "/latest/meta-data/iam/security-credentials/":
+			if got, want := r.Header.Get("X-aws-ec2-metadata-token"), "imds-token"; got != want {
+				t.Fatalf("metadata token = %q, want %q", got, want)
+			}
+			_, _ = io.WriteString(w, "role-name")
+		case "/latest/meta-data/iam/security-credentials/role-name":
+			_, _ = io.WriteString(w, `{"AccessKeyId":"AKIA_IMDS","SecretAccessKey":"imds-secret","Token":"imds-token-value"}`)
+		default:
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", server.URL)
+
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.AccessKeyID, "AKIA_IMDS"; got != want {
+		t.Fatalf("access key = %q, want %q", got, want)
+	}
+	if got, want := info.SessionToken, "imds-token-value"; got != want {
+		t.Fatalf("session token = %q, want %q", got, want)
+	}
+}
+
 func TestEffectiveConfigUsesRegionEnvironmentFallback(t *testing.T) {
 	t.Setenv("AWS_REGION", "ap-southeast-2")
 	t.Setenv("AWS_DEFAULT_REGION", "us-west-2")
@@ -1932,6 +2092,31 @@ func bedrockTestModel(providerID sigma.ProviderID) sigma.Model {
 
 func invalidProviderText() string {
 	return string([]byte{0xff}) + "clean"
+}
+
+func clearAWSCredentialEnv(t *testing.T) {
+	t.Helper()
+	for _, key := range []string{
+		"AWS_BEARER_TOKEN_BEDROCK",
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+		"AWS_SESSION_TOKEN",
+		"AWS_PROFILE",
+		"AWS_SHARED_CREDENTIALS_FILE",
+		"AWS_CONFIG_FILE",
+		"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+		"AWS_CONTAINER_CREDENTIALS_FULL_URI",
+		"AWS_CONTAINER_AUTHORIZATION_TOKEN",
+		"AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+		"AWS_WEB_IDENTITY_TOKEN_FILE",
+		"AWS_ROLE_ARN",
+		"AWS_ROLE_SESSION_NAME",
+		"AWS_STS_ENDPOINT",
+		"AWS_EC2_METADATA_SERVICE_ENDPOINT",
+		"AWS_EC2_METADATA_DISABLED",
+	} {
+		t.Setenv(key, "")
+	}
 }
 
 type fakeCredentialDetector struct {

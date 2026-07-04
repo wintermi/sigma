@@ -120,6 +120,9 @@ func googleContent(model sigma.Model, message sigma.Message, ids *googleToolCall
 		if err != nil {
 			return nil, err
 		}
+		if len(parts) == 0 {
+			return nil, nil
+		}
 		return []map[string]any{{"role": "model", "parts": parts}}, nil
 	case sigma.RoleTool:
 		return googleToolResultContents(model, message, ids)
@@ -187,12 +190,20 @@ func googleAssistantParts(model sigma.Model, message sigma.Message, ids *googleT
 	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			part := map[string]any{"text": providertext.Clean(block.Text)}
+			text := providertext.Clean(block.Text)
+			if text == "" && block.ProviderSignature == "" {
+				continue
+			}
+			part := map[string]any{"text": text}
 			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
 			parts = append(parts, part)
 		case sigma.ContentBlockThinking:
+			thinking := providertext.Clean(block.ThinkingText)
+			if thinking == "" && block.ProviderSignature == "" {
+				continue
+			}
 			part := map[string]any{
-				"text":    providertext.Clean(block.ThinkingText),
+				"text":    thinking,
 				"thought": true,
 			}
 			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))

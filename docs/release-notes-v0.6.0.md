@@ -405,11 +405,18 @@ advice without adding any execution loop or configuration format to Sigma.
   rewriting already-valid `anyOf` or `oneOf` values.
 - Deterministic provider tests now cover Google stream `thoughtSignature`-only
   chunks, empty signature deltas, signature updates on existing blocks, and
-  OpenAI-compatible Chat Completions replay of prior thinking blocks as
-  assistant text when `reasoning_content` is not required.
+  OpenAI-compatible Chat Completions omission of prior private thinking blocks
+  when `reasoning_content` is not required.
 - OpenAI-compatible Chat Completions streams now preserve provider
   `reasoning_details` metadata on tool-call blocks and replay it with
   assistant tool-call history.
+- Provider protocol hardening now covers Anthropic budget-thinking fallbacks,
+  max-token-safe thinking budgets, metadata filtering, long-cache degradation,
+  split thinking signatures, Google malformed function-call stop classification,
+  Google empty replay-block filtering, Gemini image count validation, Bedrock
+  redacted reasoning and exception classification, OpenAI-compatible
+  index-less tool-call deltas and private-thinking replay, Azure Responses
+  endpoint normalization, and GitHub Copilot enterprise OAuth refresh.
 - OpenAI-compatible Chat Completions streams now surface provider
   `finish_reason` values of `network_error` and `model_context_window_exceeded`
   as errors instead of successful unknown stops, including context-overflow
@@ -634,9 +641,11 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
   remain deferred and caller-owned. Sigma now defines the store interface and
   process-local in-memory store, but applications still own where durable
   credentials are persisted.
-- Ambient cloud credential probing, OAuth token stores, AWS profiles, SSO, web
-  identity, IMDS, and shared-config loading remain deferred. Applications that
-  need those flows should continue to resolve credentials before calling Sigma.
+- OAuth token stores, AWS SSO, and full SDK-equivalent cloud credential-chain
+  behavior remain deferred. Bedrock includes stdlib profile, ECS, web identity,
+  and IMDS credential loading for the built-in adapter; applications with more
+  advanced credential requirements should continue to resolve credentials before
+  calling Sigma.
 - Billing reconciliation, subscription analytics, and UI presentation of usage
   totals remain caller-owned. Sigma normalizes and preserves provider data but
   does not claim invoice-grade billing accuracy.

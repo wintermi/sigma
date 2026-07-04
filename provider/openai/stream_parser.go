@@ -107,7 +107,7 @@ type completionStreamParser struct {
 	started          bool
 	text             *streamblocks.Text
 	thinking         *streamblocks.Thinking
-	toolCalls        map[int]*streamblocks.ToolCall
+	toolCalls        map[string]*streamblocks.ToolCall
 	nextBlock        int
 	usage            *sigma.Usage
 	finishReason     sigma.StopReason
@@ -123,7 +123,7 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 	parser := completionStreamParser{
 		writer:    writer,
 		model:     model,
-		toolCalls: make(map[int]*streamblocks.ToolCall),
+		toolCalls: make(map[string]*streamblocks.ToolCall),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -260,11 +260,7 @@ func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDe
 		})
 	}
 	for order, toolCall := range delta.ToolCalls {
-		index := order
-		if toolCall.Index != nil {
-			index = *toolCall.Index
-		}
-		if err := p.emitToolCall(ctx, index, toolCall); err != nil {
+		if err := p.emitToolCall(ctx, toolCallKey(order, toolCall), order, toolCall); err != nil {
 			return err
 		}
 	}
@@ -341,21 +337,24 @@ func (p *completionStreamParser) emitThinking(ctx context.Context, delta string)
 	})
 }
 
-func (p *completionStreamParser) emitToolCall(ctx context.Context, providerIndex int, delta streamToolCallDelta) error {
-	state := p.toolCalls[providerIndex]
+func toolCallKey(order int, delta streamToolCallDelta) string {
+	if delta.Index != nil {
+		return fmt.Sprintf("index:%d", *delta.Index)
+	}
+	if delta.ID != "" {
+		return "id:" + delta.ID
+	}
+	return fmt.Sprintf("order:%d", order)
+}
+
+func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, fallbackIndex int, delta streamToolCallDelta) error {
+	state := p.toolCalls[key]
 	if state == nil {
 		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
-		p.toolCalls[providerIndex] = state
+		p.toolCalls[key] = state
 	}
 	if state.ID() == "" && delta.ID == "" && delta.Function.Name != "" {
-		state.SetID(fmt.Sprintf("call_%d", providerIndex))
-	}
-	if len(p.reasoningDetails) > 0 {
-		if state.ProviderMetadata == nil {
-			state.ProviderMetadata = make(map[string]any)
-		}
-		state.ProviderMetadata["reasoning_details"] = append([]any(nil), p.reasoningDetails...)
-		p.reasoningDetails = nil
+		state.SetID(fmt.Sprintf("call_%d", fallbackIndex))
 	}
 	state.SetID(delta.ID)
 	state.SetName(delta.Function.Name)
@@ -404,6 +403,14 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 		}
 	}
 	for _, state := range p.sortedToolCalls() {
+		if len(p.reasoningDetails) > 0 {
+			if details := matchingReasoningDetails(state.ID(), p.reasoningDetails); len(details) > 0 {
+				if state.ProviderMetadata == nil {
+					state.ProviderMetadata = make(map[string]any)
+				}
+				state.ProviderMetadata["reasoning_details"] = details
+			}
+		}
 		call := state.ToolCall()
 		block := sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
 		block.ProviderSignature = call.ProviderSignature
@@ -444,6 +451,21 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 	}
 	p.final.ProviderMetadata = p.responseMetadata()
 	return p.final
+}
+
+func matchingReasoningDetails(toolCallID string, details []any) []any {
+	if len(details) == 0 {
+		return nil
+	}
+	var matched []any
+	for _, detail := range details {
+		typed, _ := detail.(map[string]any)
+		id, _ := typed["id"].(string)
+		if id == "" || id == toolCallID {
+			matched = append(matched, detail)
+		}
+	}
+	return matched
 }
 
 func (p *completionStreamParser) nextContentIndex() int {

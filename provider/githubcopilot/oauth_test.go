@@ -125,6 +125,56 @@ func TestProviderAuthResolvesStoredGitHubCopilotOAuthMetadata(t *testing.T) {
 	}
 }
 
+func TestProviderAuthRefreshUsesStoredEnterpriseDomain(t *testing.T) {
+	t.Parallel()
+
+	var refreshHost string
+	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
+		refreshHost = r.URL.Host
+		if got, want := r.URL.Path, "/copilot_internal/v2/token"; got != want {
+			t.Fatalf("refresh path = %q, want %q", got, want)
+		}
+		return githubCopilotJSONResponse(http.StatusOK, `{
+			"token":"tid=test;exp=9999999999;",
+			"expires_at":1893456000
+		}`)
+	})
+
+	store := sigma.NewInMemoryCredentialStore()
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderGitHubCopilot, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:         sigma.CredentialTypeOAuthToken,
+			Value:        "expired-token",
+			RefreshToken: "github-refresh",
+			Expiry:       time.Now().Add(-time.Minute),
+			Metadata: map[string]any{
+				"enterpriseDomain": "ghe.example.test",
+			},
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+	registry := sigma.NewRegistry()
+	if err := githubcopilot.RegisterAuth(registry, githubcopilot.GitHubCopilotOAuthTokenProviderOptions{HTTPClient: client}); err != nil {
+		t.Fatalf("RegisterAuth returned error: %v", err)
+	}
+	credential, err := (sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}).Resolve(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderGitHubCopilot, ID: "copilot-test"},
+		sigma.Options{},
+	)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := refreshHost, "api.ghe.example.test"; got != want {
+		t.Fatalf("refresh host = %q, want %q", got, want)
+	}
+	if got, want := credential.Metadata["baseURL"], "https://copilot-api.ghe.example.test"; got != want {
+		t.Fatalf("baseURL metadata = %v, want %q", got, want)
+	}
+}
+
 func TestLoginGitHubCopilotDeviceCodeRejectsUnsafeVerificationURI(t *testing.T) {
 	t.Parallel()
 

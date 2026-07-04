@@ -74,7 +74,11 @@ func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAut
 			Name:          "GitHub Copilot OAuth",
 			RefreshBefore: opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
-				refreshed, err := RefreshGitHubCopilotToken(ctx, stored.RefreshToken, opts)
+				refreshOpts := opts
+				if enterpriseDomain := stringMetadata(stored.Metadata, "enterpriseDomain"); enterpriseDomain != "" {
+					refreshOpts.EnterpriseDomain = enterpriseDomain
+				}
+				refreshed, err := RefreshGitHubCopilotToken(ctx, stored.RefreshToken, refreshOpts)
 				if err != nil {
 					return sigma.StoredCredential{}, err
 				}

@@ -4,6 +4,9 @@
     {
       "content": [
         {
+          "cache_control": {
+            "type": "ephemeral"
+          },
           "text": "hi",
           "type": "text"
         }
@@ -13,7 +16,15 @@
   ],
   "model": "claude-test",
   "stream": true,
-  "system": "Cache me when supported.",
+  "system": [
+    {
+      "cache_control": {
+        "type": "ephemeral"
+      },
+      "text": "Cache me when supported.",
+      "type": "text"
+    }
+  ],
   "thinking": {
     "type": "disabled"
   },

@@ -214,7 +214,7 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 			"role":    "system",
 			"content": providerText(req.SystemPrompt),
 		}
-		addCacheControl(message, retention, compat.cacheControlFormat)
+		addCacheControl(message, retention, compat)
 		messages = append(messages, message)
 	}
 	toolNames := make(map[string]string)
@@ -293,7 +293,7 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 			"role":    role,
 			"content": content,
 		}
-		addCacheControl(converted, retention, compat.cacheControlFormat)
+		addCacheControl(converted, retention, compat)
 		return converted, nil
 	case sigma.RoleAssistant:
 		converted := map[string]any{"role": "assistant"}
@@ -515,8 +515,6 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 			}
 			if compat.requiresReasoningContentOnAssistantMessages {
 				appendContent(&reasoningContent, providerText(block.ThinkingText))
-			} else {
-				appendContent(&text, providerText(block.ThinkingText))
 			}
 		case sigma.ContentBlockToolCall:
 			arguments, err := toolArgumentsString(block.ToolArguments)
@@ -1000,14 +998,18 @@ func mapOption(options map[string]any, key string) (map[string]any, bool) {
 	return values, ok
 }
 
-func addCacheControl(message map[string]any, retention sigma.CacheRetention, format sigma.OpenAICompletionsCacheControlFormat) {
+func addCacheControl(message map[string]any, retention sigma.CacheRetention, compat completionsCompat) {
 	if !retention.CacheEnabled() {
 		return
 	}
+	format := compat.cacheControlFormat
 	if format == sigma.OpenAICompletionsCacheControlUnsupported {
 		return
 	}
 	if format == sigma.OpenAICompletionsCacheControlAnthropic {
+		return
+	}
+	if !compat.supportsMessageCacheControl {
 		return
 	}
 	cacheType := "ephemeral"

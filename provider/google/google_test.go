@@ -435,6 +435,50 @@ func TestInvalidGoogleToolChoiceFailsBeforeNetwork(t *testing.T) {
 	}
 }
 
+func TestGenerativePayloadOmitsEmptyAssistantReplayBlocks(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeGoogleSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-empty-assistant-replay-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			sigma.UserText("first"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.Text(""),
+					sigma.Thinking("", ""),
+				},
+			},
+			sigma.UserText("second"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+	contents := payload["contents"].([]any)
+	if got, want := len(contents), 2; got != want {
+		t.Fatalf("contents = %#v, want %d turns", contents, want)
+	}
+	for _, content := range contents {
+		typed := content.(map[string]any)
+		if got := typed["role"]; got == "model" {
+			t.Fatalf("empty model turn was serialized: %#v", contents)
+		}
+	}
+}
+
 func TestDisabledThinkingPayloadsForGeminiFamilies(t *testing.T) {
 	t.Parallel()
 
@@ -1191,6 +1235,31 @@ func TestStreamErrorEventEndsWithError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "INTERNAL") {
 		t.Fatalf("error = %v, want INTERNAL", err)
+	}
+}
+
+func TestMalformedFunctionCallFinishReasonMapsToErrorWithoutToolCalls(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeGoogleSSE(t, w, `data: {"candidates":[{"content":{"role":"model","parts":[{"text":"partial"}]},"finishReason":"MALFORMED_FUNCTION_CALL"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-malformed-function-call-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got := len(final.Content); got != 1 || final.Content[0].Type != sigma.ContentBlockText {
+		t.Fatalf("content = %#v, want text only", final.Content)
 	}
 }
 

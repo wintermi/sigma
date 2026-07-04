@@ -159,6 +159,9 @@ func googleImagesRequestBody(model sigma.ImageModel, req sigma.ImageRequest, opt
 	if googleImagenModel(model.ID) {
 		payload = googleImagenPayload(model, req, opts)
 	} else {
+		if req.Count > 1 {
+			return nil, fmt.Errorf("google images: gemini image generation supports one image per request")
+		}
 		payload = googleGeminiImagePayload(model, req, opts)
 	}
 	for key, value := range req.ProviderMetadata {
@@ -182,9 +185,6 @@ func googleImagenPayload(model sigma.ImageModel, req sigma.ImageRequest, opts si
 func googleGeminiImagePayload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) map[string]any {
 	generationConfig := map[string]any{
 		"responseModalities": []string{"TEXT", "IMAGE"},
-	}
-	if count := imageCount(req); count > 0 {
-		generationConfig["numberOfImages"] = count
 	}
 	imageConfig := make(map[string]any)
 	if aspect := imageAspectRatio(model.Provider, req, opts); aspect != "" {

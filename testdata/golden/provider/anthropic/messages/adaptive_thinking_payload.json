@@ -1,5 +1,5 @@
 {
-  "max_tokens": 1024,
+  "max_tokens": 10000,
   "messages": [
     {
       "content": [

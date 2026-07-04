@@ -321,11 +321,41 @@ func azureResponsesEndpoint(config azureResponsesConfig) (string, error) {
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("invalid endpoint %q", config.endpoint)
 	}
-	parsed.Path = path.Join(parsed.Path, "openai", "v1", "responses")
+	parsed.Path = azureResponsesPath(parsed)
 	query := parsed.Query()
 	query.Set("api-version", config.apiVersion)
 	parsed.RawQuery = query.Encode()
 	return parsed.String(), nil
+}
+
+func azureResponsesPath(parsed *url.URL) string {
+	clean := "/" + strings.Trim(path.Clean("/"+strings.TrimSpace(parsed.Path)), "/")
+	if clean == "/." {
+		clean = "/"
+	}
+	clean = strings.TrimSuffix(clean, "/responses")
+	host := strings.ToLower(parsed.Hostname())
+	if isAzureOpenAIHost(host) {
+		switch clean {
+		case "/", "/openai":
+			clean = "/openai/v1"
+		case "/openai/v1":
+		default:
+			if !strings.HasSuffix(clean, "/openai/v1") {
+				clean = path.Join(clean, "openai", "v1")
+			}
+		}
+	} else if clean == "/" {
+		clean = "/openai/v1"
+	}
+	return path.Join(clean, "responses")
+}
+
+func isAzureOpenAIHost(host string) bool {
+	return strings.HasSuffix(host, ".openai.azure.com") ||
+		strings.HasSuffix(host, ".cognitiveservices.azure.com") ||
+		strings.HasSuffix(host, ".ai.azure.com") ||
+		strings.HasSuffix(host, ".services.ai.azure.com")
 }
 
 func (p *AzureResponsesProvider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.Model, opts sigma.Options, config azureResponsesConfig) error {

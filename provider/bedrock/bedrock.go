@@ -639,7 +639,7 @@ func awsReasoningBlock(reasoning *ConverseReasoningBlock) map[string]any {
 	}
 	if reasoning.Redacted {
 		return map[string]any{"reasoningContent": map[string]any{
-			"redactedReasoning": map[string]any{"data": reasoning.ProviderSignature},
+			"redactedContent": map[string]any{"data": reasoning.ProviderSignature},
 		}}
 	}
 	return map[string]any{"reasoningContent": map[string]any{
@@ -756,9 +756,26 @@ func (s *httpConverseStream) forward() {
 
 func converseEventFromFrame(frame *eventStreamFrame) (ConverseEvent, bool) {
 	if frame.MessageType == "exception" {
+		code := frame.ExceptionType
+		if code == "" {
+			code = frame.EventType
+		}
+		body, _ := json.Marshal(map[string]any{"error": map[string]any{
+			"type":    code,
+			"message": string(frame.Payload),
+		}})
 		return ConverseEvent{
 			Kind: ConverseEventError,
-			Err:  fmt.Errorf("bedrock converse stream: %s: %s", frame.EventType, string(frame.Payload)),
+			Err: sigma.NewProviderError(
+				sigma.ProviderAmazonBedrock,
+				sigma.APIBedrockConverseStream,
+				"",
+				0,
+				"",
+				0,
+				body,
+				sigma.ErrProviderResponse,
+			),
 		}, true
 	}
 	if frame.MessageType != "event" {
@@ -821,7 +838,7 @@ func deltaEvent(payload map[string]any) ConverseEvent {
 			converted.ThinkingDelta = stringValue(wrapped, "text")
 			converted.ThinkingSignature = stringValue(wrapped, "signature")
 		}
-		if redacted, ok := reasoning["redactedReasoning"].(map[string]any); ok {
+		if redacted, ok := reasoning["redactedContent"].(map[string]any); ok {
 			converted.RedactedThinking = stringValue(redacted, "data")
 		}
 	}

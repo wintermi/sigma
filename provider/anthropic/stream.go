@@ -319,7 +319,7 @@ func (p *streamParser) handleDelta(ctx context.Context, index int, delta streamD
 		return p.emitThinking(ctx, index, delta.Thinking)
 	case "signature_delta":
 		state := p.thinkingState(index)
-		state.Signature = delta.Signature
+		state.Signature += delta.Signature
 		return nil
 	case "input_json_delta":
 		return p.emitToolCall(ctx, index, delta.PartialJSON)

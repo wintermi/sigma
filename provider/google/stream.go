@@ -505,7 +505,7 @@ func googleStopReason(reason string) sigma.StopReason {
 		"LANGUAGE", "NO_IMAGE":
 		return sigma.StopReasonContentFilter
 	case "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL":
-		return sigma.StopReasonToolCalls
+		return sigma.StopReasonError
 	default:
 		return sigma.StopReasonUnknown
 	}

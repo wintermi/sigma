@@ -470,7 +470,7 @@ func TestChatCompletionsNormalizesProviderTextInPayload(t *testing.T) {
 	assertPayloadText(t, payload.Messages[0]["content"], "systemclean")
 	assertPayloadText(t, payload.Messages[1]["content"], "developerclean")
 	assertPayloadText(t, payload.Messages[2]["content"], "userclean")
-	assertPayloadText(t, payload.Messages[3]["content"], "assistantclean\nthinkingclean")
+	assertPayloadText(t, payload.Messages[3]["content"], "assistantclean")
 	assertPayloadText(t, payload.Messages[4]["content"], "toolclean")
 }
 
@@ -1031,13 +1031,14 @@ func TestChatCompletionsRejectsDocumentWithoutModelCapability(t *testing.T) {
 	}
 }
 
-func TestChatCompletionsReplaysThinkingAsAssistantText(t *testing.T) {
+func TestChatCompletionsDoesNotReplayThinkingAsAssistantTextByDefault(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name        string
-		content     []sigma.ContentBlock
-		wantContent string
+		name         string
+		content      []sigma.ContentBlock
+		wantContent  string
+		wantMessages int
 	}{
 		{
 			name: "thinking with visible text",
@@ -1045,12 +1046,13 @@ func TestChatCompletionsReplaysThinkingAsAssistantText(t *testing.T) {
 				sigma.Thinking("internal reasoning\n", ""),
 				sigma.Text("visible answer"),
 			},
-			wantContent: "internal reasoning\nvisible answer",
+			wantContent:  "visible answer",
+			wantMessages: 3,
 		},
 		{
-			name:        "thinking only",
-			content:     []sigma.ContentBlock{sigma.Thinking("internal reasoning", "")},
-			wantContent: "internal reasoning",
+			name:         "thinking only",
+			content:      []sigma.ContentBlock{sigma.Thinking("internal reasoning", "")},
+			wantMessages: 2,
 		},
 	}
 	for _, tt := range tests {
@@ -1090,6 +1092,12 @@ func TestChatCompletionsReplaysThinkingAsAssistantText(t *testing.T) {
 			}
 			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
 				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got := len(payload.Messages); got != tt.wantMessages {
+				t.Fatalf("message count = %d, want %d: %#v", got, tt.wantMessages, payload.Messages)
+			}
+			if tt.wantMessages == 2 {
+				return
 			}
 			if got, want := payload.Messages[1]["role"], "assistant"; got != want {
 				t.Fatalf("assistant role = %v, want %q", got, want)
@@ -1539,6 +1547,44 @@ func TestStreamingPreservesReasoningDetailsForToolReplay(t *testing.T) {
 	}
 	if _, ok := replayAssistant["tool_calls"].([]any); !ok {
 		t.Fatalf("assistant tool_calls type = %T, want []any", replayAssistant["tool_calls"])
+	}
+}
+
+func TestStreamingIndexlessToolCallsUseIDFallback(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_tools","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","type":"function","function":{"name":"read","arguments":"{\"path\":\"a.txt\"}"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_tools","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_b","type":"function","function":{"name":"read","arguments":"{\"path\":\"b.txt\"}"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_tools","model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-indexless-tools-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("read files")},
+		Tools: []sigma.Tool{{
+			Name:        "read",
+			Description: "Read a file",
+			InputSchema: sigma.Schema{"type": "object"},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := len(final.Content), 2; got != want {
+		t.Fatalf("content blocks = %d, want %d: %#v", got, want, final.Content)
+	}
+	if got, want := final.Content[0].ToolCallID, "call_a"; got != want {
+		t.Fatalf("first tool call id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].ToolCallID, "call_b"; got != want {
+		t.Fatalf("second tool call id = %q, want %q", got, want)
 	}
 }
 

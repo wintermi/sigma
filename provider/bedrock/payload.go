@@ -870,6 +870,8 @@ func supportsPromptCaching(model sigma.Model) bool {
 	}
 	for _, candidate := range candidates {
 		if strings.Contains(candidate, "-4-") ||
+			strings.Contains(candidate, "-5") ||
+			strings.Contains(candidate, "claude-5") ||
 			strings.Contains(candidate, "claude-3-7-sonnet") ||
 			strings.Contains(candidate, "claude-3-5-haiku") {
 			return true
@@ -883,7 +885,11 @@ func supportsAdaptiveThinking(model sigma.Model) bool {
 		if strings.Contains(candidate, "opus-4-6") ||
 			strings.Contains(candidate, "opus-4-7") ||
 			strings.Contains(candidate, "opus-4-8") ||
-			strings.Contains(candidate, "sonnet-4-6") {
+			strings.Contains(candidate, "sonnet-4-6") ||
+			strings.Contains(candidate, "claude-5") ||
+			strings.Contains(candidate, "sonnet-5") ||
+			strings.Contains(candidate, "opus-5") ||
+			strings.Contains(candidate, "fable-5") {
 			return true
 		}
 	}
@@ -892,7 +898,10 @@ func supportsAdaptiveThinking(model sigma.Model) bool {
 
 func supportsNativeXHighEffort(model sigma.Model) bool {
 	for _, candidate := range modelMatchCandidates(model) {
-		if strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") {
+		if strings.Contains(candidate, "opus-4-7") ||
+			strings.Contains(candidate, "opus-4-8") ||
+			strings.Contains(candidate, "opus-5") ||
+			strings.Contains(candidate, "fable-5") {
 			return true
 		}
 	}

@@ -7,10 +7,12 @@ package google_test
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -215,6 +217,53 @@ func TestGoogleGeminiImageUsesGenerateContentAndInlineDataResponse(t *testing.T)
 	modalities := config["responseModalities"].([]any)
 	if len(modalities) != 2 || modalities[0] != "TEXT" || modalities[1] != "IMAGE" {
 		t.Fatalf("responseModalities = %#v", modalities)
+	}
+}
+
+func TestGoogleGeminiImageOmitsUnsupportedImageCount(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		_, _ = io.WriteString(w, `{"candidates":[{"content":{"parts":[{"text":"ok"}]}}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-gemini-image-count-test")
+	model := googleImageModel(providerID, "gemini-2.5-flash-image", sigma.ImageAPIGoogleImages)
+	client := googleImageTestClient(t, model, google.NewImagesProvider(google.WithBaseURL(server.URL)))
+
+	_, err := client.GenerateImages(
+		context.Background(),
+		model,
+		sigma.ImageRequest{Prompt: "draw one"},
+		sigma.WithImageAPIKey("google-key"),
+	)
+	if err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	request := receiveRequest(t, requests)
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(request.Body), &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	generation := payload["generationConfig"].(map[string]any)
+	if _, ok := generation["numberOfImages"]; ok {
+		t.Fatalf("numberOfImages was sent in generationConfig: %#v", generation)
+	}
+
+	_, err = client.GenerateImages(
+		context.Background(),
+		model,
+		sigma.ImageRequest{Prompt: "draw two", Count: 2},
+		sigma.WithImageAPIKey("google-key"),
+	)
+	if err == nil {
+		t.Fatal("GenerateImages returned nil error")
+	}
+	if !strings.Contains(err.Error(), "supports one image") {
+		t.Fatalf("error = %v, want local count rejection", err)
 	}
 }
 

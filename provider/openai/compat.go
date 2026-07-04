@@ -26,6 +26,7 @@ type completionsCompat struct {
 	supportsJSONSchemaResponseFormat            bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
+	supportsMessageCacheControl                 bool
 	supportsSessionAffinity                     bool
 	requiresToolResultName                      bool
 	requiresAssistantAfterToolResult            bool
@@ -69,6 +70,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	}
 	if override.CacheControlFormat != sigma.OpenAICompletionsCacheControlDefault {
 		compat.cacheControlFormat = override.CacheControlFormat
+		compat.supportsMessageCacheControl = true
 	}
 	if override.OpenRouterRouting != nil {
 		compat.openRouterRouting = override.OpenRouterRouting
@@ -98,10 +100,12 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 			supportsJSONSchemaResponseFormat: true,
 			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 			cacheControlFormat:               sigma.OpenAICompletionsCacheControlMessage,
+			supportsMessageCacheControl:      false,
 		}
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
 		compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlMessage
+		compat.supportsMessageCacheControl = true
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningObject
 		if strings.HasPrefix(string(model.ID), "anthropic/") {
 			compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlAnthropic
@@ -160,6 +164,7 @@ func conservativeCompletionsCompat() completionsCompat {
 		supportsJSONSchemaResponseFormat: true,
 		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 		cacheControlFormat:               sigma.OpenAICompletionsCacheControlUnsupported,
+		supportsMessageCacheControl:      true,
 	}
 }
 

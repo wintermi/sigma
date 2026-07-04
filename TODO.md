@@ -129,7 +129,8 @@ integrations remain future work until they have the same local evidence bar.
       Completions replay for empty assistant turns and opt-in tool-history
       payload requirements.
 - [x] Add deterministic OpenAI-compatible Chat Completions replay coverage for
-      prior thinking blocks on routes that serialize thinking as assistant text.
+      prior private thinking blocks on routes that do not require native
+      `reasoning_content`.
 - [x] Add Codex WebSocket transport, session caching, cleanup helpers, and SSE
       fallback while keeping the implementation stdlib-only.
 - [x] Add proxy-aware Codex WebSocket dialing for standard HTTP(S) proxy
@@ -248,6 +249,10 @@ work until their API boundaries are explicit.
 - [x] Preserve OpenAI-compatible Chat Completions `reasoning_details` metadata
       on tool-call blocks for replay while keeping broader provider-neutral
       reasoning-detail rendering deferred.
+- [x] Harden provider replay and protocol edge cases across Anthropic, Google,
+      Bedrock, OpenAI-compatible, Azure Responses, and GitHub Copilot OAuth
+      with deterministic fixtures for signatures, private reasoning metadata,
+      empty replay blocks, endpoint normalization, and credential precedence.
 - [ ] Add broader provider-neutral sampling controls such as top-p, top-k,
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes
@@ -494,6 +499,10 @@ should still come through the catalog refresh workflow.
       native Gemini requests.
 - [x] Add deterministic Google stream coverage for `thoughtSignature`-only
       chunks, empty signature deltas, and signature updates on existing blocks.
+- [x] Harden Google replay and image-generation request shapes by omitting
+      empty assistant/model blocks, mapping malformed function-call finish
+      reasons to provider errors, and rejecting unsupported Gemini multi-image
+      requests before dispatch.
 - [x] Add focused Google Gemini API embeddings and image generation adapters
       with deterministic payload and response fixtures.
 - [x] Add focused Vertex AI embeddings and Imagen generation adapters with
@@ -553,11 +562,16 @@ should still come through the catalog refresh workflow.
 - [x] Add request-scoped Bedrock bearer-token auth through typed Bedrock options
       before resolver and environment credential fallback.
 - [x] Add request-scoped Bedrock region and static AWS credential helpers before
-      environment fallback while keeping AWS profile, SSO, web identity, IMDS,
-      and shared-config loading deferred.
+      environment fallback while keeping AWS SDK integration and SSO deferred.
+- [x] Add stdlib Bedrock default-chain credential loading for shared profiles,
+      ECS credentials, web identity, and IMDS behind the existing fakeable
+      credential detector.
 - [x] Keep Bedrock SigV4 canonical request paths aligned with escaped model-ID
       wire paths for inference-profile ARNs across Converse Stream and
       embeddings.
+- [x] Harden Bedrock Claude replay compatibility for split reasoning
+      signatures, redacted reasoning content, event-stream exception
+      classification, and Claude 5-family thinking/cache predicates.
 - [x] Replace blank required user/tool-result text with a placeholder and drop
       blank replayed assistant text blocks that Bedrock Converse rejects.
 - [x] Append the AWS data-retention documentation link to Bedrock provider
@@ -567,8 +581,8 @@ should still come through the catalog refresh workflow.
 - [ ] Expand broad Bedrock generated metadata only through the catalog refresh
       workflow, with deterministic modeldata, payload, error, regional routing,
       and compatibility coverage for promoted rows.
-- [ ] Keep AWS profile, SSO, web identity, IMDS, and shared-config loading
-      outside the built-in stdlib Bedrock adapter unless Sigma adopts an AWS SDK
+- [ ] Keep AWS SSO and full SDK-equivalent credential-chain behavior outside
+      the built-in stdlib Bedrock adapter unless Sigma adopts an AWS SDK
       credential integration.
 
 ## Authentication and credentials

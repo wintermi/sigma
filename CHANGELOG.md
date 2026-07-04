@@ -207,7 +207,7 @@ See [release notes](docs/release-notes-v0.6.0.md).
   leaving `ValidateToolCall` strict by default.
 - Deterministic provider tests now cover Google stream `thoughtSignature`
   replay on signature-only chunks and OpenAI-compatible Chat Completions replay
-  of prior thinking blocks as assistant text when `reasoning_content` is not
+  omission of prior private thinking blocks when `reasoning_content` is not
   required.
 - OpenAI-compatible Chat Completions streams now preserve provider
   `reasoning_details` metadata on tool-call blocks and replay it with
@@ -236,6 +236,19 @@ See [release notes](docs/release-notes-v0.6.0.md).
   final cacheable user-side block, and final tool definition, avoiding
   API-rejected payloads when cache-enabled agent loops include multiple user
   turns, tool results, or tools.
+- Anthropic Messages now clamps thinking budgets inside `max_tokens`, falls
+  back from reasoning levels to budget thinking for non-adaptive Claude routes,
+  appends split thinking signatures, forwards only supported `metadata.user_id`,
+  and degrades unsupported long-cache retention to normal ephemeral caching.
+- Google Gemini and Vertex streams now classify malformed or unexpected
+  function-call finish reasons as provider errors, Google replay omits empty
+  assistant/model blocks, and Gemini image generation rejects unsupported
+  multi-image requests locally instead of sending `numberOfImages`.
+- Bedrock Converse now appends split reasoning signatures, replays redacted
+  reasoning with `redactedContent`, classifies event-stream exception types
+  such as throttling, resolves stdlib default-chain credentials from profiles,
+  ECS, web identity, and IMDS, and recognizes Claude 5-family thinking/cache
+  compatibility.
 - Built-in Anthropic Messages routes now use versioned base URLs for Anthropic,
   Vercel AI Gateway, GitHub Copilot, and Cloudflare AI Gateway metadata and
   wrapper defaults, so Sigma dispatches to `/v1/messages`-shaped endpoints
@@ -258,6 +271,14 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - OpenAI-compatible Chat Completions streams now use the first non-empty
   reasoning alias from each delta and require a terminal `finish_reason` before
   treating stream EOF as a successful completion.
+- OpenAI-compatible Chat Completions streams now keep index-less tool-call
+  deltas separated by provider ID, buffer encrypted `reasoning_details` until
+  finalization, stop replaying provider-private thinking as visible assistant
+  text by default, and avoid direct OpenAI message-level `cache_control`.
+- Azure OpenAI Responses endpoint normalization now preserves conventional
+  `/openai/v1` endpoint values without appending duplicate path segments.
+- GitHub Copilot OAuth refresh now honors the stored credential enterprise
+  domain before falling back to provider options.
 - Shared diagnostic redaction now treats Google API-key headers and Cloudflare
   AI Gateway auth headers as credential-bearing headers, so debug hooks redact
   those values even when they do not match known token patterns.
@@ -610,10 +631,9 @@ See [release notes](docs/release-notes-v0.3.0.md).
 - Mistral Conversations built-in connectors, append/restart, URL/file image
   references, and broad catalog expansion remain deferred until their request
   shapes are covered by deterministic fixtures.
-- Bedrock credential-chain integration, profiles, SSO, web identity, IMDS,
-  shared AWS config loading, broader regional alias expansion beyond focused EU
-  Anthropic inference-profile metadata, and live Bedrock CI coverage remain
-  deferred.
+- Full AWS SDK-equivalent Bedrock credential-chain behavior, including SSO,
+  broader regional alias expansion beyond focused EU Anthropic inference-profile
+  metadata, and live Bedrock CI coverage remain deferred.
 - Broader Fireworks catalog expansion remains deferred beyond the built-in Fire
   Pass route and the verified Kimi K2.6 and Kimi K2.7 Code rows.
 - Live Google Gemini API and Vertex AI validation remains deferred; deterministic

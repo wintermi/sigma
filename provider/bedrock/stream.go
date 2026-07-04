@@ -194,7 +194,7 @@ func (p *converseStreamParser) emitText(ctx context.Context, index int, delta st
 func (p *converseStreamParser) emitThinking(ctx context.Context, index int, event ConverseEvent) error {
 	state := p.thinkingState(index)
 	if event.ThinkingSignature != "" {
-		state.Signature = event.ThinkingSignature
+		state.Signature += event.ThinkingSignature
 	}
 	if event.RedactedThinking != "" {
 		state.ProviderSignature = event.RedactedThinking

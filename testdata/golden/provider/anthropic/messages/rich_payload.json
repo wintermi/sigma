@@ -1,5 +1,5 @@
 {
-  "max_tokens": 123,
+  "max_tokens": 4096,
   "messages": [
     {
       "content": [
@@ -88,9 +88,6 @@
       "role": "user"
     }
   ],
-  "metadata": {
-    "trace": "abc"
-  },
   "model": "claude-test",
   "stream": true,
   "system": [
