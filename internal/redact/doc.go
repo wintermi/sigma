@@ -133,7 +133,7 @@ func redactJSONValue(value any) {
 
 func isSensitiveHeader(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "api-key":
+	case "authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "api-key", "x-goog-api-key", "cf-aig-authorization":
 		return true
 	default:
 		return false

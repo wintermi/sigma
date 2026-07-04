@@ -96,16 +96,18 @@ func TestHeadersRedactsSensitiveHeaderValues(t *testing.T) {
 	t.Parallel()
 
 	headers := Headers(map[string][]string{
-		"Authorization":       {"Bearer sk-proj-authheader123"},
-		"Proxy-Authorization": {"Basic proxy-secret"},
-		"X-Api-Key":           {"plain-api-key-secret"},
-		"Api-Key":             {"alternate-api-key-secret"},
-		"Cookie":              {"session=cookie-secret"},
-		"Set-Cookie":          {"session=response-cookie-secret"},
-		"X-Callback":          {"https://example.test/cb?signature=signed-query-secret"},
+		"Authorization":        {"Bearer sk-proj-authheader123"},
+		"Proxy-Authorization":  {"Basic proxy-secret"},
+		"X-Api-Key":            {"plain-api-key-secret"},
+		"Api-Key":              {"alternate-api-key-secret"},
+		"X-Goog-Api-Key":       {"google-debug-secret-without-AIza-pattern"},
+		"Cf-Aig-Authorization": {"Bearer cloudflare-gateway-secret"},
+		"Cookie":               {"session=cookie-secret"},
+		"Set-Cookie":           {"session=response-cookie-secret"},
+		"X-Callback":           {"https://example.test/cb?signature=signed-query-secret"},
 	})
 
-	for _, name := range []string{"Authorization", "Proxy-Authorization", "X-Api-Key", "Api-Key", "Cookie", "Set-Cookie"} {
+	for _, name := range []string{"Authorization", "Proxy-Authorization", "X-Api-Key", "Api-Key", "X-Goog-Api-Key", "Cf-Aig-Authorization", "Cookie", "Set-Cookie"} {
 		if got := headers[name][0]; got != replacement {
 			t.Fatalf("%s = %q, want redacted", name, got)
 		}

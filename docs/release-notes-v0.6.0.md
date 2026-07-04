@@ -417,6 +417,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - OpenAI-compatible Chat Completions streams now use only the first non-empty
   reasoning alias from each delta, avoiding duplicated thinking text when a
   provider emits multiple equivalent reasoning fields in one chunk.
+- Shared diagnostic redaction now treats Google API-key headers and Cloudflare
+  AI Gateway auth headers as credential-bearing headers, so debug hooks redact
+  those values even when they do not match known token patterns.
 - OpenAI-compatible Chat Completions streams now require a terminal
   `finish_reason` before EOF is treated as a successful completion, preserving
   partial content and usage on the error final message when a stream ends

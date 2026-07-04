@@ -590,6 +590,8 @@ should still come through the catalog refresh workflow.
 - [x] Add Anthropic Claude Code OAuth identity headers and Claude Code
       tool-name canonicalization, applied automatically when the resolved
       Anthropic credential is an OAuth token.
+- [x] Redact Google API-key headers and Cloudflare AI Gateway auth headers in
+      shared diagnostic/debug-hook header copies.
 - [x] Wire OpenAI Codex browser/device-code login and refresh into Codex
       Responses through `openai.NewCodexOAuthTokenProvider`.
 - [x] Add deterministic coverage for Codex and Anthropic login/refresh flows

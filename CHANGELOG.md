@@ -258,6 +258,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - OpenAI-compatible Chat Completions streams now use the first non-empty
   reasoning alias from each delta and require a terminal `finish_reason` before
   treating stream EOF as a successful completion.
+- Shared diagnostic redaction now treats Google API-key headers and Cloudflare
+  AI Gateway auth headers as credential-bearing headers, so debug hooks redact
+  those values even when they do not match known token patterns.
 - Core text and image stream cancellation now records aborted final results
   before closing, so `Collect`, `Complete`, and `CollectImages` preserve
   partial outputs with typed aborted errors and canceled abandoned streams close
