@@ -153,14 +153,9 @@ func (p *Producer[T, F]) run() {
 	defer close(p.done)
 
 	var active *request[T, F]
-	var pendingTerminal *request[T, F]
 	terminated := false
 
 	for {
-		if active == nil && pendingTerminal != nil {
-			active = pendingTerminal
-			pendingTerminal = nil
-		}
 		if active == nil && terminated {
 			return
 		}
@@ -199,25 +194,15 @@ func (p *Producer[T, F]) run() {
 			active = nil
 
 		case <-ctxDone:
-			terminal := p.cancel(p.ctx.Err())
-			req := request[T, F]{
-				event:    terminal.Event,
-				final:    terminal.Final,
-				hasFinal: terminal.HasFinal,
-				err:      terminal.Err,
-				terminal: true,
-				reply:    make(chan error, 1),
-			}
-			p.record(req.final, req.hasFinal, req.err)
-			p.closeWrites()
-			terminated = true
-			if active == nil {
-				active = &req
-			} else {
-				pendingTerminal = &req
-			}
+			p.abort(p.ctx.Err(), active)
+			return
 
 		case ack := <-p.close:
+			if err := p.ctx.Err(); err != nil {
+				p.abort(err, active)
+				close(ack)
+				return
+			}
 			p.closeWrites()
 			if active != nil {
 				active.reply <- ErrClosed
@@ -225,6 +210,19 @@ func (p *Producer[T, F]) run() {
 			close(ack)
 			return
 		}
+	}
+}
+
+func (p *Producer[T, F]) abort(err error, active *request[T, F]) {
+	terminal := p.cancel(err)
+	p.record(terminal.Final, terminal.HasFinal, terminal.Err)
+	p.closeWrites()
+	if active != nil {
+		active.reply <- ErrClosed
+	}
+	select {
+	case p.events <- terminal.Event:
+	default:
 	}
 }
 

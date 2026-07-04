@@ -233,7 +233,90 @@ func TestStreamContextCancelReturnsPartialFinalMessage(t *testing.T) {
 	}
 }
 
-func TestStreamContextCancelEmitsOneTerminalError(t *testing.T) {
+func TestStreamCollectWithCanceledContextReturnsPartialFinalMessage(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, writer := sigma.NewStream(ctx)
+	if err := writer.Emit(context.Background(), sigma.Event{
+		Kind:      sigma.EventKindTextDelta,
+		DeltaText: "partial",
+		Text:      "partial",
+	}); err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+	cancel()
+
+	final, err := sigma.Collect(ctx, stream)
+	if err == nil {
+		t.Fatal("Collect returned nil error")
+	}
+	if !stderrors.Is(err, sigma.ErrAborted) {
+		t.Fatalf("Collect error = %v, want ErrAborted", err)
+	}
+	if !stderrors.Is(err, context.Canceled) {
+		t.Fatalf("Collect error = %v, want context.Canceled", err)
+	}
+	var generationErr *sigma.GenerationError
+	if !stderrors.As(err, &generationErr) {
+		t.Fatalf("Collect error type = %T, want GenerationError", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonAborted; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "partial"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+}
+
+func TestClientCompleteWithCanceledContextReturnsPartialFinalMessage(t *testing.T) {
+	t.Parallel()
+
+	provider := &cancelAfterPartialProvider{emitted: make(chan struct{})}
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(sigmatest.ProviderID, provider); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(sigmatest.TextModel()); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan completeResult, 1)
+	go func() {
+		final, err := client.Complete(ctx, sigmatest.TextModel(), sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("hi")},
+		})
+		result <- completeResult{final: final, err: err}
+	}()
+
+	select {
+	case <-provider.emitted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for partial event")
+	}
+	cancel()
+
+	got := receiveCompleteResult(t, result)
+	if got.err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !stderrors.Is(got.err, sigma.ErrAborted) {
+		t.Fatalf("Complete error = %v, want ErrAborted", got.err)
+	}
+	var generationErr *sigma.GenerationError
+	if !stderrors.As(got.err, &generationErr) {
+		t.Fatalf("Complete error type = %T, want GenerationError", got.err)
+	}
+	if got, want := got.final.StopReason, sigma.StopReasonAborted; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := got.final.Content[0].Text, "partial"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+}
+
+func TestStreamContextCancelRecordsStableResult(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -248,13 +331,66 @@ func TestStreamContextCancelEmitsOneTerminalError(t *testing.T) {
 
 	cancel()
 
-	var events []sigma.Event
 	for event := range stream.Events() {
-		events = append(events, event)
+		if event.Kind != sigma.EventKindTextDelta && event.Kind != sigma.EventKindError {
+			t.Fatalf("event kind = %q, want text delta or best-effort error", event.Kind)
+		}
 	}
 
-	if got, want := eventKinds(events), []sigma.EventKind{sigma.EventKindTextDelta, sigma.EventKindError}; !stderrors.Is(stream.Err(), sigma.ErrAborted) || !equalEventKinds(got, want) {
-		t.Fatalf("events = %v, stream error = %v; want %v and ErrAborted", got, stream.Err(), want)
+	if !stderrors.Is(stream.Err(), sigma.ErrAborted) {
+		t.Fatalf("stream error = %v, want ErrAborted", stream.Err())
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream Final returned no final message")
+	}
+	if got, want := final.StopReason, sigma.StopReasonAborted; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "partial"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+}
+
+func TestStreamContextCancelClosesAbandonedStream(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, writer := sigma.NewStream(ctx)
+	if err := writer.Emit(context.Background(), sigma.Event{
+		Kind:      sigma.EventKindTextDelta,
+		DeltaText: "queued",
+	}); err != nil {
+		t.Fatalf("first Emit returned error: %v", err)
+	}
+
+	writeErr := make(chan error, 1)
+	go func() {
+		writeErr <- writer.Emit(context.Background(), sigma.Event{
+			Kind:      sigma.EventKindTextDelta,
+			DeltaText: "blocked",
+		})
+	}()
+
+	select {
+	case err := <-writeErr:
+		t.Fatalf("second Emit returned before cancel: %v", err)
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	cancel()
+
+	select {
+	case <-stream.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for stream Done")
+	}
+	err := receiveErr(t, writeErr)
+	if err == nil {
+		t.Fatal("blocked writer returned nil error")
+	}
+	if !stderrors.Is(stream.Err(), sigma.ErrAborted) {
+		t.Fatalf("stream error = %v, want ErrAborted", stream.Err())
 	}
 }
 
@@ -381,6 +517,33 @@ func TestStreamConsumerCloseUnblocksWriter(t *testing.T) {
 	assertSigmaErrorCode(t, err, sigma.ErrorStreamClosed)
 }
 
+type completeResult struct {
+	final sigma.AssistantMessage
+	err   error
+}
+
+type cancelAfterPartialProvider struct {
+	emitted chan struct{}
+}
+
+func (p *cancelAfterPartialProvider) API() sigma.API {
+	return sigmatest.TextAPI
+}
+
+func (p *cancelAfterPartialProvider) Stream(ctx context.Context, _ sigma.Model, _ sigma.Request, _ sigma.Options) *sigma.Stream {
+	stream, writer := sigma.NewStream(ctx)
+	go func() {
+		_ = writer.Emit(context.Background(), sigma.Event{
+			Kind:      sigma.EventKindTextDelta,
+			DeltaText: "partial",
+			Text:      "partial",
+		})
+		close(p.emitted)
+		<-ctx.Done()
+	}()
+	return stream
+}
+
 func assertSigmaErrorCode(t *testing.T, err error, code sigma.ErrorCode) {
 	t.Helper()
 
@@ -405,6 +568,18 @@ func receiveErr(t *testing.T, ch <-chan error) error {
 	}
 }
 
+func receiveCompleteResult(t *testing.T, ch <-chan completeResult) completeResult {
+	t.Helper()
+
+	select {
+	case result := <-ch:
+		return result
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for Complete")
+		return completeResult{}
+	}
+}
+
 func receiveEvent(t *testing.T, stream *sigma.Stream) sigma.Event {
 	t.Helper()
 
@@ -418,24 +593,4 @@ func receiveEvent(t *testing.T, stream *sigma.Stream) sigma.Event {
 		t.Fatal("timed out waiting for event")
 		return sigma.Event{}
 	}
-}
-
-func eventKinds(events []sigma.Event) []sigma.EventKind {
-	kinds := make([]sigma.EventKind, len(events))
-	for i, event := range events {
-		kinds[i] = event.Kind
-	}
-	return kinds
-}
-
-func equalEventKinds(got []sigma.EventKind, want []sigma.EventKind) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			return false
-		}
-	}
-	return true
 }

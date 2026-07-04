@@ -37,7 +37,10 @@ now also let callers release cached provider resources without knowing the
 provider-specific cleanup function, with Codex WebSocket sessions registered
 automatically. Text request transport choices now also fail locally before
 provider dispatch when callers pass unknown transports or request HTTP/WebSocket
-transport for built-in streaming APIs that do not support them. Kimi and Kimi
+transport for built-in streaming APIs that do not support them. Core text and
+image stream cancellation now preserves aborted partial finals through
+`Collect`, `Complete`, and `CollectImages`, and canceled streams close promptly
+even when callers stop reading events. Kimi and Kimi
 Coding are promoted as
 focused Anthropic-compatible provider slices with generated metadata,
 credential discovery, request headers, adaptive thinking metadata, and
@@ -414,6 +417,9 @@ advice without adding any execution loop or configuration format to Sigma.
   `finish_reason` before EOF is treated as a successful completion, preserving
   partial content and usage on the error final message when a stream ends
   early.
+- Core text and image stream cancellation now records aborted final results
+  before closing, preserving partial text or image outputs through the collector
+  helpers and closing canceled streams even when callers abandon unread events.
 - OpenAI Responses streams now require `response.completed`,
   `response.incomplete`, or `response.failed` before EOF is treated as a
   terminal provider response. Premature EOF now returns an error with partial
@@ -580,7 +586,9 @@ advice without adding any execution loop or configuration format to Sigma.
   native shape, and top-logprob requests remain limited to
   OpenAI-compatible Chat Completions routes.
 - The new replay and stream regression tests do not change public APIs,
-  provider request shapes, or persisted replay semantics.
+  provider request shapes, or persisted replay semantics. Core cancellation
+  tests now lock the stable `Final`/`Err`/`Done`/collector contract rather than
+  requiring terminal event delivery after a caller stops reading.
 - The request-conversion regression tests are coverage-only. They preserve
   existing public APIs and keep request-shape behavior unchanged for callers.
 - Runtime text model refresh is additive and app-owned. Sources are registered

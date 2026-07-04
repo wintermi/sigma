@@ -188,7 +188,7 @@ func CollectImages(ctx context.Context, stream *ImageStream) (AssistantImages, e
 			}
 		case <-ctx.Done():
 			stream.Close()
-			return AssistantImages{}, ctx.Err()
+			return closedImageStreamResult(stream)
 		}
 	}
 }

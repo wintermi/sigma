@@ -33,6 +33,11 @@ cancellation/error coverage (see the coverage standards in
 - [ ] Keep automatic dispatch-time output-token clamping deferred unless Sigma
       defines explicit precedence, observability, and override semantics.
 
+## Core streaming
+
+- [x] Harden core text and image stream cancellation so collectors preserve
+      aborted partial finals and abandoned canceled streams close promptly.
+
 ## Image generation
 
 - [ ] Decide whether image generation graduates from preview into the MVP

@@ -249,6 +249,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - OpenAI-compatible Chat Completions streams now use the first non-empty
   reasoning alias from each delta and require a terminal `finish_reason` before
   treating stream EOF as a successful completion.
+- Core text and image stream cancellation now records aborted final results
+  before closing, so `Collect`, `Complete`, and `CollectImages` preserve
+  partial outputs with typed aborted errors and canceled abandoned streams close
+  without waiting for callers to drain events.
 
 ### Reviewed
 

@@ -185,7 +185,7 @@ func Collect(ctx context.Context, stream *Stream) (AssistantMessage, error) {
 			}
 		case <-ctx.Done():
 			stream.Close()
-			return AssistantMessage{}, ctx.Err()
+			return closedStreamResult(stream)
 		}
 	}
 }
