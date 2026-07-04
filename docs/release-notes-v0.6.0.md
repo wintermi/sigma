@@ -40,7 +40,12 @@ provider dispatch when callers pass unknown transports or request HTTP/WebSocket
 transport for built-in streaming APIs that do not support them. Core text and
 image stream cancellation now preserves aborted partial finals through
 `Collect`, `Complete`, and `CollectImages`, and canceled streams close promptly
-even when callers stop reading events. Kimi and Kimi
+even when callers stop reading events. Runtime stream/replay hardening now also
+covers tolerant SSE parsing, deterministic fake-provider lifecycles,
+partial-message snapshots, safer JSON/tool-argument persistence, stricter
+coercion, image request validation, explicit handoff coordinates,
+OpenAI-compatible usage/finish-reason normalization, request-scoped provider
+auth precedence, and cache-cost catalog validation. Kimi and Kimi
 Coding are promoted as
 focused Anthropic-compatible provider slices with generated metadata,
 credential discovery, request headers, adaptive thinking metadata, and
@@ -402,11 +407,24 @@ advice without adding any execution loop or configuration format to Sigma.
   `sigma.ToolValidationOptions{CoercePrimitives: true}` so callers can opt
   into conservative primitive argument coercion before strict tool validation,
   without changing the default `ValidateToolCall` behavior, and without
-  rewriting already-valid `anyOf` or `oneOf` values.
+  rewriting already-valid `anyOf` or `oneOf` values. Primitive coercion no
+  longer converts JSON `null` into `0`, `false`, or `""`; null only validates
+  against schemas that permit null values.
+- Persisted content/tool JSON now preserves unknown content-block fields during
+  round trips and decodes tool-call arguments with `json.Number`, avoiding
+  64-bit integer precision loss during conversation replay while keeping
+  replay validation strict for known content blocks.
 - Deterministic provider tests now cover Google stream `thoughtSignature`-only
   chunks, empty signature deltas, signature updates on existing blocks, and
   OpenAI-compatible Chat Completions omission of prior private thinking blocks
   when `reasoning_content` is not required.
+- Core streaming now accepts colonless SSE field lines, ignores unknown fields,
+  supports LF, CRLF, and CR-only event boundaries, and populates
+  `Event.PartialMessage` on non-terminal content events from the accumulated
+  stream state.
+- `sigmatest.FauxProvider` now fails loudly when scripts are exhausted and
+  synthesizes realistic start/delta/end event lifecycles from final text,
+  thinking, and tool-call content when explicit script events are omitted.
 - OpenAI-compatible Chat Completions streams now preserve provider
   `reasoning_details` metadata on tool-call blocks and replay it with
   assistant tool-call history.
@@ -421,6 +439,11 @@ advice without adding any execution loop or configuration format to Sigma.
   `finish_reason` values of `network_error` and `model_context_window_exceeded`
   as errors instead of successful unknown stops, including context-overflow
   classification for `model_context_window_exceeded`.
+- OpenAI-compatible Chat Completions streams now map top-level
+  `prompt_cache_hit_tokens` to cache-read usage when nested cached-token
+  details are absent, request streamed usage by default for local/custom
+  endpoints unless metadata marks it unsupported, and map
+  `finish_reason: "end"` to `StopReasonEndTurn`.
 - OpenAI-compatible Chat Completions streams now use only the first non-empty
   reasoning alias from each delta, avoiding duplicated thinking text when a
   provider emits multiple equivalent reasoning fields in one chunk.
@@ -434,6 +457,17 @@ advice without adding any execution loop or configuration format to Sigma.
 - Core text and image stream cancellation now records aborted final results
   before closing, preserving partial text or image outputs through the collector
   helpers and closing canceled streams even when callers abandon unread events.
+- Image generation requests now receive local provider-neutral validation for
+  known operations, counts, prompts/inputs, structurally valid text/image
+  inputs, base64 data, URLs, and image-only masks before provider dispatch.
+- Handoff reports now keep `HandoffChange.MessageIndex` as the source request
+  coordinate and add `OutputMessageIndex` for inserted or synthesized output
+  messages, avoiding mixed coordinate systems in repair reports.
+- Request-scoped provider auth callbacks now run before client/default
+  environment auth, matching the request-over-ambient precedence used by
+  request API keys.
+- Model catalog validation now rejects negative cache read/write input cost
+  fields before generated metadata can be refreshed.
 - OpenAI Responses streams now require `response.completed`,
   `response.incomplete`, or `response.failed` before EOF is treated as a
   terminal provider response. Premature EOF now returns an error with partial

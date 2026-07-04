@@ -7,5 +7,8 @@
     }
   ],
   "model": "meta/llama-3.3-70b-instruct-maas",
-  "stream": true
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  }
 }

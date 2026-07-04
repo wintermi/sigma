@@ -114,6 +114,9 @@ func MaxTokensForContext(model Model, req Request, requestedMaxTokens int) int {
 	if maxTokens <= 0 {
 		return 0
 	}
+	if model.MaxOutputTokens > 0 && maxTokens > model.MaxOutputTokens {
+		maxTokens = model.MaxOutputTokens
+	}
 	if model.ContextWindow <= 0 {
 		return maxTokens
 	}

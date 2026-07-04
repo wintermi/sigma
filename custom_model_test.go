@@ -457,12 +457,57 @@ func TestOpenAICompatibleModelUsesConservativeDefaultsForLocalEndpoints(t *testi
 			map[string]any{"role": "system", "content": "policy"},
 			map[string]any{"role": "system", "content": "style"},
 		},
-		"stream": true,
+		"stream":         true,
+		"stream_options": map[string]any{"include_usage": true},
 	})
-	for _, key := range []string{"stream_options", "reasoning", "reasoning_effort"} {
+	for _, key := range []string{"reasoning", "reasoning_effort"} {
 		if _, ok := request.Body[key]; ok {
 			t.Fatalf("%s was sent despite conservative compatibility defaults", key)
 		}
+	}
+}
+
+func TestOpenAICompatibleModelCanDisableStreamingUsageForLocalEndpoints(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan customModelRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureCustomModelRequest(t, requests, r)
+		writeCustomModelSSE(t, w)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("local-stream-usage-off")
+	model := sigma.OpenAICompatibleModel(sigma.OpenAICompatibleModelConfig{
+		ID:       "local-no-usage",
+		Provider: providerID,
+		BaseURL:  server.URL,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			SupportsStreamingUsage: sigma.OpenAICompatUnsupported,
+		},
+	})
+	registry := sigma.NewRegistry()
+	if err := openai.Register(registry, providerID); err != nil {
+		t.Fatalf("openai.Register returned error: %v", err)
+	}
+	if err := sigma.RegisterModel(registry, model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithAuthResolver(staticCredential("local")),
+	)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("hi")},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveCustomModelRequest(t, requests)
+	if _, ok := request.Body["stream_options"]; ok {
+		t.Fatalf("stream_options was sent despite unsupported streaming usage: %#v", request.Body["stream_options"])
 	}
 }
 

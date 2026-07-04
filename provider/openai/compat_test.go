@@ -575,7 +575,9 @@ func TestOpenAICompletionsCompatDefaultsAreConservativeForCustomEndpoints(t *tes
 	goldentest.AssertNoJSONPath(t, payload, "reasoning_effort")
 	goldentest.AssertNoJSONPath(t, payload, "reasoning")
 	goldentest.AssertNoJSONPath(t, payload, "store")
-	goldentest.AssertNoJSONPath(t, payload, "stream_options")
+	if streamOptions, ok := payload["stream_options"].(map[string]any); !ok || streamOptions["include_usage"] != true {
+		t.Fatalf("stream_options = %#v, want include_usage true", payload["stream_options"])
+	}
 }
 
 func TestOpenAICompletionsCompatDetectsKnownRoutingEndpoints(t *testing.T) {

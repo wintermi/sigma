@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -80,6 +81,28 @@ func TestFauxProviderScriptedError(t *testing.T) {
 	}
 	if got, want := final.Model, sigmatest.TextModelID; got != want {
 		t.Fatalf("final model = %q, want %q", got, want)
+	}
+}
+
+func TestFauxProviderScriptExhaustionErrors(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxProvider()
+	registry, err := sigmatest.Registry(provider)
+	if err != nil {
+		t.Fatalf("Registry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	final, err := client.Complete(context.Background(), sigmatest.TextModel(), sigma.Request{})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !strings.Contains(err.Error(), "no scripted response queued") {
+		t.Fatalf("Complete error = %v, want script exhaustion", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("final stop reason = %q, want %q", got, want)
 	}
 }
 
@@ -157,6 +180,64 @@ func TestFauxProviderToolCallStreaming(t *testing.T) {
 	}
 	if got, want := *events[5].ContentIndex, 1; got != want {
 		t.Fatalf("tool-call index = %d, want %d", got, want)
+	}
+	assertFinalEvent(t, events[len(events)-1], final)
+}
+
+func TestFauxProviderSynthesizesLifecycleFromFinalContent(t *testing.T) {
+	t.Parallel()
+
+	final := sigma.AssistantMessage{
+		Content: []sigma.ContentBlock{
+			sigma.Text("checking"),
+			sigma.Thinking("plan", "sig"),
+			sigma.ToolCallBlock("call_1", "lookup", map[string]any{"id": int64(9007199254740993)}),
+		},
+		StopReason: sigma.StopReasonToolCalls,
+		Model:      sigmatest.TextModelID,
+		Provider:   sigmatest.ProviderID,
+	}
+	provider := sigmatest.NewFauxProvider(sigmatest.Script{Final: final})
+	registry, err := sigmatest.Registry(provider)
+	if err != nil {
+		t.Fatalf("Registry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	events := collectEvents(client.Stream(context.Background(), sigmatest.TextModel(), sigma.Request{}))
+	kinds := make([]sigma.EventKind, len(events))
+	for i, event := range events {
+		kinds[i] = event.Kind
+	}
+	wantKinds := []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindThinkingStart,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingEnd,
+		sigma.EventKindToolCallStart,
+		sigma.EventKindToolCallDelta,
+		sigma.EventKindToolCallEnd,
+		sigma.EventKindDone,
+	}
+	if !reflect.DeepEqual(kinds, wantKinds) {
+		t.Fatalf("event kinds = %#v, want %#v", kinds, wantKinds)
+	}
+	assertPartialText(t, events[1], "")
+	assertPartialText(t, events[2], "checking")
+	if events[4].PartialMessage == nil || len(events[4].PartialMessage.Content) != 2 {
+		t.Fatalf("thinking start partial = %#v, want text plus empty thinking", events[4].PartialMessage)
+	}
+	if got, want := events[5].PartialMessage.Content[1].ThinkingText, "plan"; got != want {
+		t.Fatalf("thinking partial = %q, want %q", got, want)
+	}
+	if events[7].PartialMessage == nil || len(events[7].PartialMessage.Content) != 3 {
+		t.Fatalf("tool start partial = %#v, want three blocks", events[7].PartialMessage)
+	}
+	if got, want := events[8].PartialToolCall.ArgumentsDelta, `{"id":9007199254740993}`; got != want {
+		t.Fatalf("tool arguments delta = %q, want %q", got, want)
 	}
 	assertFinalEvent(t, events[len(events)-1], final)
 }
@@ -273,6 +354,20 @@ func collectEvents(stream *sigma.Stream) []sigma.Event {
 		events = append(events, event)
 	}
 	return events
+}
+
+func assertPartialText(t *testing.T, event sigma.Event, text string) {
+	t.Helper()
+
+	if event.PartialMessage == nil {
+		t.Fatal("event missing partial message")
+	}
+	if got, want := len(event.PartialMessage.Content), 1; got != want {
+		t.Fatalf("partial content count = %d, want %d", got, want)
+	}
+	if got, want := event.PartialMessage.Content[0].Text, text; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
 }
 
 func assertFinalEvent(t *testing.T, event sigma.Event, final sigma.AssistantMessage) {

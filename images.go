@@ -7,8 +7,11 @@ package sigma
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -160,6 +163,9 @@ func (c *Client) GenerateImages(ctx context.Context, model ImageModel, req Image
 	if err := validateImageOptions(model, options); err != nil {
 		return AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: StopReasonError}, err
 	}
+	if err := validateImageRequest(model, req); err != nil {
+		return AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: StopReasonError}, err
+	}
 	if err := ctx.Err(); err != nil {
 		return AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: StopReasonAborted}, imageAbortedError(err)
 	}
@@ -202,6 +208,9 @@ func (c *Client) StreamImages(ctx context.Context, model ImageModel, req ImageRe
 
 	options := c.imageRequestOptions(opts)
 	if err := validateImageOptions(model, options); err != nil {
+		return errorImageStream(ctx, err, AssistantImages{Model: model.ID, Provider: model.Provider})
+	}
+	if err := validateImageRequest(model, req); err != nil {
 		return errorImageStream(ctx, err, AssistantImages{Model: model.ID, Provider: model.Provider})
 	}
 	if err := ctx.Err(); err != nil {
@@ -335,10 +344,92 @@ func validateImageOptions(model ImageModel, options Options) error {
 	return nil
 }
 
+func validateImageRequest(model ImageModel, req ImageRequest) error {
+	switch req.Operation {
+	case "", ImageOperationGenerate, ImageOperationEdit, ImageOperationVariation:
+	default:
+		return invalidImageRequestError(model, "unsupported image operation %q", req.Operation)
+	}
+	if req.Count < 0 {
+		return invalidImageRequestError(model, "count must be non-negative")
+	}
+	if strings.TrimSpace(req.Prompt) == "" && len(req.Inputs) == 0 {
+		return invalidImageRequestError(model, "prompt or inputs are required")
+	}
+	for index, input := range req.Inputs {
+		if err := validateImageInput(input, false); err != nil {
+			return invalidImageRequestError(model, "input %d: %v", index, err)
+		}
+	}
+	if req.Mask != nil {
+		if err := validateImageInput(*req.Mask, true); err != nil {
+			return invalidImageRequestError(model, "mask: %v", err)
+		}
+	}
+	return nil
+}
+
+func validateImageInput(input ImageInput, mask bool) error {
+	switch input.Type {
+	case ImageInputText:
+		if mask {
+			return errors.New("mask must be an image input")
+		}
+		if strings.TrimSpace(input.Text) == "" {
+			return errors.New("text is required")
+		}
+		return nil
+	case ImageInputImage:
+		switch input.Source {
+		case ImageSourceBase64:
+			if input.MIMEType == "" {
+				return errors.New("image MIME type is required")
+			}
+			if input.Data == "" {
+				return errors.New("base64 image data is required")
+			}
+			if _, err := base64.StdEncoding.DecodeString(input.Data); err != nil {
+				return errors.New("base64 image data is invalid")
+			}
+		case ImageSourceURL:
+			if input.MIMEType == "" {
+				return errors.New("image MIME type is required")
+			}
+			if strings.TrimSpace(input.URL) == "" {
+				return errors.New("image URL is required")
+			}
+		case ImageSourceFileID:
+			if strings.TrimSpace(input.Data) == "" {
+				return errors.New("image file id is required")
+			}
+		default:
+			if input.Source == "" {
+				return errors.New("image source is required")
+			}
+			return errors.New("unsupported image source")
+		}
+		return nil
+	default:
+		if input.Type == "" {
+			return errors.New("input type is required")
+		}
+		return errors.New("unsupported input type")
+	}
+}
+
 func invalidImageOptionsError(model ImageModel, message string) error {
 	return &Error{
 		Code:     ErrorInvalidOptions,
 		Message:  message,
+		Provider: model.Provider,
+		Model:    model.ID,
+	}
+}
+
+func invalidImageRequestError(model ImageModel, format string, args ...any) error {
+	return &Error{
+		Code:     ErrorInvalidRequest,
+		Message:  fmt.Sprintf(format, args...),
 		Provider: model.Provider,
 		Model:    model.ID,
 	}

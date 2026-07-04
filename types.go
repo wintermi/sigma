@@ -456,6 +456,7 @@ type ContentBlock struct {
 	ToolArguments     any              `json:"toolArguments,omitempty"`
 	ProviderSignature string           `json:"providerSignature,omitempty"`
 	ProviderMetadata  map[string]any   `json:"providerMetadata,omitempty"`
+	ExtraFields       map[string]any   `json:"-"`
 }
 
 // Usage records provider token accounting for a model turn.

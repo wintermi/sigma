@@ -442,6 +442,12 @@ func validateCost(cost Cost) error {
 	if cost.OutputPerMillion < 0 {
 		return fmt.Errorf("cost.outputPerMillion must be non-negative")
 	}
+	if cost.CacheReadInputPerMillion < 0 {
+		return fmt.Errorf("cost.cacheReadInputPerMillion must be non-negative")
+	}
+	if cost.CacheWriteInputPerMillion < 0 {
+		return fmt.Errorf("cost.cacheWriteInputPerMillion must be non-negative")
+	}
 	return nil
 }
 

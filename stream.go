@@ -125,6 +125,9 @@ func (w *streamWriter) Emit(ctx context.Context, event Event) error {
 		}
 	}
 	w.partial.apply(event)
+	if partial, ok := w.partial.snapshot(true); ok {
+		event.PartialMessage = &partial
+	}
 	if err := mapStreamStateError(w.producer.Emit(ctx, event)); err != nil {
 		return err
 	}
@@ -206,6 +209,7 @@ type partialBlock struct {
 	argument   any
 	hasArg     bool
 	hasContent bool
+	started    bool
 }
 
 func newPartialAccumulator() *partialAccumulator {
@@ -290,6 +294,7 @@ func (a *partialAccumulator) block(index int, kind ContentBlockType) *partialBlo
 	if block.kind == "" {
 		block.kind = kind
 	}
+	block.started = true
 	return block
 }
 
@@ -306,27 +311,32 @@ func (a *partialAccumulator) cancelTerminal(err error) streamstate.Terminal[Even
 }
 
 func (a *partialAccumulator) final() AssistantMessage {
+	message, _ := a.snapshot(false)
+	return message
+}
+
+func (a *partialAccumulator) snapshot(includeStarted bool) (AssistantMessage, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if len(a.blocks) == 0 {
-		return AssistantMessage{}
+		return AssistantMessage{}, false
 	}
 	indexes := make([]int, 0, len(a.blocks))
 	for index, block := range a.blocks {
-		if block.include() {
+		if block.include(includeStarted) {
 			indexes = append(indexes, index)
 		}
 	}
 	if len(indexes) == 0 {
-		return AssistantMessage{}
+		return AssistantMessage{}, false
 	}
 	sort.Ints(indexes)
 	content := make([]ContentBlock, 0, len(indexes))
 	for _, index := range indexes {
 		content = append(content, a.blocks[index].contentBlock())
 	}
-	return AssistantMessage{Content: content}
+	return AssistantMessage{Content: content}, true
 }
 
 func eventContentIndex(event Event) int {
@@ -359,8 +369,8 @@ func (b *partialBlock) applyToolPartial(partial *PartialToolCall) {
 	b.hasContent = b.hasContent || b.toolID != "" || b.toolName != "" || b.arguments != "" || b.hasArg
 }
 
-func (b *partialBlock) include() bool {
-	return b != nil && b.hasContent
+func (b *partialBlock) include(includeStarted bool) bool {
+	return b != nil && (b.hasContent || includeStarted && b.started)
 }
 
 func (b *partialBlock) contentBlock() ContentBlock {

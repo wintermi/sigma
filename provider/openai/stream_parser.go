@@ -71,6 +71,7 @@ type openAIUsage struct {
 	PromptTokens            int                 `json:"prompt_tokens"`
 	CompletionTokens        int                 `json:"completion_tokens"`
 	TotalTokens             int                 `json:"total_tokens"`
+	PromptCacheHitTokens    *int                `json:"prompt_cache_hit_tokens"`
 	PromptTokensDetails     *promptTokenDetails `json:"prompt_tokens_details"`
 	CompletionTokensDetails *outputTokenDetails `json:"completion_tokens_details"`
 	Cost                    *float64            `json:"cost"`
@@ -78,8 +79,8 @@ type openAIUsage struct {
 }
 
 type promptTokenDetails struct {
-	CachedTokens     int `json:"cached_tokens"`
-	CacheWriteTokens int `json:"cache_write_tokens"`
+	CachedTokens     *int `json:"cached_tokens"`
+	CacheWriteTokens *int `json:"cache_write_tokens"`
 }
 
 type outputTokenDetails struct {
@@ -517,8 +518,17 @@ func (u openAIUsage) sigmaUsage() sigma.Usage {
 		TotalTokens:  u.TotalTokens,
 	}
 	if u.PromptTokensDetails != nil {
-		usage.CacheReadInputTokens = u.PromptTokensDetails.CachedTokens
-		usage.CacheWriteInputTokens = u.PromptTokensDetails.CacheWriteTokens
+		if u.PromptTokensDetails.CachedTokens != nil {
+			usage.CacheReadInputTokens = *u.PromptTokensDetails.CachedTokens
+		}
+		if u.PromptTokensDetails.CacheWriteTokens != nil {
+			usage.CacheWriteInputTokens = *u.PromptTokensDetails.CacheWriteTokens
+		}
+	}
+	if usage.CacheReadInputTokens == 0 && u.PromptCacheHitTokens != nil {
+		usage.CacheReadInputTokens = *u.PromptCacheHitTokens
+	}
+	if usage.CacheReadInputTokens > 0 || usage.CacheWriteInputTokens > 0 {
 		usage.InputTokens = max(0, u.PromptTokens-usage.CacheReadInputTokens-usage.CacheWriteInputTokens)
 	}
 	if u.CompletionTokensDetails != nil {
@@ -652,7 +662,7 @@ func streamContentText(raw json.RawMessage) (string, bool, error) {
 
 func stopReason(reason string) sigma.StopReason {
 	switch reason {
-	case "stop":
+	case "stop", "end":
 		return sigma.StopReasonEndTurn
 	case "length":
 		return sigma.StopReasonMaxTokens

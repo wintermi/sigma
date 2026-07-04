@@ -150,6 +150,17 @@ func TestMaxTokensForContextUsesRequestedCapWhenContextAllows(t *testing.T) {
 	}
 }
 
+func TestMaxTokensForContextClampsRequestedCapToModelOutputCap(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ContextWindow: 50000, MaxOutputTokens: 1000}
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if got, want := sigma.MaxTokensForContext(model, req, 2000), 1000; got != want {
+		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
+	}
+}
+
 func TestMaxTokensForContextClampsToAvailableContext(t *testing.T) {
 	t.Parallel()
 

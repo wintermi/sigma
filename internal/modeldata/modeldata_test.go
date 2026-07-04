@@ -86,6 +86,85 @@ func TestCatalogValidationReportsMissingRequiredFields(t *testing.T) {
 	}
 }
 
+func TestCatalogValidationRejectsNegativeCacheCosts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		cost string
+		want string
+	}{
+		{
+			name: "cache read",
+			cost: `"cacheReadInputPerMillion": -0.1`,
+			want: "cost.cacheReadInputPerMillion must be non-negative",
+		},
+		{
+			name: "cache write",
+			cost: `"cacheWriteInputPerMillion": -0.1`,
+			want: "cost.cacheWriteInputPerMillion must be non-negative",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := Decode(strings.NewReader(`{
+				"schemaVersion": 1,
+				"snapshotDate": "2026-05-26",
+				"sources": [{"name": "test", "url": "https://example.test/models"}],
+				"textModels": [{
+					"id": "cache-test",
+					"name": "Cache Test",
+					"provider": "openai",
+					"api": "openai-responses",
+					"baseURL": "https://api.openai.com/v1",
+					"supportedInputs": ["text"],
+					"cost": {"inputPerMillion": 1, "outputPerMillion": 2, ` + tt.cost + `, "currency": "USD"},
+					"contextWindow": 128000,
+					"maxOutputTokens": 8192,
+					"authEnvNames": ["OPENAI_API_KEY"],
+					"defaultTransport": "sse"
+				}],
+				"imageModels": [{
+					"id": "image-test",
+					"name": "Image Test",
+					"provider": "openai",
+					"api": "openai-images",
+					"baseURL": "https://api.openai.com/v1",
+					"maxWidth": 1024,
+					"maxHeight": 1024,
+					"supportedSizes": ["1024x1024"],
+					"supportedFormats": ["image/png"],
+					"cost": {"unit": "image", "currency": "USD", "values": {"image": 1}},
+					"authEnvNames": ["OPENAI_API_KEY"]
+				}],
+				"embeddingModels": [{
+					"id": "embedding-test",
+					"name": "Embedding Test",
+					"provider": "openai",
+					"api": "openai-embeddings",
+					"baseURL": "https://api.openai.com/v1",
+					"defaultDimensions": 1536,
+					"minDimensions": 1,
+					"maxDimensions": 1536,
+					"maxInputTokens": 8192,
+					"inputCostPerMillion": 0.02,
+					"currency": "USD",
+					"authEnvNames": ["OPENAI_API_KEY"]
+				}]
+			}`))
+			if err == nil {
+				t.Fatal("Decode returned nil error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Decode error = %q, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestWriteValidatesAndOrdersCatalog(t *testing.T) {
 	t.Parallel()
 

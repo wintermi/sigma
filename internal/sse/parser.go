@@ -23,7 +23,8 @@ const (
 var (
 	// ErrStop lets a handler stop parsing without treating the stop as failure.
 	ErrStop = errors.New("sse: stop parsing")
-	// ErrMalformedLine reports an event-stream line that is not field formatted.
+	// ErrMalformedLine is retained for compatibility; colonless field lines are
+	// accepted by Parse and ignored unless they name a supported SSE field.
 	ErrMalformedLine = errors.New("sse: malformed line")
 	// ErrLineTooLarge reports a line exceeding the configured line limit.
 	ErrLineTooLarge = errors.New("sse: line too large")
@@ -174,9 +175,11 @@ func (b *eventBuilder) add(number int, raw []byte, maxEventBytes int) error {
 
 	field, value, ok := strings.Cut(line, ":")
 	if !ok {
-		return &LineError{Line: number, Raw: line, Err: ErrMalformedLine}
+		field = line
+		value = ""
+	} else {
+		value = strings.TrimPrefix(value, " ")
 	}
-	value = strings.TrimPrefix(value, " ")
 
 	b.lines = append(b.lines, Line{
 		Number: number,
@@ -258,21 +261,31 @@ func dispatch(ctx context.Context, builder *eventBuilder, handle Handler) error 
 func readLine(reader *bufio.Reader, maxLineBytes int) ([]byte, error) {
 	var line []byte
 	for {
-		part, err := reader.ReadSlice('\n')
-		line = append(line, part...)
-		if maxLineBytes > 0 && len(line) > maxLineBytes {
-			return nil, ErrLineTooLarge
-		}
-		if errors.Is(err, bufio.ErrBufferFull) {
-			continue
-		}
+		b, err := reader.ReadByte()
 		if err != nil {
 			if errors.Is(err, io.EOF) && len(line) > 0 {
 				return line, nil
 			}
-			return nil, err
+			return nil, fmt.Errorf("sse: read line: %w", err)
 		}
-		return line, nil
+		line = append(line, b)
+		if maxLineBytes > 0 && len(line) > maxLineBytes {
+			return nil, ErrLineTooLarge
+		}
+		switch b {
+		case '\n':
+			return line, nil
+		case '\r':
+			next, err := reader.Peek(1)
+			if err == nil && next[0] == '\n' {
+				_, _ = reader.ReadByte()
+				line = append(line, '\n')
+				if maxLineBytes > 0 && len(line) > maxLineBytes {
+					return nil, ErrLineTooLarge
+				}
+			}
+			return line, nil
+		}
 	}
 }
 

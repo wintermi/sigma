@@ -7,6 +7,8 @@ package sigmatest
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"maps"
 	"slices"
 	"sync"
@@ -23,6 +25,8 @@ const (
 	// TextModelID is the model id returned by TextModel.
 	TextModelID sigma.ModelID = "sigmatest-text"
 )
+
+var errScriptExhausted = errors.New("sigmatest: no scripted response queued")
 
 // Script describes one deterministic provider response.
 //
@@ -110,7 +114,11 @@ func (p *FauxProvider) Stream(ctx context.Context, model sigma.Model, req sigma.
 			<-ctx.Done()
 			return
 		}
-		for _, event := range script.Events {
+		events := script.Events
+		if len(events) == 0 && script.Err == nil {
+			events = synthesizeEvents(script.Final)
+		}
+		for _, event := range events {
 			if !wait(ctx, script.Delay) {
 				return
 			}
@@ -142,7 +150,7 @@ func (p *FauxProvider) nextScript(model sigma.Model, req sigma.Request, opts sig
 	})
 
 	if len(p.scripts) == 0 {
-		return Script{}
+		return Script{Err: errScriptExhausted}
 	}
 	script := p.scripts[0]
 	p.scripts = p.scripts[1:]
@@ -230,6 +238,70 @@ func finalMessage(model sigma.Model, final sigma.AssistantMessage, defaultStop s
 		final.StopReason = defaultStop
 	}
 	return final
+}
+
+func synthesizeEvents(final sigma.AssistantMessage) []sigma.Event {
+	events := []sigma.Event{{Kind: sigma.EventKindStart}}
+	for index, block := range final.Content {
+		contentIndex := index
+		switch block.Type {
+		case sigma.ContentBlockText:
+			events = append(events,
+				sigma.Event{Kind: sigma.EventKindTextStart, ContentIndex: &contentIndex},
+				sigma.Event{Kind: sigma.EventKindTextDelta, ContentIndex: &contentIndex, DeltaText: block.Text, Text: block.Text},
+				sigma.Event{Kind: sigma.EventKindTextEnd, ContentIndex: &contentIndex, Text: block.Text},
+			)
+		case sigma.ContentBlockThinking:
+			events = append(events,
+				sigma.Event{Kind: sigma.EventKindThinkingStart, ContentIndex: &contentIndex},
+				sigma.Event{Kind: sigma.EventKindThinkingDelta, ContentIndex: &contentIndex, DeltaText: block.ThinkingText, Thinking: block.ThinkingText},
+				sigma.Event{Kind: sigma.EventKindThinkingEnd, ContentIndex: &contentIndex, Thinking: block.ThinkingText},
+			)
+		case sigma.ContentBlockToolCall:
+			arguments := toolArgumentsText(block.ToolArguments)
+			events = append(events,
+				sigma.Event{
+					Kind:         sigma.EventKindToolCallStart,
+					ContentIndex: &contentIndex,
+					PartialToolCall: &sigma.PartialToolCall{
+						ID:   block.ToolCallID,
+						Name: block.ToolName,
+					},
+				},
+				sigma.Event{
+					Kind:         sigma.EventKindToolCallDelta,
+					ContentIndex: &contentIndex,
+					PartialToolCall: &sigma.PartialToolCall{
+						ArgumentsDelta: arguments,
+					},
+				},
+				sigma.Event{
+					Kind:         sigma.EventKindToolCallEnd,
+					ContentIndex: &contentIndex,
+					ToolCall: &sigma.ToolCall{
+						ID:                block.ToolCallID,
+						Name:              block.ToolName,
+						Arguments:         cloneAny(block.ToolArguments),
+						ProviderSignature: block.ProviderSignature,
+						ProviderMetadata:  cloneMap(block.ProviderMetadata),
+					},
+				},
+			)
+		case sigma.ContentBlockImage, sigma.ContentBlockDocument:
+		}
+	}
+	return events
+}
+
+func toolArgumentsText(arguments any) string {
+	if arguments == nil {
+		return "{}"
+	}
+	data, err := json.Marshal(arguments)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 func cloneScript(script Script) Script {
@@ -325,6 +397,7 @@ func cloneContent(content []sigma.ContentBlock) []sigma.ContentBlock {
 	for i := range content {
 		content[i].ToolArguments = cloneAny(content[i].ToolArguments)
 		content[i].ProviderMetadata = cloneMap(content[i].ProviderMetadata)
+		content[i].ExtraFields = cloneMap(content[i].ExtraFields)
 	}
 	return content
 }
@@ -343,12 +416,14 @@ func cloneEvent(event sigma.Event) sigma.Event {
 		image := *event.Image
 		image.ToolArguments = cloneAny(image.ToolArguments)
 		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
+		image.ExtraFields = cloneMap(image.ExtraFields)
 		event.Image = &image
 	}
 	if event.PartialImage != nil {
 		image := *event.PartialImage
 		image.ToolArguments = cloneAny(image.ToolArguments)
 		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
+		image.ExtraFields = cloneMap(image.ExtraFields)
 		event.PartialImage = &image
 	}
 	if event.ToolCall != nil {

@@ -1776,6 +1776,60 @@ func TestStreamingParsesChoiceUsage(t *testing.T) {
 	}
 }
 
+func TestStreamingParsesPromptCacheHitTokensFallback(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_cache_hit_tokens":4}}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-cache-hit-usage-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if final.Usage == nil {
+		t.Fatal("final usage was nil")
+	}
+	if got, want := final.Usage.CacheReadInputTokens, 4; got != want {
+		t.Fatalf("cache read tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.InputTokens, 6; got != want {
+		t.Fatalf("input tokens = %d, want %d", got, want)
+	}
+}
+
+func TestStreamingMapsFinishReasonEndToEndTurn(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_end","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_end","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"end"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-finish-end-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonEndTurn; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+}
+
 func TestProviderErrorResponseEndsStreamWithProviderError(t *testing.T) {
 	t.Parallel()
 

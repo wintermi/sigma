@@ -671,6 +671,66 @@ func TestValidateToolCallWithOptionsRejectsInvalidPrimitiveCoercions(t *testing.
 	}
 }
 
+func TestValidateToolCallWithOptionsDoesNotCoerceNullIntoPrimitiveZeroValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema sigma.Schema
+	}{
+		{name: "string", schema: sigma.Schema{"type": "string"}},
+		{name: "number", schema: sigma.Schema{"type": "number"}},
+		{name: "integer", schema: sigma.Schema{"type": "integer"}},
+		{name: "boolean", schema: sigma.Schema{"type": "boolean"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := sigma.ValidateToolCallWithOptions(
+				[]sigma.Tool{{
+					Name: "coerce",
+					InputSchema: sigma.Schema{
+						"type":       "object",
+						"properties": map[string]any{"value": tt.schema},
+					},
+				}},
+				sigma.ToolCall{Name: "coerce", Arguments: map[string]any{"value": nil}},
+				sigma.ToolValidationOptions{CoercePrimitives: true},
+			)
+			if err == nil {
+				t.Fatal("ValidateToolCallWithOptions returned nil error")
+			}
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) {
+				t.Fatalf("error type = %T, want ToolValidationError", err)
+			}
+			if got, want := validationErr.Reason, "wrong primitive type"; got != want {
+				t.Fatalf("reason = %q, want %q", got, want)
+			}
+		})
+	}
+
+	decoded, err := sigma.ValidateToolCallWithOptions(
+		[]sigma.Tool{{
+			Name: "coerce",
+			InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"value": map[string]any{"type": "null"}},
+			},
+		}},
+		sigma.ToolCall{Name: "coerce", Arguments: map[string]any{"value": nil}},
+		sigma.ToolValidationOptions{CoercePrimitives: true},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCallWithOptions returned error for null schema: %v", err)
+	}
+	if got := decoded["value"]; got != nil {
+		t.Fatalf("decoded null = %#v, want nil", got)
+	}
+}
+
 func TestValidateToolCallValidatesComposedSchemas(t *testing.T) {
 	t.Parallel()
 

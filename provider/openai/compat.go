@@ -160,6 +160,7 @@ func conservativeCompletionsCompat() completionsCompat {
 	return completionsCompat{
 		reasoningFormat:                  sigma.OpenAICompletionsReasoningUnsupported,
 		supportsReasoningEffort:          true,
+		supportsStreamingUsage:           true,
 		supportsRequiredToolChoice:       true,
 		supportsJSONSchemaResponseFormat: true,
 		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,

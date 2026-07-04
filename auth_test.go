@@ -241,10 +241,10 @@ func TestChainAuthResolverPrecedence(t *testing.T) {
 
 	credential, err = resolver.Resolve(context.Background(), model, sigma.Options{})
 	if err != nil {
-		t.Fatalf("Resolve(client) returned error: %v", err)
+		t.Fatalf("Resolve(callback) returned error: %v", err)
 	}
-	if got, want := credential.Value, "client-secret"; got != want {
-		t.Fatalf("client credential = %q, want %q", got, want)
+	if got, want := credential.Value, "callback-secret"; got != want {
+		t.Fatalf("callback credential = %q, want %q", got, want)
 	}
 }
 
@@ -265,7 +265,6 @@ func TestChainAuthResolverFallsBackToEnvironmentAndCallbacks(t *testing.T) {
 		t.Fatalf("environment credential = %q, want %q", got, want)
 	}
 
-	clearCredentialEnv(t)
 	callback := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
 		return sigma.Credential{
 			Type:   sigma.CredentialTypeOAuthToken,

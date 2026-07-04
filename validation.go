@@ -353,7 +353,7 @@ func coercePrimitiveByType(value any, typ string) (any, bool) {
 
 func coerceNumber(value any, integer bool) (any, bool) {
 	if value == nil {
-		return json.Number("0"), true
+		return value, false
 	}
 	switch v := value.(type) {
 	case string:
@@ -381,7 +381,7 @@ func coerceNumber(value any, integer bool) (any, bool) {
 
 func coerceBoolean(value any) (any, bool) {
 	if value == nil {
-		return false, true
+		return value, false
 	}
 	switch v := value.(type) {
 	case string:
@@ -411,7 +411,7 @@ func coerceBoolean(value any) (any, bool) {
 
 func coerceString(value any) (any, bool) {
 	if value == nil {
-		return "", true
+		return value, false
 	}
 	switch v := value.(type) {
 	case string:

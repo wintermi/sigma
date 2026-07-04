@@ -230,7 +230,7 @@ func TestGenerateImagesValidatesBeforeNetwork(t *testing.T) {
 		{
 			name: "empty prompt",
 			req:  sigma.ImageRequest{},
-			want: "prompt is required",
+			want: "prompt or inputs are required",
 		},
 		{
 			name: "variation without explicit operation",

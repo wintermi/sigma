@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -193,7 +194,7 @@ func TestGenerateImagesCancellation(t *testing.T) {
 	timer := time.AfterFunc(10*time.Millisecond, cancel)
 	defer timer.Stop()
 
-	response, err := client.GenerateImages(ctx, sigmatest.ImageModel(), sigma.ImageRequest{})
+	response, err := client.GenerateImages(ctx, sigmatest.ImageModel(), sigma.ImageRequest{Prompt: "draw a square"})
 	if err == nil {
 		t.Fatal("GenerateImages returned nil error")
 	}
@@ -205,6 +206,88 @@ func TestGenerateImagesCancellation(t *testing.T) {
 	}
 	if got, want := response.Model, sigmatest.ImageModelID; got != want {
 		t.Fatalf("model = %q, want %q", got, want)
+	}
+}
+
+func TestGenerateImagesValidatesRequestBeforeProviderDispatch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		req  sigma.ImageRequest
+		want string
+	}{
+		{
+			name: "unsupported operation",
+			req:  sigma.ImageRequest{Operation: "upscale", Prompt: "draw"},
+			want: "unsupported image operation",
+		},
+		{
+			name: "negative count",
+			req:  sigma.ImageRequest{Prompt: "draw", Count: -1},
+			want: "count must be non-negative",
+		},
+		{
+			name: "missing prompt and inputs",
+			req:  sigma.ImageRequest{},
+			want: "prompt or inputs are required",
+		},
+		{
+			name: "empty text input",
+			req:  sigma.ImageRequest{Inputs: []sigma.ImageInput{{Type: "text"}}},
+			want: "text is required",
+		},
+		{
+			name: "invalid base64 image input",
+			req:  sigma.ImageRequest{Inputs: []sigma.ImageInput{{Type: "image", MIMEType: "image/png", Source: "base64", Data: "not base64"}}},
+			want: "base64 image data is invalid",
+		},
+		{
+			name: "empty image url",
+			req:  sigma.ImageRequest{Inputs: []sigma.ImageInput{{Type: "image", MIMEType: "image/png", Source: "url"}}},
+			want: "image URL is required",
+		},
+		{
+			name: "text mask",
+			req: sigma.ImageRequest{
+				Prompt: "draw",
+				Mask:   &sigma.ImageInput{Type: "text", Text: "not an image"},
+			},
+			want: "mask must be an image input",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			provider := sigmatest.NewFauxImageProvider(sigmatest.ImageScript{
+				Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageOutputData("image/png", "aW1hZ2U=")}},
+			})
+			registry, err := sigmatest.ImageRegistry(provider)
+			if err != nil {
+				t.Fatalf("ImageRegistry returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+
+			_, err = client.GenerateImages(context.Background(), sigmatest.ImageModel(), tt.req)
+			if err == nil {
+				t.Fatal("GenerateImages returned nil error")
+			}
+			var sigmaErr *sigma.Error
+			if !errors.As(err, &sigmaErr) {
+				t.Fatalf("error type = %T, want *sigma.Error", err)
+			}
+			if got, want := sigmaErr.Code, sigma.ErrorInvalidRequest; got != want {
+				t.Fatalf("error code = %q, want %q", got, want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+			if got := len(provider.Requests()); got != 0 {
+				t.Fatalf("provider request count = %d, want 0", got)
+			}
+		})
 	}
 }
 

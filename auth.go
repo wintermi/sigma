@@ -351,7 +351,7 @@ type ChainAuthResolver struct {
 	ProviderCallbacks map[ProviderID]AuthResolver
 }
 
-// Resolve checks request overrides, the client resolver, environment, then provider callbacks.
+// Resolve checks request overrides, provider callbacks, the client resolver, then environment.
 func (r ChainAuthResolver) Resolve(ctx context.Context, model Model, opts Options) (Credential, error) {
 	resolution, err := r.ResolveAuthResolution(ctx, model, opts)
 	if err != nil {
@@ -360,7 +360,7 @@ func (r ChainAuthResolver) Resolve(ctx context.Context, model Model, opts Option
 	return resolution.Credential, nil
 }
 
-// ResolveAuthResolution checks request overrides, the client resolver, environment, then provider callbacks.
+// ResolveAuthResolution checks request overrides, provider callbacks, the client resolver, then environment.
 func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Model, opts Options) (AuthResolution, error) {
 	if opts.APIKey != "" {
 		credential := Credential{
@@ -374,6 +374,17 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 	var sources []string
 	resolverOptions := opts
 	resolverOptions.AuthResolver = nil
+
+	if callback := r.ProviderCallbacks[model.Provider]; callback != nil {
+		resolution, err := resolveAuthResolution(ctx, model, resolverOptions, callback)
+		if err == nil {
+			return resolution, nil
+		}
+		if !errors.Is(err, ErrCredentialUnavailable) {
+			return AuthResolution{}, err
+		}
+		sources = append(sources, credentialErrorSources(err)...)
+	}
 
 	if r.Client != nil {
 		resolution, err := resolveAuthResolution(ctx, model, resolverOptions, r.Client)
@@ -398,17 +409,6 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 		return AuthResolution{}, err
 	}
 	sources = append(sources, credentialErrorSources(err)...)
-
-	if callback := r.ProviderCallbacks[model.Provider]; callback != nil {
-		resolution, err := resolveAuthResolution(ctx, model, resolverOptions, callback)
-		if err == nil {
-			return resolution, nil
-		}
-		if !errors.Is(err, ErrCredentialUnavailable) {
-			return AuthResolution{}, err
-		}
-		sources = append(sources, credentialErrorSources(err)...)
-	}
 
 	return AuthResolution{}, unavailableCredential(model, sources...)
 }

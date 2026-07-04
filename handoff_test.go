@@ -252,7 +252,9 @@ func TestTransformRequestForModelRepairsToolsAndSynthesizesUnansweredCalls(t *te
 	}
 	assertHandoffChange(t, result.Report, sigma.HandoffChangeToolResultNameRepaired, 1, -1)
 	assertHandoffChange(t, result.Report, sigma.HandoffChangeToolResultSynthesized, 4, -1)
-	assertHandoffChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 5, -1)
+	assertHandoffChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 4, -1)
+	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeToolResultSynthesized, 4, 4)
+	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 4, 5)
 }
 
 func TestTransformRequestForModelConvertsUnsupportedDeveloperRole(t *testing.T) {
@@ -393,4 +395,22 @@ func assertHandoffChange(t *testing.T, report sigma.HandoffReport, kind sigma.Ha
 		return
 	}
 	t.Fatalf("missing handoff change kind=%q messageIndex=%d contentIndex=%d in %#v", kind, messageIndex, contentIndex, report.Changes)
+}
+
+func assertHandoffOutputChange(t *testing.T, report sigma.HandoffReport, kind sigma.HandoffChangeKind, messageIndex int, outputIndex int) {
+	t.Helper()
+
+	for _, change := range report.Changes {
+		if change.Kind != kind || change.MessageIndex != messageIndex {
+			continue
+		}
+		if change.OutputMessageIndex == nil {
+			t.Fatalf("change %q output index = nil, want %d", kind, outputIndex)
+		}
+		if *change.OutputMessageIndex != outputIndex {
+			t.Fatalf("change %q output index = %d, want %d", kind, *change.OutputMessageIndex, outputIndex)
+		}
+		return
+	}
+	t.Fatalf("missing handoff output change kind=%q messageIndex=%d outputIndex=%d in %#v", kind, messageIndex, outputIndex, report.Changes)
 }

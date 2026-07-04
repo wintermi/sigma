@@ -389,6 +389,7 @@ func cloneContentBlocks(blocks []sigma.ContentBlock) []sigma.ContentBlock {
 func cloneContentBlock(block sigma.ContentBlock) sigma.ContentBlock {
 	block.ToolArguments = cloneAny(block.ToolArguments)
 	block.ProviderMetadata = cloneStringAnyMap(block.ProviderMetadata)
+	block.ExtraFields = cloneStringAnyMap(block.ExtraFields)
 	return block
 }
 

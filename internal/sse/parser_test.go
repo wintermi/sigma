@@ -76,6 +76,24 @@ func TestParseAnthropicStyleEventDataIDAndCRLF(t *testing.T) {
 	}
 }
 
+func TestParseSupportsCROnlyLineEndings(t *testing.T) {
+	t.Parallel()
+
+	events, err := collect("event: message\rdata: first\rdata: second\r\r", nil)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if got, want := len(events), 1; got != want {
+		t.Fatalf("event count = %d, want %d", got, want)
+	}
+	if got, want := events[0].Event, "message"; got != want {
+		t.Fatalf("event name = %q, want %q", got, want)
+	}
+	if got, want := events[0].Data, "first\nsecond"; got != want {
+		t.Fatalf("event data = %q, want %q", got, want)
+	}
+}
+
 func TestParseMultilineEmptyDataAndComments(t *testing.T) {
 	t.Parallel()
 
@@ -126,22 +144,24 @@ func TestParseDispatchesFinalFrameWithoutTrailingBlankLine(t *testing.T) {
 	}
 }
 
-func TestParseReportsMalformedLine(t *testing.T) {
+func TestParseAcceptsColonlessFieldLines(t *testing.T) {
 	t.Parallel()
 
-	_, err := collect("data: ok\nthis is not a field\n\n", nil)
-	if err == nil {
-		t.Fatal("Parse returned nil error")
+	events, err := collect("data\nignored\ndata: value\n\n", nil)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
 	}
-	if !errors.Is(err, sse.ErrMalformedLine) {
-		t.Fatalf("Parse error = %v, want ErrMalformedLine", err)
+	if got, want := len(events), 1; got != want {
+		t.Fatalf("event count = %d, want %d", got, want)
 	}
-	var lineErr *sse.LineError
-	if !errors.As(err, &lineErr) {
-		t.Fatalf("Parse error type = %T, want *sse.LineError", err)
+	if got, want := events[0].Data, "\nvalue"; got != want {
+		t.Fatalf("event data = %q, want %q", got, want)
 	}
-	if got, want := lineErr.Line, 2; got != want {
-		t.Fatalf("line error number = %d, want %d", got, want)
+	if got, want := events[0].Lines[0].Field, "data"; got != want {
+		t.Fatalf("colonless field = %q, want %q", got, want)
+	}
+	if got, want := events[0].Lines[1].Field, "ignored"; got != want {
+		t.Fatalf("unknown colonless field = %q, want %q", got, want)
 	}
 }
 

@@ -151,6 +151,58 @@ func TestRequestWithToolsJSONRoundTrip(t *testing.T) {
 	}
 }
 
+func TestContentBlockUnknownKindPreservesExtraFields(t *testing.T) {
+	t.Parallel()
+
+	input := []byte(`{"type":"provider-block","providerID":"abc","nested":{"count":9007199254740993},"items":[1,2]}`)
+	var block sigma.ContentBlock
+	if err := json.Unmarshal(input, &block); err != nil {
+		t.Fatalf("unmarshal content block: %v", err)
+	}
+	if got, want := block.Type, sigma.ContentBlockType("provider-block"); got != want {
+		t.Fatalf("block type = %q, want %q", got, want)
+	}
+	if got, want := block.ExtraFields["providerID"], "abc"; got != want {
+		t.Fatalf("extra providerID = %v, want %v", got, want)
+	}
+	nested, ok := block.ExtraFields["nested"].(map[string]any)
+	if !ok {
+		t.Fatalf("nested extra type = %T, want map", block.ExtraFields["nested"])
+	}
+	if got, want := nested["count"], json.Number("9007199254740993"); got != want {
+		t.Fatalf("nested count = %#v, want %#v", got, want)
+	}
+
+	output, err := json.Marshal(block)
+	if err != nil {
+		t.Fatalf("marshal content block: %v", err)
+	}
+	assertSameJSON(t, output, input)
+}
+
+func TestToolCallArgumentsJSONRoundTripPreservesLargeIntegers(t *testing.T) {
+	t.Parallel()
+
+	input := []byte(`{"role":"assistant","content":[{"type":"tool-call","toolCallID":"call_1","toolName":"lookup","toolArguments":{"id":9007199254740993}}]}`)
+	var message sigma.Message
+	if err := json.Unmarshal(input, &message); err != nil {
+		t.Fatalf("unmarshal message: %v", err)
+	}
+	args, ok := message.Content[0].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("tool arguments type = %T, want map", message.Content[0].ToolArguments)
+	}
+	if got, want := args["id"], json.Number("9007199254740993"); got != want {
+		t.Fatalf("tool argument id = %#v, want %#v", got, want)
+	}
+
+	output, err := json.Marshal(message)
+	if err != nil {
+		t.Fatalf("marshal message: %v", err)
+	}
+	assertSameJSON(t, output, input)
+}
+
 func assertJSONRoundTrip[T any](t *testing.T, value T) T {
 	t.Helper()
 

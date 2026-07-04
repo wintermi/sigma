@@ -68,6 +68,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Text-generation usage now carries provider/model identity, provider raw usage
   payloads, normalized tool-use input tokens, and provider-reported cost when
   available, while keeping Sigma's model-metadata cost estimate separate.
+- Runtime hardening now covers SSE parsing tolerance for colonless fields and
+  CR-only line endings, realistic deterministic fake-provider stream lifecycles
+  with partial-message snapshots, 64-bit-safe persisted tool arguments,
+  stricter null coercion, image request validation, explicit handoff output
+  coordinates, OpenAI-compatible cache-hit usage fallbacks, local/custom
+  streaming-usage defaults, `finish_reason: "end"` mapping, request-scoped
+  provider auth precedence, and non-negative cache-cost catalog validation.
 - Persisted assistant messages can now carry optional usage metadata, and
   `EstimateRequestTokens` plus related helpers provide deterministic
   approximate request token estimates anchored on the latest successful
