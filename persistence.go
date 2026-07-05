@@ -6,11 +6,11 @@
 package sigma
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const (
@@ -32,18 +32,8 @@ func MarshalRequest(req Request) ([]byte, error) {
 // schemas remain open JSON maps because providers may need opaque continuation
 // data that sigma does not interpret.
 func UnmarshalRequest(data []byte) (Request, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	decoder.UseNumber()
-
 	var req Request
-	if err := decoder.Decode(&req); err != nil {
-		return Request{}, invalidRequestError("decode request: %v", err)
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		if err == nil {
-			err = fmt.Errorf("unexpected trailing JSON value")
-		}
+	if err := decodeStrictUseNumber(data, &req); err != nil {
 		return Request{}, invalidRequestError("decode request: %v", err)
 	}
 	if err := ValidateRequest(req); err != nil {
@@ -192,7 +182,7 @@ func validateImageBlock(block ContentBlock) error {
 		if block.Data == "" {
 			return fmt.Errorf("base64 image data is required")
 		}
-		if _, err := base64.StdEncoding.DecodeString(block.Data); err != nil {
+		if err := validateBase64(block.Data); err != nil {
 			return fmt.Errorf("base64 image data is invalid: %w", err)
 		}
 	case "url":
@@ -220,7 +210,7 @@ func validateDocumentBlock(block ContentBlock) error {
 		if block.Data == "" {
 			return fmt.Errorf("base64 document data is required")
 		}
-		if _, err := base64.StdEncoding.DecodeString(block.Data); err != nil {
+		if err := validateBase64(block.Data); err != nil {
 			return fmt.Errorf("base64 document data is invalid: %w", err)
 		}
 	case "url":
@@ -236,6 +226,16 @@ func validateDocumentBlock(block ContentBlock) error {
 			return fmt.Errorf("document source is required")
 		}
 		return fmt.Errorf("unsupported document source %q", block.DocumentSource)
+	}
+	return nil
+}
+
+// validateBase64 checks well-formedness with a streaming decoder so large
+// payloads are not materialized just to be discarded.
+func validateBase64(data string) error {
+	_, err := io.Copy(io.Discard, base64.NewDecoder(base64.StdEncoding, strings.NewReader(data)))
+	if err != nil {
+		return fmt.Errorf("validate base64: %w", err)
 	}
 	return nil
 }

@@ -534,17 +534,11 @@ func textContent(blocks []sigma.ContentBlock) string {
 }
 
 func toolArgumentsString(arguments any) (string, error) {
-	if arguments == nil {
-		return "{}", nil
-	}
-	if text, ok := arguments.(string); ok {
-		return text, nil
-	}
-	data, err := json.Marshal(arguments)
+	text, err := providertext.ToolArgumentsText(arguments)
 	if err != nil {
 		return "", fmt.Errorf("mistral conversations: tool arguments: %w", err)
 	}
-	return string(data), nil
+	return text, nil
 }
 
 func jsonValue(value any) (any, error) {

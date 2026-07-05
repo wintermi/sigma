@@ -270,7 +270,7 @@ func transformMessage(message sigma.Message, ctx messageContext) (sigma.Message,
 			content = append(content, sigma.Text(wrapThinking(block.ThinkingText, ctx.policy)))
 			continue
 		}
-		cloned := cloneContentBlock(block)
+		cloned := block.Clone()
 		if cloned.Type == sigma.ContentBlockToolCall && ctx.compat.NormalizeToolCallID != nil {
 			cloned.ToolCallID = ctx.compat.NormalizeToolCallID(cloned.ToolCallID)
 		}
@@ -381,16 +381,9 @@ func cloneContentBlocks(blocks []sigma.ContentBlock) []sigma.ContentBlock {
 	}
 	cloned := make([]sigma.ContentBlock, len(blocks))
 	for index, block := range blocks {
-		cloned[index] = cloneContentBlock(block)
+		cloned[index] = block.Clone()
 	}
 	return cloned
-}
-
-func cloneContentBlock(block sigma.ContentBlock) sigma.ContentBlock {
-	block.ToolArguments = cloneAny(block.ToolArguments)
-	block.ProviderMetadata = cloneStringAnyMap(block.ProviderMetadata)
-	block.ExtraFields = cloneStringAnyMap(block.ExtraFields)
-	return block
 }
 
 func cloneTool(tool sigma.Tool) sigma.Tool {

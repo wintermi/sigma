@@ -7,7 +7,6 @@ package sigmatest
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"maps"
 	"slices"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/providertext"
 )
 
 const (
@@ -294,14 +294,11 @@ func synthesizeEvents(final sigma.AssistantMessage) []sigma.Event {
 }
 
 func toolArgumentsText(arguments any) string {
-	if arguments == nil {
-		return "{}"
-	}
-	data, err := json.Marshal(arguments)
+	text, err := providertext.ToolArgumentsText(arguments)
 	if err != nil {
 		return ""
 	}
-	return string(data)
+	return text
 }
 
 func cloneScript(script Script) Script {
@@ -395,9 +392,7 @@ func cloneAssistant(message sigma.AssistantMessage) sigma.AssistantMessage {
 func cloneContent(content []sigma.ContentBlock) []sigma.ContentBlock {
 	content = slices.Clone(content)
 	for i := range content {
-		content[i].ToolArguments = cloneAny(content[i].ToolArguments)
-		content[i].ProviderMetadata = cloneMap(content[i].ProviderMetadata)
-		content[i].ExtraFields = cloneMap(content[i].ExtraFields)
+		content[i] = content[i].Clone()
 	}
 	return content
 }
@@ -413,17 +408,11 @@ func cloneEvents(events []sigma.Event) []sigma.Event {
 func cloneEvent(event sigma.Event) sigma.Event {
 	event.ContentIndex = ptrCopy(event.ContentIndex)
 	if event.Image != nil {
-		image := *event.Image
-		image.ToolArguments = cloneAny(image.ToolArguments)
-		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
-		image.ExtraFields = cloneMap(image.ExtraFields)
+		image := event.Image.Clone()
 		event.Image = &image
 	}
 	if event.PartialImage != nil {
-		image := *event.PartialImage
-		image.ToolArguments = cloneAny(image.ToolArguments)
-		image.ProviderMetadata = cloneMap(image.ProviderMetadata)
-		image.ExtraFields = cloneMap(image.ExtraFields)
+		image := event.PartialImage.Clone()
 		event.PartialImage = &image
 	}
 	if event.ToolCall != nil {

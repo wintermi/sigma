@@ -147,7 +147,7 @@ func TransformRequestForModel(target Model, req Request, opts ...HandoffOption) 
 		output.Messages, sourceIndexes = dropUnansweredHandoffToolCalls(output.Messages, sourceIndexes, len(req.Messages), &report)
 	}
 	if compat.assistantAfterToolResultRepair {
-		output.Messages, _ = insertHandoffRepairMessages(output.Messages, sourceIndexes, &report)
+		output.Messages = insertHandoffRepairMessages(output.Messages, sourceIndexes, &report)
 	}
 
 	return HandoffResult{Request: output, Report: report}, nil
@@ -243,7 +243,7 @@ func transformHandoffMessage(message Message, ctx handoffMessageContext) (Messag
 			ctx.report.record(HandoffChangeThinkingConverted, ctx.messageIndex, intPtr(index), "converted thinking block to text")
 			continue
 		}
-		cloned := cloneHandoffContentBlock(block)
+		cloned := block.Clone()
 		if cloned.Type == ContentBlockToolCall && ctx.compat.normalizeToolCallID != nil {
 			cloned.ToolCallID = ctx.compat.normalizeToolCallID(cloned.ToolCallID)
 		}
@@ -375,30 +375,27 @@ func syntheticHandoffToolResult(call ContentBlock) Message {
 	}
 }
 
-func insertHandoffRepairMessages(messages []Message, sourceIndexes []int, report *HandoffReport) ([]Message, []int) {
+func insertHandoffRepairMessages(messages []Message, sourceIndexes []int, report *HandoffReport) []Message {
 	if len(messages) == 0 {
-		return nil, nil
+		return nil
 	}
 	priorChanges := len(report.Changes)
 	indexMap := make([]int, len(messages))
 	repaired := make([]Message, 0, len(messages)+1)
-	repairedSourceIndexes := make([]int, 0, len(messages)+1)
 	for index, message := range messages {
-		sourceIndex := handoffSourceIndex(sourceIndexes, index, index)
 		if (message.Role == RoleUser || message.Role == RoleDeveloper) &&
 			len(repaired) > 0 &&
 			repaired[len(repaired)-1].Role == RoleTool {
+			sourceIndex := handoffSourceIndex(sourceIndexes, index, index)
 			outputIndex := len(repaired)
 			repaired = append(repaired, handoffRepairMessage())
-			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 			report.recordOutput(HandoffChangeRepairMessageInserted, sourceIndex, outputIndex, nil, "inserted assistant bridge before user message")
 		}
 		indexMap[index] = len(repaired)
 		repaired = append(repaired, message)
-		repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 	}
 	remapHandoffOutputIndexes(report, priorChanges, indexMap)
-	return repaired, repairedSourceIndexes
+	return repaired
 }
 
 func handoffSourceIndex(sourceIndexes []int, outputIndex int, fallback int) int {
@@ -535,16 +532,9 @@ func cloneHandoffContentBlocks(blocks []ContentBlock) []ContentBlock {
 	}
 	cloned := make([]ContentBlock, len(blocks))
 	for index, block := range blocks {
-		cloned[index] = cloneHandoffContentBlock(block)
+		cloned[index] = block.Clone()
 	}
 	return cloned
-}
-
-func cloneHandoffContentBlock(block ContentBlock) ContentBlock {
-	block.ToolArguments = cloneHandoffAny(block.ToolArguments)
-	block.ProviderMetadata = cloneHandoffStringAnyMap(block.ProviderMetadata)
-	block.ExtraFields = cloneHandoffStringAnyMap(block.ExtraFields)
-	return block
 }
 
 func cloneHandoffTool(tool Tool) Tool {

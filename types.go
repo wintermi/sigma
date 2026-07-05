@@ -459,6 +459,17 @@ type ContentBlock struct {
 	ExtraFields       map[string]any   `json:"-"`
 }
 
+// Clone returns a deep copy of the block: mutating the copy's tool arguments,
+// provider metadata, or extra fields does not affect the original. New
+// reference-typed fields added to ContentBlock must be cloned here so every
+// package copying blocks picks up the change.
+func (b ContentBlock) Clone() ContentBlock {
+	b.ToolArguments = cloneHandoffAny(b.ToolArguments)
+	b.ProviderMetadata = cloneHandoffStringAnyMap(b.ProviderMetadata)
+	b.ExtraFields = cloneHandoffStringAnyMap(b.ExtraFields)
+	return b
+}
+
 // Usage records provider token accounting for a model turn.
 type Usage struct {
 	InputTokens               int            `json:"inputTokens,omitempty"`

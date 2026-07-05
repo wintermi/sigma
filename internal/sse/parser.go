@@ -319,9 +319,13 @@ func (r *lineReader) peekWindow() ([]byte, error) {
 	buffered := r.reader.Buffered()
 	if buffered == 0 {
 		if _, err := r.reader.Peek(1); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("sse: peek line: %w", err)
 		}
 		buffered = r.reader.Buffered()
 	}
-	return r.reader.Peek(buffered)
+	window, err := r.reader.Peek(buffered)
+	if err != nil {
+		return nil, fmt.Errorf("sse: peek buffered line: %w", err)
+	}
+	return window, nil
 }

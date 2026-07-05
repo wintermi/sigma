@@ -211,7 +211,6 @@ type partialBlock struct {
 	argument   any
 	hasArg     bool
 	hasContent bool
-	started    bool
 }
 
 func newPartialAccumulator() *partialAccumulator {
@@ -296,7 +295,6 @@ func (a *partialAccumulator) block(index int, kind ContentBlockType) *partialBlo
 	if block.kind == "" {
 		block.kind = kind
 	}
-	block.started = true
 	return block
 }
 
@@ -371,8 +369,10 @@ func (b *partialBlock) applyToolPartial(partial *PartialToolCall) {
 	b.hasContent = b.hasContent || b.toolID != "" || b.toolName != "" || b.arguments != "" || b.hasArg
 }
 
+// include reports whether the block belongs in a snapshot; membership in the
+// accumulator already implies the block has started.
 func (b *partialBlock) include(includeStarted bool) bool {
-	return b != nil && (b.hasContent || includeStarted && b.started)
+	return b != nil && (b.hasContent || includeStarted)
 }
 
 func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
@@ -383,7 +383,7 @@ func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 		if b.image != nil {
 			// Deep-clone so consumers mutating the snapshot cannot corrupt
 			// the accumulator's copy shared with later snapshots.
-			return cloneHandoffContentBlock(*b.image)
+			return b.image.Clone()
 		}
 		return ContentBlock{Type: ContentBlockImage}
 	case ContentBlockToolCall:

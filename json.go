@@ -91,8 +91,8 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 		if isKnownContentBlockKey(key) {
 			continue
 		}
-		value, err := decodeRawUseNumber(raw)
-		if err != nil {
+		var value any
+		if err := decodeUseNumber(raw, &value); err != nil {
 			return err
 		}
 		extras[key] = value
@@ -118,17 +118,24 @@ func (c *ToolCall) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func decodeRawUseNumber(raw json.RawMessage) (any, error) {
-	var value any
-	if err := decodeUseNumber(raw, &value); err != nil {
-		return nil, err
-	}
-	return value, nil
-}
-
+// decodeUseNumber decodes a single JSON value with number precision preserved,
+// rejecting trailing data.
 func decodeUseNumber(data []byte, out any) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
+	return decodeSingleValue(decoder, out)
+}
+
+// decodeStrictUseNumber decodes like decodeUseNumber but also rejects unknown
+// struct fields.
+func decodeStrictUseNumber(data []byte, out any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
+	return decodeSingleValue(decoder, out)
+}
+
+func decodeSingleValue(decoder *json.Decoder, out any) error {
 	if err := decoder.Decode(out); err != nil {
 		return err
 	}

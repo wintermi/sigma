@@ -7,7 +7,6 @@ package sigma
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -393,7 +392,7 @@ func validateImageInput(input ImageInput, mask bool) error {
 			if input.Data == "" {
 				return errors.New("base64 image data is required")
 			}
-			if _, err := base64.StdEncoding.DecodeString(input.Data); err != nil {
+			if err := validateBase64(input.Data); err != nil {
 				return errors.New("base64 image data is invalid")
 			}
 		case ImageSourceURL:

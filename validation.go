@@ -6,11 +6,9 @@
 package sigma
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 	"regexp"
@@ -335,6 +333,11 @@ func coerceArray(schema map[string]any, array []any, path string, toolName strin
 }
 
 func coercePrimitiveByType(value any, typ string) (any, bool) {
+	// null is never coerced into another type; enforcing this here covers
+	// every current and future primitive coercer.
+	if value == nil {
+		return value, false
+	}
 	switch typ {
 	case "number":
 		return coerceNumber(value, false)
@@ -352,9 +355,6 @@ func coercePrimitiveByType(value any, typ string) (any, bool) {
 }
 
 func coerceNumber(value any, integer bool) (any, bool) {
-	if value == nil {
-		return value, false
-	}
 	switch v := value.(type) {
 	case string:
 		trimmed := strings.TrimSpace(v)
@@ -380,9 +380,6 @@ func coerceNumber(value any, integer bool) (any, bool) {
 }
 
 func coerceBoolean(value any) (any, bool) {
-	if value == nil {
-		return value, false
-	}
 	switch v := value.(type) {
 	case string:
 		switch v {
@@ -410,9 +407,6 @@ func coerceBoolean(value any) (any, bool) {
 }
 
 func coerceString(value any) (any, bool) {
-	if value == nil {
-		return value, false
-	}
 	switch v := value.(type) {
 	case string:
 		return value, false
@@ -505,9 +499,9 @@ func decodeJSONValue(input any) (any, error) {
 	var data []byte
 	switch v := input.(type) {
 	case json.RawMessage:
-		data = append([]byte(nil), v...)
+		data = v
 	case []byte:
-		data = append([]byte(nil), v...)
+		data = v
 	case string:
 		data = []byte(v)
 	default:
@@ -517,15 +511,9 @@ func decodeJSONValue(input any) (any, error) {
 			return nil, err
 		}
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-
 	var value any
-	if err := decoder.Decode(&value); err != nil {
+	if err := decodeUseNumber(data, &value); err != nil {
 		return nil, err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("JSON value must not contain trailing data")
 	}
 	return value, nil
 }

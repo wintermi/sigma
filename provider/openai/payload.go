@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/providertext"
 	"github.com/wintermi/sigma/internal/transform"
 )
 
@@ -705,17 +706,11 @@ func unsupportedProviderToolError(model sigma.Model, tool sigma.Tool) error {
 }
 
 func toolArgumentsString(arguments any) (string, error) {
-	if arguments == nil {
-		return "{}", nil
-	}
-	if text, ok := arguments.(string); ok {
-		return text, nil
-	}
-	data, err := json.Marshal(arguments)
+	text, err := providertext.ToolArgumentsText(arguments)
 	if err != nil {
 		return "", fmt.Errorf("openai completions: tool arguments: %w", err)
 	}
-	return string(data), nil
+	return text, nil
 }
 
 func jsonValue(value any) (any, error) {
