@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/sigmatest"
 )
 
 func TestCredentialFormattingRedactsValue(t *testing.T) {
@@ -354,5 +355,114 @@ func clearCredentialEnv(t *testing.T) {
 		"XIAOMI_API_KEY",
 	} {
 		t.Setenv(name, "")
+	}
+}
+
+func TestChainAuthResolverDefaultCallbacksResolveAfterClient(t *testing.T) {
+	clearCredentialEnv(t)
+
+	model := sigma.Model{ID: "gpt-test", Provider: sigma.ProviderOpenAI}
+	clientResolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{
+			Type:   sigma.CredentialTypeAPIKey,
+			Value:  "client-secret",
+			Source: "client:test",
+		}, nil
+	})
+	defaultCallback := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{
+			Type:   sigma.CredentialTypeOAuthToken,
+			Value:  "default-callback-secret",
+			Source: "provider:test",
+		}, nil
+	})
+	resolver := sigma.ChainAuthResolver{
+		Client: clientResolver,
+		DefaultProviderCallbacks: map[sigma.ProviderID]sigma.AuthResolver{
+			sigma.ProviderOpenAI: defaultCallback,
+		},
+	}
+
+	credential, err := resolver.Resolve(context.Background(), model, sigma.Options{})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, "client-secret"; got != want {
+		t.Fatalf("credential = %q, want %q (default callbacks must not outrank the client resolver)", got, want)
+	}
+
+	missingClient := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{}, sigma.ErrCredentialUnavailable
+	})
+	credential, err = (sigma.ChainAuthResolver{
+		Client: missingClient,
+		DefaultProviderCallbacks: map[sigma.ProviderID]sigma.AuthResolver{
+			sigma.ProviderOpenAI: defaultCallback,
+		},
+	}).Resolve(context.Background(), model, sigma.Options{})
+	if err != nil {
+		t.Fatalf("Resolve(fallback) returned error: %v", err)
+	}
+	if got, want := credential.Value, "default-callback-secret"; got != want {
+		t.Fatalf("fallback credential = %q, want %q", got, want)
+	}
+}
+
+func TestClientDefaultProviderCallbackDoesNotOverrideClientResolver(t *testing.T) {
+	clearCredentialEnv(t)
+
+	script := sigmatest.Script{
+		Final: sigma.AssistantMessage{
+			Content:    []sigma.ContentBlock{sigma.Text("ok")},
+			StopReason: sigma.StopReasonEndTurn,
+		},
+	}
+	provider := sigmatest.NewFauxProvider(script, script)
+	registry, err := sigmatest.Registry(provider)
+	if err != nil {
+		t.Fatalf("sigmatest.Registry returned error: %v", err)
+	}
+	callback := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "callback-secret", Source: "provider:test"}, nil
+	})
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithAuthResolver(sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+			return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "client-secret", Source: "client:test"}, nil
+		})),
+		sigma.WithDefaultOptions(sigma.WithProviderAuthResolver(sigmatest.ProviderID, callback)),
+	)
+
+	model := sigmatest.TextModel()
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}
+	if _, err := client.Complete(context.Background(), model, req); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	capture, ok := provider.LastRequest()
+	if !ok {
+		t.Fatal("LastRequest returned no request")
+	}
+	credential, err := capture.Options.AuthResolver.Resolve(context.Background(), model, capture.Options)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, "client-secret"; got != want {
+		t.Fatalf("credential = %q, want %q (client-default callback outranked WithAuthResolver)", got, want)
+	}
+
+	// A request-scoped callback still takes precedence over the client resolver.
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithProviderAuthResolver(sigmatest.ProviderID, callback)); err != nil {
+		t.Fatalf("Complete(request-scoped) returned error: %v", err)
+	}
+	capture, ok = provider.LastRequest()
+	if !ok {
+		t.Fatal("LastRequest returned no request")
+	}
+	credential, err = capture.Options.AuthResolver.Resolve(context.Background(), model, capture.Options)
+	if err != nil {
+		t.Fatalf("Resolve(request-scoped) returned error: %v", err)
+	}
+	if got, want := credential.Value, "callback-secret"; got != want {
+		t.Fatalf("request-scoped credential = %q, want %q", got, want)
 	}
 }

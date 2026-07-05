@@ -7,6 +7,7 @@ package sigma_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -250,5 +251,50 @@ func assertSameJSON(t *testing.T, got []byte, want []byte) {
 
 	if string(gotNormalized) != string(wantNormalized) {
 		t.Fatalf("json changed after round trip:\ngot  %s\nwant %s", gotNormalized, wantNormalized)
+	}
+}
+
+func TestContentBlockMarshalPreservesLargeIntegersAlongsideExtraFields(t *testing.T) {
+	t.Parallel()
+
+	input := []byte(`{"type":"tool-call","toolCallID":"c1","toolName":"lookup","toolArguments":{"id":9007199254740993},"vendorTag":"x"}`)
+	var block sigma.ContentBlock
+	if err := json.Unmarshal(input, &block); err != nil {
+		t.Fatalf("unmarshal content block: %v", err)
+	}
+	if got, want := block.ExtraFields["vendorTag"], "x"; got != want {
+		t.Fatalf("extra vendorTag = %v, want %v", got, want)
+	}
+
+	output, err := json.Marshal(block)
+	if err != nil {
+		t.Fatalf("marshal content block: %v", err)
+	}
+	if !strings.Contains(string(output), "9007199254740993") {
+		t.Fatalf("marshal lost 64-bit precision: %s", output)
+	}
+	assertSameJSON(t, output, input)
+}
+
+func TestContentBlockUnmarshalTreatsCaseVariantKeysAsKnown(t *testing.T) {
+	t.Parallel()
+
+	var block sigma.ContentBlock
+	if err := json.Unmarshal([]byte(`{"type":"text","Text":"hi"}`), &block); err != nil {
+		t.Fatalf("unmarshal content block: %v", err)
+	}
+	if got, want := block.Text, "hi"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if len(block.ExtraFields) != 0 {
+		t.Fatalf("extra fields = %#v, want none", block.ExtraFields)
+	}
+
+	output, err := json.Marshal(block)
+	if err != nil {
+		t.Fatalf("marshal content block: %v", err)
+	}
+	if strings.Contains(string(output), `"Text"`) {
+		t.Fatalf("marshal emitted duplicate case-variant key: %s", output)
 	}
 }

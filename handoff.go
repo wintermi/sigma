@@ -305,6 +305,8 @@ func dropUnansweredHandoffToolCalls(messages []Message, sourceIndexes []int, end
 	if len(messages) == 0 {
 		return nil, nil
 	}
+	priorChanges := len(report.Changes)
+	indexMap := make([]int, len(messages))
 	repaired := make([]Message, 0, len(messages))
 	repairedSourceIndexes := make([]int, 0, len(messages))
 	var pending []ContentBlock
@@ -327,25 +329,20 @@ func dropUnansweredHandoffToolCalls(messages []Message, sourceIndexes []int, end
 		switch message.Role {
 		case RoleAssistant:
 			insertMissing(sourceIndex)
-			repaired = append(repaired, message)
-			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 			pending = handoffAssistantToolCalls(message)
 		case RoleUser, RoleDeveloper:
 			insertMissing(sourceIndex)
-			repaired = append(repaired, message)
-			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 		case RoleTool:
 			if hasPendingHandoffToolCall(pending, message.ToolCallID) {
 				answered[message.ToolCallID] = struct{}{}
 			}
-			repaired = append(repaired, message)
-			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
-		default:
-			repaired = append(repaired, message)
-			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 		}
+		indexMap[index] = len(repaired)
+		repaired = append(repaired, message)
+		repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 	}
 	insertMissing(endSourceIndex)
+	remapHandoffOutputIndexes(report, priorChanges, indexMap)
 	return repaired, repairedSourceIndexes
 }
 
@@ -382,6 +379,8 @@ func insertHandoffRepairMessages(messages []Message, sourceIndexes []int, report
 	if len(messages) == 0 {
 		return nil, nil
 	}
+	priorChanges := len(report.Changes)
+	indexMap := make([]int, len(messages))
 	repaired := make([]Message, 0, len(messages)+1)
 	repairedSourceIndexes := make([]int, 0, len(messages)+1)
 	for index, message := range messages {
@@ -394,9 +393,11 @@ func insertHandoffRepairMessages(messages []Message, sourceIndexes []int, report
 			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 			report.recordOutput(HandoffChangeRepairMessageInserted, sourceIndex, outputIndex, nil, "inserted assistant bridge before user message")
 		}
+		indexMap[index] = len(repaired)
 		repaired = append(repaired, message)
 		repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 	}
+	remapHandoffOutputIndexes(report, priorChanges, indexMap)
 	return repaired, repairedSourceIndexes
 }
 
@@ -405,6 +406,22 @@ func handoffSourceIndex(sourceIndexes []int, outputIndex int, fallback int) int 
 		return sourceIndexes[outputIndex]
 	}
 	return fallback
+}
+
+// remapHandoffOutputIndexes rewrites OutputMessageIndex values recorded before
+// a rebuild pass so they keep pointing at the same messages after the pass
+// inserted synthetic messages. indexMap maps each pre-pass output position to
+// its post-pass position; only the first priorChanges entries predate the pass.
+func remapHandoffOutputIndexes(report *HandoffReport, priorChanges int, indexMap []int) {
+	for i := range min(priorChanges, len(report.Changes)) {
+		change := &report.Changes[i]
+		if change.OutputMessageIndex == nil {
+			continue
+		}
+		if old := *change.OutputMessageIndex; old >= 0 && old < len(indexMap) {
+			change.OutputMessageIndex = intPtr(indexMap[old])
+		}
+	}
 }
 
 func isHandoffClientToolCall(block ContentBlock) bool {

@@ -11,26 +11,42 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
+	"strings"
 )
 
-var contentBlockJSONKeys = map[string]struct{}{
-	"type":              {},
-	"text":              {},
-	"thinking":          {},
-	"signature":         {},
-	"redacted":          {},
-	"mimeType":          {},
-	"imageSource":       {},
-	"documentSource":    {},
-	"filename":          {},
-	"fileID":            {},
-	"data":              {},
-	"url":               {},
-	"toolCallID":        {},
-	"toolName":          {},
-	"toolArguments":     {},
-	"providerSignature": {},
-	"providerMetadata":  {},
+// contentBlockJSONKeys is derived from ContentBlock's json struct tags so the
+// known-key set cannot drift when fields are added to the struct.
+var contentBlockJSONKeys = contentBlockKnownJSONKeys()
+
+func contentBlockKnownJSONKeys() map[string]struct{} {
+	blockType := reflect.TypeFor[ContentBlock]()
+	keys := make(map[string]struct{}, blockType.NumField())
+	for field := range blockType.Fields() {
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+		if name == "-" {
+			continue
+		}
+		if name == "" {
+			name = field.Name
+		}
+		keys[name] = struct{}{}
+	}
+	return keys
+}
+
+// isKnownContentBlockKey matches encoding/json field resolution: an exact tag
+// match or a case-insensitive fallback both bind to the struct field.
+func isKnownContentBlockKey(key string) bool {
+	if _, known := contentBlockJSONKeys[key]; known {
+		return true
+	}
+	for known := range contentBlockJSONKeys {
+		if strings.EqualFold(known, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b ContentBlock) MarshalJSON() ([]byte, error) {
@@ -44,13 +60,14 @@ func (b ContentBlock) MarshalJSON() ([]byte, error) {
 	}
 
 	var fields map[string]any
-	if err := json.Unmarshal(data, &fields); err != nil {
+	if err := decodeUseNumber(data, &fields); err != nil {
 		return nil, err
 	}
 	for key, value := range b.ExtraFields {
-		if _, exists := fields[key]; !exists {
-			fields[key] = value
+		if _, exists := fields[key]; exists || isKnownContentBlockKey(key) {
+			continue
 		}
+		fields[key] = value
 	}
 	return json.Marshal(fields)
 }
@@ -71,7 +88,7 @@ func (b *ContentBlock) UnmarshalJSON(data []byte) error {
 	}
 	extras := make(map[string]any)
 	for key, raw := range fields {
-		if _, known := contentBlockJSONKeys[key]; known {
+		if isKnownContentBlockKey(key) {
 			continue
 		}
 		value, err := decodeRawUseNumber(raw)

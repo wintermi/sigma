@@ -98,7 +98,7 @@ func Parse(ctx context.Context, r io.Reader, handle Handler, opts ...Option) err
 		opt(&cfg)
 	}
 
-	reader := bufio.NewReader(r)
+	reader := &lineReader{reader: bufio.NewReader(r)}
 	builder := eventBuilder{}
 	lineNumber := 0
 
@@ -107,7 +107,7 @@ func Parse(ctx context.Context, r io.Reader, handle Handler, opts ...Option) err
 			return err
 		}
 
-		raw, err := readLine(reader, cfg.maxLineBytes)
+		line, err := reader.next(cfg.maxLineBytes)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				_, err := dispatchFrame(ctx, &builder, handle)
@@ -117,7 +117,6 @@ func Parse(ctx context.Context, r io.Reader, handle Handler, opts ...Option) err
 		}
 		lineNumber++
 
-		line := trimLineEnding(raw)
 		if len(line) == 0 {
 			stop, err := dispatchFrame(ctx, &builder, handle)
 			if err != nil {
@@ -258,38 +257,71 @@ func dispatch(ctx context.Context, builder *eventBuilder, handle Handler) error 
 	return nil
 }
 
-func readLine(reader *bufio.Reader, maxLineBytes int) ([]byte, error) {
+// lineReader splits a stream into lines terminated by '\n', "\r\n", or a bare
+// '\r', returning line content without the terminator.
+type lineReader struct {
+	reader *bufio.Reader
+	skipLF bool
+}
+
+// next returns the next line, scanning the buffered window in bulk rather than
+// byte-at-a-time. A bare '\r' completes the line immediately — the possible
+// '\n' half of a CRLF split across reads is consumed lazily on the following
+// call — so a CR-terminated event is dispatched even while the stream idles.
+func (r *lineReader) next(maxLineBytes int) ([]byte, error) {
 	var line []byte
 	for {
-		b, err := reader.ReadByte()
+		window, err := r.peekWindow()
 		if err != nil {
 			if errors.Is(err, io.EOF) && len(line) > 0 {
 				return line, nil
 			}
 			return nil, fmt.Errorf("sse: read line: %w", err)
 		}
-		line = append(line, b)
+		if r.skipLF {
+			r.skipLF = false
+			if window[0] == '\n' {
+				_, _ = r.reader.Discard(1)
+				continue
+			}
+		}
+		terminator := bytes.IndexAny(window, "\r\n")
+		if terminator < 0 {
+			line = append(line, window...)
+			if maxLineBytes > 0 && len(line) > maxLineBytes {
+				return nil, ErrLineTooLarge
+			}
+			_, _ = r.reader.Discard(len(window))
+			continue
+		}
+		line = append(line, window[:terminator]...)
 		if maxLineBytes > 0 && len(line) > maxLineBytes {
 			return nil, ErrLineTooLarge
 		}
-		switch b {
-		case '\n':
-			return line, nil
-		case '\r':
-			next, err := reader.Peek(1)
-			if err == nil && next[0] == '\n' {
-				_, _ = reader.ReadByte()
-				line = append(line, '\n')
-				if maxLineBytes > 0 && len(line) > maxLineBytes {
-					return nil, ErrLineTooLarge
+		discard := terminator + 1
+		if window[terminator] == '\r' {
+			if terminator+1 < len(window) {
+				if window[terminator+1] == '\n' {
+					discard++
 				}
+			} else {
+				r.skipLF = true
 			}
-			return line, nil
 		}
+		_, _ = r.reader.Discard(discard)
+		return line, nil
 	}
 }
 
-func trimLineEnding(line []byte) []byte {
-	line = bytes.TrimSuffix(line, []byte{'\n'})
-	return bytes.TrimSuffix(line, []byte{'\r'})
+// peekWindow returns the buffered bytes, blocking only when the buffer is
+// empty and more input is needed.
+func (r *lineReader) peekWindow() ([]byte, error) {
+	buffered := r.reader.Buffered()
+	if buffered == 0 {
+		if _, err := r.reader.Peek(1); err != nil {
+			return nil, err
+		}
+		buffered = r.reader.Buffered()
+	}
+	return r.reader.Peek(buffered)
 }

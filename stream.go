@@ -125,8 +125,10 @@ func (w *streamWriter) Emit(ctx context.Context, event Event) error {
 		}
 	}
 	w.partial.apply(event)
-	if partial, ok := w.partial.snapshot(true); ok {
-		event.PartialMessage = &partial
+	if event.PartialMessage == nil {
+		if partial, ok := w.partial.snapshot(true, false); ok {
+			event.PartialMessage = &partial
+		}
 	}
 	if err := mapStreamStateError(w.producer.Emit(ctx, event)); err != nil {
 		return err
@@ -311,11 +313,11 @@ func (a *partialAccumulator) cancelTerminal(err error) streamstate.Terminal[Even
 }
 
 func (a *partialAccumulator) final() AssistantMessage {
-	message, _ := a.snapshot(false)
+	message, _ := a.snapshot(false, true)
 	return message
 }
 
-func (a *partialAccumulator) snapshot(includeStarted bool) (AssistantMessage, bool) {
+func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool) (AssistantMessage, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -334,7 +336,7 @@ func (a *partialAccumulator) snapshot(includeStarted bool) (AssistantMessage, bo
 	sort.Ints(indexes)
 	content := make([]ContentBlock, 0, len(indexes))
 	for _, index := range indexes {
-		content = append(content, a.blocks[index].contentBlock())
+		content = append(content, a.blocks[index].contentBlock(decodeArguments))
 	}
 	return AssistantMessage{Content: content}, true
 }
@@ -373,32 +375,40 @@ func (b *partialBlock) include(includeStarted bool) bool {
 	return b != nil && (b.hasContent || includeStarted && b.started)
 }
 
-func (b *partialBlock) contentBlock() ContentBlock {
+func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 	switch b.kind {
 	case ContentBlockThinking:
 		return Thinking(b.thinking, "")
 	case ContentBlockImage:
 		if b.image != nil {
-			return *b.image
+			// Deep-clone so consumers mutating the snapshot cannot corrupt
+			// the accumulator's copy shared with later snapshots.
+			return cloneHandoffContentBlock(*b.image)
 		}
 		return ContentBlock{Type: ContentBlockImage}
 	case ContentBlockToolCall:
-		return ToolCallBlock(b.toolID, b.toolName, b.toolArguments())
+		return ToolCallBlock(b.toolID, b.toolName, b.toolArguments(decodeArguments))
 	default:
 		return Text(b.text)
 	}
 }
 
-func (b *partialBlock) toolArguments() any {
+func (b *partialBlock) toolArguments(decode bool) any {
 	if b.hasArg {
-		return b.argument
+		return cloneHandoffAny(b.argument)
 	}
 	if b.arguments == "" {
 		return map[string]any{}
 	}
-	var decoded any
-	if err := json.Unmarshal([]byte(b.arguments), &decoded); err == nil {
-		return decoded
+	// Per-event snapshots return the accumulated arguments text as-is;
+	// decoding it on every delta would re-parse the whole buffer each time.
+	// The terminal snapshot decodes once so an aborted stream's final
+	// message still carries structured arguments.
+	if decode {
+		var decoded any
+		if err := json.Unmarshal([]byte(b.arguments), &decoded); err == nil {
+			return decoded
+		}
 	}
 	return b.arguments
 }

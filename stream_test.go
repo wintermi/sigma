@@ -594,3 +594,90 @@ func receiveEvent(t *testing.T, stream *sigma.Stream) sigma.Event {
 		return sigma.Event{}
 	}
 }
+
+func TestStreamEmitPreservesProviderPartialMessage(t *testing.T) {
+	t.Parallel()
+
+	stream, writer := sigma.NewStream(context.Background())
+	custom := &sigma.AssistantMessage{
+		Content: []sigma.ContentBlock{sigma.Text("provider partial")},
+	}
+	if err := writer.Emit(context.Background(), sigma.Event{
+		Kind:           sigma.EventKindTextDelta,
+		DeltaText:      "hi",
+		PartialMessage: custom,
+	}); err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+
+	event, ok := <-stream.Events()
+	if !ok {
+		t.Fatal("stream closed before event")
+	}
+	if event.PartialMessage == nil {
+		t.Fatal("partial message = nil, want provider-set partial")
+	}
+	if got, want := event.PartialMessage.Content[0].Text, "provider partial"; got != want {
+		t.Fatalf("partial text = %q, want %q (Emit must not overwrite a provider-set partial)", got, want)
+	}
+	stream.Close()
+}
+
+func TestStreamPartialSnapshotDoesNotAliasAccumulatorState(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, writer := sigma.NewStream(ctx)
+	writeErr := make(chan error, 1)
+	go func() {
+		if err := writer.Emit(context.Background(), sigma.Event{
+			Kind: sigma.EventKindToolCallEnd,
+			ToolCall: &sigma.ToolCall{
+				ID:        "call_1",
+				Name:      "lookup",
+				Arguments: map[string]any{"city": "Melbourne"},
+			},
+		}); err != nil {
+			writeErr <- err
+			return
+		}
+		if err := writer.Emit(context.Background(), sigma.Event{
+			Kind:      sigma.EventKindTextDelta,
+			DeltaText: "done",
+		}); err != nil {
+			writeErr <- err
+			return
+		}
+		writeErr <- nil
+		cancel()
+	}()
+
+	// Mutate the snapshot a consumer received; the aborted final built from
+	// the accumulator must not observe the mutation.
+	for event := range stream.Events() {
+		if event.PartialMessage == nil {
+			continue
+		}
+		for _, block := range event.PartialMessage.Content {
+			if args, ok := block.ToolArguments.(map[string]any); ok {
+				args["city"] = "corrupted"
+			}
+		}
+	}
+	if err := receiveErr(t, writeErr); err != nil {
+		t.Fatalf("writer returned error: %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("Final returned no message")
+	}
+	for _, block := range final.Content {
+		if block.Type != sigma.ContentBlockToolCall {
+			continue
+		}
+		args := block.ToolArguments.(map[string]any)
+		if got, want := args["city"], "Melbourne"; got != want {
+			t.Fatalf("final tool city = %v, want %v (snapshot aliased accumulator state)", got, want)
+		}
+	}
+}

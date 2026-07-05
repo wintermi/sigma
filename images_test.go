@@ -325,3 +325,30 @@ func TestCollectImagesWithCanceledContextReturnsPartialFinalImages(t *testing.T)
 		t.Fatalf("image data = %q, want %q", got, want)
 	}
 }
+
+func TestGenerateImagesAcceptsURLInputWithoutMIMEType(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxImageProvider(sigmatest.ImageScript{
+		Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageOutputData("image/png", "aW1hZ2U=")}},
+	})
+	registry, err := sigmatest.ImageRegistry(provider)
+	if err != nil {
+		t.Fatalf("ImageRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	// Providers construct URL outputs without a MIME type, so feeding a
+	// generated image back as an edit input must pass validation.
+	req := sigma.ImageRequest{
+		Operation: sigma.ImageOperationEdit,
+		Prompt:    "add a red border",
+		Inputs:    []sigma.ImageInput{sigma.ImageOutputURL("", "https://example.test/generated.png")},
+	}
+	if _, err := client.GenerateImages(context.Background(), sigmatest.ImageModel(), req); err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	if got := len(provider.Requests()); got != 1 {
+		t.Fatalf("provider request count = %d, want 1", got)
+	}
+}

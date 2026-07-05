@@ -151,7 +151,11 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.supportsStreamingUsage = true
 		compat.vercelAIGatewayRouting = &sigma.VercelAIGatewayRoutingPreference{}
 	case isLocalHost(host):
-		return compat
+		compat.supportsStreamingUsage = true
+	default:
+		// Unknown custom endpoints default to requesting streaming usage;
+		// known providers keep their explicit per-branch settings.
+		compat.supportsStreamingUsage = true
 	}
 	return compat
 }
@@ -160,7 +164,6 @@ func conservativeCompletionsCompat() completionsCompat {
 	return completionsCompat{
 		reasoningFormat:                  sigma.OpenAICompletionsReasoningUnsupported,
 		supportsReasoningEffort:          true,
-		supportsStreamingUsage:           true,
 		supportsRequiredToolChoice:       true,
 		supportsJSONSchemaResponseFormat: true,
 		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,

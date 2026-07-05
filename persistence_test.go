@@ -175,22 +175,32 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 func TestUnmarshalRequestRejectsUnknownFields(t *testing.T) {
 	t.Parallel()
 
-	tests := []string{
-		`{"messages":[],"schemaVersion":1}`,
-		`{"messages":[{"role":"user","content":[{"type":"text","text":"hello","unexpected":true}]}]}`,
+	_, err := sigma.UnmarshalRequest([]byte(`{"messages":[],"schemaVersion":1}`))
+	if err == nil {
+		t.Fatal("UnmarshalRequest returned nil error")
+	}
+	assertInvalidRequestError(t, err, "unknown field")
+}
+
+func TestUnmarshalRequestRoundTripsContentBlockExtraFields(t *testing.T) {
+	t.Parallel()
+
+	input := `{"messages":[{"role":"user","content":[{"type":"text","text":"hello","unexpected":true}]}]}`
+	req, err := sigma.UnmarshalRequest([]byte(input))
+	if err != nil {
+		t.Fatalf("UnmarshalRequest returned error: %v", err)
+	}
+	block := req.Messages[0].Content[0]
+	if got, want := block.ExtraFields["unexpected"], true; got != want {
+		t.Fatalf("extra field = %v, want %v", got, want)
 	}
 
-	for _, input := range tests {
-		input := input
-		t.Run(input, func(t *testing.T) {
-			t.Parallel()
-
-			_, err := sigma.UnmarshalRequest([]byte(input))
-			if err == nil {
-				t.Fatal("UnmarshalRequest returned nil error")
-			}
-			assertInvalidRequestError(t, err, "unknown field")
-		})
+	data, err := sigma.MarshalRequest(req)
+	if err != nil {
+		t.Fatalf("MarshalRequest returned error: %v", err)
+	}
+	if !strings.Contains(string(data), `"unexpected":true`) {
+		t.Fatalf("marshaled request lost extra field: %s", data)
 	}
 }
 

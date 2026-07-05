@@ -135,10 +135,6 @@ func validateContentBlock(role Role, block ContentBlock, messageIndex int, conte
 		}
 		return invalidRequestError("message %d content %d: role %q cannot contain %q blocks", messageIndex, contentIndex, role, block.Type)
 	}
-	if len(block.ExtraFields) > 0 {
-		return invalidRequestError("message %d content %d: unknown field in content block", messageIndex, contentIndex)
-	}
-
 	switch block.Type {
 	case ContentBlockText:
 		if block.Text == "" {

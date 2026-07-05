@@ -345,13 +345,22 @@ func (r EnvironmentAuthResolver) Resolve(_ context.Context, model Model, _ Optio
 }
 
 // ChainAuthResolver resolves credentials through sigma's standard precedence.
+//
+// ProviderCallbacks holds request-scoped provider callbacks and takes
+// precedence over the client resolver. DefaultProviderCallbacks holds
+// callbacks installed as client or model defaults; they resolve after the
+// client resolver and environment, preserving their pre-request-scoped
+// position so an explicit client resolver keeps winning over ambient
+// defaults.
 type ChainAuthResolver struct {
-	Client            AuthResolver
-	Environment       AuthResolver
-	ProviderCallbacks map[ProviderID]AuthResolver
+	Client                   AuthResolver
+	Environment              AuthResolver
+	ProviderCallbacks        map[ProviderID]AuthResolver
+	DefaultProviderCallbacks map[ProviderID]AuthResolver
 }
 
-// Resolve checks request overrides, provider callbacks, the client resolver, then environment.
+// Resolve checks request overrides, request-scoped provider callbacks, the
+// client resolver, environment, then default provider callbacks.
 func (r ChainAuthResolver) Resolve(ctx context.Context, model Model, opts Options) (Credential, error) {
 	resolution, err := r.ResolveAuthResolution(ctx, model, opts)
 	if err != nil {
@@ -360,7 +369,9 @@ func (r ChainAuthResolver) Resolve(ctx context.Context, model Model, opts Option
 	return resolution.Credential, nil
 }
 
-// ResolveAuthResolution checks request overrides, provider callbacks, the client resolver, then environment.
+// ResolveAuthResolution checks request overrides, request-scoped provider
+// callbacks, the client resolver, environment, then default provider
+// callbacks.
 func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Model, opts Options) (AuthResolution, error) {
 	if opts.APIKey != "" {
 		credential := Credential{
@@ -409,6 +420,17 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 		return AuthResolution{}, err
 	}
 	sources = append(sources, credentialErrorSources(err)...)
+
+	if callback := r.DefaultProviderCallbacks[model.Provider]; callback != nil {
+		resolution, err := resolveAuthResolution(ctx, model, resolverOptions, callback)
+		if err == nil {
+			return resolution, nil
+		}
+		if !errors.Is(err, ErrCredentialUnavailable) {
+			return AuthResolution{}, err
+		}
+		sources = append(sources, credentialErrorSources(err)...)
+	}
 
 	return AuthResolution{}, unavailableCredential(model, sources...)
 }

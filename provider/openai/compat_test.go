@@ -1296,3 +1296,32 @@ func compatIntPtr(value int) *int {
 func boolPtr(value bool) *bool {
 	return &value
 }
+
+func TestOpenAICompletionsCompatStreamingUsageDefaultsByEndpoint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		provider sigma.ProviderID
+		baseURL  string
+		want     bool
+	}{
+		{name: "unknown custom endpoint", provider: sigma.ProviderCustom, baseURL: "https://llm.example.test/v1", want: true},
+		{name: "local endpoint", provider: sigma.ProviderCustom, baseURL: "http://localhost:11434/v1", want: true},
+		{name: "deepseek", provider: sigma.ProviderDeepSeek, baseURL: "https://api.deepseek.com/v1", want: false},
+		{name: "together", provider: sigma.ProviderTogether, baseURL: "https://api.together.ai/v1", want: false},
+		{name: "cerebras", provider: sigma.ProviderCerebras, baseURL: "https://api.cerebras.ai/v1", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{ID: "m", Provider: tt.provider, API: sigma.APIOpenAICompletions}
+			compat := openAICompletionsCompat(model, tt.baseURL)
+			if got := compat.supportsStreamingUsage; got != tt.want {
+				t.Fatalf("supportsStreamingUsage = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

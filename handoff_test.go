@@ -414,3 +414,53 @@ func assertHandoffOutputChange(t *testing.T, report sigma.HandoffReport, kind si
 	}
 	t.Fatalf("missing handoff output change kind=%q messageIndex=%d outputIndex=%d in %#v", kind, messageIndex, outputIndex, report.Changes)
 }
+
+func TestTransformRequestForModelKeepsOutputIndexesStableAcrossRepairPasses(t *testing.T) {
+	t.Parallel()
+
+	request := sigma.Request{Messages: []sigma.Message{
+		{
+			Role: sigma.RoleAssistant,
+			Content: []sigma.ContentBlock{
+				sigma.ToolCallBlock("call_a", "weather", map[string]any{"city": "Melbourne"}),
+				sigma.ToolCallBlock("call_b", "weather", map[string]any{"city": "Sydney"}),
+			},
+		},
+		{
+			Role:       sigma.RoleTool,
+			ToolCallID: "call_a",
+			ToolName:   "weather",
+			Content:    []sigma.ContentBlock{sigma.Text("18 C")},
+		},
+		sigma.UserText("Thanks."),
+	}}
+	target := sigma.Model{
+		ID:       "compat-model",
+		Provider: sigma.ProviderCustom,
+		API:      sigma.APIOpenAICompletions,
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			RequiresAssistantAfterToolResult: sigma.OpenAICompatSupported,
+		},
+	}
+
+	result, err := sigma.TransformRequestForModel(target, request)
+	if err != nil {
+		t.Fatalf("TransformRequestForModel returned error: %v", err)
+	}
+
+	messages := result.Request.Messages
+	if got, want := len(messages), 5; got != want {
+		t.Fatalf("message count = %d, want %d: %#v", got, want, messages)
+	}
+	if got, want := messages[2].ToolCallID, "call_b"; got != want || messages[2].Role != sigma.RoleTool {
+		t.Fatalf("message 2 = %v/%q, want synthetic tool result for call_b", messages[2].Role, messages[2].ToolCallID)
+	}
+	if got, want := messages[3].Content[0].Text, "I have processed the tool results."; got != want {
+		t.Fatalf("message 3 text = %q, want repair bridge", got)
+	}
+
+	// The bridge was recorded at output index 2 before the drop pass inserted
+	// the synthetic tool result there; the report must track the shift.
+	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeToolResultSynthesized, 2, 2)
+	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 2, 3)
+}

@@ -1147,14 +1147,19 @@ func (c *Client) embeddingRequestOptions(opts []EmbeddingOption) Options {
 		Headers:    copyStringStringMap(c.defaultHeaders),
 	}
 	options = mergeOptions(options, c.defaultOptions)
+	defaultCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = nil
 	options = applyEmbeddingOptions(options, opts)
+	requestCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = mergeProviderAuthResolvers(defaultCallbacks, requestCallbacks)
 	clientResolver := c.clientAuthResolver()
 	if options.AuthResolver != nil {
 		clientResolver = options.AuthResolver
 	}
 	options.AuthResolver = ChainAuthResolver{
-		Client:            clientResolver,
-		ProviderCallbacks: options.ProviderAuthResolvers,
+		Client:                   clientResolver,
+		ProviderCallbacks:        requestCallbacks,
+		DefaultProviderCallbacks: defaultCallbacks,
 	}
 	return options
 }

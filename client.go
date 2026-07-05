@@ -8,6 +8,7 @@ package sigma
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 )
 
@@ -238,11 +239,16 @@ func (c *Client) requestOptions(model Model, opts []Option) Options {
 	}
 	options = mergeOptions(options, c.defaultOptions)
 	options = mergeOptions(options, modelDefaultOptions(model))
+	defaultCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = nil
 	options = applyOptions(options, opts)
+	requestCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = mergeProviderAuthResolvers(defaultCallbacks, requestCallbacks)
 	clientResolver := c.clientAuthResolver()
 	options.AuthResolver = ChainAuthResolver{
-		Client:            clientResolver,
-		ProviderCallbacks: options.ProviderAuthResolvers,
+		Client:                   clientResolver,
+		ProviderCallbacks:        requestCallbacks,
+		DefaultProviderCallbacks: defaultCallbacks,
 	}
 	return options
 }
@@ -413,6 +419,21 @@ func mergeOptions(base Options, override Options) Options {
 	if override.BedrockOptions != nil {
 		merged.BedrockOptions = cloneBedrockOptions(override.BedrockOptions)
 	}
+	return merged
+}
+
+// mergeProviderAuthResolvers combines default and request-scoped provider auth
+// callbacks into one view, with request-scoped entries winning per provider.
+func mergeProviderAuthResolvers(defaults map[ProviderID]AuthResolver, requests map[ProviderID]AuthResolver) map[ProviderID]AuthResolver {
+	if len(defaults) == 0 {
+		return requests
+	}
+	if len(requests) == 0 {
+		return defaults
+	}
+	merged := make(map[ProviderID]AuthResolver, len(defaults)+len(requests))
+	maps.Copy(merged, defaults)
+	maps.Copy(merged, requests)
 	return merged
 }
 

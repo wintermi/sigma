@@ -309,3 +309,33 @@ func receiveTestSignal(t *testing.T, ch <-chan struct{}) {
 		t.Fatal("timed out waiting for signal")
 	}
 }
+
+func TestParseDispatchesCRTerminatedEventWhileStreamIdle(t *testing.T) {
+	t.Parallel()
+
+	reader, writer := io.Pipe()
+	t.Cleanup(func() {
+		_ = writer.Close()
+	})
+	events := make(chan sse.Event, 1)
+	go func() {
+		_ = sse.Parse(context.Background(), reader, func(event sse.Event) error {
+			events <- event
+			return sse.ErrStop
+		})
+	}()
+	go func() {
+		// CR-only terminators with the connection left open and idle: the
+		// event must dispatch without waiting for the next byte.
+		_, _ = writer.Write([]byte("data: hi\r\r"))
+	}()
+
+	select {
+	case event := <-events:
+		if got, want := event.Data, "hi"; got != want {
+			t.Fatalf("event data = %q, want %q", got, want)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("CR-terminated event was not dispatched while the stream idled")
+	}
+}

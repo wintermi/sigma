@@ -301,14 +301,19 @@ func (c *Client) imageRequestOptions(opts []ImageOption) Options {
 		Headers:    copyStringStringMap(c.defaultHeaders),
 	}
 	options = mergeOptions(options, c.defaultOptions)
+	defaultCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = nil
 	options = applyImageOptions(options, opts)
+	requestCallbacks := options.ProviderAuthResolvers
+	options.ProviderAuthResolvers = mergeProviderAuthResolvers(defaultCallbacks, requestCallbacks)
 	clientResolver := c.clientAuthResolver()
 	if options.AuthResolver != nil {
 		clientResolver = options.AuthResolver
 	}
 	options.AuthResolver = ChainAuthResolver{
-		Client:            clientResolver,
-		ProviderCallbacks: options.ProviderAuthResolvers,
+		Client:                   clientResolver,
+		ProviderCallbacks:        requestCallbacks,
+		DefaultProviderCallbacks: defaultCallbacks,
 	}
 	return options
 }
@@ -392,9 +397,6 @@ func validateImageInput(input ImageInput, mask bool) error {
 				return errors.New("base64 image data is invalid")
 			}
 		case ImageSourceURL:
-			if input.MIMEType == "" {
-				return errors.New("image MIME type is required")
-			}
 			if strings.TrimSpace(input.URL) == "" {
 				return errors.New("image URL is required")
 			}

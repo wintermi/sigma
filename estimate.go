@@ -102,8 +102,9 @@ func EstimateRequestTokens(req Request) TokenEstimate {
 
 // MaxTokensForContext returns an opt-in max output token cap for req and model.
 //
-// requestedMaxTokens is used when positive; otherwise model.MaxOutputTokens is
-// used. A zero return means no usable output cap was available. The helper uses
+// requestedMaxTokens is used when positive, clamped to model.MaxOutputTokens
+// when the catalog reports one; otherwise model.MaxOutputTokens is used. A
+// zero return means no usable output cap was available. The helper uses
 // EstimateRequestTokens and a fixed safety margin; it does not call provider
 // tokenizers or affect dispatch unless the caller applies the returned value.
 func MaxTokensForContext(model Model, req Request, requestedMaxTokens int) int {
