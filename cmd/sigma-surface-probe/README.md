@@ -24,16 +24,20 @@ Common flags:
 -include-unavailable    probe known unavailable advertised models instead of skipping
 -codex-oauth            run OpenAI Codex device-code OAuth for openai-codex
 -handoff                run cross-provider replay handoff diagnostics
+-structured-output      run focused OpenAI-compatible structured-output probes
+-images                 run focused OpenAI image-generation probes
 -timeout                overall probe timeout, default 10m
 ```
 
-Default routes are `zen,go`. All other routes must be requested explicitly.
+Default routes are `zen,go`. Image mode defaults to the `openai` image route.
+All other routes must be requested explicitly.
 
 ## Routes
 
 | Route | API shape | Credential | Default model behavior |
 | --- | --- | --- | --- |
 | `openai` | OpenAI Responses | `OPENAI_API_KEY` | Discovers OpenAI models |
+| `openai` with `-images` | OpenAI Images and OpenAI Responses image-generation tool | `OPENAI_API_KEY` | Uses `gpt-image-1`, `dall-e-2` for variations, and `gpt-5.5` for the Responses tool case |
 | `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.5` unless `-models` is set |
 | `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
 | `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
@@ -128,6 +132,13 @@ OPENAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -repair
 ```
 
+Probe OpenAI image generation surfaces:
+
+```bash
+OPENAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
+  -images
+```
+
 Probe OpenAI Codex Responses with device-code OAuth:
 
 ```bash
@@ -198,6 +209,22 @@ verbosity. The Codex image case uses an HTTPS image URL because the ChatGPT
 Codex backend rejects base64 image payloads. Fireworks OpenAI-compatible probes
 omit unsupported raw thinking-disable variants and keep the object-disabled case
 because Fireworks expects `thinking` to be an object.
+
+OpenAI image mode currently runs:
+
+```text
+generate
+edit_multipart
+edit_reference_json
+variation
+stream_partial
+responses_image_tool
+```
+
+The `variation` case uses `dall-e-2`. The other image API cases use
+`gpt-image-1`, and `responses_image_tool` uses OpenAI Responses with `gpt-5.5`
+and the image-generation tool. These probes require `OPENAI_API_KEY` and stay
+outside deterministic CI.
 
 Anthropic-compatible routes currently run:
 

@@ -47,6 +47,33 @@ type probeCase struct {
 	Options     []sigma.Option
 }
 
+type imageRouteSpec struct {
+	Name             string
+	Provider         sigma.ProviderID
+	BaseURL          string
+	APIKeyEnv        string
+	RegisterProvider func(*sigma.Registry, imageRouteSpec) error
+	Model            func(imageRouteSpec, string) sigma.ImageModel
+	Cases            func(imageRouteSpec) []imageProbeCase
+}
+
+type imageProbeCase struct {
+	Name              string
+	Description       string
+	ModelID           string
+	Request           sigma.ImageRequest
+	Options           []sigma.ImageOption
+	Stream            bool
+	ResponsesTool     bool
+	ResponsesModelID  string
+	ResponsesRequest  sigma.Request
+	ResponsesOptions  []sigma.Option
+	SuccessHint       string
+	RequireImage      bool
+	RequirePartial    bool
+	RequireToolOutput bool
+}
+
 type probeResult struct {
 	Route          string          `json:"route"`
 	Model          string          `json:"model"`
@@ -101,6 +128,7 @@ type config struct {
 	codexOAuthBrowser  bool
 	handoff            bool
 	structuredOutput   bool
+	images             bool
 }
 
 type routeCredential struct {
@@ -209,10 +237,26 @@ var routes = map[string]routeSpec{
 	},
 }
 
+var imageRoutes = map[string]imageRouteSpec{
+	"openai": {
+		Name:             "openai",
+		Provider:         sigma.ProviderOpenAI,
+		BaseURL:          openai.DefaultBaseURL,
+		APIKeyEnv:        "OPENAI_API_KEY",
+		RegisterProvider: registerOpenAIImagesProvider,
+		Model:            openAIImageProbeModel,
+		Cases:            openAIImageProbeCases,
+	},
+}
+
 const (
-	jsonTypeKey                  = "type"
-	defaultOpenAICodexProbeModel = "gpt-5.5"
-	defaultNVIDIAProbeModel      = "nvidia/nemotron-3-super-120b-a12b"
+	jsonTypeKey                          = "type"
+	defaultRouteList                     = "zen,go"
+	defaultOpenAICodexProbeModel         = "gpt-5.5"
+	defaultNVIDIAProbeModel              = "nvidia/nemotron-3-super-120b-a12b"
+	defaultOpenAIImageProbeModel         = "gpt-image-1"
+	defaultOpenAIImageVariationModel     = "dall-e-2"
+	defaultOpenAIResponsesToolProbeModel = "gpt-5.5"
 )
 
 func main() {
@@ -230,6 +274,19 @@ func main() {
 	var recommendations []probeRecommendation
 	if cfg.handoff {
 		runHandoffProbes(ctx, cfg, func(result probeResult) {
+			totals.add(result)
+			if recommendation, ok := recommendationFor(result); ok {
+				recommendations = append(recommendations, recommendation)
+			}
+			writeResult(writer, result)
+			_ = writer.Flush()
+		})
+		writeSummary(writer, totals, recommendations)
+		_ = writer.Flush()
+		return
+	}
+	if cfg.images {
+		runImageProbes(ctx, cfg, func(result probeResult) {
 			totals.add(result)
 			if recommendation, ok := recommendationFor(result); ok {
 				recommendations = append(recommendations, recommendation)
@@ -283,7 +340,8 @@ func parseConfig() config {
 	var codexOAuthBrowser bool
 	var handoff bool
 	var structuredOutput bool
-	flag.StringVar(&routeList, "routes", "zen,go", "comma-separated routes: openai,openai-codex,zen,go,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
+	var images bool
+	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
 	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run known unavailable advertised models instead of skipping them")
@@ -291,8 +349,12 @@ func parseConfig() config {
 	flag.BoolVar(&codexOAuthBrowser, "codex-oauth-browser", false, "run OpenAI Codex browser callback OAuth for the openai-codex route")
 	flag.BoolVar(&handoff, "handoff", false, "run cross-provider replay handoff diagnostics instead of per-route surface cases")
 	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
+	flag.BoolVar(&images, "images", false, "run focused OpenAI image-generation surface probes")
 	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
 	flag.Parse()
+	if images && routeList == defaultRouteList {
+		routeList = "openai"
+	}
 
 	return config{
 		routes:             splitCSV(routeList),
@@ -304,6 +366,7 @@ func parseConfig() config {
 		codexOAuthBrowser:  codexOAuthBrowser,
 		handoff:            handoff,
 		structuredOutput:   structuredOutput,
+		images:             images,
 	}
 }
 
@@ -620,6 +683,188 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 	}
 }
 
+func runImageProbes(ctx context.Context, cfg config, emit func(probeResult)) {
+	for _, routeName := range cfg.routes {
+		route, ok := imageRoutes[routeName]
+		if !ok {
+			emit(probeResult{
+				Route:   routeName,
+				Case:    "images",
+				Attempt: "route",
+				Outcome: "skipped",
+				Error:   fmt.Sprintf("unknown image route %q", routeName),
+			})
+			continue
+		}
+		credential, err := credentialForImageRoute(route)
+		if err != nil {
+			emit(probeResult{
+				Route:   route.Name,
+				Case:    "images",
+				Attempt: "credential",
+				Outcome: "skipped",
+				Error:   err.Error(),
+			})
+			continue
+		}
+		for _, testCase := range route.Cases(route) {
+			if !imageProbeCaseSelected(testCase, cfg.models) {
+				continue
+			}
+			emit(runImageCase(ctx, route, testCase, credential))
+		}
+	}
+}
+
+func credentialForImageRoute(route imageRouteSpec) (routeCredential, error) {
+	apiKey := os.Getenv(route.APIKeyEnv)
+	if apiKey == "" {
+		return routeCredential{}, fmt.Errorf("%s is required for live %s image probing", route.APIKeyEnv, route.Name)
+	}
+	return routeCredential{apiKey: apiKey}, nil
+}
+
+func imageProbeCaseSelected(testCase imageProbeCase, selected map[string]bool) bool {
+	if len(selected) == 0 {
+		return true
+	}
+	return selected[testCase.ModelID] || selected[testCase.ResponsesModelID]
+}
+
+func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
+	if testCase.ResponsesTool {
+		return runResponsesImageToolCase(ctx, route, testCase, credential)
+	}
+
+	model := route.Model(route, testCase.ModelID)
+	result := probeResult{
+		Route:   route.Name,
+		Model:   string(model.ID),
+		Case:    testCase.Name,
+		Attempt: testCase.Name,
+	}
+	client := imageProbeClient(route, model.ID)
+	options := append(imageAuthOptions(credential), testCase.Options...)
+	var images sigma.AssistantImages
+	var err error
+	partialSeen := false
+	if testCase.Stream {
+		images, partialSeen, err = collectImageProbeStream(ctx, client.StreamImages(ctx, model, testCase.Request, options...))
+	} else {
+		images, err = client.GenerateImages(ctx, model, testCase.Request, options...)
+	}
+	if err != nil {
+		result.Outcome = classifyImageFailure(route, model, err)
+		result.Error = err.Error()
+		return result
+	}
+	if testCase.RequireImage && len(images.Images) == 0 {
+		result.Outcome = "no_working_attempt"
+		result.Error = "image response did not include generated images"
+		return result
+	}
+	if testCase.RequirePartial && !partialSeen {
+		result.Outcome = "no_working_attempt"
+		result.Error = "image stream did not include a partial image"
+		return result
+	}
+	result.Outcome = "ok"
+	result.Hint = testCase.SuccessHint
+	return result
+}
+
+func runResponsesImageToolCase(ctx context.Context, imageRoute imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
+	textRoute := routes["openai"]
+	textRoute.BaseURL = imageRoute.BaseURL
+	model := textRoute.Model(textRoute, testCase.ResponsesModelID)
+	result := probeResult{
+		Route:   imageRoute.Name,
+		Model:   string(model.ID),
+		Case:    testCase.Name,
+		Attempt: testCase.Name,
+	}
+	client := probeClient(textRoute, string(model.ID))
+	options := append(authOptions(textRoute, credential), testCase.ResponsesOptions...)
+	final, err := client.Complete(ctx, model, testCase.ResponsesRequest, options...)
+	if err != nil {
+		result.Outcome = classifyFailure(textRoute, model, err)
+		result.Error = err.Error()
+		return result
+	}
+	if testCase.RequireToolOutput && !hasImageOutputBlock(final) {
+		result.Outcome = "no_working_attempt"
+		result.Error = "response did not include image generation output"
+		return result
+	}
+	result.Outcome = "ok"
+	result.Hint = testCase.SuccessHint
+	return result
+}
+
+func collectImageProbeStream(ctx context.Context, stream *sigma.ImageStream) (sigma.AssistantImages, bool, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	partialSeen := false
+	events := stream.Events()
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				final, _ := stream.Final()
+				if err := stream.Err(); err != nil {
+					return final, partialSeen, fmt.Errorf("collect image stream: %w", err)
+				}
+				return final, partialSeen, nil
+			}
+			if event.Kind == sigma.ImageEventKindPartial && event.PartialImage != nil {
+				partialSeen = true
+			}
+			switch event.Kind { //nolint:exhaustive
+			case sigma.ImageEventKindDone:
+				final, _ := stream.Final()
+				if event.FinalImages != nil {
+					final = *event.FinalImages
+				}
+				return final, partialSeen, nil
+			case sigma.ImageEventKindError:
+				final, _ := stream.Final()
+				if event.FinalImages != nil {
+					final = *event.FinalImages
+				}
+				err := stream.Err()
+				if err == nil && event.Error != "" {
+					err = errors.New(event.Error)
+				}
+				if err != nil {
+					err = fmt.Errorf("collect image stream: %w", err)
+				}
+				return final, partialSeen, err
+			}
+		case <-ctx.Done():
+			stream.Close()
+			final, _ := stream.Final()
+			return final, partialSeen, ctx.Err()
+		}
+	}
+}
+
+func hasImageOutputBlock(final sigma.AssistantMessage) bool {
+	for _, block := range final.Content {
+		if block.Type == sigma.ContentBlockImage && (block.Data != "" || block.URL != "") {
+			return true
+		}
+	}
+	return false
+}
+
+func imageProbeClient(route imageRouteSpec, modelID sigma.ModelID) *sigma.Client {
+	registry := sigma.NewRegistry()
+	_ = route.RegisterProvider(registry, route)
+	_ = registry.RegisterImageModel(route.Model(route, string(modelID)))
+	return sigma.NewClient(sigma.WithRegistry(registry))
+}
+
 func generateHandoffSource(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config) (handoffSource, probeResult) {
 	model := route.Model(route, modelID)
 	result := probeResult{
@@ -768,6 +1013,13 @@ func registerOpenAIResponsesProvider(registry *sigma.Registry, route routeSpec) 
 	return nil
 }
 
+func registerOpenAIImagesProvider(registry *sigma.Registry, route imageRouteSpec) error {
+	if err := openai.RegisterImages(registry, route.Provider, openai.WithBaseURL(route.BaseURL)); err != nil {
+		return fmt.Errorf("register openai images provider: %w", err)
+	}
+	return nil
+}
+
 func registerOpenAICodexProvider(registry *sigma.Registry, route routeSpec) error {
 	if err := openai.RegisterCodexResponses(registry, route.Provider, openai.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register openai codex responses provider: %w", err)
@@ -829,6 +1081,25 @@ func registerXAIProvider(registry *sigma.Registry, route routeSpec) error {
 		return fmt.Errorf("register xai provider: %w", err)
 	}
 	return nil
+}
+
+func openAIImageProbeModel(route imageRouteSpec, id string) sigma.ImageModel {
+	return sigma.ImageModel{
+		ID:               sigma.ModelID(id),
+		Provider:         route.Provider,
+		API:              sigma.ImageAPIOpenAIImages,
+		Name:             id,
+		SupportedSizes:   []string{string(sigma.ImageSize1024x1024)},
+		SupportedFormats: []string{"image/png"},
+		ProviderMetadata: map[string]any{
+			"baseURL":         route.BaseURL,
+			"apiKeyEnvVars":   []string{route.APIKeyEnv},
+			"modelFamily":     imageModelFamily(id),
+			"probeDiscovered": true,
+			"probeRoute":      route.Name,
+			"probeSurface":    "openai-images",
+		},
+	}
 }
 
 func discoveredOpenAIResponsesModel(route routeSpec, id string) sigma.Model {
@@ -1095,6 +1366,111 @@ func authOptions(route routeSpec, credential routeCredential) []sigma.Option {
 	return []sigma.Option{sigma.WithAPIKey(credential.apiKey)}
 }
 
+func imageAuthOptions(credential routeCredential) []sigma.ImageOption {
+	return []sigma.ImageOption{sigma.WithImageAPIKey(credential.apiKey)}
+}
+
+func openAIImageProbeCases(_ imageRouteSpec) []imageProbeCase {
+	basePNG := probeImageInput()
+	return []imageProbeCase{
+		{
+			Name:        "generate",
+			Description: "text-to-image generation",
+			ModelID:     defaultOpenAIImageProbeModel,
+			Request: sigma.ImageRequest{
+				Prompt:   "Create a simple square icon with the word sigma.",
+				Size:     string(sigma.ImageSize1024x1024),
+				Quality:  string(sigma.ImageQualityLow),
+				MIMEType: "image/png",
+				Count:    1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+		{
+			Name:        "edit_multipart",
+			Description: "multipart image edit",
+			ModelID:     defaultOpenAIImageProbeModel,
+			Request: sigma.ImageRequest{
+				Operation: sigma.ImageOperationEdit,
+				Prompt:    "Add a thin blue border.",
+				Inputs:    []sigma.ImageInput{basePNG},
+				Size:      string(sigma.ImageSize1024x1024),
+				Quality:   string(sigma.ImageQualityLow),
+				MIMEType:  "image/png",
+				Count:     1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+		{
+			Name:        "edit_reference_json",
+			Description: "JSON reference image edit",
+			ModelID:     defaultOpenAIImageProbeModel,
+			Request: sigma.ImageRequest{
+				Operation: sigma.ImageOperationEdit,
+				Prompt:    "Make the image look like a simple app icon.",
+				Inputs:    []sigma.ImageInput{sigma.ImageOutputURL("", "https://upload.wikimedia.org/wikipedia/commons/7/70/Example.png")},
+				Size:      string(sigma.ImageSize1024x1024),
+				Quality:   string(sigma.ImageQualityLow),
+				MIMEType:  "image/png",
+				Count:     1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+		{
+			Name:        "variation",
+			Description: "DALL-E 2 variation",
+			ModelID:     defaultOpenAIImageVariationModel,
+			Request: sigma.ImageRequest{
+				Operation: sigma.ImageOperationVariation,
+				Inputs:    []sigma.ImageInput{basePNG},
+				Size:      string(sigma.ImageSize1024x1024),
+				Count:     1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+		{
+			Name:        "stream_partial",
+			Description: "streaming partial image generation",
+			ModelID:     defaultOpenAIImageProbeModel,
+			Request: sigma.ImageRequest{
+				Prompt:   "Create a simple square icon with one diagonal line.",
+				Size:     string(sigma.ImageSize1024x1024),
+				Quality:  string(sigma.ImageQualityLow),
+				MIMEType: "image/png",
+				Count:    1,
+			},
+			Options:        []sigma.ImageOption{sigma.WithImageProviderOption(sigma.ProviderOpenAI, "partial_images", 1)},
+			Stream:         true,
+			SuccessHint:    "partial_image_seen",
+			RequireImage:   true,
+			RequirePartial: true,
+		},
+		{
+			Name:             "responses_image_tool",
+			Description:      "OpenAI Responses image-generation tool output",
+			ResponsesTool:    true,
+			ResponsesModelID: defaultOpenAIResponsesToolProbeModel,
+			ResponsesRequest: sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("Use the image generation tool to create a tiny square icon.")},
+				Tools: []sigma.Tool{openai.Tools.ImageGeneration(
+					openai.WithImageModel(defaultOpenAIImageProbeModel),
+					openai.WithImageSize(string(sigma.ImageSize1024x1024)),
+					openai.WithImageQuality(string(sigma.ImageQualityLow)),
+					openai.WithOutputFormat("png"),
+					openai.WithPartialImages(1),
+				)},
+			},
+			ResponsesOptions:  []sigma.Option{sigma.WithMaxTokens(1024)},
+			SuccessHint:       "image_tool_output_seen",
+			RequireToolOutput: true,
+		},
+	}
+}
+
 func openAIResponsesProbeCases(_ routeSpec, _ sigma.Model) []probeCase {
 	return []probeCase{
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
@@ -1274,6 +1650,10 @@ func imageURLRequest() sigma.Request {
 		sigma.Text("Answer with one short colour word."),
 		sigma.ImageURL("image/png", "https://upload.wikimedia.org/wikipedia/commons/7/70/Example.png"),
 	)}}
+}
+
+func probeImageInput() sigma.ImageInput {
+	return sigma.ImageData("image/png", "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAJ0lEQVR42u3NsQkAAAjAsP7/tF7hIASyp6lTCQQCgUAgEAgEgi/BAjLD/C5w/SM9AAAAAElFTkSuQmCC")
 }
 
 func toolCase(name string, description string, choice any) probeCase {
@@ -1465,6 +1845,13 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	}
 }
 
+func classifyImageFailure(route imageRouteSpec, model sigma.ImageModel, err error) string {
+	return classifyFailure(routeSpec{Name: route.Name}, sigma.Model{
+		ID:       model.ID,
+		Provider: model.Provider,
+	}, err)
+}
+
 func modelFamily(id string) string {
 	for _, separator := range []string{"-", "."} {
 		if before, _, ok := strings.Cut(id, separator); ok {
@@ -1472,6 +1859,17 @@ func modelFamily(id string) string {
 		}
 	}
 	return id
+}
+
+func imageModelFamily(id string) string {
+	switch {
+	case strings.HasPrefix(id, "gpt-image"):
+		return "gpt-image"
+	case strings.HasPrefix(id, "dall-e"):
+		return "dall-e"
+	default:
+		return modelFamily(id)
+	}
 }
 
 func uniqueCases(cases []probeCase) []probeCase {

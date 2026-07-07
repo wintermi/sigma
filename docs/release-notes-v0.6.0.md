@@ -118,7 +118,10 @@ credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
 calls into CI. It also adds a focused structured-output probe mode for
 OpenAI-compatible routes, reporting JSON object and strict JSON Schema support
-or fallback behavior without updating generated metadata. Provider-neutral
+or fallback behavior without updating generated metadata. The same command now
+also has a credential-gated OpenAI image mode for generation, edits,
+variations, streaming partial images, and Responses image-generation tool
+output while keeping live image calls out of deterministic CI. Provider-neutral
 structured-output and top-logprob request controls now map onto existing
 OpenAI-compatible, Anthropic Messages, and Bedrock Converse request paths with
 local validation for unsupported APIs. Public handoff helpers now also let

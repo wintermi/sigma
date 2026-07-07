@@ -13,9 +13,13 @@ import (
 	"errors"
 	"flag"
 	"image/png"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -521,6 +525,25 @@ func TestParseConfigEnablesStructuredOutput(t *testing.T) {
 	}
 }
 
+func TestParseConfigEnablesImagesWithOpenAIDefaultRoute(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	oldArgs := os.Args
+	flag.CommandLine = flag.NewFlagSet("sigma-surface-probe-test", flag.ContinueOnError)
+	os.Args = []string{"sigma-surface-probe", "-images"}
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		os.Args = oldArgs
+	})
+
+	cfg := parseConfig()
+	if !cfg.images {
+		t.Fatal("images = false, want true")
+	}
+	if !reflect.DeepEqual(cfg.routes, []string{"openai"}) {
+		t.Fatalf("routes = %v, want openai image default", cfg.routes)
+	}
+}
+
 func TestOpenAICodexCredentialRejectsMultipleOAuthModes(t *testing.T) {
 	t.Parallel()
 
@@ -569,6 +592,142 @@ func TestImageRequestEmbedsValidVisiblePNG(t *testing.T) {
 	r, g, b, a := decoded.At(bounds.Min.X+16, bounds.Min.Y+16).RGBA()
 	if a == 0 || r <= g || r <= b {
 		t.Fatalf("center pixel rgba = %x/%x/%x/%x, want visible red pixel", r, g, b, a)
+	}
+}
+
+func TestOpenAIImageRouteBuildsExpectedModel(t *testing.T) {
+	t.Parallel()
+
+	route := imageRoutes["openai"]
+	if route.RegisterProvider == nil {
+		t.Fatal("openai image route missing provider registration")
+	}
+	if got, want := route.Provider, sigma.ProviderOpenAI; got != want {
+		t.Fatalf("provider = %q, want %q", got, want)
+	}
+	model := route.Model(route, defaultOpenAIImageProbeModel)
+	if model.Provider != sigma.ProviderOpenAI || model.API != sigma.ImageAPIOpenAIImages {
+		t.Fatalf("image model provider/API = %q/%q", model.Provider, model.API)
+	}
+	assertMetadataString(t, model.ProviderMetadata, "baseURL", openai.DefaultBaseURL)
+	assertMetadataString(t, model.ProviderMetadata, "probeSurface", "openai-images")
+	assertMetadataStrings(t, model.ProviderMetadata, "apiKeyEnvVars", []string{"OPENAI_API_KEY"})
+}
+
+func TestOpenAIImageProbeCasesUseExpectedModels(t *testing.T) {
+	t.Parallel()
+
+	cases := openAIImageProbeCases(imageRoutes["openai"])
+	if got, want := len(cases), 6; got != want {
+		t.Fatalf("cases = %d, want %d", got, want)
+	}
+	if findImageProbeCase(t, cases, "variation").ModelID != defaultOpenAIImageVariationModel {
+		t.Fatal("variation case did not use DALL-E 2 model")
+	}
+	if !findImageProbeCase(t, cases, "stream_partial").Stream {
+		t.Fatal("stream_partial case did not enable streaming")
+	}
+	if !findImageProbeCase(t, cases, "responses_image_tool").ResponsesTool {
+		t.Fatal("responses_image_tool case did not use Responses tool path")
+	}
+}
+
+func TestRunOpenAIImageCasesUseExpectedRequestShapes(t *testing.T) {
+	t.Parallel()
+
+	var recordsMu sync.Mutex
+	var records []imageProbeRequestRecord
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		record := captureImageProbeRequest(t, r)
+		recordsMu.Lock()
+		records = append(records, record)
+		recordsMu.Unlock()
+		if record.Stream {
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, `data: {"type":"image_generation.partial_image","partial_image_index":0,"b64_json":"cGFydGlhbA=="}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"type":"image_generation.completed","data":[{"b64_json":"ZmluYWw="}]}`+"\n\n")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"created":1,"data":[{"b64_json":"ZmluYWw="}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	route := imageRoutes["openai"]
+	route.BaseURL = server.URL
+	for _, name := range []string{"generate", "edit_multipart", "edit_reference_json", "variation", "stream_partial"} {
+		testCase := findImageProbeCase(t, route.Cases(route), name)
+		result := runImageCase(context.Background(), route, testCase, routeCredential{apiKey: "key"})
+		if result.Outcome != "ok" {
+			t.Fatalf("%s result = %+v, want ok", name, result)
+		}
+		if result.Hint == "" {
+			t.Fatalf("%s hint was empty", name)
+		}
+	}
+	recordsMu.Lock()
+	gotRecords := append([]imageProbeRequestRecord(nil), records...)
+	recordsMu.Unlock()
+	if got, want := len(gotRecords), 5; got != want {
+		t.Fatalf("requests = %d, want %d: %#v", got, want, gotRecords)
+	}
+	assertImageProbeRecord(t, gotRecords[0], "/images/generations", defaultOpenAIImageProbeModel, false, false)
+	assertImageProbeRecord(t, gotRecords[1], "/images/edits", defaultOpenAIImageProbeModel, true, false)
+	assertImageProbeRecord(t, gotRecords[2], "/images/edits", defaultOpenAIImageProbeModel, true, false)
+	assertImageProbeRecord(t, gotRecords[3], "/images/variations", defaultOpenAIImageVariationModel, true, false)
+	assertImageProbeRecord(t, gotRecords[4], "/images/generations", defaultOpenAIImageProbeModel, false, true)
+}
+
+func TestRunOpenAIResponsesImageToolCaseDetectsImageOutput(t *testing.T) {
+	t.Parallel()
+
+	var sawImageToolMu sync.Mutex
+	var sawImageTool bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.URL.Path, "/responses"; got != want {
+			t.Fatalf("path = %q, want %q", got, want)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read request body: %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("decode request body: %v", err)
+		}
+		tools, _ := payload["tools"].([]any)
+		for _, tool := range tools {
+			toolMap, _ := tool.(map[string]any)
+			if toolMap["type"] == "image_generation" {
+				sawImageToolMu.Lock()
+				sawImageTool = true
+				sawImageToolMu.Unlock()
+			}
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"type":"response.created","response":{"id":"resp_image","status":"in_progress"}}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"type":"response.output_item.added","response_id":"resp_image","output_index":0,"item":{"type":"image_generation_call","id":"ig_1","status":"in_progress"}}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"type":"response.image_generation_call.partial_image","response_id":"resp_image","item_id":"ig_1","output_index":0,"partial_image_b64":"cGFydGlhbA=="}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"type":"response.output_item.done","response_id":"resp_image","output_index":0,"item":{"type":"image_generation_call","id":"ig_1","status":"completed","result":"ZmluYWw="}}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"type":"response.completed","response":{"id":"resp_image","status":"completed","output":[{"type":"image_generation_call","id":"ig_1","status":"completed","result":"ZmluYWw="}]}}`+"\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	route := imageRoutes["openai"]
+	route.BaseURL = server.URL
+	testCase := findImageProbeCase(t, route.Cases(route), "responses_image_tool")
+	result := runImageCase(context.Background(), route, testCase, routeCredential{apiKey: "key"})
+	if result.Outcome != "ok" {
+		t.Fatalf("result = %+v, want ok", result)
+	}
+	if got, want := result.Hint, "image_tool_output_seen"; got != want {
+		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	sawImageToolMu.Lock()
+	gotSawImageTool := sawImageTool
+	sawImageToolMu.Unlock()
+	if !gotSawImageTool {
+		t.Fatal("request did not include image_generation tool")
 	}
 }
 
@@ -1172,6 +1331,71 @@ func findProbeCase(t *testing.T, cases []probeCase, name string) probeCase {
 	}
 	t.Fatalf("probe case %q not found", name)
 	return probeCase{}
+}
+
+func findImageProbeCase(t *testing.T, cases []imageProbeCase, name string) imageProbeCase {
+	t.Helper()
+
+	for _, testCase := range cases {
+		if testCase.Name == name {
+			return testCase
+		}
+	}
+	t.Fatalf("image probe case %q not found", name)
+	return imageProbeCase{}
+}
+
+type imageProbeRequestRecord struct {
+	Path     string
+	Model    string
+	HasImage bool
+	Stream   bool
+}
+
+func captureImageProbeRequest(t *testing.T, r *http.Request) imageProbeRequestRecord {
+	t.Helper()
+
+	record := imageProbeRequestRecord{Path: r.URL.Path}
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/") {
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Fatalf("parse multipart form: %v", err)
+		}
+		record.Model = r.FormValue("model")
+		record.HasImage = len(r.MultipartForm.File["image"]) > 0
+		record.Stream = r.FormValue("stream") == "true"
+		return record
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Fatalf("read request body: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+	record.Model, _ = payload["model"].(string)
+	record.Stream, _ = payload["stream"].(bool)
+	_, record.HasImage = payload["images"]
+	return record
+}
+
+func assertImageProbeRecord(t *testing.T, record imageProbeRequestRecord, path string, model string, hasImage bool, stream bool) {
+	t.Helper()
+
+	if record.Path != path {
+		t.Fatalf("path = %q, want %q (record %#v)", record.Path, path, record)
+	}
+	if record.Model != model {
+		t.Fatalf("model = %q, want %q (record %#v)", record.Model, model, record)
+	}
+	if record.HasImage != hasImage {
+		t.Fatalf("hasImage = %v, want %v (record %#v)", record.HasImage, hasImage, record)
+	}
+	if record.Stream != stream {
+		t.Fatalf("stream = %v, want %v (record %#v)", record.Stream, stream, record)
+	}
 }
 
 func applyProbeOptions(opts []sigma.Option) sigma.Options {

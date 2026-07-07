@@ -185,6 +185,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   OpenAI-compatible JSON object and strict JSON Schema capability probes,
   emitting reviewable hints for supported schema output, JSON-object fallback,
   and prompt-only JSON fallback without updating generated metadata.
+- `cmd/sigma-surface-probe -images` now runs focused OpenAI image diagnostics
+  for generation, multipart edits, reference-only JSON edits, variations,
+  streaming partial images, and Responses image-generation tool output without
+  adding live provider calls to CI.
 - `sigma.WithStructuredOutput`, `sigma.WithJSONOutput`,
   `sigma.WithJSONSchemaOutput`, and `sigma.WithTopLogprobs` now provide
   provider-neutral request controls that map onto existing OpenAI-compatible,
