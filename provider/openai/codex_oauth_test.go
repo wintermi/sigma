@@ -83,6 +83,128 @@ func TestCodexProviderAuthResolvesStoredOAuthAccountMetadata(t *testing.T) {
 	}
 }
 
+func TestStoreCodexOAuthCredentialsWritesStoreCredential(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	expiry := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	access := codexTestJWT("acct_saved")
+
+	stored, err := StoreCodexOAuthCredentials(context.Background(), store, sigma.ProviderOpenAICodex, CodexOAuthCredentials{
+		AccessToken:  access,
+		RefreshToken: "refresh-token",
+		Expiry:       expiry,
+		AccountID:    "acct_saved",
+	})
+	if err != nil {
+		t.Fatalf("StoreCodexOAuthCredentials returned error: %v", err)
+	}
+	assertStoredCodexCredential(t, stored, access, "refresh-token", expiry, "acct_saved")
+
+	read, ok, err := store.ReadCredential(context.Background(), sigma.ProviderOpenAICodex)
+	if err != nil {
+		t.Fatalf("ReadCredential returned error: %v", err)
+	}
+	if !ok {
+		t.Fatal("ReadCredential ok = false, want true")
+	}
+	assertStoredCodexCredential(t, read, access, "refresh-token", expiry, "acct_saved")
+}
+
+func TestStoreCodexOAuthCredentialsPreservesStoredConfig(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderOpenAICodex, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:         sigma.CredentialTypeOAuthToken,
+			Value:        "old-token",
+			RefreshToken: "old-refresh",
+			Expiry:       time.Date(2026, 7, 7, 10, 0, 0, 0, time.UTC),
+			Source:       "custom-source",
+			ProviderEnv:  map[string]string{"ROUTE": "codex"},
+			Metadata: map[string]any{
+				"keep":                        "value",
+				codexOAuthCredentialAccountID: "old-account",
+			},
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+
+	expiry := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	access := codexTestJWT("acct_new")
+	stored, err := StoreCodexOAuthCredentials(context.Background(), store, sigma.ProviderOpenAICodex, CodexOAuthCredentials{
+		AccessToken:  access,
+		RefreshToken: "new-refresh",
+		Expiry:       expiry,
+		AccountID:    "acct_new",
+	})
+	if err != nil {
+		t.Fatalf("StoreCodexOAuthCredentials returned error: %v", err)
+	}
+	assertStoredCodexCredential(t, stored, access, "new-refresh", expiry, "acct_new")
+	if got, want := stored.Source, "custom-source"; got != want {
+		t.Fatalf("source = %q, want %q", got, want)
+	}
+	if got, want := stored.ProviderEnv["ROUTE"], "codex"; got != want {
+		t.Fatalf("provider env ROUTE = %q, want %q", got, want)
+	}
+	if got, want := stored.Metadata["keep"], "value"; got != want {
+		t.Fatalf("metadata keep = %v, want %q", got, want)
+	}
+}
+
+func TestStoreCodexOAuthCredentialsRejectsInvalidInputs(t *testing.T) {
+	t.Parallel()
+
+	_, err := StoreCodexOAuthCredentials(context.Background(), nil, sigma.ProviderOpenAICodex, CodexOAuthCredentials{})
+	assertSigmaErrorCode(t, err, sigma.ErrorInvalidOptions)
+
+	store := &recordingCredentialStore{}
+	_, err = StoreCodexOAuthCredentials(context.Background(), store, "", CodexOAuthCredentials{})
+	assertSigmaErrorCode(t, err, sigma.ErrorInvalidOptions)
+	if store.modifyCalled {
+		t.Fatal("ModifyCredential called for empty provider")
+	}
+}
+
+func TestStoreCodexOAuthCredentialsResolvesStoredProviderAuth(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	access := codexTestJWT("acct_resolved")
+	_, err := StoreCodexOAuthCredentials(context.Background(), store, sigma.ProviderOpenAICodex, CodexOAuthCredentials{
+		AccessToken:  access,
+		RefreshToken: "refresh-token",
+		Expiry:       time.Now().Add(time.Hour),
+		AccountID:    "acct_resolved",
+	})
+	if err != nil {
+		t.Fatalf("StoreCodexOAuthCredentials returned error: %v", err)
+	}
+	registry := sigma.NewRegistry()
+	if err := RegisterCodexProviderAuth(registry, sigma.ProviderOpenAICodex, CodexOAuthTokenProviderOptions{}); err != nil {
+		t.Fatalf("RegisterCodexProviderAuth returned error: %v", err)
+	}
+
+	credential, err := (sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}).Resolve(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderOpenAICodex, ID: "gpt-test"},
+		sigma.Options{},
+	)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, access; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+	if got, want := credential.Metadata[codexOAuthCredentialAccountID], "acct_resolved"; got != want {
+		t.Fatalf("credential account metadata = %v, want %q", got, want)
+	}
+}
+
 func TestLoginOpenAICodexBrowserCallbackSuccess(t *testing.T) {
 	withCodexBrowserTestServer(t)
 
@@ -668,6 +790,59 @@ func TestCodexOAuthTokenProviderCallbackErrorDoesNotLeakTokens(t *testing.T) {
 	if strings.Contains(err.Error(), newToken) {
 		t.Fatalf("error leaked token: %v", err)
 	}
+}
+
+func assertStoredCodexCredential(t *testing.T, credential sigma.StoredCredential, accessToken, refreshToken string, expiry time.Time, accountID string) {
+	t.Helper()
+	if got, want := credential.Type, sigma.CredentialTypeOAuthToken; got != want {
+		t.Fatalf("credential type = %q, want %q", got, want)
+	}
+	if got, want := credential.Value, accessToken; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+	if got, want := credential.RefreshToken, refreshToken; got != want {
+		t.Fatalf("refresh token = %q, want %q", got, want)
+	}
+	if !credential.Expiry.Equal(expiry) {
+		t.Fatalf("expiry = %s, want %s", credential.Expiry, expiry)
+	}
+	if got, want := credential.Metadata[codexOAuthCredentialAccountID], accountID; got != want {
+		t.Fatalf("account metadata = %v, want %q", got, want)
+	}
+	if got, want := credential.Metadata[codexOAuthCredentialChatGPTAcctID], accountID; got != want {
+		t.Fatalf("chatgpt account metadata = %v, want %q", got, want)
+	}
+}
+
+func assertSigmaErrorCode(t *testing.T, err error, code sigma.ErrorCode) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("error = nil")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) {
+		t.Fatalf("error %T is not *sigma.Error: %v", err, err)
+	}
+	if sigmaErr.Code != code {
+		t.Fatalf("error code = %q, want %q", sigmaErr.Code, code)
+	}
+}
+
+type recordingCredentialStore struct {
+	modifyCalled bool
+}
+
+func (s *recordingCredentialStore) ReadCredential(context.Context, sigma.ProviderID) (sigma.StoredCredential, bool, error) {
+	return sigma.StoredCredential{}, false, nil
+}
+
+func (s *recordingCredentialStore) ModifyCredential(context.Context, sigma.ProviderID, sigma.CredentialModifyFunc) (sigma.StoredCredential, bool, error) {
+	s.modifyCalled = true
+	return sigma.StoredCredential{}, false, nil
+}
+
+func (s *recordingCredentialStore) DeleteCredential(context.Context, sigma.ProviderID) error {
+	return nil
 }
 
 func codexOAuthTestClient(t *testing.T, handler func(*http.Request) *http.Response) *http.Client {

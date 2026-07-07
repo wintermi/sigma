@@ -316,6 +316,30 @@ func NewCodexOAuthTokenProvider(credentials CodexOAuthCredentials, opts CodexOAu
 	}
 }
 
+// StoreCodexOAuthCredentials stores OpenAI Codex OAuth credentials in a
+// caller-supplied CredentialStore for store-backed provider auth.
+func StoreCodexOAuthCredentials(ctx context.Context, store sigma.CredentialStore, provider sigma.ProviderID, credentials CodexOAuthCredentials) (sigma.StoredCredential, error) {
+	if store == nil {
+		return sigma.StoredCredential{}, &sigma.Error{Code: sigma.ErrorInvalidOptions, Message: "openai codex oauth: credential store is required"}
+	}
+	if provider == "" {
+		return sigma.StoredCredential{}, &sigma.Error{Code: sigma.ErrorInvalidOptions, Message: "openai codex oauth: provider id is required"}
+	}
+	stored, ok, err := store.ModifyCredential(ctx, provider, func(current sigma.StoredCredential, currentOK bool) (sigma.StoredCredential, bool, error) {
+		if !currentOK {
+			current.Source = "credential-store:" + string(provider)
+		}
+		return storedCodexOAuthCredential(provider, credentials, current), true, nil
+	})
+	if err != nil {
+		return sigma.StoredCredential{}, fmt.Errorf("openai codex oauth: store credentials: %w", err)
+	}
+	if !ok {
+		return sigma.StoredCredential{}, &sigma.Error{Code: sigma.ErrorInvalidOptions, Message: "openai codex oauth: credential store did not persist credentials"}
+	}
+	return stored, nil
+}
+
 func storedCodexOAuthCredential(provider sigma.ProviderID, credentials CodexOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {
 	source := previous.Source
 	if source == "" {

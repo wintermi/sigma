@@ -48,6 +48,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
   refresh helpers, an in-memory OAuth token provider that also implements
   Sigma's auth resolver interface, and explicit opt-in helpers for enabling
   Copilot model policies while keeping credential persistence caller-owned.
+- OpenAI Codex OAuth login results can now be written into caller-supplied
+  `sigma.CredentialStore` implementations with
+  `openai.StoreCodexOAuthCredentials`, giving store-backed Codex Responses auth
+  the same serialized refresh path as other stored OAuth credentials while
+  keeping concrete disk or keychain storage caller-owned.
 - OpenAI Codex Responses WebSocket transport now honors standard HTTP(S) proxy
   environment variables with `NO_PROXY` exclusions by tunneling through
   HTTP/HTTPS `CONNECT` proxies while preserving the existing SSE fallback.
@@ -616,9 +621,9 @@ See [release notes](docs/release-notes-v0.3.0.md).
   credential-gated and outside deterministic CI.
 - Preview providers are not part of the first release gate and may change before
   `v1.0.0`.
-- OAuth token persistence is caller-owned. OpenAI Codex Responses includes
-  browser callback login, device-code login, and refresh helpers, but does not
-  write credentials to disk.
+- OAuth disk and keychain persistence is caller-owned. OpenAI Codex Responses
+  includes browser callback login, device-code login, refresh helpers, and a
+  helper for writing login results to caller-supplied credential stores.
 - Anthropic Claude Code OAuth identity headers and Claude Code tool-name
   canonicalization are deferred with the broader OAuth/provider-specific
   compatibility work.

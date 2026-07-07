@@ -69,6 +69,10 @@ rotated credentials while leaving Sigma's default environment-based credential
 resolution unchanged. Stored auth descriptors can now also apply
 provider-scoped request configuration, such as routing placeholder values,
 before provider URLs and headers are built.
+OpenAI Codex OAuth login results can now also be written into caller-supplied
+credential stores, giving store-backed Codex Responses auth a small bridge from
+browser or device-code login into the existing serialized refresh path without
+adding built-in disk or keychain persistence.
 Request-scoped header suppression now also lets callers remove final outgoing
 compatibility/default headers across text, image, and embedding requests while
 preserving credential resolution and avoiding a generic environment override
@@ -246,6 +250,10 @@ advice without adding any execution loop or configuration format to Sigma.
   provider configuration is applied before provider URL/header construction,
   and Anthropic, GitHub Copilot, OpenAI Codex, and Cloudflare helpers expose
   focused descriptors over their existing auth behavior.
+- `openai.StoreCodexOAuthCredentials` now writes OpenAI Codex browser or
+  device-code login results into caller-supplied credential stores, preserving
+  stored provider configuration and account metadata while keeping concrete
+  persistence backends outside Sigma.
 - `sigma.WithSuppressedHeader` and `sigma.WithSuppressedHeaders` now remove
   final outgoing request headers after provider defaults, model metadata
   headers, dynamic compatibility headers, and caller headers are merged. Image

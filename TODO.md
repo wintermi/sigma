@@ -153,7 +153,11 @@ integrations remain future work until they have the same local evidence bar.
       token persistence caller-owned.
 - [x] Add OpenAI Codex browser callback OAuth login while keeping token
       persistence caller-owned.
-- [ ] Keep OpenAI Codex token persistence deferred.
+- [x] Add an OpenAI Codex credential-store bridge so browser and device-code
+      login results can be written to caller-supplied `CredentialStore`
+      implementations without choosing a concrete storage backend.
+- [ ] Keep file-backed, encrypted, OS keychain, or UI-driven OpenAI Codex token
+      persistence deferred to caller-owned integrations.
 - [x] Evaluate GitHub Copilot dynamic headers before making Copilot a
       first-class OpenAI-compatible row.
 - [x] Evaluate Cloudflare AI Gateway auth header rewriting before adding a
@@ -607,7 +611,10 @@ should still come through the catalog refresh workflow.
 - [x] Add explicit GitHub Copilot model-policy enablement helpers with
       per-model result reporting, without making model enablement an automatic
       login side effect.
-- [ ] Implement token persistence for OAuth-based providers.
+- [x] Add a focused OpenAI Codex credential-store bridge for storing OAuth login
+      results through caller-supplied `CredentialStore` implementations.
+- [ ] Keep file-backed, encrypted, OS keychain, UI-driven, and broader
+      OAuth-provider token persistence deferred to caller-owned integrations.
 - [x] Add Anthropic Claude Code OAuth identity headers and Claude Code
       tool-name canonicalization, applied automatically when the resolved
       Anthropic credential is an OAuth token.
