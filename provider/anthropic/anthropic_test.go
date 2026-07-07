@@ -1974,9 +1974,9 @@ func TestToolCallPartialJSONStreamingProducesFinalArguments(t *testing.T) {
 
 data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_1","name":"weather","input":{}}}
 
-data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"city\""}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"city\":\"Mel"}}
 
-data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":":\"Melbourne\"}"}}
+data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"bourne\"}"}}
 
 data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"input_tokens":5,"output_tokens":6}}
 
@@ -2019,6 +2019,30 @@ data: {"type":"message_stop"}
 	args := final.Content[0].ToolArguments.(map[string]any)
 	if got, want := args["city"], "Melbourne"; got != want {
 		t.Fatalf("tool city = %v, want %v", got, want)
+	}
+
+	var sawPartialDecodedString bool
+	var sawFinalDecodedString bool
+	for _, event := range events {
+		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil {
+			continue
+		}
+		arguments, ok := event.PartialToolCall.ProviderMetadata["arguments"].(map[string]any)
+		if !ok {
+			continue
+		}
+		switch arguments["city"] {
+		case "Mel":
+			sawPartialDecodedString = true
+		case "Melbourne":
+			sawFinalDecodedString = true
+		}
+	}
+	if !sawPartialDecodedString {
+		t.Fatal("tool-call deltas did not expose best-effort decoded partial string arguments")
+	}
+	if !sawFinalDecodedString {
+		t.Fatal("tool-call deltas did not expose decoded final string arguments")
 	}
 }
 

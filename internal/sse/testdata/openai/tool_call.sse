@@ -2,11 +2,10 @@ data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"r
 
 data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"weather","arguments":""}}]},"finish_reason":null}]}
 
-data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"city\""}}]},"finish_reason":null}]}
+data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"city\":\"Mel"}}]},"finish_reason":null}]}
 
-data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":":\"Melbourne\"}"}}]},"finish_reason":null}]}
+data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"bourne\"}"}}]},"finish_reason":null}]}
 
 data: {"id":"chatcmpl_tool","model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
 
 data: [DONE]
-

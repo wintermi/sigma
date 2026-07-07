@@ -39,10 +39,11 @@ cancellation/error coverage (see the coverage standards in
       aborted partial finals and abandoned canceled streams close promptly.
 - [x] Harden runtime stream/replay edges with tolerant SSE line parsing,
       deterministic fake-provider lifecycle synthesis, live partial-message
-      snapshots, safe JSON/tool-argument round trips, strict null coercion,
-      image request validation, explicit handoff output coordinates,
-      cache-hit usage fallbacks, local/custom streaming-usage defaults,
-      request-scoped provider auth precedence, and cache-cost catalog checks.
+      snapshots, best-effort decoded partial tool-call argument metadata, safe
+      JSON/tool-argument round trips, strict null coercion, image request
+      validation, explicit handoff output coordinates, cache-hit usage
+      fallbacks, local/custom streaming-usage defaults, request-scoped provider
+      auth precedence, and cache-cost catalog checks.
 
 ## Image generation
 

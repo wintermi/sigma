@@ -1304,17 +1304,28 @@ func TestToolCallStreamingProducesFinalArguments(t *testing.T) {
 		t.Fatalf("tool city = %v, want %v", got, want)
 	}
 
-	var sawDecodedPartial bool
+	var sawPartialDecodedString bool
+	var sawFinalDecodedString bool
 	for _, event := range events {
 		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil {
 			continue
 		}
-		if _, ok := event.PartialToolCall.ProviderMetadata["arguments"].(map[string]any); ok {
-			sawDecodedPartial = true
+		arguments, ok := event.PartialToolCall.ProviderMetadata["arguments"].(map[string]any)
+		if !ok {
+			continue
+		}
+		switch arguments["city"] {
+		case "Mel":
+			sawPartialDecodedString = true
+		case "Melbourne":
+			sawFinalDecodedString = true
 		}
 	}
-	if !sawDecodedPartial {
-		t.Fatal("tool-call deltas did not expose decoded partial arguments when JSON became valid")
+	if !sawPartialDecodedString {
+		t.Fatal("tool-call deltas did not expose best-effort decoded partial string arguments")
+	}
+	if !sawFinalDecodedString {
+		t.Fatal("tool-call deltas did not expose decoded final string arguments")
 	}
 }
 

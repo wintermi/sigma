@@ -17,10 +17,11 @@ type ToolPartialMode int
 
 const (
 	// ToolPartialArgumentsText preserves raw argument text and adds decoded
-	// arguments only when the accumulated value is valid JSON.
+	// arguments when the accumulated value or a safe partial object/array can
+	// be decoded.
 	ToolPartialArgumentsText ToolPartialMode = iota
 	// ToolPartialArguments exposes the provider-neutral arguments value,
-	// returning the raw text while JSON is still incomplete.
+	// using best-effort decoded arguments while JSON is still incomplete.
 	ToolPartialArguments
 )
 
@@ -158,7 +159,7 @@ func (c *ToolCall) Partial(argumentsDelta string, mode ToolPartialMode) *sigma.P
 	case ToolPartialArgumentsText:
 		if arguments := c.ArgumentsText(); arguments != "" {
 			metadata := map[string]any{"argumentsText": arguments}
-			if decoded, ok := c.DecodeArguments(); ok {
+			if decoded, ok := c.DecodePartialArguments(); ok {
 				metadata["arguments"] = decoded
 			}
 			for key, value := range c.ProviderMetadata {
@@ -169,7 +170,13 @@ func (c *ToolCall) Partial(argumentsDelta string, mode ToolPartialMode) *sigma.P
 			partial.ProviderMetadata = copyAnyMap(c.ProviderMetadata)
 		}
 	case ToolPartialArguments:
-		partial.ProviderMetadata = map[string]any{"arguments": c.ArgumentsValue()}
+		partial.ProviderMetadata = make(map[string]any)
+		if arguments := c.ArgumentsText(); arguments != "" {
+			partial.ProviderMetadata["argumentsText"] = arguments
+		}
+		if decoded, ok := c.DecodePartialArguments(); ok {
+			partial.ProviderMetadata["arguments"] = decoded
+		}
 		for key, value := range c.ProviderMetadata {
 			partial.ProviderMetadata[key] = value
 		}
@@ -216,6 +223,33 @@ func (c *ToolCall) DecodeArguments() (any, bool) {
 	c.decoded = decoded
 	c.decodedOK = err == nil
 	return decoded, err == nil
+}
+
+// DecodePartialArguments decodes valid JSON arguments, or a conservative
+// completion of an object/array fragment for streaming metadata.
+func (c *ToolCall) DecodePartialArguments() (any, bool) {
+	if decoded, ok := c.DecodeArguments(); ok {
+		return decoded, true
+	}
+	return decodePartialJSON(c.ArgumentsText())
+}
+
+func decodePartialJSON(input string) (any, bool) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return map[string]any{}, true
+	}
+	if input[0] != '{' && input[0] != '[' {
+		return nil, false
+	}
+	repaired := repairJSON(input)
+	if completed, ok := completePartialJSON(repaired); ok {
+		var decoded any
+		if err := json.Unmarshal([]byte(completed), &decoded); err == nil {
+			return decoded, true
+		}
+	}
+	return nil, false
 }
 
 func copyAnyMap(values map[string]any) map[string]any {

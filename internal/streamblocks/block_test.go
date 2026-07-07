@@ -57,13 +57,86 @@ func TestToolCallPartialMetadataModes(t *testing.T) {
 		t.Fatal("partial metadata decoded incomplete JSON")
 	}
 
-	call.AppendArguments(`"Paris"}`)
+	call.SetArguments(`{"city":"Par`)
+	partial = call.Partial(`"Par`, ToolPartialArgumentsText)
+	if got, want := partial.ProviderMetadata["arguments"], map[string]any{"city": "Par"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("partial arguments = %#v, want %#v", got, want)
+	}
+
+	call.SetArguments(`{"city":"Paris"}`)
 	partial = call.Partial(`"Paris"}`, ToolPartialArgumentsText)
 	if got, want := partial.ProviderMetadata["argumentsText"], `{"city":"Paris"}`; got != want {
 		t.Fatalf("argumentsText = %v, want %v", got, want)
 	}
 	if got, want := partial.ProviderMetadata["arguments"], map[string]any{"city": "Paris"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("arguments = %#v, want %#v", got, want)
+	}
+}
+
+func TestToolCallPartialMetadataRepairsStringFragments(t *testing.T) {
+	t.Parallel()
+
+	call := &ToolCall{}
+	call.AppendArguments("{\"path\":\"A\\H\",\"text\":\"col1\tcol2\"}")
+
+	partial := call.Partial(call.ArgumentsText(), ToolPartialArgumentsText)
+	got, ok := partial.ProviderMetadata["arguments"].(map[string]any)
+	if !ok {
+		t.Fatalf("arguments = %#v, want decoded map", partial.ProviderMetadata["arguments"])
+	}
+	if got["path"] != `A\H` || got["text"] != "col1\tcol2" {
+		t.Fatalf("arguments = %#v, want repaired string values", got)
+	}
+}
+
+func TestToolCallPartialMetadataOmitsUnsafeFragments(t *testing.T) {
+	t.Parallel()
+
+	tests := []string{
+		`"scalar`,
+		`{"city":`,
+		`{"city":"Mel",`,
+		`{"city":"Mel"]`,
+	}
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			call := &ToolCall{}
+			call.AppendArguments(input)
+
+			partial := call.Partial(input, ToolPartialArgumentsText)
+			if _, ok := partial.ProviderMetadata["arguments"]; ok {
+				t.Fatalf("partial decoded unsafe fragment %q: %#v", input, partial.ProviderMetadata["arguments"])
+			}
+			if got, want := partial.ProviderMetadata["argumentsText"], input; got != want {
+				t.Fatalf("argumentsText = %v, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestToolCallPartialMetadataArgumentsModeUsesBestEffortDecode(t *testing.T) {
+	t.Parallel()
+
+	call := &ToolCall{}
+	call.AppendArguments(`{"city":"Mel`)
+
+	partial := call.Partial(`"Mel`, ToolPartialArguments)
+	if got, want := partial.ProviderMetadata["argumentsText"], `{"city":"Mel`; got != want {
+		t.Fatalf("argumentsText = %v, want %q", got, want)
+	}
+	if got, want := partial.ProviderMetadata["arguments"], map[string]any{"city": "Mel"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("arguments = %#v, want %#v", got, want)
+	}
+
+	call.SetArguments(`{"city":`)
+	partial = call.Partial(`{"city":`, ToolPartialArguments)
+	if _, ok := partial.ProviderMetadata["arguments"]; ok {
+		t.Fatalf("arguments = %#v, want omitted for unsafe fragment", partial.ProviderMetadata["arguments"])
+	}
+	if got, want := partial.ProviderMetadata["argumentsText"], `{"city":`; got != want {
+		t.Fatalf("argumentsText = %v, want %q", got, want)
 	}
 }
 

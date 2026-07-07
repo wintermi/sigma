@@ -42,10 +42,11 @@ image stream cancellation now preserves aborted partial finals through
 `Collect`, `Complete`, and `CollectImages`, and canceled streams close promptly
 even when callers stop reading events. Runtime stream/replay hardening now also
 covers tolerant SSE parsing, deterministic fake-provider lifecycles,
-partial-message snapshots, safer JSON/tool-argument persistence, stricter
-coercion, image request validation, explicit handoff coordinates,
-OpenAI-compatible usage/finish-reason normalization, request-scoped provider
-auth precedence, and cache-cost catalog validation. Kimi and Kimi
+partial-message snapshots, best-effort decoded partial tool-call argument
+metadata, safer JSON/tool-argument persistence, stricter coercion, image
+request validation, explicit handoff coordinates, OpenAI-compatible
+usage/finish-reason normalization, request-scoped provider auth precedence, and
+cache-cost catalog validation. Kimi and Kimi
 Coding are promoted as
 focused Anthropic-compatible provider slices with generated metadata,
 credential discovery, request headers, adaptive thinking metadata, and
@@ -422,6 +423,10 @@ advice without adding any execution loop or configuration format to Sigma.
   supports LF, CRLF, and CR-only event boundaries, and populates
   `Event.PartialMessage` on non-terminal content events from the accumulated
   stream state.
+- Streaming tool-call deltas now expose best-effort decoded partial argument
+  metadata when object or array fragments can be completed safely, while
+  retaining raw `argumentsText` metadata and leaving final persisted tool-call
+  arguments unchanged.
 - `sigmatest.FauxProvider` now fails loudly when scripts are exhausted and
   synthesizes realistic start/delta/end event lifecycles from final text,
   thinking, and tool-call content when explicit script events are omitted.
