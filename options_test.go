@@ -325,6 +325,123 @@ func TestWithMaxTokensForContextSetsOnlyUsableBudget(t *testing.T) {
 	}
 }
 
+func TestAutomaticMaxTokensForContextDefaultDisabledLeavesMaxTokensUnchanged(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t,
+		sigma.WithDefaultOptions(sigma.WithMaxTokens(900)),
+	)
+	model.ContextWindow = 4500
+	model.MaxOutputTokens = 1000
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(context.Background(), model, req); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 900; got != want {
+		t.Fatalf("max tokens = %d, want unchanged %d", got, want)
+	}
+}
+
+func TestAutomaticMaxTokensForContextUsesModelCapWhenUnset(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t)
+	model.ContextWindow = 5000
+	model.MaxOutputTokens = 1000
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithAutomaticMaxTokensForContext(true)); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 902; got != want {
+		t.Fatalf("max tokens = %d, want %d", got, want)
+	}
+}
+
+func TestAutomaticMaxTokensForContextClampsExplicitMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t)
+	model.ContextWindow = 4500
+	model.MaxOutputTokens = 2000
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		req,
+		sigma.WithMaxTokens(800),
+		sigma.WithAutomaticMaxTokensForContext(true),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 402; got != want {
+		t.Fatalf("max tokens = %d, want %d", got, want)
+	}
+}
+
+func TestAutomaticMaxTokensForContextRequestCanDisableDefault(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t,
+		sigma.WithDefaultOptions(sigma.WithAutomaticMaxTokensForContext(true)),
+	)
+	model.ContextWindow = 4500
+	model.MaxOutputTokens = 2000
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		req,
+		sigma.WithMaxTokens(800),
+		sigma.WithAutomaticMaxTokensForContext(false),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := valueOf(provider.opts.MaxTokens), 800; got != want {
+		t.Fatalf("max tokens = %d, want unclamped request value %d", got, want)
+	}
+}
+
+func TestAutomaticMaxTokensForContextMissingCapsLeavesMaxTokensUnset(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t)
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
+
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithAutomaticMaxTokensForContext(true)); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if provider.opts.MaxTokens != nil {
+		t.Fatalf("max tokens = %d, want unset", *provider.opts.MaxTokens)
+	}
+}
+
+func TestAutomaticMaxTokensForContextDoesNotMaskInvalidMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	client, provider, model := newOptionsTestClient(t)
+	model.ContextWindow = 5000
+	model.MaxOutputTokens = 1000
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}},
+		sigma.WithMaxTokens(-1),
+		sigma.WithAutomaticMaxTokensForContext(true),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	assertSigmaLookupError(t, err, sigma.ErrorInvalidOptions, model.Provider, model.ID)
+	if provider.called {
+		t.Fatal("provider was called for invalid options")
+	}
+}
+
 func TestWithReasoningBudgetForContextSetsReasoningAndBudgets(t *testing.T) {
 	t.Parallel()
 

@@ -185,37 +185,38 @@ type StructuredOutput struct {
 // option functions that populate ProviderOptions without changing this root
 // package.
 type Options struct {
-	Temperature                 *float64
-	MaxTokens                   *int
-	APIKey                      string
-	HTTPClient                  *http.Client
-	AuthResolver                AuthResolver
-	Transport                   Transport
-	CacheRetention              CacheRetention
-	SessionID                   string
-	Headers                     map[string]string
-	SuppressedHeaders           []string
-	Timeout                     *time.Duration
-	MaxRetries                  *int
-	MaxRetryDelay               *time.Duration
-	Metadata                    map[string]any
-	ReasoningLevel              ThinkingLevel
-	ThinkingBudgetTokens        *int
-	StructuredOutput            *StructuredOutput
-	TopLogprobs                 int
-	ProviderOptions             map[ProviderID]map[string]any
-	ProviderAuthResolvers       map[ProviderID]AuthResolver
-	TextPayloadDebugHooks       []TextPayloadDebugHook
-	TextResponseDebugHooks      []TextResponseDebugHook
-	ImagePayloadDebugHooks      []ImagePayloadDebugHook
-	ImageResponseDebugHooks     []ImageResponseDebugHook
-	EmbeddingPayloadDebugHooks  []EmbeddingPayloadDebugHook
-	EmbeddingResponseDebugHooks []EmbeddingResponseDebugHook
-	OpenAIOptions               *OpenAIOptions
-	AnthropicOptions            *AnthropicOptions
-	GoogleOptions               *GoogleOptions
-	MistralOptions              *MistralOptions
-	BedrockOptions              *BedrockOptions
+	Temperature                  *float64
+	MaxTokens                    *int
+	AutomaticMaxTokensForContext *bool
+	APIKey                       string
+	HTTPClient                   *http.Client
+	AuthResolver                 AuthResolver
+	Transport                    Transport
+	CacheRetention               CacheRetention
+	SessionID                    string
+	Headers                      map[string]string
+	SuppressedHeaders            []string
+	Timeout                      *time.Duration
+	MaxRetries                   *int
+	MaxRetryDelay                *time.Duration
+	Metadata                     map[string]any
+	ReasoningLevel               ThinkingLevel
+	ThinkingBudgetTokens         *int
+	StructuredOutput             *StructuredOutput
+	TopLogprobs                  int
+	ProviderOptions              map[ProviderID]map[string]any
+	ProviderAuthResolvers        map[ProviderID]AuthResolver
+	TextPayloadDebugHooks        []TextPayloadDebugHook
+	TextResponseDebugHooks       []TextResponseDebugHook
+	ImagePayloadDebugHooks       []ImagePayloadDebugHook
+	ImageResponseDebugHooks      []ImageResponseDebugHook
+	EmbeddingPayloadDebugHooks   []EmbeddingPayloadDebugHook
+	EmbeddingResponseDebugHooks  []EmbeddingResponseDebugHook
+	OpenAIOptions                *OpenAIOptions
+	AnthropicOptions             *AnthropicOptions
+	GoogleOptions                *GoogleOptions
+	MistralOptions               *MistralOptions
+	BedrockOptions               *BedrockOptions
 }
 
 // Option configures a single provider request.
@@ -232,6 +233,14 @@ func WithTemperature(temperature float64) Option {
 func WithMaxTokens(maxTokens int) Option {
 	return func(options *Options) {
 		options.MaxTokens = intPtr(maxTokens)
+	}
+}
+
+// WithAutomaticMaxTokensForContext configures dispatch-time max token
+// budgeting from model context metadata and EstimateRequestTokens.
+func WithAutomaticMaxTokensForContext(enabled bool) Option {
+	return func(options *Options) {
+		options.AutomaticMaxTokensForContext = boolPtr(enabled)
 	}
 }
 
@@ -497,37 +506,38 @@ func applyOptions(options Options, opts []Option) Options {
 
 func cloneOptions(options Options) Options {
 	return Options{
-		Temperature:                 cloneFloat64Ptr(options.Temperature),
-		MaxTokens:                   cloneIntPtr(options.MaxTokens),
-		APIKey:                      options.APIKey,
-		HTTPClient:                  options.HTTPClient,
-		AuthResolver:                options.AuthResolver,
-		Transport:                   options.Transport,
-		CacheRetention:              options.CacheRetention,
-		SessionID:                   options.SessionID,
-		Headers:                     copyStringStringMap(options.Headers),
-		SuppressedHeaders:           append([]string(nil), options.SuppressedHeaders...),
-		Timeout:                     cloneDurationPtr(options.Timeout),
-		MaxRetries:                  cloneIntPtr(options.MaxRetries),
-		MaxRetryDelay:               cloneDurationPtr(options.MaxRetryDelay),
-		Metadata:                    copyStringAnyMap(options.Metadata),
-		ReasoningLevel:              options.ReasoningLevel,
-		ThinkingBudgetTokens:        cloneIntPtr(options.ThinkingBudgetTokens),
-		StructuredOutput:            cloneStructuredOutput(options.StructuredOutput),
-		TopLogprobs:                 options.TopLogprobs,
-		ProviderOptions:             copyProviderOptions(options.ProviderOptions),
-		ProviderAuthResolvers:       copyProviderAuthResolvers(options.ProviderAuthResolvers),
-		TextPayloadDebugHooks:       append([]TextPayloadDebugHook(nil), options.TextPayloadDebugHooks...),
-		TextResponseDebugHooks:      append([]TextResponseDebugHook(nil), options.TextResponseDebugHooks...),
-		ImagePayloadDebugHooks:      append([]ImagePayloadDebugHook(nil), options.ImagePayloadDebugHooks...),
-		ImageResponseDebugHooks:     append([]ImageResponseDebugHook(nil), options.ImageResponseDebugHooks...),
-		EmbeddingPayloadDebugHooks:  append([]EmbeddingPayloadDebugHook(nil), options.EmbeddingPayloadDebugHooks...),
-		EmbeddingResponseDebugHooks: append([]EmbeddingResponseDebugHook(nil), options.EmbeddingResponseDebugHooks...),
-		OpenAIOptions:               cloneOpenAIOptions(options.OpenAIOptions),
-		AnthropicOptions:            cloneAnthropicOptions(options.AnthropicOptions),
-		GoogleOptions:               cloneGoogleOptions(options.GoogleOptions),
-		MistralOptions:              cloneMistralOptions(options.MistralOptions),
-		BedrockOptions:              cloneBedrockOptions(options.BedrockOptions),
+		Temperature:                  cloneFloat64Ptr(options.Temperature),
+		MaxTokens:                    cloneIntPtr(options.MaxTokens),
+		AutomaticMaxTokensForContext: cloneBoolPtr(options.AutomaticMaxTokensForContext),
+		APIKey:                       options.APIKey,
+		HTTPClient:                   options.HTTPClient,
+		AuthResolver:                 options.AuthResolver,
+		Transport:                    options.Transport,
+		CacheRetention:               options.CacheRetention,
+		SessionID:                    options.SessionID,
+		Headers:                      copyStringStringMap(options.Headers),
+		SuppressedHeaders:            append([]string(nil), options.SuppressedHeaders...),
+		Timeout:                      cloneDurationPtr(options.Timeout),
+		MaxRetries:                   cloneIntPtr(options.MaxRetries),
+		MaxRetryDelay:                cloneDurationPtr(options.MaxRetryDelay),
+		Metadata:                     copyStringAnyMap(options.Metadata),
+		ReasoningLevel:               options.ReasoningLevel,
+		ThinkingBudgetTokens:         cloneIntPtr(options.ThinkingBudgetTokens),
+		StructuredOutput:             cloneStructuredOutput(options.StructuredOutput),
+		TopLogprobs:                  options.TopLogprobs,
+		ProviderOptions:              copyProviderOptions(options.ProviderOptions),
+		ProviderAuthResolvers:        copyProviderAuthResolvers(options.ProviderAuthResolvers),
+		TextPayloadDebugHooks:        append([]TextPayloadDebugHook(nil), options.TextPayloadDebugHooks...),
+		TextResponseDebugHooks:       append([]TextResponseDebugHook(nil), options.TextResponseDebugHooks...),
+		ImagePayloadDebugHooks:       append([]ImagePayloadDebugHook(nil), options.ImagePayloadDebugHooks...),
+		ImageResponseDebugHooks:      append([]ImageResponseDebugHook(nil), options.ImageResponseDebugHooks...),
+		EmbeddingPayloadDebugHooks:   append([]EmbeddingPayloadDebugHook(nil), options.EmbeddingPayloadDebugHooks...),
+		EmbeddingResponseDebugHooks:  append([]EmbeddingResponseDebugHook(nil), options.EmbeddingResponseDebugHooks...),
+		OpenAIOptions:                cloneOpenAIOptions(options.OpenAIOptions),
+		AnthropicOptions:             cloneAnthropicOptions(options.AnthropicOptions),
+		GoogleOptions:                cloneGoogleOptions(options.GoogleOptions),
+		MistralOptions:               cloneMistralOptions(options.MistralOptions),
+		BedrockOptions:               cloneBedrockOptions(options.BedrockOptions),
 	}
 }
 
@@ -638,6 +648,10 @@ func float64Ptr(value float64) *float64 {
 }
 
 func durationPtr(value time.Duration) *time.Duration {
+	return &value
+}
+
+func boolPtr(value bool) *bool {
 	return &value
 }
 

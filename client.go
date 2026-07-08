@@ -190,7 +190,9 @@ func (c *Client) Stream(ctx context.Context, model Model, req Request, opts ...O
 		})
 	}
 
-	options := applyProviderNeutralControls(model, c.requestOptions(model, opts))
+	options := c.requestOptions(model, opts)
+	options = applyAutomaticMaxTokensForContext(model, req, options)
+	options = applyProviderNeutralControls(model, options)
 	if err := validateOptions(model, options); err != nil {
 		return errorStream(ctx, err, AssistantMessage{
 			Model:    model.ID,
@@ -306,6 +308,9 @@ func mergeOptions(base Options, override Options) Options {
 	}
 	if override.MaxTokens != nil {
 		merged.MaxTokens = cloneIntPtr(override.MaxTokens)
+	}
+	if override.AutomaticMaxTokensForContext != nil {
+		merged.AutomaticMaxTokensForContext = cloneBoolPtr(override.AutomaticMaxTokensForContext)
 	}
 	if override.APIKey != "" {
 		merged.APIKey = override.APIKey
@@ -441,6 +446,25 @@ func modelDefaultOptions(model Model) Options {
 	return Options{
 		Transport: model.DefaultTransport,
 	}
+}
+
+func applyAutomaticMaxTokensForContext(model Model, req Request, options Options) Options {
+	if options.AutomaticMaxTokensForContext == nil || !*options.AutomaticMaxTokensForContext {
+		return options
+	}
+	if options.MaxTokens != nil && *options.MaxTokens < 0 {
+		return options
+	}
+
+	applied := cloneOptions(options)
+	requestedMaxTokens := 0
+	if applied.MaxTokens != nil {
+		requestedMaxTokens = *applied.MaxTokens
+	}
+	if maxTokens := MaxTokensForContext(model, req, requestedMaxTokens); maxTokens > 0 {
+		applied.MaxTokens = intPtr(maxTokens)
+	}
+	return applied
 }
 
 func applyProviderNeutralControls(model Model, options Options) Options {

@@ -88,6 +88,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - `MaxTokensForContext` and `WithMaxTokensForContext` now provide opt-in
   context-aware max-output-token budgeting from model metadata and
   deterministic request estimates without changing provider dispatch defaults.
+- `WithAutomaticMaxTokensForContext` now lets callers opt in to dispatch-time
+  max-output-token clamping from client defaults or per-request options, with
+  request options able to disable a client default and existing validation
+  still catching invalid explicit token caps.
 - `ReasoningBudgetForContext` and `WithReasoningBudgetForContext` now provide
   opt-in planning for visible output caps and hidden thinking budgets using
   model/context metadata and deterministic request estimates without changing

@@ -20,7 +20,10 @@ prompt-cache keys, reports provider cached prompt tokens as cache reads, and
 accepts URL-backed image references for image-capable chat inputs and
 stringified image-bearing tool results. Context-aware max-output-token helpers now let
 callers opt in to output budgeting from model metadata and deterministic
-request estimates without changing provider dispatch defaults. Reasoning
+request estimates without changing provider dispatch defaults, and callers can
+now opt in to applying that clamp automatically at dispatch time from client
+defaults or per-request options while still letting a request disable a client
+default. Reasoning
 budget planning helpers now also let callers opt in to planning visible output
 caps and hidden thinking budgets together from model/context metadata and
 deterministic request estimates without changing provider dispatch defaults.
@@ -187,6 +190,10 @@ advice without adding any execution loop or configuration format to Sigma.
   model context/output metadata with `EstimateRequestTokens` to produce an
   opt-in max-output-token cap for callers that want context-aware budgeting
   before dispatch.
+- `sigma.WithAutomaticMaxTokensForContext` now lets callers opt in to applying
+  the context-aware max-token clamp during text dispatch. It can be configured
+  as a client default, disabled per request, and leaves default dispatch
+  behavior unchanged unless explicitly enabled.
 - `sigma.ReasoningBudgetForContext` and
   `sigma.WithReasoningBudgetForContext` now combine visible output caps,
   hidden thinking budgets, model context/output metadata, and
@@ -699,9 +706,10 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 - Billing reconciliation, subscription analytics, and UI presentation of usage
   totals remain caller-owned. Sigma normalizes and preserves provider data but
   does not claim invoice-grade billing accuracy.
-- Tokenizer-exact context budgeting and automatic dispatch-time output-token
-  clamping remain deferred until Sigma has explicit tokenizer, precedence,
-  observability, and override semantics.
+- Tokenizer-exact context budgeting remains deferred until Sigma has an
+  explicit tokenizer dependency or caller-supplied tokenizer contract. The
+  dispatch-time max-token clamp is available only as an explicit opt-in over
+  Sigma's deterministic estimator and model metadata.
 - Cross-provider handoff is now available as public request/message adaptation
   helpers plus the existing opt-in surface probe diagnostic, but full agent
   orchestration remains deferred. Sigma does not automatically run transformed

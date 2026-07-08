@@ -30,8 +30,10 @@ cancellation/error coverage (see the coverage standards in
       thinking budgets without changing dispatch defaults.
 - [ ] Keep tokenizer-exact context budgeting deferred unless Sigma adopts a
       provider tokenizer dependency or caller-supplied tokenizer contract.
-- [ ] Keep automatic dispatch-time output-token clamping deferred unless Sigma
-      defines explicit precedence, observability, and override semantics.
+- [x] Add opt-in dispatch-time output-token clamping with explicit client
+      default/request override precedence, using existing deterministic request
+      estimates and model context/output metadata without changing dispatch
+      defaults.
 
 ## Core streaming
 
