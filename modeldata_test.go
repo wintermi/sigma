@@ -189,6 +189,28 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if sonnet.AnthropicMessagesCompat == nil || sonnet.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
 		t.Fatalf("Claude Sonnet 4.6 compat = %#v, want adaptive thinking", sonnet.AnthropicMessagesCompat)
 	}
+	sonnet5, ok := registry.Model(ProviderAnthropic, "claude-sonnet-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated Claude Sonnet 5 model")
+	}
+	if sonnet5.API != APIAnthropicMessages || !sonnet5.SupportsTools || !sonnet5.SupportsImages() || !sonnet5.SupportsReasoning() {
+		t.Fatalf("Claude Sonnet 5 metadata = %+v, want Anthropic Messages with tools, images, and reasoning", sonnet5)
+	}
+	if sonnet5.AnthropicMessagesCompat == nil || sonnet5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+		t.Fatalf("Claude Sonnet 5 compat = %#v, want adaptive thinking", sonnet5.AnthropicMessagesCompat)
+	}
+	if sonnet5.ContextWindow != 1000000 || sonnet5.MaxOutputTokens != 128000 {
+		t.Fatalf("Claude Sonnet 5 limits = context %d max %d, want 1000000/128000", sonnet5.ContextWindow, sonnet5.MaxOutputTokens)
+	}
+	if sonnet5.InputCostPerMillion != 2 || sonnet5.OutputCostPerMillion != 10 ||
+		sonnet5.CacheReadInputCostPerMillion != 0.2 || sonnet5.CacheWriteInputCostPerMillion != 2.5 {
+		t.Fatalf("Claude Sonnet 5 costs = %f/%f/%f/%f, want 2/10/0.2/2.5",
+			sonnet5.InputCostPerMillion,
+			sonnet5.OutputCostPerMillion,
+			sonnet5.CacheReadInputCostPerMillion,
+			sonnet5.CacheWriteInputCostPerMillion)
+	}
+	assertMetadataStrings(t, sonnet5.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"ANTHROPIC_API_KEY"})
 	assertMetadataStrings(t, opus.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"ANTHROPIC_API_KEY"})
 
 	reasoning, ok := registry.Model(ProviderOpenAI, "o4-mini")
@@ -257,6 +279,59 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		t.Fatalf("Bedrock Nova 2 Lite metadata = %+v, want Converse Stream tools and images without reasoning", nova)
 	}
 	assertMetadataString(t, nova.ProviderMetadata, "modelFamily", "nova")
+
+	directBedrockModels := []struct {
+		id              string
+		contextWindow   int
+		maxOutputTokens int
+		inputCost       float64
+		outputCost      float64
+		cacheReadCost   float64
+		cacheWriteCost  float64
+		thinkingFormat  AnthropicThinkingFormat
+		xhigh           string
+	}{
+		{id: "anthropic.claude-fable-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 10, outputCost: 50, cacheReadCost: 1, cacheWriteCost: 12.5, thinkingFormat: AnthropicThinkingAdaptive, xhigh: "xhigh"},
+		{id: "anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheReadCost: 0.2, cacheWriteCost: 2.5, thinkingFormat: AnthropicThinkingBudget},
+	}
+	for _, tt := range directBedrockModels {
+		model, ok := registry.Model(ProviderAmazonBedrock, ModelID(tt.id))
+		if !ok {
+			t.Fatalf("fresh registry missing generated direct Bedrock model %s", tt.id)
+		}
+		if model.API != APIBedrockConverseStream || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("direct Bedrock model %s metadata = %+v, want Converse Stream tools, images, and reasoning", tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("direct Bedrock model %s limits = context %d max %d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost ||
+			model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheReadCost ||
+			model.CacheWriteInputCostPerMillion != tt.cacheWriteCost {
+			t.Fatalf("direct Bedrock model %s costs = %f/%f/%f/%f, want %f/%f/%f/%f",
+				tt.id,
+				model.InputCostPerMillion,
+				model.OutputCostPerMillion,
+				model.CacheReadInputCostPerMillion,
+				model.CacheWriteInputCostPerMillion,
+				tt.inputCost,
+				tt.outputCost,
+				tt.cacheReadCost,
+				tt.cacheWriteCost)
+		}
+		if model.AnthropicMessagesCompat == nil || model.AnthropicMessagesCompat.ThinkingFormat != tt.thinkingFormat {
+			t.Fatalf("direct Bedrock model %s compat = %#v, want %s thinking", tt.id, model.AnthropicMessagesCompat, tt.thinkingFormat)
+		}
+		if tt.xhigh != "" {
+			if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != tt.xhigh {
+				t.Fatalf("direct Bedrock model %s xhigh level = %q, %v; want %q, true", tt.id, got, ok, tt.xhigh)
+			}
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://bedrock-runtime.{region}.amazonaws.com")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", "claude")
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"})
+	}
 
 	euBedrockModels := []struct {
 		id              string
@@ -341,7 +416,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
 	assertMetadataStrings(t, openCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gemini-3-flash", APIGoogleGenerativeAI)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-fable-5", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-opus-4-7", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-sonnet-5", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "qwen3.6-plus", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.1-codex", APIOpenAIResponses)
 	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.4", APIOpenAIResponses)
@@ -369,6 +446,18 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		openCodeClaude.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
 		openCodeClaude.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
 		t.Fatalf("OpenCode Zen Claude compat = %#v, want adaptive thinking without temperature", openCodeClaude.AnthropicMessagesCompat)
+	}
+	openCodeFable, ok := registry.Model(ProviderOpenCode, "claude-fable-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Zen Claude Fable model")
+	}
+	if openCodeFable.AnthropicMessagesCompat == nil ||
+		openCodeFable.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
+		openCodeFable.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported {
+		t.Fatalf("OpenCode Zen Fable compat = %#v, want adaptive thinking without disabled payload", openCodeFable.AnthropicMessagesCompat)
+	}
+	if got, ok := openCodeFable.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
+		t.Fatalf("OpenCode Zen Fable xhigh level = %q, %v; want xhigh, true", got, ok)
 	}
 
 	grokBuild, ok := registry.Model(ProviderOpenCode, "grok-build-0.1")
@@ -814,6 +903,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		{provider: ProviderXAI, id: "grok-3", baseURL: "https://api.x.ai/v1", envVars: []string{"XAI_API_KEY"}},
 		{provider: ProviderGitHubCopilot, id: "gpt-5.2-codex", baseURL: "https://api.individual.githubcopilot.com", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-4.6", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
+		{provider: ProviderGitHubCopilot, id: "claude-sonnet-5", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderZAI, id: "glm-5.1", baseURL: "https://api.z.ai/api/coding/paas/v4", envVars: []string{"ZAI_API_KEY"}},
 		{provider: ProviderZAICodingCN, id: "glm-5.2", baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVars: []string{"ZAI_CODING_CN_API_KEY"}},
 	} {
@@ -892,6 +982,56 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	assertMetadataString(t, cloudflareAnthropic.ProviderMetadata, "baseURL", "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic/v1")
 	assertMetadataStrings(t, cloudflareAnthropic.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"CLOUDFLARE_API_KEY"})
+
+	for _, tt := range []struct {
+		id              ModelID
+		contextWindow   int
+		maxOutputTokens int
+		inputCost       float64
+		outputCost      float64
+		xhigh           string
+	}{
+		{id: "claude-fable-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 10, outputCost: 50, xhigh: "xhigh"},
+		{id: "claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10},
+	} {
+		model, ok := registry.Model(ProviderCloudflareAIGateway, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Cloudflare AI Gateway Anthropic model %s", tt.id)
+		}
+		if model.API != APIAnthropicMessages || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("Cloudflare AI Gateway Anthropic model %s metadata = %+v, want Messages tools, images, and reasoning", tt.id, model)
+		}
+		if model.AnthropicMessagesCompat == nil || model.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+			t.Fatalf("Cloudflare AI Gateway Anthropic model %s compat = %#v, want adaptive thinking", tt.id, model.AnthropicMessagesCompat)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("Cloudflare AI Gateway Anthropic model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost {
+			t.Fatalf("Cloudflare AI Gateway Anthropic model %s costs = %f/%f, want %f/%f", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, tt.inputCost, tt.outputCost)
+		}
+		if tt.xhigh != "" {
+			if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != tt.xhigh {
+				t.Fatalf("Cloudflare AI Gateway Anthropic model %s xhigh level = %q, %v; want %q, true", tt.id, got, ok, tt.xhigh)
+			}
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic/v1")
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"CLOUDFLARE_API_KEY"})
+	}
+
+	copilotSonnet5, ok := registry.Model(ProviderGitHubCopilot, "claude-sonnet-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated GitHub Copilot Claude Sonnet 5 model")
+	}
+	if copilotSonnet5.API != APIAnthropicMessages || !copilotSonnet5.SupportsTools || !copilotSonnet5.SupportsImages() || !copilotSonnet5.SupportsReasoning() {
+		t.Fatalf("GitHub Copilot Claude Sonnet 5 metadata = %+v, want Anthropic Messages tools, images, and reasoning", copilotSonnet5)
+	}
+	if copilotSonnet5.AnthropicMessagesCompat == nil || copilotSonnet5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+		t.Fatalf("GitHub Copilot Claude Sonnet 5 compat = %#v, want adaptive thinking", copilotSonnet5.AnthropicMessagesCompat)
+	}
+	if copilotSonnet5.ContextWindow != 1000000 || copilotSonnet5.MaxOutputTokens != 128000 {
+		t.Fatalf("GitHub Copilot Claude Sonnet 5 limits = %d/%d, want 1000000/128000", copilotSonnet5.ContextWindow, copilotSonnet5.MaxOutputTokens)
+	}
 
 	azure, ok := registry.Model(ProviderAzureOpenAIResponses, "gpt-5.4")
 	if !ok {
@@ -1000,7 +1140,38 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		t.Fatalf("Vercel AI Gateway compat = %#v, want adaptive thinking and temperature suppression", vercel.AnthropicMessagesCompat)
 	}
 	assertMetadataString(t, vercel.ProviderMetadata, "baseURL", "https://ai-gateway.vercel.sh/v1")
-	assertMetadataStrings(t, vercel.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AI_GATEWAY_API_KEY"})
+	assertMetadataStrings(t, vercel.ProviderMetadata, MetadataAPIKeyEnvVars, []string{defaultVercelAIGatewayKeyEnv})
+
+	for _, tt := range []struct {
+		id              ModelID
+		contextWindow   int
+		maxOutputTokens int
+		xhigh           string
+	}{
+		{id: "anthropic/claude-fable-5", contextWindow: 1000000, maxOutputTokens: 128000, xhigh: "xhigh"},
+		{id: "anthropic/claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000},
+	} {
+		model, ok := registry.Model(ProviderVercelAIGateway, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Vercel AI Gateway model %s", tt.id)
+		}
+		if model.API != APIAnthropicMessages || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("Vercel AI Gateway model %s capabilities were not generated: %+v", tt.id, model)
+		}
+		if model.AnthropicMessagesCompat == nil || model.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+			t.Fatalf("Vercel AI Gateway model %s compat = %#v, want adaptive thinking", tt.id, model.AnthropicMessagesCompat)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("Vercel AI Gateway model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if tt.xhigh != "" {
+			if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != tt.xhigh {
+				t.Fatalf("Vercel AI Gateway model %s xhigh level = %q, %v; want %q, true", tt.id, got, ok, tt.xhigh)
+			}
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://ai-gateway.vercel.sh/v1")
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{defaultVercelAIGatewayKeyEnv})
+	}
 }
 
 func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {

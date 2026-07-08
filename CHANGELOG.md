@@ -126,6 +126,11 @@ See [release notes](docs/release-notes-v0.6.0.md).
   regional rows for Fable 5, Haiku 4.5, Opus 4.5/4.6/4.7/4.8, and Sonnet 4.6,
   reusing the existing EU runtime endpoint fallback for `eu.` inference-profile
   model IDs.
+- Generated Claude metadata now includes focused current Sonnet 5 and Fable 5
+  rows across existing Anthropic-compatible routes, including direct
+  Anthropic, direct Amazon Bedrock, Cloudflare AI Gateway, Vercel AI Gateway,
+  OpenCode Zen, and GitHub Copilot Sonnet 5 coverage while leaving broader
+  catalog expansion to the reviewed refresh workflow.
 - Cloudflare Workers AI now has a first-class OpenAI-compatible Chat
   Completions wrapper for direct Workers AI routes, including request-scoped
   account placeholder resolution, normal bearer-token auth, generated metadata,

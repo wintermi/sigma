@@ -56,6 +56,7 @@ const (
 	defaultKimiAPIKeyEnv         = "KIMI_API_KEY"
 	defaultFireworksAPIKeyEnv    = "FIREWORKS_API_KEY"
 	defaultOpenCodeAPIKeyEnv     = "OPENCODE_API_KEY"
+	defaultVercelAIGatewayKeyEnv = "AI_GATEWAY_API_KEY"
 )
 
 var defaultProviderEnvNames = map[ProviderID][]string{
@@ -85,7 +86,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderMoonshotAICN:          {defaultMoonshotAPIKeyEnv},
 	ProviderMiniMax:               {"MINIMAX_API_KEY"},
 	ProviderMiniMaxCN:             {"MINIMAX_CN_API_KEY"},
-	ProviderVercelAIGateway:       {"AI_GATEWAY_API_KEY"},
+	ProviderVercelAIGateway:       {defaultVercelAIGatewayKeyEnv},
 	ProviderOpenCode:              {defaultOpenCodeAPIKeyEnv},
 	ProviderOpenCodeGo:            {defaultOpenCodeAPIKeyEnv},
 	ProviderFireworks:             {defaultFireworksAPIKeyEnv},

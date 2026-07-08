@@ -64,6 +64,10 @@ mutating process environment.
 Generated Bedrock metadata now also includes focused EU Anthropic Claude
 regional rows that reuse the existing `eu.` inference-profile endpoint fallback
 for the EU runtime route.
+Generated Claude metadata also expands focused Sonnet 5 and Fable 5 coverage
+across existing Anthropic-compatible routes, including direct Anthropic, direct
+Bedrock, Cloudflare AI Gateway, Vercel AI Gateway, OpenCode Zen, and GitHub
+Copilot Sonnet 5 rows without broad catalog expansion.
 Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
 for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an
@@ -388,6 +392,11 @@ advice without adding any execution loop or configuration format to Sigma.
   regional rows for Fable 5, Haiku 4.5, Opus 4.5/4.6/4.7/4.8, and Sonnet 4.6,
   with deterministic registry assertions and the existing `eu.` runtime
   endpoint fallback.
+- Generated Claude metadata now includes focused current Sonnet 5 and Fable 5
+  rows across existing Anthropic-compatible routes, including direct
+  Anthropic, direct Amazon Bedrock, Cloudflare AI Gateway, Vercel AI Gateway,
+  OpenCode Zen, and GitHub Copilot Sonnet 5 coverage while leaving broader
+  catalog expansion to the reviewed refresh workflow.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so

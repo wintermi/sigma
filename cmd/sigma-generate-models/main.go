@@ -747,6 +747,13 @@ func writeAnyMapField(b *bytes.Buffer, field string, values map[string]any) {
 	fmt.Fprintf(b, "\t\t%s: map[string]any{\n", field)
 	for _, key := range sortedAnyMapKeys(values) {
 		fmt.Fprintf(b, "\t\t\t%s: ", mapKey(key))
+		if key == "apiKeyEnvVars" {
+			if values, ok := values[key].([]string); ok {
+				writeAPIKeyEnvVarsValue(b, values)
+				b.WriteString(",\n")
+				continue
+			}
+		}
 		writeAny(b, values[key])
 		b.WriteString(",\n")
 	}
@@ -853,7 +860,28 @@ func writeAnyMapValue(b *bytes.Buffer, values map[string]any) {
 			b.WriteString(", ")
 		}
 		fmt.Fprintf(b, "%s: ", mapKey(key))
+		if key == "apiKeyEnvVars" {
+			if values, ok := values[key].([]string); ok {
+				writeAPIKeyEnvVarsValue(b, values)
+				continue
+			}
+		}
 		writeAny(b, values[key])
+	}
+	b.WriteString("}")
+}
+
+func writeAPIKeyEnvVarsValue(b *bytes.Buffer, values []string) {
+	b.WriteString("[]string{")
+	for i, value := range values {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		if value == "AI_GATEWAY_API_KEY" {
+			b.WriteString("defaultVercelAIGatewayKeyEnv")
+			continue
+		}
+		b.WriteString(strconv.Quote(value))
 	}
 	b.WriteString("}")
 }

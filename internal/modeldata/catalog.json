@@ -215,6 +215,48 @@
       }
     },
     {
+      "id": "anthropic.claude-fable-5",
+      "name": "Claude Fable 5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
       "id": "anthropic.claude-haiku-4-5-20251001-v1:0",
       "name": "Claude Haiku 4.5",
       "provider": "amazon-bedrock",
@@ -522,6 +564,44 @@
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "AWS_ACCESS_KEY_ID",
@@ -2809,6 +2889,44 @@
       }
     },
     {
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.anthropic.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "authEnvNames": [
+        "ANTHROPIC_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
       "id": "gpt-4",
       "name": "GPT-4",
       "provider": "azure-openai-responses",
@@ -4648,6 +4766,44 @@
       }
     },
     {
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5",
+      "provider": "cloudflare-ai-gateway",
+      "api": "anthropic-messages",
+      "baseURL": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "CLOUDFLARE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "gatewayProvider": "anthropic-messages"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
       "id": "claude-haiku-4-5",
       "name": "Claude Haiku 4.5 (latest)",
       "provider": "cloudflare-ai-gateway",
@@ -4967,6 +5123,40 @@
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "CLOUDFLARE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "gatewayProvider": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "cloudflare-ai-gateway",
+      "api": "anthropic-messages",
+      "baseURL": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "CLOUDFLARE_API_KEY"
@@ -6501,6 +6691,44 @@
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 32000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "github-copilot",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.individual.githubcopilot.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
       "headers": {
         "User-Agent": "GitHubCopilotChat/0.35.0",
         "Editor-Version": "vscode/1.107.0",
@@ -13716,6 +13944,44 @@
       }
     },
     {
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
       "id": "claude-opus-4-6",
       "name": "Claude Opus 4.6",
       "provider": "opencode",
@@ -13923,6 +14189,40 @@
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "OPENCODE_API_KEY"
@@ -15839,6 +16139,44 @@
       ]
     },
     {
+      "id": "anthropic/claude-fable-5",
+      "name": "Claude Fable 5",
+      "provider": "vercel-ai-gateway",
+      "api": "anthropic-messages",
+      "baseURL": "https://ai-gateway.vercel.sh/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AI_GATEWAY_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "gatewayProvider": "vercel"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
       "id": "anthropic/claude-haiku-4.5",
       "name": "Claude Haiku 4.5",
       "provider": "vercel-ai-gateway",
@@ -15925,6 +16263,40 @@
         "currency": "USD",
         "cacheReadInputPerMillion": 0.3,
         "cacheWriteInputPerMillion": 3.75
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AI_GATEWAY_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "gatewayProvider": "vercel"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5",
+      "name": "Claude Sonnet 5",
+      "provider": "vercel-ai-gateway",
+      "api": "anthropic-messages",
+      "baseURL": "https://ai-gateway.vercel.sh/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 128000,

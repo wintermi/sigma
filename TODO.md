@@ -431,6 +431,12 @@ upstream.
       OpenRouter, Vercel AI Gateway, OpenCode, and Bedrock only after route
       shape, auth, compatibility metadata, pricing, and regional availability
       are reviewed per provider family.
+- [x] Add focused current Claude Sonnet 5 and Fable 5 metadata across existing
+      Anthropic-compatible routes with deterministic modeldata assertions,
+      while keeping broad catalog parity deferred to the reviewed refresh
+      workflow.
+- [ ] Keep GitHub Copilot Claude Fable 5 deferred until the Chat
+      Completions-shaped route has deterministic request-shape evidence.
 - [x] Promote a focused Kimi Coding Anthropic-compatible provider slice with a
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.
