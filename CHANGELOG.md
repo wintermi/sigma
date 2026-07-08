@@ -147,6 +147,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   discovery, generated text metadata reuse, OpenRouter reasoning/routing
   compatibility, and deterministic registration, request, error, and
   cancellation coverage.
+- Generated OpenRouter image metadata now includes focused current Gemini image
+  and GPT Image routed rows while keeping broad OpenRouter text expansion
+  deferred to the catalog refresh workflow.
 - NVIDIA NIM now has first-class OpenAI-compatible Chat Completions and
   Embeddings provider wrappers, including base URL defaults, bearer auth,
   generated text and embedding metadata, embedding input-type mapping,

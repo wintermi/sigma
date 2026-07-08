@@ -115,7 +115,9 @@ deterministic registration, request, error, and cancellation coverage.
 OpenRouter is also promoted as a focused OpenAI-compatible Chat Completions
 wrapper with generated text metadata reuse, request-scoped routing
 compatibility, and deterministic registration, request, error, and cancellation
-coverage. The
+coverage. Generated OpenRouter image metadata now also includes focused current
+Gemini image and GPT Image routed rows while broad OpenRouter text expansion
+remains deferred to the reviewed catalog refresh workflow. The
 surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
@@ -308,6 +310,9 @@ advice without adding any execution loop or configuration format to Sigma.
   opt-in network source. Refresh mode requires an explicit
   `-refresh-snapshot-date`, preserves existing image and embedding rows, and
   exits before writing generated Go files.
+- Generated OpenRouter image metadata now includes focused current Gemini image
+  and GPT Image routed rows while keeping broad OpenRouter text expansion
+  deferred to the reviewed catalog refresh workflow.
 - `sigma.TextModelSource` and `sigma.TextModelSourceFunc` now let applications
   attach provider-scoped runtime text model sources to a registry, and
   `Registry.RefreshTextModels` / `Client.RefreshTextModels` refresh those

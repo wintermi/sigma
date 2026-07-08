@@ -383,6 +383,8 @@ upstream.
 - [x] Refresh the focused OpenRouter image catalog with the missing routed MAI
       Image 2.5 and Riverflow 2.5 rows while keeping broad OpenRouter text
       expansion deferred.
+- [x] Add focused OpenRouter image metadata for current Gemini and GPT Image
+      routes while keeping broad OpenRouter text expansion deferred.
 - [x] Add the missing direct Anthropic Claude Fable 5 row with adaptive
       thinking metadata, xhigh thinking-level mapping, image input support,
       current limits, and pricing.
