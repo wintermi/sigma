@@ -121,7 +121,10 @@ wrapper with generated text metadata reuse, request-scoped routing
 compatibility, and deterministic registration, request, error, and cancellation
 coverage. Generated OpenRouter image metadata now also includes focused current
 Gemini image and GPT Image routed rows while broad OpenRouter text expansion
-remains deferred to the reviewed catalog refresh workflow. The
+remains deferred to the reviewed catalog refresh workflow. Generated Fireworks
+metadata also expands focused OpenAI-compatible GLM 5.2 rows and
+Anthropic-compatible DeepSeek V4, GLM 5.1, GPT OSS, MiniMax, Qwen, and Kimi
+router rows while keeping live Fireworks validation out of deterministic CI. The
 surface probe command adds a
 credential-gated cross-provider handoff diagnostic for replaying small
 tool-call contexts across selected live routes without moving live provider
@@ -385,6 +388,10 @@ advice without adding any execution loop or configuration format to Sigma.
   `OPENROUTER_API_KEY` credential discovery, generated text metadata reuse,
   OpenRouter reasoning/routing compatibility, and deterministic registration,
   request, redaction, context-overflow, and cancellation coverage.
+- Generated Fireworks metadata now includes focused OpenAI-compatible GLM 5.2
+  rows plus additional Anthropic-compatible Messages rows for DeepSeek V4,
+  GLM 5.1, GPT OSS, MiniMax, Qwen, and Kimi router variants under the existing
+  `fireworks` and `fireworks-anthropic` provider IDs.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.

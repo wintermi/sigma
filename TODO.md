@@ -494,8 +494,12 @@ evidence bar.
 - [x] Add Fireworks Anthropic-compatible routing before promoting regular
       Fireworks model rows that do not use the OpenAI-compatible Fire Pass
       route.
-- [ ] Promote additional Fireworks metadata only after matching deterministic
-      modeldata, payload, error, and compatibility coverage exists.
+- [x] Promote focused Fireworks OpenAI-compatible and Anthropic-compatible
+      metadata after matching deterministic modeldata and compatibility
+      coverage exists.
+- [ ] Keep broader Fireworks metadata, payload, error, and live-provider
+      coverage deferred until specific routes need evidence beyond the shared
+      adapters.
 
 ## Google parity
 

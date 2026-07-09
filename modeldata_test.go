@@ -88,21 +88,70 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataStrings(t, fireworksKimiCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
 
 	for _, id := range []ModelID{
-		"accounts/fireworks/models/kimi-k2p6",
-		"accounts/fireworks/models/kimi-k2p7-code",
+		"accounts/fireworks/models/glm-5p2",
+		"accounts/fireworks/routers/glm-5p2-fast",
 	} {
-		fireworksAnthropic, ok := registry.Model(ProviderFireworksAnthropic, id)
+		fireworksOpenAI, ok := registry.Model(ProviderFireworks, id)
 		if !ok {
-			t.Fatalf("fresh registry missing generated Fireworks Anthropic model %s", id)
+			t.Fatalf("fresh registry missing generated Fireworks OpenAI-compatible model %s", id)
+		}
+		if fireworksOpenAI.API != APIOpenAICompletions {
+			t.Fatalf("Fireworks OpenAI-compatible %s API = %q, want %q", id, fireworksOpenAI.API, APIOpenAICompletions)
+		}
+		if !fireworksOpenAI.SupportsTools || fireworksOpenAI.SupportsImages() {
+			t.Fatalf("Fireworks OpenAI-compatible %s capabilities = %+v, want tools without image input", id, fireworksOpenAI)
+		}
+		if !fireworksOpenAI.SupportsReasoning() || !fireworksOpenAI.SupportsThinkingLevel(ThinkingLevelMedium) {
+			t.Fatalf("Fireworks OpenAI-compatible %s reasoning metadata was not generated: %+v", id, fireworksOpenAI)
+		}
+		if fireworksOpenAI.OpenAICompletionsCompat == nil ||
+			fireworksOpenAI.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningFireworks ||
+			fireworksOpenAI.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+			fireworksOpenAI.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
+			fireworksOpenAI.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+			t.Fatalf("Fireworks OpenAI-compatible %s compat = %#v, want Fireworks OpenAI completions compat", id, fireworksOpenAI.OpenAICompletionsCompat)
+		}
+		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
+		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "fireworksSurface", "openai")
+		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "modelFamily", "glm")
+		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "pricingStatus", "unverified")
+		assertMetadataStrings(t, fireworksOpenAI.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
+	}
+
+	fireworksAnthropicRows := []struct {
+		id         ModelID
+		family     string
+		wantImages bool
+		wantRouter bool
+	}{
+		{id: "accounts/fireworks/models/deepseek-v4-flash", family: "deepseek"},
+		{id: "accounts/fireworks/models/deepseek-v4-pro", family: "deepseek"},
+		{id: "accounts/fireworks/models/glm-5p1", family: "glm"},
+		{id: "accounts/fireworks/models/gpt-oss-120b", family: "gpt-oss"},
+		{id: "accounts/fireworks/models/gpt-oss-20b", family: "gpt-oss"},
+		{id: "accounts/fireworks/models/kimi-k2p6", family: "kimi", wantImages: true},
+		{id: "accounts/fireworks/models/kimi-k2p7-code", family: "kimi", wantImages: true},
+		{id: "accounts/fireworks/models/minimax-m2p7", family: "minimax"},
+		{id: "accounts/fireworks/models/minimax-m3", family: "minimax"},
+		{id: "accounts/fireworks/models/qwen3p7-plus", family: "qwen", wantImages: true},
+		{id: "accounts/fireworks/routers/glm-5p1-fast", family: "glm", wantRouter: true},
+		{id: "accounts/fireworks/routers/kimi-k2p6-fast", family: "kimi", wantImages: true, wantRouter: true},
+		{id: "accounts/fireworks/routers/kimi-k2p6-turbo", family: "kimi", wantImages: true, wantRouter: true},
+		{id: "accounts/fireworks/routers/kimi-k2p7-code-fast", family: "kimi", wantImages: true, wantRouter: true},
+	}
+	for _, id := range fireworksAnthropicRows {
+		fireworksAnthropic, ok := registry.Model(ProviderFireworksAnthropic, id.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Fireworks Anthropic model %s", id.id)
 		}
 		if fireworksAnthropic.API != APIAnthropicMessages {
-			t.Fatalf("Fireworks Anthropic %s API = %q, want %q", id, fireworksAnthropic.API, APIAnthropicMessages)
+			t.Fatalf("Fireworks Anthropic %s API = %q, want %q", id.id, fireworksAnthropic.API, APIAnthropicMessages)
 		}
-		if !fireworksAnthropic.SupportsTools || !fireworksAnthropic.SupportsImages() {
-			t.Fatalf("Fireworks Anthropic %s capabilities were not generated: %+v", id, fireworksAnthropic)
+		if !fireworksAnthropic.SupportsTools || fireworksAnthropic.SupportsImages() != id.wantImages {
+			t.Fatalf("Fireworks Anthropic %s capabilities = %+v, want tools and images %v", id.id, fireworksAnthropic, id.wantImages)
 		}
 		if !fireworksAnthropic.SupportsReasoning() || !fireworksAnthropic.SupportsThinkingLevel(ThinkingLevelHigh) {
-			t.Fatalf("Fireworks Anthropic %s reasoning metadata was not generated: %+v", id, fireworksAnthropic)
+			t.Fatalf("Fireworks Anthropic %s reasoning metadata was not generated: %+v", id.id, fireworksAnthropic)
 		}
 		if fireworksAnthropic.AnthropicMessagesCompat == nil ||
 			fireworksAnthropic.AnthropicMessagesCompat.SupportsSessionAffinity != AnthropicCompatSupported ||
@@ -110,12 +159,18 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			fireworksAnthropic.AnthropicMessagesCompat.SupportsLongCacheRetention != AnthropicCompatUnsupported ||
 			fireworksAnthropic.AnthropicMessagesCompat.SupportsCacheControlOnTools != AnthropicCompatUnsupported ||
 			fireworksAnthropic.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingBudget {
-			t.Fatalf("Fireworks Anthropic %s compat = %#v, want Messages compatibility overrides", id, fireworksAnthropic.AnthropicMessagesCompat)
+			t.Fatalf("Fireworks Anthropic %s compat = %#v, want Messages compatibility overrides", id.id, fireworksAnthropic.AnthropicMessagesCompat)
 		}
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "fireworksSurface", "anthropic")
+		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "modelFamily", id.family)
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "pricingStatus", "unverified")
 		assertMetadataStrings(t, fireworksAnthropic.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
+		if id.wantRouter {
+			if got, ok := fireworksAnthropic.ProviderMetadata["router"].(bool); !ok || !got {
+				t.Fatalf("Fireworks Anthropic %s router metadata = %#v, want true", id.id, fireworksAnthropic.ProviderMetadata["router"])
+			}
+		}
 	}
 
 	anthropic, ok := registry.Model(ProviderAnthropic, "claude-3-5-sonnet-20241022")
