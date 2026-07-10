@@ -73,6 +73,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Text-generation usage now carries provider/model identity, provider raw usage
   payloads, normalized tool-use input tokens, and provider-reported cost when
   available, while keeping Sigma's model-metadata cost estimate separate.
+- `CostForUsage` now applies validated request-wide model pricing tiers when
+  combined input and prompt-cache usage crosses a model-specific threshold.
+  Generated high-context GPT metadata now carries the reviewed tiered rates.
 - Runtime hardening now covers SSE parsing tolerance for colonless fields and
   CR-only line endings, realistic deterministic fake-provider stream lifecycles
   with partial-message snapshots, best-effort decoded partial tool-call

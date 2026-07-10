@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "b63b542894ef3a72186460a225bdf3cee0203fbb7b43db5598997c1ec05641a7"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "ae04e8a5ebc7c9cf0c847452431c3c53bc5a4fd22b2b3f4526e319a9c1758d9b"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -160,6 +160,42 @@ func TestCatalogValidationRejectsNegativeCacheCosts(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("Decode error = %q, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestCatalogValidationRejectsInvalidCostTiers(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		tiers []CostTier
+		want  string
+	}{
+		{
+			name:  "negative threshold",
+			tiers: []CostTier{{InputTokensAbove: -1}},
+			want:  "cost.tiers[0].inputTokensAbove must be non-negative",
+		},
+		{
+			name:  "non-increasing threshold",
+			tiers: []CostTier{{InputTokensAbove: 10}, {InputTokensAbove: 10}},
+			want:  "cost.tiers[1].inputTokensAbove must be strictly increasing",
+		},
+		{
+			name:  "negative cache write rate",
+			tiers: []CostTier{{InputTokensAbove: 10, CacheWriteInputPerMillion: -1}},
+			want:  "cost.tiers[0].cacheWriteInputPerMillion must be non-negative",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validateCost(Cost{InputPerMillion: 1, OutputPerMillion: 2, Currency: "USD", Tiers: tt.tiers})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("validateCost error = %v, want %q", err, tt.want)
 			}
 		})
 	}

@@ -288,6 +288,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got, ok := gpt54.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
 		t.Fatalf("GPT-5.4 xhigh level = %q, %v; want xhigh, true", got, ok)
 	}
+	assertGeneratedCostTiers(t, registry)
 
 	googleFlash, ok := registry.Model(ProviderGoogle, "gemini-3.5-flash")
 	if !ok {
@@ -658,6 +659,32 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataString(t, riverflowImage.ProviderMetadata, "routedProvider", "sourceful")
 	assertMetadataString(t, riverflowImage.ProviderMetadata, "modelFamily", "riverflow")
 	assertMetadataStrings(t, riverflowImage.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
+}
+
+func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	tests := []struct {
+		provider ProviderID
+		id       ModelID
+		want     ModelCostTier
+	}{
+		{provider: ProviderOpenAI, id: "gpt-5.4", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
+		{provider: ProviderOpenAI, id: "gpt-5.4-pro", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 60, OutputCostPerMillion: 270}},
+		{provider: ProviderOpenAI, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
+		{provider: ProviderOpenAI, id: "gpt-5.5-pro", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 60, OutputCostPerMillion: 270}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.4", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
+	}
+	for _, tt := range tests {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing %s/%s", tt.provider, tt.id)
+		}
+		if len(model.CostTiers) != 1 || model.CostTiers[0] != tt.want {
+			t.Fatalf("%s/%s cost tiers = %#v, want %#v", tt.provider, tt.id, model.CostTiers, []ModelCostTier{tt.want})
+		}
+	}
 }
 
 func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Registry) {

@@ -97,11 +97,21 @@ type EmbeddingModel struct {
 
 // Cost records text model pricing in currency units per one million tokens.
 type Cost struct {
+	InputPerMillion           float64    `json:"inputPerMillion"`
+	OutputPerMillion          float64    `json:"outputPerMillion"`
+	CacheReadInputPerMillion  float64    `json:"cacheReadInputPerMillion,omitempty"`
+	CacheWriteInputPerMillion float64    `json:"cacheWriteInputPerMillion,omitempty"`
+	Tiers                     []CostTier `json:"tiers,omitempty"`
+	Currency                  string     `json:"currency"`
+}
+
+// CostTier records request-wide pricing above an input threshold.
+type CostTier struct {
+	InputTokensAbove          int     `json:"inputTokensAbove"`
 	InputPerMillion           float64 `json:"inputPerMillion"`
 	OutputPerMillion          float64 `json:"outputPerMillion"`
 	CacheReadInputPerMillion  float64 `json:"cacheReadInputPerMillion,omitempty"`
 	CacheWriteInputPerMillion float64 `json:"cacheWriteInputPerMillion,omitempty"`
-	Currency                  string  `json:"currency"`
 }
 
 // ImageCost records image pricing notes for metadata discovery.
@@ -447,6 +457,28 @@ func validateCost(cost Cost) error {
 	}
 	if cost.CacheWriteInputPerMillion < 0 {
 		return fmt.Errorf("cost.cacheWriteInputPerMillion must be non-negative")
+	}
+	previousThreshold := -1
+	for index, tier := range cost.Tiers {
+		if tier.InputTokensAbove < 0 {
+			return fmt.Errorf("cost.tiers[%d].inputTokensAbove must be non-negative", index)
+		}
+		if tier.InputTokensAbove <= previousThreshold {
+			return fmt.Errorf("cost.tiers[%d].inputTokensAbove must be strictly increasing", index)
+		}
+		if tier.InputPerMillion < 0 {
+			return fmt.Errorf("cost.tiers[%d].inputPerMillion must be non-negative", index)
+		}
+		if tier.OutputPerMillion < 0 {
+			return fmt.Errorf("cost.tiers[%d].outputPerMillion must be non-negative", index)
+		}
+		if tier.CacheReadInputPerMillion < 0 {
+			return fmt.Errorf("cost.tiers[%d].cacheReadInputPerMillion must be non-negative", index)
+		}
+		if tier.CacheWriteInputPerMillion < 0 {
+			return fmt.Errorf("cost.tiers[%d].cacheWriteInputPerMillion must be non-negative", index)
+		}
+		previousThreshold = tier.InputTokensAbove
 	}
 	return nil
 }

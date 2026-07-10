@@ -27,6 +27,7 @@ type Model struct {
 	OutputCostPerMillion          float64                  `json:"outputCostPerMillion,omitempty"`
 	CacheReadInputCostPerMillion  float64                  `json:"cacheReadInputCostPerMillion,omitempty"`
 	CacheWriteInputCostPerMillion float64                  `json:"cacheWriteInputCostPerMillion,omitempty"`
+	CostTiers                     []ModelCostTier          `json:"costTiers,omitempty"`
 	CostCurrency                  string                   `json:"costCurrency,omitempty"`
 	DefaultTransport              Transport                `json:"defaultTransport,omitempty"`
 	// OpenAICompletionsCompat overrides provider/base-URL compatibility
@@ -42,6 +43,16 @@ type Model struct {
 	// for non-Codex models.
 	OpenAICodexResponses *OpenAICodexResponsesConfig `json:"openAICodexResponses,omitempty"`
 	ProviderMetadata     map[string]any              `json:"providerMetadata,omitempty"`
+}
+
+// ModelCostTier specifies request-wide model rates above an input threshold.
+// The highest strictly exceeded threshold applies to the whole request.
+type ModelCostTier struct {
+	InputTokensAbove              int     `json:"inputTokensAbove"`
+	InputCostPerMillion           float64 `json:"inputCostPerMillion"`
+	OutputCostPerMillion          float64 `json:"outputCostPerMillion"`
+	CacheReadInputCostPerMillion  float64 `json:"cacheReadInputCostPerMillion,omitempty"`
+	CacheWriteInputCostPerMillion float64 `json:"cacheWriteInputCostPerMillion,omitempty"`
 }
 
 const (
@@ -75,6 +86,7 @@ type OpenAICompatibleModelConfig struct {
 	OutputCostPerMillion          float64
 	CacheReadInputCostPerMillion  float64
 	CacheWriteInputCostPerMillion float64
+	CostTiers                     []ModelCostTier
 	CostCurrency                  string
 	DefaultTransport              Transport
 	OpenAICompletionsCompat       *OpenAICompletionsCompat
@@ -115,6 +127,7 @@ func OpenAICompatibleModel(config OpenAICompatibleModelConfig) Model {
 		OutputCostPerMillion:          config.OutputCostPerMillion,
 		CacheReadInputCostPerMillion:  config.CacheReadInputCostPerMillion,
 		CacheWriteInputCostPerMillion: config.CacheWriteInputCostPerMillion,
+		CostTiers:                     append([]ModelCostTier(nil), config.CostTiers...),
 		CostCurrency:                  config.CostCurrency,
 		DefaultTransport:              config.DefaultTransport,
 		OpenAICompletionsCompat:       cloneOpenAICompletionsCompat(config.OpenAICompletionsCompat),
@@ -330,6 +343,7 @@ func cloneModel(model Model) Model {
 	model.ThinkingLevels = append([]ThinkingLevel(nil), model.ThinkingLevels...)
 	model.ThinkingLevelMap = copyThinkingLevelStringMap(model.ThinkingLevelMap)
 	model.UnsupportedThinkingLevels = append([]ThinkingLevel(nil), model.UnsupportedThinkingLevels...)
+	model.CostTiers = append([]ModelCostTier(nil), model.CostTiers...)
 	model.OpenAICompletionsCompat = cloneOpenAICompletionsCompat(model.OpenAICompletionsCompat)
 	model.AnthropicMessagesCompat = cloneAnthropicMessagesCompat(model.AnthropicMessagesCompat)
 	model.AzureOpenAIResponses = cloneAzureOpenAIResponsesConfig(model.AzureOpenAIResponses)

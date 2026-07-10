@@ -11,7 +11,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 generation, including long prompt-cache write splits, raw provider usage
 payloads for diagnostics, standalone provider/model identity on usage records,
 and a clear split between provider-reported cost and Sigma's model-metadata
-cost estimate. Persisted assistant messages can now also carry optional usage
+cost estimate. Model metadata can now also supply request-wide price tiers, so
+high-context requests that cross a model-specific combined input/cache
+threshold use the corresponding reviewed rates. Persisted assistant messages can now also carry optional usage
 metadata, and deterministic request-estimate helpers let callers approximate
 context size before dispatch, anchoring on the latest successful
 provider-reported usage when available. Mistral Conversations now also maps

@@ -391,6 +391,8 @@ upstream.
 - [x] Add a deterministic local catalog summary report for the generator,
       covering source count, text/image/embedding totals, text tool/reasoning
       counts, and provider/API buckets without changing the checked-in catalog.
+- [x] Add validated request-wide model cost tiers for high-context pricing,
+      including generated metadata and deterministic input/cache accounting.
 - [x] Correct the Azure GPT-5.4/GPT-5.5 context windows to the 1,050,000-token
       Azure Foundry deployments and the OpenAI/Azure GPT-5 Pro max output
       tokens to 128,000.

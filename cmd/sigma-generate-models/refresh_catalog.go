@@ -204,6 +204,7 @@ func mergeModelsDevTextModel(base indexedTextModel, source modelsDevModel, id st
 		OutputPerMillion:          source.Cost.Output,
 		CacheReadInputPerMillion:  source.Cost.CacheRead,
 		CacheWriteInputPerMillion: source.Cost.CacheWrite,
+		Tiers:                     append([]modeldata.CostTier(nil), model.Cost.Tiers...),
 		Currency:                  firstNonEmptyString(model.Cost.Currency, "USD"),
 	}
 	model.ContextWindow = positiveOrDefault(source.Limit.Context, model.ContextWindow)

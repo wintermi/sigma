@@ -6,6 +6,7 @@
 package sigma_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -169,12 +170,80 @@ func TestCostForUsageStandardAndCacheHeavyUsage(t *testing.T) {
 	}
 }
 
+func TestCostForUsageUsesHighestExceededTier(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		InputCostPerMillion:           1,
+		OutputCostPerMillion:          2,
+		CacheReadInputCostPerMillion:  0.1,
+		CacheWriteInputCostPerMillion: 0.5,
+		CostTiers: []sigma.ModelCostTier{
+			{
+				InputTokensAbove:              272_000,
+				InputCostPerMillion:           2,
+				OutputCostPerMillion:          3,
+				CacheReadInputCostPerMillion:  0.2,
+				CacheWriteInputCostPerMillion: 1,
+			},
+			{
+				InputTokensAbove:              400_000,
+				InputCostPerMillion:           4,
+				OutputCostPerMillion:          5,
+				CacheReadInputCostPerMillion:  0.4,
+				CacheWriteInputCostPerMillion: 2,
+			},
+		},
+	}
+
+	tests := []struct {
+		name  string
+		usage sigma.Usage
+		want  float64
+	}{
+		{
+			name:  "below threshold",
+			usage: sigma.Usage{InputTokens: 271_999, OutputTokens: 1_000_000},
+			want:  2.271999,
+		},
+		{
+			name:  "at threshold",
+			usage: sigma.Usage{InputTokens: 272_000, OutputTokens: 1_000_000},
+			want:  2.272,
+		},
+		{
+			name:  "cache input crosses threshold",
+			usage: sigma.Usage{InputTokens: 272_000, CacheReadInputTokens: 1, OutputTokens: 1_000_000},
+			want:  3.5440002,
+		},
+		{
+			name:  "highest matching tier",
+			usage: sigma.Usage{InputTokens: 401_000, OutputTokens: 1_000_000},
+			want:  6.604,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := sigma.CostForUsage(model, tt.usage).TotalCost; math.Abs(got-tt.want) > 1e-12 {
+				t.Fatalf("total cost = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCostForUsagePricesLongCacheWritesAtInputMultiplier(t *testing.T) {
 	t.Parallel()
 
 	model := sigma.Model{
 		InputCostPerMillion:           5,
 		CacheWriteInputCostPerMillion: 1,
+		CostTiers: []sigma.ModelCostTier{{
+			InputTokensAbove:              0,
+			InputCostPerMillion:           6,
+			CacheWriteInputCostPerMillion: 1.5,
+		}},
 	}
 	usage := sigma.Usage{
 		CacheWriteInputTokens:     1_000_000,
@@ -182,7 +251,7 @@ func TestCostForUsagePricesLongCacheWritesAtInputMultiplier(t *testing.T) {
 	}
 
 	cost := sigma.CostForUsage(model, usage)
-	if got, want := cost.CacheWriteInputCost, 4.6; got != want {
+	if got, want := cost.CacheWriteInputCost, 5.7; got != want {
 		t.Fatalf("cache write cost = %v, want %v", got, want)
 	}
 	if got, want := usage.Total(), 1_000_000; got != want {

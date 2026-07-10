@@ -107,15 +107,16 @@ func (usage Usage) Total() int {
 // CostCurrency records the rate currency; when empty, USD is assumed. The
 // helper does not round so callers can choose their own display precision.
 func CostForUsage(model Model, usage Usage) Cost {
-	inputCost := costForTokens(usage.InputTokens, model.InputCostPerMillion)
-	outputCost := costForTokens(usage.OutputTokens, model.OutputCostPerMillion)
-	cacheReadCost := costForTokens(usage.CacheReadInputTokens, model.CacheReadInputCostPerMillion)
+	rates := modelCostRatesForUsage(model, usage)
+	inputCost := costForTokens(usage.InputTokens, rates.InputCostPerMillion)
+	outputCost := costForTokens(usage.OutputTokens, rates.OutputCostPerMillion)
+	cacheReadCost := costForTokens(usage.CacheReadInputTokens, rates.CacheReadInputCostPerMillion)
 	shortCacheWriteTokens := usage.CacheWriteInputTokens - usage.LongCacheWriteInputTokens
 	if shortCacheWriteTokens < 0 {
 		shortCacheWriteTokens = 0
 	}
-	cacheWriteCost := costForTokens(shortCacheWriteTokens, model.CacheWriteInputCostPerMillion) +
-		costForTokens(usage.LongCacheWriteInputTokens, model.InputCostPerMillion*2)
+	cacheWriteCost := costForTokens(shortCacheWriteTokens, rates.CacheWriteInputCostPerMillion) +
+		costForTokens(usage.LongCacheWriteInputTokens, rates.InputCostPerMillion*2)
 
 	return Cost{
 		InputCost:           inputCost,
@@ -125,6 +126,24 @@ func CostForUsage(model Model, usage Usage) Cost {
 		TotalCost:           inputCost + outputCost + cacheReadCost + cacheWriteCost,
 		Currency:            costCurrency(model),
 	}
+}
+
+func modelCostRatesForUsage(model Model, usage Usage) ModelCostTier {
+	rates := ModelCostTier{
+		InputCostPerMillion:           model.InputCostPerMillion,
+		OutputCostPerMillion:          model.OutputCostPerMillion,
+		CacheReadInputCostPerMillion:  model.CacheReadInputCostPerMillion,
+		CacheWriteInputCostPerMillion: model.CacheWriteInputCostPerMillion,
+	}
+	inputTokens := usage.InputTokens + usage.CacheReadInputTokens + usage.CacheWriteInputTokens
+	matchedThreshold := -1
+	for _, tier := range model.CostTiers {
+		if inputTokens > tier.InputTokensAbove && tier.InputTokensAbove > matchedThreshold {
+			rates = tier
+			matchedThreshold = tier.InputTokensAbove
+		}
+	}
+	return rates
 }
 
 // CostForEmbeddingUsage calculates deterministic embedding request cost from model rates.

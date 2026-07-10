@@ -9946,8 +9946,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2.5,
 		OutputCostPerMillion:         15,
 		CacheReadInputCostPerMillion: 0.25,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          5,
+				OutputCostPerMillion:         22.5,
+				CacheReadInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10023,8 +10031,15 @@ var builtinTextModels = []Model{
 		UnsupportedThinkingLevels: []ThinkingLevel{ThinkingLevel("off")},
 		InputCostPerMillion:       30,
 		OutputCostPerMillion:      180,
-		CostCurrency:              "USD",
-		DefaultTransport:          Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:     272000,
+				InputCostPerMillion:  60,
+				OutputCostPerMillion: 270,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10050,8 +10065,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10075,8 +10098,15 @@ var builtinTextModels = []Model{
 		UnsupportedThinkingLevels: []ThinkingLevel{ThinkingLevel("off"), ThinkingLevel("minimal"), ThinkingLevel("low")},
 		InputCostPerMillion:       30,
 		OutputCostPerMillion:      180,
-		CostCurrency:              "USD",
-		DefaultTransport:          Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:     272000,
+				InputCostPerMillion:  60,
+				OutputCostPerMillion: 270,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10304,8 +10334,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2.5,
 		OutputCostPerMillion:         15,
 		CacheReadInputCostPerMillion: 0.25,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          5,
+				OutputCostPerMillion:         22.5,
+				CacheReadInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model: "gpt-5.4",
 		},
@@ -10362,8 +10400,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model: "gpt-5.5",
 		},

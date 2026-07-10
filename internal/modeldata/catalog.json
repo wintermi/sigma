@@ -12560,7 +12560,15 @@
         "inputPerMillion": 2.5,
         "outputPerMillion": 15,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.25
+        "cacheReadInputPerMillion": 0.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22.5,
+            "cacheReadInputPerMillion": 0.5
+          }
+        ]
       },
       "contextWindow": 272000,
       "maxOutputTokens": 128000,
@@ -12632,7 +12640,15 @@
         "inputPerMillion": 5,
         "outputPerMillion": 30,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.5
+        "cacheReadInputPerMillion": 0.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 272000,
       "maxOutputTokens": 128000,
@@ -13545,6 +13561,14 @@
         "inputPerMillion": 2.5,
         "outputPerMillion": 15,
         "cacheReadInputPerMillion": 0.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22.5,
+            "cacheReadInputPerMillion": 0.5
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 272000,
@@ -13643,6 +13667,13 @@
       "cost": {
         "inputPerMillion": 30,
         "outputPerMillion": 180,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 60,
+            "outputPerMillion": 270
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 1050000,
@@ -13678,6 +13709,14 @@
         "inputPerMillion": 5,
         "outputPerMillion": 30,
         "cacheReadInputPerMillion": 0.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 272000,
@@ -13713,6 +13752,13 @@
       "cost": {
         "inputPerMillion": 30,
         "outputPerMillion": 180,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 60,
+            "outputPerMillion": 270
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 1050000,

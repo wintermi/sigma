@@ -50,7 +50,13 @@ func TestBuildModelsDevCandidateCatalogMergesSupportedTextRows(t *testing.T) {
 		OutputPerMillion:          10,
 		CacheReadInputPerMillion:  0.25,
 		CacheWriteInputPerMillion: 1,
-		Currency:                  "USD",
+		Tiers: []modeldata.CostTier{{
+			InputTokensAbove:         272_000,
+			InputPerMillion:          2.5,
+			OutputPerMillion:         15,
+			CacheReadInputPerMillion: 0.25,
+		}},
+		Currency: "USD",
 	}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("updated cost = %#v, want %#v", got, want)
 	}
@@ -267,14 +273,24 @@ func refreshTestCatalog() modeldata.Catalog {
 		},
 		TextModels: []modeldata.TextModel{
 			{
-				ID:               "gpt-existing",
-				Name:             "GPT Existing",
-				Provider:         "openai",
-				API:              "openai-responses",
-				BaseURL:          "https://api.openai.com/v1",
-				SupportedInputs:  []string{"text"},
-				SupportsTools:    true,
-				Cost:             modeldata.Cost{InputPerMillion: 1, OutputPerMillion: 2, Currency: "USD"},
+				ID:              "gpt-existing",
+				Name:            "GPT Existing",
+				Provider:        "openai",
+				API:             "openai-responses",
+				BaseURL:         "https://api.openai.com/v1",
+				SupportedInputs: []string{"text"},
+				SupportsTools:   true,
+				Cost: modeldata.Cost{
+					InputPerMillion:  1,
+					OutputPerMillion: 2,
+					Tiers: []modeldata.CostTier{{
+						InputTokensAbove:         272_000,
+						InputPerMillion:          2.5,
+						OutputPerMillion:         15,
+						CacheReadInputPerMillion: 0.25,
+					}},
+					Currency: "USD",
+				},
 				ContextWindow:    128000,
 				MaxOutputTokens:  8192,
 				AuthEnvNames:     []string{"OPENAI_API_KEY"},

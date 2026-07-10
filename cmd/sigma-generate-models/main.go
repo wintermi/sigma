@@ -492,6 +492,7 @@ func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
 	writeFloatField(b, "OutputCostPerMillion", model.Cost.OutputPerMillion)
 	writeFloatField(b, "CacheReadInputCostPerMillion", model.Cost.CacheReadInputPerMillion)
 	writeFloatField(b, "CacheWriteInputCostPerMillion", model.Cost.CacheWriteInputPerMillion)
+	writeCostTiers(b, model.Cost.Tiers)
 	writeStringField(b, "CostCurrency", "", model.Cost.Currency)
 	writeStringField(b, "DefaultTransport", "Transport", model.DefaultTransport)
 	writeOpenAICompatField(b, model.OpenAICompletionsCompat)
@@ -691,6 +692,23 @@ func writeFloatField(b *bytes.Buffer, field string, value float64) {
 		return
 	}
 	fmt.Fprintf(b, "\t\t%s: %s,\n", field, formatFloat(value))
+}
+
+func writeCostTiers(b *bytes.Buffer, tiers []modeldata.CostTier) {
+	if len(tiers) == 0 {
+		return
+	}
+	b.WriteString("\t\tCostTiers: []ModelCostTier{\n")
+	for _, tier := range tiers {
+		b.WriteString("\t\t\t{\n")
+		writeIntField(b, "InputTokensAbove", tier.InputTokensAbove)
+		writeFloatField(b, "InputCostPerMillion", tier.InputPerMillion)
+		writeFloatField(b, "OutputCostPerMillion", tier.OutputPerMillion)
+		writeFloatField(b, "CacheReadInputCostPerMillion", tier.CacheReadInputPerMillion)
+		writeFloatField(b, "CacheWriteInputCostPerMillion", tier.CacheWriteInputPerMillion)
+		b.WriteString("\t\t\t},\n")
+	}
+	b.WriteString("\t\t},\n")
 }
 
 func writeBoolField(b *bytes.Buffer, field string, value bool) {
