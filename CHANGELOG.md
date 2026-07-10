@@ -134,6 +134,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   Anthropic, direct Amazon Bedrock, Cloudflare AI Gateway, Vercel AI Gateway,
   OpenCode Zen, and GitHub Copilot Sonnet 5 coverage while leaving broader
   catalog expansion to the reviewed refresh workflow.
+- Generated direct OpenAI Responses metadata now includes GPT-5.6 Luna, Sol,
+  and Terra with text/image, tool, and reasoning capabilities; cache-write
+  pricing; and 272,000-token high-context price tiers.
 - Cloudflare Workers AI now has a first-class OpenAI-compatible Chat
   Completions wrapper for direct Workers AI routes, including request-scoped
   account placeholder resolution, normal bearer-token auth, generated metadata,

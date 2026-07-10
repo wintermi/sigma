@@ -733,6 +733,7 @@ func validMistralToolChoice(choice MistralToolChoice) bool {
 	}
 }
 
+//nolint:goconst
 func validGoogleToolChoice(choice string) bool {
 	switch choice {
 	case "auto", "none", "any", "AUTO", "NONE", "ANY":

@@ -70,6 +70,9 @@ Generated Claude metadata also expands focused Sonnet 5 and Fable 5 coverage
 across existing Anthropic-compatible routes, including direct Anthropic, direct
 Bedrock, Cloudflare AI Gateway, Vercel AI Gateway, OpenCode Zen, and GitHub
 Copilot Sonnet 5 rows without broad catalog expansion.
+Generated direct OpenAI Responses metadata now also includes GPT-5.6 Luna, Sol,
+and Terra with text/image, tool, and reasoning capabilities; cache-write
+pricing; and 272,000-token high-context price tiers.
 Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
 for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an
@@ -406,6 +409,9 @@ advice without adding any execution loop or configuration format to Sigma.
   Anthropic, direct Amazon Bedrock, Cloudflare AI Gateway, Vercel AI Gateway,
   OpenCode Zen, and GitHub Copilot Sonnet 5 coverage while leaving broader
   catalog expansion to the reviewed refresh workflow.
+- Generated direct OpenAI Responses metadata now includes GPT-5.6 Luna, Sol,
+  and Terra with text/image, tool, and reasoning capabilities; cache-write
+  pricing; and 272,000-token high-context price tiers.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so
