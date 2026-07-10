@@ -395,6 +395,9 @@ upstream.
       including generated metadata and deterministic input/cache accounting.
 - [x] Add focused direct OpenAI GPT-5.6 Luna, Sol, and Terra metadata with
       reasoning, cache-write pricing, and validated high-context cost tiers.
+- [x] Add focused direct-provider metadata for Cerebras Gemma 4 31B, xAI Grok
+      4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 while keeping broad router
+      catalog expansion deferred to the reviewed refresh workflow.
 - [x] Correct the Azure GPT-5.4/GPT-5.5 context windows to the 1,050,000-token
       Azure Foundry deployments and the OpenAI/Azure GPT-5 Pro max output
       tokens to 128,000.

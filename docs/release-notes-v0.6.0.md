@@ -73,6 +73,10 @@ Copilot Sonnet 5 rows without broad catalog expansion.
 Generated direct OpenAI Responses metadata now also includes GPT-5.6 Luna, Sol,
 and Terra with text/image, tool, and reasoning capabilities; cache-write
 pricing; and 272,000-token high-context price tiers.
+Generated direct-provider metadata now also includes Cerebras Gemma 4 31B,
+xAI Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with reviewed capabilities,
+limits, pricing, and existing compatibility defaults, while broad router catalog
+expansion remains deferred to the reviewed refresh workflow.
 Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
 for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an

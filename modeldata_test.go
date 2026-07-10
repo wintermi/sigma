@@ -953,6 +953,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		"grok-4.20-0309-non-reasoning",
 		"grok-4.20-0309-reasoning",
 		"grok-4.3",
+		"grok-4.5",
 		"grok-build-0.1",
 		"grok-code-fast-1",
 	} {
@@ -974,6 +975,70 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	if !grok43.SupportsTools || !grok43.SupportsImages() || !grok43.SupportsReasoning() {
 		t.Fatalf("Grok 4.3 capabilities were not generated: %+v", grok43)
+	}
+
+	for _, tt := range []struct {
+		provider       ProviderID
+		id             ModelID
+		baseURL        string
+		envVar         string
+		modelFamily    string
+		contextWindow  int
+		maxOutput      int
+		inputCost      float64
+		outputCost     float64
+		cacheReadCost  float64
+		supportsImages bool
+	}{
+		{provider: ProviderCerebras, id: "gemma-4-31b", baseURL: "https://api.cerebras.ai/v1", envVar: "CEREBRAS_API_KEY", modelFamily: "gemma", contextWindow: 131072, maxOutput: 40960, inputCost: 0.99, outputCost: 1.49, supportsImages: true},
+		{provider: ProviderXAI, id: "grok-4.5", baseURL: "https://api.x.ai/v1", envVar: "XAI_API_KEY", modelFamily: "grok", contextWindow: 500000, maxOutput: 500000, inputCost: 2, outputCost: 6, cacheReadCost: 0.5, supportsImages: true},
+		{provider: ProviderNVIDIA, id: "minimaxai/minimax-m3", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "minimax", contextWindow: 1000000, maxOutput: 16384, supportsImages: true},
+		{provider: ProviderNVIDIA, id: "z-ai/glm-5.2", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "glm", contextWindow: 1000000, maxOutput: 131072},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s model %s", tt.provider, tt.id)
+		}
+		if model.API != APIOpenAICompletions || !model.SupportsTools || !model.SupportsReasoning() || model.SupportsImages() != tt.supportsImages {
+			t.Fatalf("%s %s capabilities = %+v", tt.provider, tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutput {
+			t.Fatalf("%s %s limits = %d/%d, want %d/%d", tt.provider, tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutput)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost {
+			t.Fatalf("%s %s costs = %f/%f/%f, want %f/%f/%f", tt.provider, tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{tt.envVar})
+		switch tt.provider {
+		case ProviderCerebras:
+			if model.OpenAICompletionsCompat != nil {
+				t.Fatalf("Cerebras %s compat = %#v, want provider defaults", tt.id, model.OpenAICompletionsCompat)
+			}
+		case ProviderXAI:
+			if model.OpenAICompletionsCompat == nil ||
+				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+				model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
+				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxCompletionTokens {
+				t.Fatalf("xAI %s compat = %#v, want xAI OpenAI-compatible overrides", tt.id, model.OpenAICompletionsCompat)
+			}
+		case ProviderNVIDIA:
+			if model.OpenAICompletionsCompat == nil ||
+				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+				model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+				t.Fatalf("NVIDIA %s compat = %#v, want NIM OpenAI-compatible overrides", tt.id, model.OpenAICompletionsCompat)
+			}
+			headers, ok := model.ProviderMetadata["headers"].(map[string]string)
+			if !ok || headers["NVCF-POLL-SECONDS"] != "3600" {
+				t.Fatalf("NVIDIA %s headers = %#v, want NVCF-POLL-SECONDS", tt.id, model.ProviderMetadata["headers"])
+			}
+		}
 	}
 
 	nvidiaSuper, ok := registry.Model(ProviderNVIDIA, "nvidia/nemotron-3-super-120b-a12b")

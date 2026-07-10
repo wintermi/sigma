@@ -4499,6 +4499,34 @@
       }
     },
     {
+      "id": "gemma-4-31b",
+      "name": "Gemma 4 31B IT",
+      "provider": "cerebras",
+      "api": "openai-completions",
+      "baseURL": "https://api.cerebras.ai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.99,
+        "outputPerMillion": 1.49,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 40960,
+      "headers": {},
+      "authEnvNames": [
+        "CEREBRAS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemma"
+      }
+    },
+    {
       "id": "gpt-oss-120b",
       "name": "GPT OSS 120B",
       "provider": "cerebras",
@@ -11912,6 +11940,44 @@
       }
     },
     {
+      "id": "minimaxai/minimax-m3",
+      "name": "MiniMax-M3",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 16384,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "mistralai/mistral-large-3-675b-instruct-2512",
       "name": "Mistral Large 3 675B Instruct 2512",
       "provider": "nvidia",
@@ -12489,6 +12555,43 @@
         "currency": "USD"
       },
       "contextWindow": 131072,
+      "maxOutputTokens": 131072,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "z-ai/glm-5.2",
+      "name": "GLM-5.2",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
       "maxOutputTokens": 131072,
       "headers": {
         "NVCF-POLL-SECONDS": "3600"
@@ -15821,6 +15924,41 @@
         "medium": "medium",
         "high": "high",
         "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "grok-4.5",
+      "name": "Grok 4.5",
+      "provider": "xai",
+      "api": "openai-completions",
+      "baseURL": "https://api.x.ai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.5,
+        "currency": "USD"
+      },
+      "contextWindow": 500000,
+      "maxOutputTokens": 500000,
+      "headers": {},
+      "authEnvNames": [
+        "XAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_completion_tokens"
+      },
+      "providerMetadata": {
+        "modelFamily": "grok"
       }
     },
     {
