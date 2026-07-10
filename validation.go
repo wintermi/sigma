@@ -10,11 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/mail"
+	"net/netip"
+	"net/url"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/wintermi/sigma/internal/redact"
@@ -127,7 +131,7 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 		}
 	}
 
-	if err := validateValue(schema, args, "$", call.Name); err != nil {
+	if err := validateValueWithRoot(schema, args, "$", call.Name); err != nil {
 		return nil, err
 	}
 	return args, nil
@@ -518,7 +522,30 @@ func decodeJSONValue(input any) (any, error) {
 	return value, nil
 }
 
+type validationContext struct {
+	root   map[string]any
+	active map[string]struct{}
+}
+
+func validateValueWithRoot(schema map[string]any, value any, path string, toolName string) error {
+	context := validationContext{root: schema, active: make(map[string]struct{})}
+	return context.validateValue(schema, value, path, toolName)
+}
+
 func validateValue(schema map[string]any, value any, path string, toolName string) error {
+	return validateValueWithRoot(schema, value, path, toolName)
+}
+
+func (context *validationContext) validateValue(schema map[string]any, value any, path string, toolName string) error {
+	remaining, handled, err := context.validateReference(schema, value, path, toolName)
+	if err != nil {
+		return err
+	}
+	if handled {
+		return nil
+	}
+	schema = remaining
+
 	types, err := schemaTypes(schema)
 	if err != nil {
 		return toolValidationError(toolName, path, "valid schema type", schema["type"], "schema is malformed", err)
@@ -533,18 +560,21 @@ func validateValue(schema map[string]any, value any, path string, toolName strin
 	if err := validateEnum(schema, value, path, toolName); err != nil {
 		return err
 	}
+	if err := validateConst(schema, value, path, toolName); err != nil {
+		return err
+	}
 
 	for _, typ := range types {
 		switch typ {
 		case "object":
 			if object, ok := value.(map[string]any); ok {
-				if err := validateObject(schema, object, path, toolName); err != nil {
+				if err := context.validateObject(schema, object, path, toolName); err != nil {
 					return err
 				}
 			}
 		case "array":
 			if array, ok := value.([]any); ok {
-				if err := validateArray(schema, array, path, toolName); err != nil {
+				if err := context.validateArray(schema, array, path, toolName); err != nil {
 					return err
 				}
 			}
@@ -562,23 +592,55 @@ func validateValue(schema map[string]any, value any, path string, toolName strin
 			}
 		}
 	}
-	return validateComposedSchemas(schema, value, path, toolName)
+	return context.validateComposedSchemas(schema, value, path, toolName)
 }
 
-func validateComposedSchemas(schema map[string]any, value any, path string, toolName string) error {
-	if err := validateAllOf(schema, value, path, toolName); err != nil {
-		return err
+func (context *validationContext) validateReference(schema map[string]any, value any, path string, toolName string) (map[string]any, bool, error) {
+	reference, ok := schema["$ref"]
+	if !ok {
+		return schema, false, nil
 	}
-	if err := validateAnyOf(schema, value, path, toolName); err != nil {
-		return err
+	ref, ok := reference.(string)
+	if !ok {
+		return nil, false, toolValidationError(toolName, path, "local JSON Pointer reference", reference, "schema is malformed", nil)
 	}
-	if err := validateOneOf(schema, value, path, toolName); err != nil {
-		return err
+	target, err := context.resolveReference(ref)
+	if err != nil {
+		return nil, false, toolValidationError(toolName, path, "resolvable local JSON Pointer reference", ref, "schema is malformed", err)
 	}
-	return validateNot(schema, value, path, toolName)
+	key := ref + "\x00" + path
+	if _, active := context.active[key]; active {
+		return nil, false, toolValidationError(toolName, path, "non-cyclic local JSON Pointer reference", ref, "schema is malformed", nil)
+	}
+	context.active[key] = struct{}{}
+	err = context.validateValue(target, value, path, toolName)
+	delete(context.active, key)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(schema) == 1 {
+		return nil, true, nil
+	}
+	return schemaWithoutReference(schema), false, nil
 }
 
-func validateAllOf(schema map[string]any, value any, path string, toolName string) error {
+func (context *validationContext) validateComposedSchemas(schema map[string]any, value any, path string, toolName string) error {
+	if err := context.validateAllOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	if err := context.validateAnyOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	if err := context.validateOneOf(schema, value, path, toolName); err != nil {
+		return err
+	}
+	if err := context.validateNot(schema, value, path, toolName); err != nil {
+		return err
+	}
+	return context.validateConditional(schema, value, path, toolName)
+}
+
+func (context *validationContext) validateAllOf(schema map[string]any, value any, path string, toolName string) error {
 	branches, ok, err := schemaBranches(schema, "allOf")
 	if err != nil {
 		return toolValidationError(toolName, path, "allOf schema array", schema["allOf"], "schema is malformed", err)
@@ -587,7 +649,7 @@ func validateAllOf(schema map[string]any, value any, path string, toolName strin
 		return nil
 	}
 	for _, branch := range branches {
-		if err := validateValue(branch, value, path, toolName); err != nil {
+		if err := context.validateValue(branch, value, path, toolName); err != nil {
 			return err
 		}
 	}
@@ -595,6 +657,11 @@ func validateAllOf(schema map[string]any, value any, path string, toolName strin
 }
 
 func validateAnyOf(schema map[string]any, value any, path string, toolName string) error {
+	context := validationContext{root: schema, active: make(map[string]struct{})}
+	return context.validateAnyOf(schema, value, path, toolName)
+}
+
+func (context *validationContext) validateAnyOf(schema map[string]any, value any, path string, toolName string) error {
 	branches, ok, err := schemaBranches(schema, "anyOf")
 	if err != nil {
 		return toolValidationError(toolName, path, "anyOf schema array", schema["anyOf"], "schema is malformed", err)
@@ -604,7 +671,7 @@ func validateAnyOf(schema map[string]any, value any, path string, toolName strin
 	}
 	matches := 0
 	for _, branch := range branches {
-		err := validateValue(branch, value, path, toolName)
+		err := context.validateValue(branch, value, path, toolName)
 		if err == nil {
 			matches++
 			continue
@@ -620,6 +687,11 @@ func validateAnyOf(schema map[string]any, value any, path string, toolName strin
 }
 
 func validateOneOf(schema map[string]any, value any, path string, toolName string) error {
+	context := validationContext{root: schema, active: make(map[string]struct{})}
+	return context.validateOneOf(schema, value, path, toolName)
+}
+
+func (context *validationContext) validateOneOf(schema map[string]any, value any, path string, toolName string) error {
 	branches, ok, err := schemaBranches(schema, "oneOf")
 	if err != nil {
 		return toolValidationError(toolName, path, "oneOf schema array", schema["oneOf"], "schema is malformed", err)
@@ -629,7 +701,7 @@ func validateOneOf(schema map[string]any, value any, path string, toolName strin
 	}
 	matches := 0
 	for _, branch := range branches {
-		err := validateValue(branch, value, path, toolName)
+		err := context.validateValue(branch, value, path, toolName)
 		if err == nil {
 			matches++
 			continue
@@ -667,7 +739,7 @@ func schemaBranches(schema map[string]any, keyword string) ([]map[string]any, bo
 	return branches, true, nil
 }
 
-func validateNot(schema map[string]any, value any, path string, toolName string) error {
+func (context *validationContext) validateNot(schema map[string]any, value any, path string, toolName string) error {
 	raw, ok := schema["not"]
 	if !ok {
 		return nil
@@ -676,7 +748,7 @@ func validateNot(schema map[string]any, value any, path string, toolName string)
 	if !ok {
 		return toolValidationError(toolName, path, "not schema object", raw, "schema is malformed", nil)
 	}
-	err := validateValue(branch, value, path, toolName)
+	err := context.validateValue(branch, value, path, toolName)
 	if err == nil {
 		return toolValidationError(toolName, path, "value not matching schema", value, "not violation", nil)
 	}
@@ -684,6 +756,116 @@ func validateNot(schema map[string]any, value any, path string, toolName string)
 		return err
 	}
 	return nil
+}
+
+func (context *validationContext) validateConditional(schema map[string]any, value any, path string, toolName string) error {
+	rawIf, ok := schema["if"]
+	if !ok {
+		return nil
+	}
+	ifSchema, ok := rawIf.(map[string]any)
+	if !ok {
+		return toolValidationError(toolName, path, "if schema object", rawIf, "schema is malformed", nil)
+	}
+
+	branch := "else"
+	if err := context.validateValue(ifSchema, value, path, toolName); err == nil {
+		branch = "then"
+	} else if isMalformedSchemaError(err) {
+		return err
+	}
+	rawSelected, ok := schema[branch]
+	if !ok {
+		return nil
+	}
+	selected, ok := rawSelected.(map[string]any)
+	if !ok {
+		return toolValidationError(toolName, path, branch+" schema object", rawSelected, "schema is malformed", nil)
+	}
+	return context.validateValue(selected, value, path, toolName)
+}
+
+func (context *validationContext) resolveReference(ref string) (map[string]any, error) {
+	if ref == "#" {
+		return context.root, nil
+	}
+	if !strings.HasPrefix(ref, "#/") {
+		return nil, fmt.Errorf("only local JSON Pointer references are supported")
+	}
+
+	var current any = context.root
+	for _, token := range strings.Split(strings.TrimPrefix(ref, "#/"), "/") {
+		decoded, err := unescapeJSONPointerToken(token)
+		if err != nil {
+			return nil, err
+		}
+		switch value := current.(type) {
+		case map[string]any:
+			var ok bool
+			current, ok = value[decoded]
+			if !ok {
+				return nil, fmt.Errorf("reference does not resolve")
+			}
+		case []any:
+			index, err := jsonPointerIndex(decoded, len(value))
+			if err != nil {
+				return nil, err
+			}
+			current = value[index]
+		default:
+			return nil, fmt.Errorf("reference does not resolve")
+		}
+	}
+
+	target, ok := current.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("reference target must be a schema object")
+	}
+	return target, nil
+}
+
+func unescapeJSONPointerToken(token string) (string, error) {
+	var builder strings.Builder
+	for index := 0; index < len(token); index++ {
+		if token[index] != '~' {
+			builder.WriteByte(token[index])
+			continue
+		}
+		if index+1 >= len(token) {
+			return "", fmt.Errorf("invalid JSON Pointer escape")
+		}
+		index++
+		switch token[index] {
+		case '0':
+			builder.WriteByte('~')
+		case '1':
+			builder.WriteByte('/')
+		default:
+			return "", fmt.Errorf("invalid JSON Pointer escape")
+		}
+	}
+	return builder.String(), nil
+}
+
+func jsonPointerIndex(token string, length int) (int, error) {
+	if token == "" || (len(token) > 1 && token[0] == '0') {
+		return 0, fmt.Errorf("invalid JSON Pointer array index")
+	}
+	index, err := strconv.Atoi(token)
+	if err != nil || index < 0 || index >= length {
+		return 0, fmt.Errorf("reference does not resolve")
+	}
+	return index, nil
+}
+
+func schemaWithoutReference(schema map[string]any) map[string]any {
+	copy := make(map[string]any, len(schema)-1)
+	for key, value := range schema {
+		if key != "$ref" {
+			copy[key] = value
+		}
+	}
+	return copy
 }
 
 func isMalformedSchemaError(err error) bool {
@@ -793,7 +975,15 @@ func validateEnum(schema map[string]any, value any, path string, toolName string
 	return toolValidationError(toolName, path, "one of "+summaryList(values), value, "enum violation", nil)
 }
 
-func validateObject(schema map[string]any, object map[string]any, path string, toolName string) error {
+func validateConst(schema map[string]any, value any, path string, toolName string) error {
+	constant, ok := schema["const"]
+	if !ok || jsonEqual(constant, value) {
+		return nil
+	}
+	return toolValidationError(toolName, path, "constant "+summarizeValue(constant), value, "const violation", nil)
+}
+
+func (context *validationContext) validateObject(schema map[string]any, object map[string]any, path string, toolName string) error {
 	properties, err := schemaProperties(schema)
 	if err != nil {
 		return toolValidationError(toolName, path, "properties object", schema["properties"], "schema is malformed", err)
@@ -814,12 +1004,12 @@ func validateObject(schema map[string]any, object map[string]any, path string, t
 		if !ok {
 			continue
 		}
-		if err := validateValue(propertySchema, value, joinPath(path, name), toolName); err != nil {
+		if err := context.validateValue(propertySchema, value, joinPath(path, name), toolName); err != nil {
 			return err
 		}
 	}
 
-	return validateAdditionalProperties(schema, properties, object, path, toolName)
+	return context.validateAdditionalProperties(schema, properties, object, path, toolName)
 }
 
 func schemaProperties(schema map[string]any) (map[string]map[string]any, error) {
@@ -862,7 +1052,7 @@ func schemaRequired(schema map[string]any) ([]string, error) {
 	return required, nil
 }
 
-func validateAdditionalProperties(schema map[string]any, properties map[string]map[string]any, object map[string]any, path string, toolName string) error {
+func (context *validationContext) validateAdditionalProperties(schema map[string]any, properties map[string]map[string]any, object map[string]any, path string, toolName string) error {
 	raw, declared := schema["additionalProperties"]
 	if !declared {
 		return nil
@@ -884,7 +1074,7 @@ func validateAdditionalProperties(schema map[string]any, properties map[string]m
 			if _, ok := properties[name]; ok {
 				continue
 			}
-			if err := validateValue(v, object[name], joinPath(path, name), toolName); err != nil {
+			if err := context.validateValue(v, object[name], joinPath(path, name), toolName); err != nil {
 				return err
 			}
 		}
@@ -894,7 +1084,7 @@ func validateAdditionalProperties(schema map[string]any, properties map[string]m
 	}
 }
 
-func validateArray(schema map[string]any, array []any, path string, toolName string) error {
+func (context *validationContext) validateArray(schema map[string]any, array []any, path string, toolName string) error {
 	raw, ok := schema["items"]
 	if !ok {
 		return nil
@@ -904,7 +1094,7 @@ func validateArray(schema map[string]any, array []any, path string, toolName str
 		return toolValidationError(toolName, path, "items schema object", raw, "schema is malformed", nil)
 	}
 	for i, item := range array {
-		if err := validateValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName); err != nil {
+		if err := context.validateValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName); err != nil {
 			return err
 		}
 	}
@@ -918,7 +1108,99 @@ func validateString(schema map[string]any, text string, path string, toolName st
 	if err := validateStringBound(schema, "maxLength", text, path, toolName); err != nil {
 		return err
 	}
-	return validateStringPattern(schema, text, path, toolName)
+	if err := validateStringPattern(schema, text, path, toolName); err != nil {
+		return err
+	}
+	return validateStringFormat(schema, text, path, toolName)
+}
+
+func validateStringFormat(schema map[string]any, text string, path string, toolName string) error {
+	raw, ok := schema["format"]
+	if !ok {
+		return nil
+	}
+	format, ok := raw.(string)
+	if !ok {
+		return toolValidationError(toolName, path, "format string", raw, "schema is malformed", nil)
+	}
+	if format == "" {
+		return nil
+	}
+	if err := validateFormat(format, text); err != nil {
+		return toolValidationError(toolName, path, "valid "+format, text, "format violation", nil)
+	}
+	return nil
+}
+
+func validateFormat(format string, text string) error {
+	switch format {
+	case "date":
+		_, err := time.Parse("2006-01-02", text)
+		return formatParseError("date", err)
+	case "time":
+		_, err := time.Parse("15:04:05Z07:00", text)
+		return formatParseError("time", err)
+	case "date-time":
+		_, err := time.Parse(time.RFC3339, text)
+		return formatParseError("date-time", err)
+	case "email":
+		address, err := mail.ParseAddress(text)
+		if err != nil || address.Address != text {
+			return fmt.Errorf("invalid email")
+		}
+		return nil
+	case "uri":
+		parsed, err := url.ParseRequestURI(text)
+		if err != nil || parsed.Scheme == "" {
+			return fmt.Errorf("invalid URI")
+		}
+		return nil
+	case "uuid":
+		if !uuidPattern.MatchString(text) {
+			return fmt.Errorf("invalid UUID")
+		}
+		return nil
+	case "hostname":
+		if !validHostname(text) {
+			return fmt.Errorf("invalid hostname")
+		}
+		return nil
+	case "ipv4", "ipv6":
+		address, err := netip.ParseAddr(text)
+		if err != nil || (format == "ipv4" && !address.Is4()) || (format == "ipv6" && !address.Is6()) {
+			return fmt.Errorf("invalid IP address")
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+func formatParseError(format string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("parse %s: %w", format, err)
+}
+
+var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+func validHostname(host string) bool {
+	if host == "" || len(host) > 253 {
+		return false
+	}
+	host = strings.TrimSuffix(host, ".")
+	for _, label := range strings.Split(host, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, character := range label {
+			if (character < 'a' || character > 'z') && (character < 'A' || character > 'Z') && (character < '0' || character > '9') && character != '-' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validateStringBound(schema map[string]any, keyword string, text string, path string, toolName string) error {

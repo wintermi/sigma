@@ -9,11 +9,13 @@ package sigma
 //
 // ValidateToolCall supports the subset commonly emitted for model tools:
 // type, properties, required, enum, items, additionalProperties, minimum,
-// maximum, minLength, maxLength, pattern, not, and oneOf/anyOf/allOf.
+// maximum, minLength, maxLength, pattern, format, not, if/then/else, and
+// oneOf/anyOf/allOf. It also resolves local JSON Pointer references through
+// $ref, including recursive definitions.
 // ValidateToolCallWithOptions can opt into primitive argument coercion before
 // strict validation.
-// Unsupported JSON Schema keywords are ignored; $ref, formats, and conditional
-// schemas are not evaluated, and coercion remains off by default.
+// External references and unsupported JSON Schema keywords are rejected or
+// ignored respectively; coercion remains off by default.
 type Schema map[string]any
 
 // Tool describes a callable model tool.

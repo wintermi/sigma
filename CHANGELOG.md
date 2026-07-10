@@ -244,6 +244,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   `pattern`, and `not` in tool input schemas, including nested property, array
   item, and additional property schemas, so invalid composed or constrained
   tool arguments are rejected before tool execution.
+- `sigma.ValidateToolCall` now also resolves local JSON Pointer `$ref` values,
+  including recursive definitions, evaluates `if`/`then`/`else`, and strictly
+  validates common date, time, email, URI, UUID, hostname, and IP formats
+  without adding dependencies or fetching external schemas.
 - `sigma.ValidateToolCallWithOptions` now lets callers opt into primitive tool
   argument coercion on decoded argument copies before strict validation, while
   leaving `ValidateToolCall` strict by default.

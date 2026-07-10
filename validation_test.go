@@ -1003,6 +1003,217 @@ func TestToolErrorMessageRedactsValidationError(t *testing.T) {
 	}
 }
 
+func TestValidateToolCallSupportsLocalReferencesAndConditionals(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"$defs": map[string]any{
+			"contact": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{"email": map[string]any{"type": "string", "format": "email"}},
+				"required":   []any{"email"},
+			},
+		},
+		"properties": map[string]any{
+			"contact": map[string]any{"$ref": "#/$defs/contact"},
+			"mode":    map[string]any{"type": "string", "enum": []any{"scheduled", "immediate"}},
+			"when":    map[string]any{"type": "string", "format": "date-time"},
+		},
+		"required": []any{"contact", "mode"},
+		"if": map[string]any{
+			"properties": map[string]any{"mode": map[string]any{"const": "scheduled"}},
+		},
+		"then": map[string]any{"required": []any{"when"}},
+		"else": map[string]any{"not": map[string]any{"required": []any{"when"}}},
+	}
+	tools := []sigma.Tool{{Name: "notify", InputSchema: schema}}
+
+	valid := []sigma.ToolCall{
+		{Name: "notify", Arguments: map[string]any{"contact": map[string]any{"email": "person@example.com"}, "mode": "scheduled", "when": "2026-07-10T12:30:00Z"}},
+		{Name: "notify", Arguments: map[string]any{"contact": map[string]any{"email": "person@example.com"}, "mode": "immediate"}},
+	}
+	for _, call := range valid {
+		if _, err := sigma.ValidateToolCall(tools, call); err != nil {
+			t.Fatalf("ValidateToolCall(%v) returned error: %v", call.Arguments, err)
+		}
+	}
+
+	invalid := []struct {
+		name string
+		call sigma.ToolCall
+	}{
+		{name: "invalid referenced format", call: sigma.ToolCall{Name: "notify", Arguments: map[string]any{"contact": map[string]any{"email": "not-an-email"}, "mode": "immediate"}}},
+		{name: "then requires schedule", call: sigma.ToolCall{Name: "notify", Arguments: map[string]any{"contact": map[string]any{"email": "person@example.com"}, "mode": "scheduled"}}},
+		{name: "else rejects schedule", call: sigma.ToolCall{Name: "notify", Arguments: map[string]any{"contact": map[string]any{"email": "person@example.com"}, "mode": "immediate", "when": "2026-07-10T12:30:00Z"}}},
+	}
+	for _, tt := range invalid {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := sigma.ValidateToolCall(tools, tt.call); err == nil {
+				t.Fatal("ValidateToolCall returned nil error")
+			}
+		})
+	}
+}
+
+func TestValidateToolCallValidatesSupportedFormats(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		format  string
+		valid   string
+		invalid string
+	}{
+		{name: "date", format: "date", valid: "2026-07-10", invalid: "2026-02-30"},
+		{name: "time", format: "time", valid: "12:30:00Z", invalid: "25:30:00Z"},
+		{name: "date time", format: "date-time", valid: "2026-07-10T12:30:00+10:00", invalid: "2026-07-10 12:30:00"},
+		{name: "email", format: "email", valid: "person@example.com", invalid: "person@@example.com"},
+		{name: "uri", format: "uri", valid: "https://example.com/path", invalid: "not a uri"},
+		{name: "uuid", format: "uuid", valid: "019f4c37-8aff-71b3-b314-d291eabc0aa2", invalid: "not-a-uuid"},
+		{name: "hostname", format: "hostname", valid: "api.example.com", invalid: "-api.example.com"},
+		{name: "ipv4", format: "ipv4", valid: "192.0.2.1", invalid: "2001:db8::1"},
+		{name: "ipv6", format: "ipv6", valid: "2001:db8::1", invalid: "192.0.2.1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tools := []sigma.Tool{{Name: "check", InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"value": map[string]any{"type": "string", "format": tt.format}},
+				"required":   []any{"value"},
+			}}}
+			if _, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": tt.valid}}); err != nil {
+				t.Fatalf("valid %s returned error: %v", tt.format, err)
+			}
+			if _, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": tt.invalid}}); err == nil {
+				t.Fatalf("invalid %s returned nil error", tt.format)
+			}
+		})
+	}
+}
+
+func TestValidateToolCallLeavesUnknownFormatsAsAnnotations(t *testing.T) {
+	t.Parallel()
+
+	_, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{Name: "check", InputSchema: sigma.Schema{
+			"type":       "object",
+			"properties": map[string]any{"value": map[string]any{"type": "string", "format": "future-format"}},
+			"required":   []any{"value"},
+		}}},
+		sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": "not otherwise constrained"}},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCall returned error: %v", err)
+	}
+}
+
+func TestValidateToolCallRejectsInvalidOrExternalReferences(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ref  string
+	}{
+		{name: "external", ref: "https://example.com/schema.json"},
+		{name: "missing pointer", ref: "#/$defs/missing"},
+		{name: "pointer is not schema", ref: "#/$defs/name"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := sigma.ValidateToolCall(
+				[]sigma.Tool{{Name: "check", InputSchema: sigma.Schema{
+					"type":       "object",
+					"$defs":      map[string]any{"name": "not a schema"},
+					"properties": map[string]any{"value": map[string]any{"$ref": tt.ref}},
+				}}},
+				sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": "ok"}},
+			)
+			if err == nil {
+				t.Fatal("ValidateToolCall returned nil error")
+			}
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) || validationErr.Reason != "schema is malformed" {
+				t.Fatalf("error = %v, want malformed schema validation error", err)
+			}
+		})
+	}
+}
+
+func TestValidateToolCallSupportsEscapedAndRecursiveReferences(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"definitions": map[string]any{
+			"entry/name": map[string]any{"type": "string", "minLength": 1},
+			"node": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name":  map[string]any{"$ref": "#/definitions/entry~1name"},
+					"child": map[string]any{"$ref": "#/definitions/node"},
+				},
+				"required": []any{"name"},
+			},
+		},
+		"properties": map[string]any{"root": map[string]any{"$ref": "#/definitions/node"}},
+		"required":   []any{"root"},
+	}
+
+	_, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{Name: "tree", InputSchema: schema}},
+		sigma.ToolCall{Name: "tree", Arguments: map[string]any{
+			"root": map[string]any{"name": "parent", "child": map[string]any{"name": "child"}},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCall returned error: %v", err)
+	}
+}
+
+func TestValidateToolCallRejectsCyclicReferenceAndMalformedConditional(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema sigma.Schema
+	}{
+		{
+			name: "cyclic reference",
+			schema: sigma.Schema{
+				"$ref": "#",
+			},
+		},
+		{
+			name: "malformed conditional",
+			schema: sigma.Schema{
+				"type": "object",
+				"if":   []any{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := sigma.ValidateToolCall(
+				[]sigma.Tool{{Name: "check", InputSchema: tt.schema}},
+				sigma.ToolCall{Name: "check", Arguments: map[string]any{}},
+			)
+			if err == nil {
+				t.Fatal("ValidateToolCall returned nil error")
+			}
+			var validationErr *sigma.ToolValidationError
+			if !errors.As(err, &validationErr) || validationErr.Reason != "schema is malformed" {
+				t.Fatalf("error = %v, want malformed schema validation error", err)
+			}
+		})
+	}
+}
+
 func mustJSON(t *testing.T, value any) string {
 	t.Helper()
 

@@ -80,8 +80,12 @@ for _, call := range calls {
 `ValidateToolCall` supports the common subset providers emit for tool schemas:
 `type`, `properties`, `required`, `enum`, `items`, `additionalProperties`,
 `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `not`, `anyOf`,
-`oneOf`, and `allOf`. It does not evaluate `$ref`, formats, or conditional
-schemas.
+`oneOf`, `allOf`, `const`, and `if`/`then`/`else`. It resolves local JSON
+Pointer `$ref` values, including `$defs`/`definitions` and recursive schemas.
+It strictly evaluates `date`, `time`, `date-time`, `email`, `uri`, `uuid`,
+`hostname`, `ipv4`, and `ipv6` formats; unknown formats remain annotations.
+External, file, and network references are rejected locally. Other unsupported
+JSON Schema keywords remain outside Sigma's validation contract.
 
 ## Streaming Tool Calls
 

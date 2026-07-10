@@ -273,9 +273,12 @@ work until their API boundaries are explicit.
 - [x] Add deterministic request-conversion regression coverage for replay IDs,
       OpenAI-compatible request-shape guardrails, routed stream model metadata,
       and Google legacy tool-schema sanitization.
-- [ ] Keep full JSON Schema runtime support, including `$ref`, formats,
-      conditionals, and default primitive coercion, deferred unless Sigma adds
-      a broader validation contract.
+- [x] Add strict local JSON Pointer `$ref`, selected standard format, and
+      `if`/`then`/`else` validation without adding dependencies or default
+      primitive coercion.
+- [ ] Keep external schema references, unsupported JSON Schema vocabulary, and
+      default primitive coercion deferred unless Sigma adds a broader validation
+      contract.
 
 ## First-class provider rows
 

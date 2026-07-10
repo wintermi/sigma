@@ -455,6 +455,10 @@ advice without adding any execution loop or configuration format to Sigma.
   and `not` in tool input schemas, including nested property, array item, and
   additional property schemas, while preserving decoded-copy results and
   redacted validation errors.
+- `sigma.ValidateToolCall` now also resolves local JSON Pointer `$ref` values,
+  including recursive definitions, evaluates `if`/`then`/`else`, and strictly
+  validates common date, time, email, URI, UUID, hostname, and IP formats
+  without adding dependencies or fetching external schemas.
 - `sigma.ValidateToolCallWithOptions` now accepts
   `sigma.ToolValidationOptions{CoercePrimitives: true}` so callers can opt
   into conservative primitive argument coercion before strict tool validation,
@@ -789,8 +793,8 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
   broader document/PDF processing remain deferred and caller-owned.
 - Mistral file image references, built-in connector tools, append/restart
   lifecycle operations, and broad catalog expansion remain deferred.
-- Full JSON Schema runtime support, including `$ref`, formats, conditionals,
-  and default argument coercion, remains deferred.
+- External schema references, unsupported JSON Schema vocabulary, and default
+  argument coercion remain deferred.
 - Broader provider-neutral structured-output mappings remain deferred until
   each provider family has explicit request, response, and fallback semantics.
 
