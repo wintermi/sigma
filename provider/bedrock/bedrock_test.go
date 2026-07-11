@@ -1205,6 +1205,38 @@ func TestHTTPConverseStreamClientRetriesAndRunsResponseHooks(t *testing.T) {
 	}
 }
 
+func TestHTTPConverseStreamClientBoundsAndClosesErrorBody(t *testing.T) {
+	t.Parallel()
+
+	body := &countingResponseBody{reader: bytes.NewReader(bytes.Repeat([]byte("x"), 8192))}
+	httpClient := &http.Client{Transport: bedrockRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Header:     make(http.Header),
+			Body:       body,
+			Request:    req,
+		}, nil
+	})}
+	client, err := newHTTPConverseStreamClient(context.Background(), Config{
+		Region:   "us-east-1",
+		Endpoint: "https://example.test",
+	}, sigma.Options{HTTPClient: httpClient}, CredentialInfo{BearerToken: "bedrock-token"})
+	if err != nil {
+		t.Fatalf("newHTTPConverseStreamClient returned error: %v", err)
+	}
+
+	_, err = client.ConverseStream(context.Background(), ConverseRequest{ModelID: "model"})
+	if err == nil {
+		t.Fatal("ConverseStream returned nil error")
+	}
+	if got, want := body.read, 4096; got != want {
+		t.Fatalf("error body bytes read = %d, want %d", got, want)
+	}
+	if !body.closed {
+		t.Fatal("error response body was not closed")
+	}
+}
+
 func TestHTTPConverseStreamClientUsesBearerToken(t *testing.T) {
 	t.Parallel()
 
@@ -1232,6 +1264,29 @@ func TestHTTPConverseStreamClientUsesBearerToken(t *testing.T) {
 	if got, want := gotAuthorization, "Bearer bedrock-token"; got != want {
 		t.Fatalf("Authorization = %q, want %q", got, want)
 	}
+}
+
+type bedrockRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f bedrockRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+type countingResponseBody struct {
+	reader *bytes.Reader
+	read   int
+	closed bool
+}
+
+func (b *countingResponseBody) Read(p []byte) (int, error) {
+	n, err := b.reader.Read(p)
+	b.read += n
+	return n, err
+}
+
+func (b *countingResponseBody) Close() error {
+	b.closed = true
+	return nil
 }
 
 func TestEventStreamDecoderReportsMalformedFrame(t *testing.T) {

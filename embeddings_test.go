@@ -737,6 +737,48 @@ func TestEmbedBatchSplitsOversizedSingleton(t *testing.T) {
 	}
 }
 
+func TestEmbedBatchRejectsMismatchedSplitVectorDimensions(t *testing.T) {
+	t.Parallel()
+
+	overflowErr := sigma.NewProviderError(
+		sigmatest.ProviderID,
+		sigma.API(sigmatest.EmbeddingAPI),
+		sigmatest.EmbeddingModelID,
+		400,
+		"",
+		0,
+		[]byte(`{"error":{"code":"context_length_exceeded","message":"too many tokens"}}`),
+		sigma.ErrContextOverflow,
+	)
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Err: overflowErr},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{
+			Vectors: []sigma.Embedding{
+				{Index: 0, Vector: []float32{1}},
+				{Index: 1, Vector: []float32{2, 3}},
+			},
+		}},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	got, err := client.EmbedBatch(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"abcd"}},
+		sigma.EmbeddingBatchConfig{MaxRetries: 2, SplitOversized: true},
+	)
+	if !errors.Is(err, sigma.ErrEmbeddingVectorDimensionMismatch) {
+		t.Fatalf("EmbedBatch error = %v, want ErrEmbeddingVectorDimensionMismatch", err)
+	}
+	if len(got.Embeddings.Vectors) != 0 {
+		t.Fatalf("vectors = %#v, want no partial reconstructed vector", got.Embeddings.Vectors)
+	}
+}
+
 func TestEmbedBatchOrdersCachedOversizedSplitPartsBeforeAveraging(t *testing.T) {
 	t.Parallel()
 

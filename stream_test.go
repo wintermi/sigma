@@ -269,6 +269,35 @@ func TestStreamCollectWithCanceledContextReturnsPartialFinalMessage(t *testing.T
 	}
 }
 
+func TestStreamCollectorCancellationAbortsLiveStream(t *testing.T) {
+	t.Parallel()
+
+	stream, writer := sigma.NewStream(context.Background())
+	if err := writer.Emit(context.Background(), sigma.Event{
+		Kind:      sigma.EventKindTextDelta,
+		DeltaText: "partial",
+		Text:      "partial",
+	}); err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+	collectorCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	final, err := sigma.Collect(collectorCtx, stream)
+	if !stderrors.Is(err, sigma.ErrAborted) {
+		t.Fatalf("Collect error = %v, want ErrAborted", err)
+	}
+	if !stderrors.Is(err, context.Canceled) {
+		t.Fatalf("Collect error = %v, want context.Canceled", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonAborted; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "partial"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+}
+
 func TestClientCompleteWithCanceledContextReturnsPartialFinalMessage(t *testing.T) {
 	t.Parallel()
 

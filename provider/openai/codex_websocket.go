@@ -33,6 +33,8 @@ import (
 const (
 	codexWebSocketIdleTTL               = 5 * time.Minute
 	codexWebSocketDefaultConnectTimeout = 15 * time.Second
+	codexWebSocketMaxFrameBytes         = 16 << 20
+	codexWebSocketMaxMessageBytes       = 16 << 20
 	webSocketGUID                       = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 	webSocketOpcodeContinuation = 0x0
@@ -43,10 +45,11 @@ const (
 )
 
 type codexWebSocketConnection struct {
-	conn   net.Conn
-	reader *bufio.Reader
-	mu     sync.Mutex
-	closed bool
+	conn    net.Conn
+	reader  *bufio.Reader
+	stateMu sync.Mutex
+	writeMu sync.Mutex
+	closed  bool
 }
 
 type codexWebSocketSessionEntry struct {
@@ -914,6 +917,10 @@ func (c *codexWebSocketConnection) WriteText(ctx context.Context, text string) e
 }
 
 func (c *codexWebSocketConnection) ReadText(ctx context.Context) (string, error) {
+	return c.readText(ctx, codexWebSocketMaxMessageBytes)
+}
+
+func (c *codexWebSocketConnection) readText(ctx context.Context, maxMessageBytes int) (string, error) {
 	var message bytes.Buffer
 	for {
 		opcode, final, payload, err := c.readFrame(ctx)
@@ -922,6 +929,10 @@ func (c *codexWebSocketConnection) ReadText(ctx context.Context) (string, error)
 		}
 		switch opcode {
 		case webSocketOpcodeText, webSocketOpcodeContinuation:
+			remaining := maxMessageBytes - message.Len()
+			if remaining < 0 || len(payload) > remaining {
+				return "", fmt.Errorf("openai codex responses: websocket message exceeds %d bytes", maxMessageBytes)
+			}
 			message.Write(payload)
 			if final {
 				return message.String(), nil
@@ -976,6 +987,9 @@ func (c *codexWebSocketConnection) readFrame(ctx context.Context) (byte, bool, [
 			return 0, false, nil, err
 		}
 	}
+	if length > codexWebSocketMaxFrameBytes {
+		return 0, false, nil, fmt.Errorf("openai codex responses: websocket frame exceeds %d bytes", codexWebSocketMaxFrameBytes)
+	}
 	var mask [4]byte
 	if masked {
 		if _, err := io.ReadFull(c.reader, mask[:]); err != nil {
@@ -999,9 +1013,14 @@ func (c *codexWebSocketConnection) writeFrame(ctx context.Context, opcode byte, 
 		c.Close()
 		return err
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.closed {
+	stopCancel := context.AfterFunc(ctx, c.Close)
+	defer stopCancel()
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !c.IsOpen() {
 		return io.ErrClosedPipe
 	}
 	var mask [4]byte
@@ -1024,27 +1043,44 @@ func (c *codexWebSocketConnection) writeFrame(ctx context.Context, opcode byte, 
 	for i, b := range payload {
 		frame.WriteByte(b ^ mask[i%4])
 	}
-	if _, err := c.conn.Write(frame.Bytes()); err != nil {
+	if err := writeCodexWebSocketFrame(c.conn, frame.Bytes()); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
 		return fmt.Errorf("openai codex responses: websocket write: %w", err)
 	}
 	return nil
 }
 
+func writeCodexWebSocketFrame(conn net.Conn, frame []byte) error {
+	for len(frame) > 0 {
+		written, err := conn.Write(frame)
+		if err != nil {
+			return fmt.Errorf("write websocket frame: %w", err)
+		}
+		if written == 0 {
+			return io.ErrUnexpectedEOF
+		}
+		frame = frame[written:]
+	}
+	return nil
+}
+
 func (c *codexWebSocketConnection) IsOpen() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
 	return !c.closed
 }
 
 func (c *codexWebSocketConnection) Close() {
-	c.mu.Lock()
+	c.stateMu.Lock()
 	if c.closed {
-		c.mu.Unlock()
+		c.stateMu.Unlock()
 		return
 	}
 	c.closed = true
 	conn := c.conn
-	c.mu.Unlock()
+	c.stateMu.Unlock()
 	_ = conn.Close()
 }
 

@@ -34,12 +34,13 @@ type Producer[T, F any] struct {
 	ctx    context.Context
 	cancel CancelTerminal[T, F]
 
-	events chan T
-	in     chan request[T, F]
-	close  chan chan struct{}
-	done   chan struct{}
-	closed chan struct{}
-	once   sync.Once
+	events  chan T
+	in      chan request[T, F]
+	close   chan chan struct{}
+	abortCh chan abortRequest
+	done    chan struct{}
+	closed  chan struct{}
+	once    sync.Once
 
 	mu       sync.RWMutex
 	final    F
@@ -56,22 +57,41 @@ type request[T, F any] struct {
 	reply    chan error
 }
 
+type abortRequest struct {
+	err error
+	ack chan struct{}
+}
+
 // NewProducer constructs a producer with the provided event buffer size.
 func NewProducer[T, F any](ctx context.Context, buffer int, cancel CancelTerminal[T, F]) *Producer[T, F] {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	producer := &Producer[T, F]{
-		ctx:    ctx,
-		cancel: cancel,
-		events: make(chan T, buffer),
-		in:     make(chan request[T, F]),
-		close:  make(chan chan struct{}),
-		done:   make(chan struct{}),
-		closed: make(chan struct{}),
+		ctx:     ctx,
+		cancel:  cancel,
+		events:  make(chan T, buffer),
+		in:      make(chan request[T, F]),
+		close:   make(chan chan struct{}),
+		abortCh: make(chan abortRequest),
+		done:    make(chan struct{}),
+		closed:  make(chan struct{}),
 	}
 	go producer.run()
 	return producer
+}
+
+// Abort closes the stream with the configured cancellation terminal state.
+func (p *Producer[T, F]) Abort(err error) {
+	if err == nil {
+		err = context.Canceled
+	}
+	request := abortRequest{err: err, ack: make(chan struct{})}
+	select {
+	case p.abortCh <- request:
+		<-request.ack
+	case <-p.done:
+	}
 }
 
 // Events returns the event channel.
@@ -195,6 +215,11 @@ func (p *Producer[T, F]) run() {
 
 		case <-ctxDone:
 			p.abort(p.ctx.Err(), active)
+			return
+
+		case request := <-p.abortCh:
+			p.abort(request.err, active)
+			close(request.ack)
 			return
 
 		case ack := <-p.close:

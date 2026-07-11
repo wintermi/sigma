@@ -7,8 +7,10 @@ package sigma_test
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/wintermi/sigma"
 )
@@ -1693,5 +1695,127 @@ func TestCompleteCollectsTextProviderStream(t *testing.T) {
 	}
 	if got, want := final.Model, model.ID; got != want {
 		t.Fatalf("final model = %q, want %q", got, want)
+	}
+}
+
+func TestRegistryRejectsStaleTextModelRefreshAfterSourceReplacement(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("stale-text-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	base := sigma.NewRegistry()
+	if err := base.RegisterTextModelSource(provider, sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		close(started)
+		<-release
+		return []sigma.Model{{ID: "stale", Provider: provider, API: sigma.APIOpenAIResponses}}, nil
+	}), sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	registry := base.Clone()
+	refreshErr := make(chan error, 1)
+	go func() { refreshErr <- registry.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RegisterTextModelSource(provider, sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		return []sigma.Model{{ID: "fresh", Provider: provider, API: sigma.APIOpenAIResponses}}, nil
+	}), sigma.WithMetadataOnly(), sigma.WithOverride()); err != nil {
+		t.Fatalf("override RegisterTextModelSource returned error: %v", err)
+	}
+	close(release)
+	if err := <-refreshErr; err == nil || !strings.Contains(err.Error(), "source changed during refresh") {
+		t.Fatalf("stale RefreshTextModels error = %v, want source conflict", err)
+	}
+	if _, ok := registry.Model(provider, "stale"); ok {
+		t.Fatal("stale text model was applied")
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("replacement RefreshTextModels returned error: %v", err)
+	}
+	if _, ok := registry.Model(provider, "fresh"); !ok {
+		t.Fatal("replacement text model was not applied")
+	}
+}
+
+func TestRegistryRejectsStaleImageModelRefreshAfterSourceReplacement(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("stale-image-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterImageModelSource(provider, sigma.ImageModelSourceFunc(func(context.Context) ([]sigma.ImageModel, error) {
+		close(started)
+		<-release
+		return []sigma.ImageModel{{ID: "stale", Provider: provider, API: sigma.ImageAPIOpenAIImages}}, nil
+	}), sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+	refreshErr := make(chan error, 1)
+	go func() { refreshErr <- registry.RefreshImageModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RegisterImageModelSource(provider, sigma.ImageModelSourceFunc(func(context.Context) ([]sigma.ImageModel, error) {
+		return []sigma.ImageModel{{ID: "fresh", Provider: provider, API: sigma.ImageAPIOpenAIImages}}, nil
+	}), sigma.WithMetadataOnly(), sigma.WithOverride()); err != nil {
+		t.Fatalf("override RegisterImageModelSource returned error: %v", err)
+	}
+	close(release)
+	if err := <-refreshErr; err == nil || !strings.Contains(err.Error(), "source changed during refresh") {
+		t.Fatalf("stale RefreshImageModels error = %v, want source conflict", err)
+	}
+	if _, ok := registry.ImageModel(provider, "stale"); ok {
+		t.Fatal("stale image model was applied")
+	}
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("replacement RefreshImageModels returned error: %v", err)
+	}
+	if _, ok := registry.ImageModel(provider, "fresh"); !ok {
+		t.Fatal("replacement image model was not applied")
+	}
+}
+
+func TestRegistryRejectsStaleEmbeddingModelRefreshAfterSourceReplacement(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("stale-embedding-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterEmbeddingModelSource(provider, sigma.EmbeddingModelSourceFunc(func(context.Context) ([]sigma.EmbeddingModel, error) {
+		close(started)
+		<-release
+		return []sigma.EmbeddingModel{{ID: "stale", Provider: provider, API: sigma.EmbeddingAPIOpenAIEmbeddings}}, nil
+	}), sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterEmbeddingModelSource returned error: %v", err)
+	}
+	refreshErr := make(chan error, 1)
+	go func() { refreshErr <- registry.RefreshEmbeddingModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RegisterEmbeddingModelSource(provider, sigma.EmbeddingModelSourceFunc(func(context.Context) ([]sigma.EmbeddingModel, error) {
+		return []sigma.EmbeddingModel{{ID: "fresh", Provider: provider, API: sigma.EmbeddingAPIOpenAIEmbeddings}}, nil
+	}), sigma.WithMetadataOnly(), sigma.WithOverride()); err != nil {
+		t.Fatalf("override RegisterEmbeddingModelSource returned error: %v", err)
+	}
+	close(release)
+	if err := <-refreshErr; err == nil || !strings.Contains(err.Error(), "source changed during refresh") {
+		t.Fatalf("stale RefreshEmbeddingModels error = %v, want source conflict", err)
+	}
+	if _, ok := registry.EmbeddingModel(provider, "stale"); ok {
+		t.Fatal("stale embedding model was applied")
+	}
+	if err := registry.RefreshEmbeddingModels(context.Background(), provider); err != nil {
+		t.Fatalf("replacement RefreshEmbeddingModels returned error: %v", err)
+	}
+	if _, ok := registry.EmbeddingModel(provider, "fresh"); !ok {
+		t.Fatal("replacement embedding model was not applied")
+	}
+}
+
+func waitForModelRefreshStart(t *testing.T, started <-chan struct{}) {
+	t.Helper()
+
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("model refresh did not start")
 	}
 }

@@ -106,6 +106,9 @@ func TestParseRetryAfter(t *testing.T) {
 		want  time.Duration
 	}{
 		{name: "seconds", value: "3", want: 3 * time.Second},
+		{name: "largest whole seconds duration", value: "9223372036", want: 9223372036 * time.Second},
+		{name: "seconds duration overflow", value: "9223372037", want: maxDuration},
+		{name: "numeric parse overflow", value: "18446744073709551616", want: maxDuration},
 		{name: "date", value: now.Add(5 * time.Second).Format(http.TimeFormat), want: 5 * time.Second},
 		{name: "past date", value: now.Add(-time.Second).Format(http.TimeFormat), want: 0},
 		{name: "invalid", value: "later", want: 0},
@@ -117,6 +120,32 @@ func TestParseRetryAfter(t *testing.T) {
 
 			if got := ParseRetryAfter(tt.value, now); got != tt.want {
 				t.Fatalf("ParseRetryAfter(%q) = %v, want %v", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRetryAfterMillisecondsSaturateOnOverflow(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value string
+		want  time.Duration
+	}{
+		{name: "milliseconds", value: "250", want: 250 * time.Millisecond},
+		{name: "largest millisecond duration", value: "9223372036854", want: 9223372036854 * time.Millisecond},
+		{name: "duration overflow", value: "9223372036855", want: maxDuration},
+		{name: "numeric parse overflow", value: "18446744073709551616", want: maxDuration},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			header := http.Header{"Retry-After-Ms": []string{tt.value}}
+			if got := RetryAfter(header); got != tt.want {
+				t.Fatalf("RetryAfter(%q) = %v, want %v", tt.value, got, tt.want)
 			}
 		})
 	}
@@ -160,6 +189,26 @@ func TestDoHTTPWithRetryReturnsProviderErrorWhenRetryAfterExceedsCap(t *testing.
 	}
 	if got := providerErr.MaxRetryDelay; got != maxDelay {
 		t.Fatalf("max retry delay = %v, want %v", got, maxDelay)
+	}
+}
+
+func TestDoHTTPWithRetryRejectsOversizedRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	maxRetries := 1
+	maxDelay := time.Second
+	client := retryHTTPClient(retryResponse(
+		http.StatusTooManyRequests,
+		"slow down",
+		retryHeader("Retry-After", "18446744073709551616"),
+	))
+
+	_, err := DoHTTPWithRetry(context.Background(), client, Options{
+		MaxRetries:    &maxRetries,
+		MaxRetryDelay: &maxDelay,
+	}, retryRequest, retryProviderError)
+	if !errors.Is(err, ErrRetryAfterExceedsMaxDelay) {
+		t.Fatalf("error = %v, want ErrRetryAfterExceedsMaxDelay", err)
 	}
 }
 
@@ -249,6 +298,39 @@ func TestDoHTTPWithRetryLeavesStreamingResponseBodyUnread(t *testing.T) {
 	}
 }
 
+func TestDoHTTPWithRetryClosesRetryBodyWithoutReading(t *testing.T) {
+	t.Parallel()
+
+	zeroDelay := time.Duration(0)
+	maxRetries := 1
+	retryBody := &closeTrackingBody{}
+	client := retryHTTPClient(
+		func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Header:     make(http.Header),
+				Body:       retryBody,
+			}, nil
+		},
+		retryResponse(http.StatusOK, "ok"),
+	)
+
+	resp, err := DoHTTPWithRetry(context.Background(), client, Options{
+		MaxRetries:    &maxRetries,
+		MaxRetryDelay: &zeroDelay,
+	}, retryRequest, retryProviderError)
+	if err != nil {
+		t.Fatalf("DoHTTPWithRetry returned error: %v", err)
+	}
+	defer resp.Body.Close()
+	if retryBody.read {
+		t.Fatal("retry response body was read")
+	}
+	if !retryBody.closed {
+		t.Fatal("retry response body was not closed")
+	}
+}
+
 type retryRoundTripper struct {
 	handlers []func(*http.Request) (*http.Response, error)
 	attempts int
@@ -308,6 +390,21 @@ func (temporaryNetworkError) Temporary() bool { return true }
 type countingReadCloser struct {
 	*strings.Reader
 	reads int
+}
+
+type closeTrackingBody struct {
+	read   bool
+	closed bool
+}
+
+func (b *closeTrackingBody) Read([]byte) (int, error) {
+	b.read = true
+	return 0, errors.New("unexpected read")
+}
+
+func (b *closeTrackingBody) Close() error {
+	b.closed = true
+	return nil
 }
 
 func (r *countingReadCloser) Read(p []byte) (int, error) {

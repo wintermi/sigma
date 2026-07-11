@@ -25,6 +25,7 @@ const (
 	DefaultRetryBaseDelay = 100 * time.Millisecond
 	// DefaultMaxRetryDelay caps retry waits, including Retry-After.
 	DefaultMaxRetryDelay = 2 * time.Second
+	maxDuration          = time.Duration(1<<63 - 1)
 )
 
 // HTTPResponseHook inspects a response before retry status handling. The
@@ -60,7 +61,7 @@ func ContextWithRequestTimeout(ctx context.Context, opts Options) (context.Conte
 // DoHTTPWithRetry sends a request with sigma's shared HTTP retry policy.
 //
 // The returned response body belongs to the caller and has not been consumed by
-// the retry helper. Bodies from retry attempts are drained and closed before the
+// the retry helper. Bodies from retry attempts are closed before the
 // next request attempt.
 func DoHTTPWithRetry(
 	ctx context.Context,
@@ -141,7 +142,7 @@ func DoHTTPWithRetryAttempts(
 			_ = resp.Body.Close()
 			return nil, httpAttempts, err
 		}
-		drainAndClose(resp.Body)
+		closeRetryBody(resp.Body)
 		if err := policy.wait(ctx, attempt, retryAfter); err != nil {
 			return nil, httpAttempts, err
 		}
@@ -200,11 +201,8 @@ func ParseRetryAfter(value string, now time.Time) time.Duration {
 	if value == "" {
 		return 0
 	}
-	if seconds, err := strconv.Atoi(value); err == nil {
-		if seconds <= 0 {
-			return 0
-		}
-		return time.Duration(seconds) * time.Second
+	if delay, ok := parsePositiveDuration(value, time.Second); ok {
+		return delay
 	}
 	if when, err := http.ParseTime(value); err == nil {
 		delay := when.Sub(now)
@@ -219,11 +217,34 @@ func parseRetryAfterMillis(value string) time.Duration {
 	if value == "" {
 		return 0
 	}
-	millis, err := strconv.Atoi(value)
-	if err != nil || millis <= 0 {
+	delay, ok := parsePositiveDuration(value, time.Millisecond)
+	if !ok {
 		return 0
 	}
-	return time.Duration(millis) * time.Millisecond
+	return delay
+}
+
+func parsePositiveDuration(value string, unit time.Duration) (time.Duration, bool) {
+	for _, char := range value {
+		if char < '0' || char > '9' {
+			return 0, false
+		}
+	}
+	amount, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		if errors.Is(err, strconv.ErrRange) {
+			return maxDuration, true
+		}
+		return 0, false
+	}
+	if amount == 0 {
+		return 0, true
+	}
+	maxAmount := int64(maxDuration / unit)
+	if amount > maxAmount {
+		return maxDuration, true
+	}
+	return time.Duration(amount) * unit, true
 }
 
 func retryPolicyFromOptions(opts Options) retryPolicy {
@@ -309,11 +330,10 @@ func retryAfterCapError(resp *http.Response, providerError func(*http.Response) 
 	return err
 }
 
-func drainAndClose(body io.ReadCloser) {
+func closeRetryBody(body io.ReadCloser) {
 	if body == nil {
 		return
 	}
-	_, _ = io.Copy(io.Discard, body)
 	_ = body.Close()
 }
 

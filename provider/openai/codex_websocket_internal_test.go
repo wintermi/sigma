@@ -6,10 +6,184 @@
 package openai
 
 import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"io"
+	"net"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestCodexWebSocketRejectsOversized64BitFrameBeforePayload(t *testing.T) {
+	t.Parallel()
+
+	client, server := net.Pipe()
+	connection := &codexWebSocketConnection{conn: client, reader: bufio.NewReader(client)}
+	t.Cleanup(connection.Close)
+	t.Cleanup(func() { _ = server.Close() })
+	writeErr := make(chan error, 1)
+	go func() {
+		header := []byte{0x81, 127}
+		length := make([]byte, 8)
+		binary.BigEndian.PutUint64(length, uint64(codexWebSocketMaxFrameBytes)+1)
+		_, err := server.Write(append(header, length...))
+		writeErr <- err
+	}()
+
+	_, err := connection.ReadText(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "websocket frame exceeds") {
+		t.Fatalf("ReadText error = %v, want oversized frame error", err)
+	}
+	if err := <-writeErr; err != nil {
+		t.Fatalf("write frame header: %v", err)
+	}
+}
+
+func TestCodexWebSocketRejectsOversizedFragmentedMessage(t *testing.T) {
+	t.Parallel()
+
+	client, server := net.Pipe()
+	connection := &codexWebSocketConnection{conn: client, reader: bufio.NewReader(client)}
+	t.Cleanup(connection.Close)
+	t.Cleanup(func() { _ = server.Close() })
+	writeErr := make(chan error, 1)
+	go func() {
+		frames := append(
+			codexTestServerFrame(webSocketOpcodeText, false, []byte("12345")),
+			codexTestServerFrame(webSocketOpcodeContinuation, true, []byte("6789"))...,
+		)
+		_, err := server.Write(frames)
+		writeErr <- err
+	}()
+
+	_, err := connection.readText(context.Background(), 8)
+	if err == nil || !strings.Contains(err.Error(), "websocket message exceeds") {
+		t.Fatalf("readText error = %v, want oversized message error", err)
+	}
+	if err := <-writeErr; err != nil {
+		t.Fatalf("write fragmented frames: %v", err)
+	}
+}
+
+func TestCodexWebSocketReadsFragmentedMessage(t *testing.T) {
+	t.Parallel()
+
+	client, server := net.Pipe()
+	connection := &codexWebSocketConnection{conn: client, reader: bufio.NewReader(client)}
+	t.Cleanup(connection.Close)
+	t.Cleanup(func() { _ = server.Close() })
+	writeErr := make(chan error, 1)
+	go func() {
+		frames := append(
+			codexTestServerFrame(webSocketOpcodeText, false, []byte("hello ")),
+			codexTestServerFrame(webSocketOpcodeContinuation, true, []byte("world"))...,
+		)
+		_, err := server.Write(frames)
+		writeErr <- err
+	}()
+
+	got, err := connection.ReadText(context.Background())
+	if err != nil {
+		t.Fatalf("ReadText returned error: %v", err)
+	}
+	if got != "hello world" {
+		t.Fatalf("ReadText = %q, want hello world", got)
+	}
+	if err := <-writeErr; err != nil {
+		t.Fatalf("write fragmented frames: %v", err)
+	}
+}
+
+func TestCodexWebSocketBlockedWriteStopsOnCancellationAndClose(t *testing.T) {
+	t.Parallel()
+
+	client, server := net.Pipe()
+	connection := &codexWebSocketConnection{conn: client, reader: bufio.NewReader(client)}
+	t.Cleanup(func() { _ = server.Close() })
+	ctx, cancel := context.WithCancel(context.Background())
+	writeErr := make(chan error, 1)
+	go func() {
+		writeErr <- connection.WriteText(ctx, "blocked")
+	}()
+
+	select {
+	case err := <-writeErr:
+		t.Fatalf("WriteText returned before cancellation: %v", err)
+	case <-time.After(25 * time.Millisecond):
+	}
+	cancel()
+	closeDone := make(chan struct{})
+	go func() {
+		connection.Close()
+		close(closeDone)
+	}()
+
+	select {
+	case err := <-writeErr:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("WriteText error = %v, want context.Canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("WriteText did not stop after cancellation")
+	}
+	select {
+	case <-closeDone:
+	case <-time.After(time.Second):
+		t.Fatal("Close deadlocked with canceled write")
+	}
+}
+
+func TestWriteCodexWebSocketFrameHandlesPartialWrites(t *testing.T) {
+	t.Parallel()
+
+	conn := &codexShortWriteConn{maxWrite: 3}
+	want := []byte("complete websocket frame")
+	if err := writeCodexWebSocketFrame(conn, want); err != nil {
+		t.Fatalf("writeCodexWebSocketFrame returned error: %v", err)
+	}
+	if !bytes.Equal(conn.Bytes(), want) {
+		t.Fatalf("written frame = %q, want %q", conn.Bytes(), want)
+	}
+}
+
+func codexTestServerFrame(opcode byte, final bool, payload []byte) []byte {
+	first := opcode
+	if final {
+		first |= 0x80
+	}
+	return append([]byte{first, byte(len(payload))}, payload...)
+}
+
+type codexShortWriteConn struct {
+	bytes.Buffer
+	maxWrite int
+}
+
+func (c *codexShortWriteConn) Read([]byte) (int, error) { return 0, io.EOF }
+
+func (c *codexShortWriteConn) Write(p []byte) (int, error) {
+	if len(p) > c.maxWrite {
+		p = p[:c.maxWrite]
+	}
+	return c.Buffer.Write(p)
+}
+
+func (c *codexShortWriteConn) Close() error                     { return nil }
+func (c *codexShortWriteConn) LocalAddr() net.Addr              { return codexTestAddr("local") }
+func (c *codexShortWriteConn) RemoteAddr() net.Addr             { return codexTestAddr("remote") }
+func (c *codexShortWriteConn) SetDeadline(time.Time) error      { return nil }
+func (c *codexShortWriteConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *codexShortWriteConn) SetWriteDeadline(time.Time) error { return nil }
+
+type codexTestAddr string
+
+func (a codexTestAddr) Network() string { return "test" }
+func (a codexTestAddr) String() string  { return string(a) }
 
 func TestCodexWebSocketProxyURL(t *testing.T) {
 	tests := []struct {

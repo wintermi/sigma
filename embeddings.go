@@ -668,7 +668,10 @@ func (b *embeddingBatcher) embedOversizedSingleton(job embeddingBatchJob, attemp
 	for _, part := range parts {
 		weights = append(weights, len([]rune(part)))
 	}
-	vector := weightedAverageEmbedding(partVectors, weights)
+	vector, err := weightedAverageEmbedding(partVectors, weights)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]Embedding, 0, len(job.indexes))
 	for _, index := range job.indexes {
 		out = append(out, Embedding{Index: index, Vector: append([]float32(nil), vector...)})
@@ -1114,31 +1117,33 @@ func nearestSplitRune(runes []rune, mid int, match func(rune) bool) (int, bool) 
 	return 0, false
 }
 
-func weightedAverageEmbedding(vectors []Embedding, weights []int) []float32 {
+func weightedAverageEmbedding(vectors []Embedding, weights []int) ([]float32, error) {
 	if len(vectors) == 0 {
-		return nil
+		return nil, nil
 	}
-	out := make([]float32, len(vectors[0].Vector))
+	dimensions := len(vectors[0].Vector)
+	out := make([]float32, dimensions)
 	totalWeight := 0
 	for i, embedding := range vectors {
+		if len(embedding.Vector) != dimensions {
+			return nil, ErrEmbeddingVectorDimensionMismatch
+		}
 		weight := 1
 		if i < len(weights) && weights[i] > 0 {
 			weight = weights[i]
 		}
 		totalWeight += weight
 		for j := range out {
-			if j < len(embedding.Vector) {
-				out[j] += embedding.Vector[j] * float32(weight)
-			}
+			out[j] += embedding.Vector[j] * float32(weight)
 		}
 	}
 	if totalWeight == 0 {
-		return out
+		return out, nil
 	}
 	for i := range out {
 		out[i] /= float32(totalWeight)
 	}
-	return out
+	return out, nil
 }
 
 func (c *Client) embeddingRequestOptions(opts []EmbeddingOption) Options {

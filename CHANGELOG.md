@@ -275,6 +275,22 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Fixed
 
+- OpenAI Codex Responses WebSocket reads now reject frames and fragmented
+  messages larger than 16 MiB before oversized payload allocation, and canceled
+  writes now close promptly without making `Close` wait behind blocked I/O.
+- Canceling the context passed to `Collect` or `CollectImages` now aborts a live
+  stream even when its creation context remains active, preserving partial text
+  or images in the aborted final result while leaving intentional `Close`
+  behavior unchanged.
+- Shared HTTP retries now close retryable response bodies without reading them,
+  and oversized numeric retry delays saturate so configured maximum-delay checks
+  reject them. Amazon Bedrock Converse errors now read at most 4 KiB before
+  closing the response body.
+- Oversized-input embedding reconstruction now rejects split or cached vectors
+  whose dimensions differ, rather than returning a partial weighted average.
+- Dynamic text, image, and embedding model refreshes now detect source
+  replacement during an in-flight fetch and return a conflict without applying
+  stale models; cloned registries preserve the source revision sequence.
 - Registry model copies now deep-copy nested provider metadata containers, and
   opt-in primitive tool-argument coercion now preserves already-valid `anyOf`
   and `oneOf` values instead of coercing them toward the first matching branch.

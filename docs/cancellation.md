@@ -20,6 +20,17 @@ if errors.Is(err, sigma.ErrAborted) || errors.Is(err, context.Canceled) {
 }
 ```
 
+The context passed to `Collect` is also an active cancellation boundary. If it
+is canceled while the context used to create the stream remains live, Sigma
+aborts the stream with the same contract: partial output is retained, the final
+stop reason is `StopReasonAborted`, and the returned error matches both
+`ErrAborted` and the collector context error. `CollectImages` behaves the same
+way for image streams.
+
+Calling `Stream.Close` or `ImageStream.Close` intentionally still closes the
+stream without synthesizing an aborted result. Use context cancellation when
+the operation should be recorded as aborted.
+
 When a provider has already emitted text, thinking, or tool-call deltas, Sigma
 preserves those deltas in the aborted final assistant message. This lets callers
 decide whether the partial response is useful conversation history:

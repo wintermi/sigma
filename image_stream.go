@@ -125,6 +125,13 @@ func (s *ImageStream) Close() {
 	s.producer.Close()
 }
 
+func (s *ImageStream) abort(err error) {
+	if s == nil || s.producer == nil {
+		return
+	}
+	s.producer.Abort(err)
+}
+
 func (w *imageStreamWriter) Emit(ctx context.Context, event ImageEvent) error {
 	if event.IsTerminal() {
 		return &Error{
@@ -187,7 +194,7 @@ func CollectImages(ctx context.Context, stream *ImageStream) (AssistantImages, e
 				return final, imageErrorFromEvent(event, stream.Err())
 			}
 		case <-ctx.Done():
-			stream.Close()
+			stream.abort(ctx.Err())
 			return closedImageStreamResult(stream)
 		}
 	}

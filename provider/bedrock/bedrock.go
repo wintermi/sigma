@@ -442,7 +442,7 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
 		return nil, withDataRetentionHint(sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse))
 	}

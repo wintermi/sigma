@@ -326,6 +326,38 @@ func TestCollectImagesWithCanceledContextReturnsPartialFinalImages(t *testing.T)
 	}
 }
 
+func TestCollectImagesCollectorCancellationAbortsLiveStream(t *testing.T) {
+	t.Parallel()
+
+	stream, writer := sigma.NewImageStream(context.Background())
+	image := sigma.ImageOutputData("image/png", "aW1hZ2U=")
+	if err := writer.Emit(context.Background(), sigma.ImageEvent{
+		Kind:  sigma.ImageEventKindImage,
+		Image: &image,
+	}); err != nil {
+		t.Fatalf("Emit returned error: %v", err)
+	}
+	collectorCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	final, err := sigma.CollectImages(collectorCtx, stream)
+	if !errors.Is(err, sigma.ErrAborted) {
+		t.Fatalf("CollectImages error = %v, want ErrAborted", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("CollectImages error = %v, want context.Canceled", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonAborted; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := len(final.Images), 1; got != want {
+		t.Fatalf("image count = %d, want %d", got, want)
+	}
+	if got, want := final.Images[0].Data, "aW1hZ2U="; got != want {
+		t.Fatalf("image data = %q, want %q", got, want)
+	}
+}
+
 func TestGenerateImagesAcceptsURLInputWithoutMIMEType(t *testing.T) {
 	t.Parallel()
 

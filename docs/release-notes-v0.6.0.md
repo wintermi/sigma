@@ -181,7 +181,9 @@ catalog and generated files untouched until the diff is reviewed.
 Registries can now also refresh app-owned dynamic text, image, and embedding
 model sources at runtime, so local servers and routers with live catalogs can
 update client model listings without changing Sigma's curated built-in
-catalogs. Registry model copies now also protect nested provider metadata, so
+catalogs. In-flight refreshes now fail with a conflict if their source is
+replaced before apply, preventing stale results from overwriting the replacement
+source. Registry model copies now also protect nested provider metadata, so
 callers can mutate returned metadata without corrupting registry state.
 Deterministic routing-decision helpers now classify requests into route tiers
 with weighted rule-based signals, select tier candidates from caller-defined
@@ -523,6 +525,18 @@ advice without adding any execution loop or configuration format to Sigma.
 - Core text and image stream cancellation now records aborted final results
   before closing, preserving partial text or image outputs through the collector
   helpers and closing canceled streams even when callers abandon unread events.
+  Cancellation of a collector's own context now has the same behavior even when
+  the stream was created with a different live context.
+- OpenAI Codex Responses WebSocket frames and complete fragmented messages are
+  bounded to 16 MiB, oversized lengths are rejected before payload allocation,
+  and canceled writes close promptly without serializing `Close` behind I/O.
+- Shared HTTP retry handling now closes retryable bodies without reading them
+  and rejects saturated oversized numeric retry delays through the existing
+  maximum-delay contract. Bedrock Converse provider errors now retain at most
+  4 KiB of response data and always close the response body.
+- Oversized-input embedding reconstruction now rejects mismatched split or
+  cached vector dimensions, and dynamic model refreshes reject results from a
+  source that was replaced while its fetch was in flight.
 - Image generation requests now receive local provider-neutral validation for
   known operations, counts, prompts/inputs, structurally valid text/image
   inputs, base64 data, URLs, and image-only masks before provider dispatch.

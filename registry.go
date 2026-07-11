@@ -126,21 +126,26 @@ type providerRegistration struct {
 type textModelSourceRegistration struct {
 	source       TextModelSource
 	metadataOnly bool
+	revision     uint64
 }
 
 type imageModelSourceRegistration struct {
 	source       ImageModelSource
 	metadataOnly bool
+	revision     uint64
 }
 
 type embeddingModelSourceRegistration struct {
 	source       EmbeddingModelSource
 	metadataOnly bool
+	revision     uint64
 }
 
 // Registry stores provider implementations and model metadata.
 type Registry struct {
 	mu sync.RWMutex
+
+	modelSourceRevision uint64
 
 	providers     map[ProviderID]providerRegistration
 	providerOrder []ProviderID
@@ -327,9 +332,11 @@ func (r *Registry) RegisterTextModelSource(provider ProviderID, source TextModel
 	if _, ok := r.textModelSources[provider]; !ok {
 		r.textModelSourceOrder = append(r.textModelSourceOrder, provider)
 	}
+	r.modelSourceRevision++
 	r.textModelSources[provider] = textModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
+		revision:     r.modelSourceRevision,
 	}
 	return nil
 }
@@ -355,9 +362,11 @@ func (r *Registry) RegisterImageModelSource(provider ProviderID, source ImageMod
 	if _, ok := r.imageModelSources[provider]; !ok {
 		r.imageModelSourceOrder = append(r.imageModelSourceOrder, provider)
 	}
+	r.modelSourceRevision++
 	r.imageModelSources[provider] = imageModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
+		revision:     r.modelSourceRevision,
 	}
 	return nil
 }
@@ -383,9 +392,11 @@ func (r *Registry) RegisterEmbeddingModelSource(provider ProviderID, source Embe
 	if _, ok := r.embeddingModelSources[provider]; !ok {
 		r.embeddingModelSourceOrder = append(r.embeddingModelSourceOrder, provider)
 	}
+	r.modelSourceRevision++
 	r.embeddingModelSources[provider] = embeddingModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
+		revision:     r.modelSourceRevision,
 	}
 	return nil
 }
@@ -815,6 +826,7 @@ func (r *Registry) Clone() *Registry {
 	defer r.mu.RUnlock()
 
 	clone := newRegistry()
+	clone.modelSourceRevision = r.modelSourceRevision
 	clone.providerOrder = append(clone.providerOrder, r.providerOrder...)
 	for id, registration := range r.providers {
 		clone.providers[id] = registration
@@ -1102,6 +1114,10 @@ func (r *Registry) applyTextModelRefresh(provider ProviderID, source textModelSo
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	current, ok := r.textModelSources[provider]
+	if !ok || current.revision != source.revision {
+		return registryConflict("text model source changed during refresh")
+	}
 
 	owned := r.textModelSourceRefs[provider]
 	for _, ref := range refs {
@@ -1135,6 +1151,10 @@ func (r *Registry) applyImageModelRefresh(provider ProviderID, source imageModel
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	current, ok := r.imageModelSources[provider]
+	if !ok || current.revision != source.revision {
+		return registryConflict("image model source changed during refresh")
+	}
 
 	owned := r.imageModelSourceRefs[provider]
 	for _, ref := range refs {
@@ -1168,6 +1188,10 @@ func (r *Registry) applyEmbeddingModelRefresh(provider ProviderID, source embedd
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	current, ok := r.embeddingModelSources[provider]
+	if !ok || current.revision != source.revision {
+		return registryConflict("embedding model source changed during refresh")
+	}
 
 	owned := r.embeddingModelSourceRefs[provider]
 	for _, ref := range refs {

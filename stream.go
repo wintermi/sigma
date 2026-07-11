@@ -117,6 +117,13 @@ func (s *Stream) Close() {
 	s.producer.Close()
 }
 
+func (s *Stream) abort(err error) {
+	if s == nil || s.producer == nil {
+		return
+	}
+	s.producer.Abort(err)
+}
+
 func (w *streamWriter) Emit(ctx context.Context, event Event) error {
 	if event.IsTerminal() {
 		return &Error{
@@ -189,7 +196,7 @@ func Collect(ctx context.Context, stream *Stream) (AssistantMessage, error) {
 				return final, errorFromEvent(event, stream.Err())
 			}
 		case <-ctx.Done():
-			stream.Close()
+			stream.abort(ctx.Err())
 			return closedStreamResult(stream)
 		}
 	}
