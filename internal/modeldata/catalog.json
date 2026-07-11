@@ -4222,6 +4222,135 @@
       }
     },
     {
+      "id": "gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "provider": "azure-openai-responses",
+      "api": "azure-openai-responses",
+      "baseURL": "https://{resource}.openai.azure.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AZURE_OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
+      "azureOpenAIResponses": {
+        "deployment": "gpt-5.6-luna",
+        "apiVersion": "2025-04-01-preview",
+        "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
+        "credentialSource": "api-key"
+      }
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "provider": "azure-openai-responses",
+      "api": "azure-openai-responses",
+      "baseURL": "https://{resource}.openai.azure.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 30,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AZURE_OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
+      "azureOpenAIResponses": {
+        "deployment": "gpt-5.6-sol",
+        "apiVersion": "2025-04-01-preview",
+        "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
+        "credentialSource": "api-key"
+      }
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "name": "GPT-5.6 Terra",
+      "provider": "azure-openai-responses",
+      "api": "azure-openai-responses",
+      "baseURL": "https://{resource}.openai.azure.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 15,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 3.125
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AZURE_OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
+      "azureOpenAIResponses": {
+        "deployment": "gpt-5.6-terra",
+        "apiVersion": "2025-04-01-preview",
+        "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
+        "credentialSource": "api-key"
+      }
+    },
+    {
       "id": "o1",
       "name": "o1",
       "provider": "azure-openai-responses",
@@ -12769,6 +12898,147 @@
       },
       "openAICodexResponses": {
         "model": "gpt-5.5"
+      }
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "provider": "openai-codex",
+      "api": "openai-codex-responses",
+      "baseURL": "https://chatgpt.com/backend-api",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 9,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 2.5
+          }
+        ]
+      },
+      "contextWindow": 372000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_CODEX_OAUTH_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max",
+        "minimal": "low"
+      },
+      "openAICodexResponses": {
+        "model": "gpt-5.6-luna"
+      }
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "provider": "openai-codex",
+      "api": "openai-codex-responses",
+      "baseURL": "https://chatgpt.com/backend-api",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 30,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1,
+            "cacheWriteInputPerMillion": 12.5
+          }
+        ]
+      },
+      "contextWindow": 372000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_CODEX_OAUTH_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max",
+        "minimal": "low"
+      },
+      "openAICodexResponses": {
+        "model": "gpt-5.6-sol"
+      }
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "name": "GPT-5.6 Terra",
+      "provider": "openai-codex",
+      "api": "openai-codex-responses",
+      "baseURL": "https://chatgpt.com/backend-api",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 15,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 3.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22.5,
+            "cacheReadInputPerMillion": 0.5,
+            "cacheWriteInputPerMillion": 6.25
+          }
+        ]
+      },
+      "contextWindow": 372000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_CODEX_OAUTH_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max",
+        "minimal": "low"
+      },
+      "openAICodexResponses": {
+        "model": "gpt-5.6-terra"
       }
     },
     {

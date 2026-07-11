@@ -137,6 +137,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated direct OpenAI Responses metadata now includes GPT-5.6 Luna, Sol,
   and Terra with text/image, tool, and reasoning capabilities; cache-write
   pricing; and 272,000-token high-context price tiers.
+- Generated Azure OpenAI Responses and OpenAI Codex Responses metadata now
+  includes GPT-5.6 Luna, Sol, and Terra with their route-specific context
+  limits, reasoning mappings, pricing, and Codex high-context price tiers.
 - Generated direct-provider metadata now includes Cerebras Gemma 4 31B, xAI
   Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with their reviewed
   capabilities, limits, pricing, and existing provider compatibility defaults.

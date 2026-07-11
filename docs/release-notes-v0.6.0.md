@@ -73,6 +73,9 @@ Copilot Sonnet 5 rows without broad catalog expansion.
 Generated direct OpenAI Responses metadata now also includes GPT-5.6 Luna, Sol,
 and Terra with text/image, tool, and reasoning capabilities; cache-write
 pricing; and 272,000-token high-context price tiers.
+Generated Azure OpenAI Responses and OpenAI Codex Responses metadata now also
+includes GPT-5.6 Luna, Sol, and Terra with route-specific context limits,
+reasoning mappings, pricing, and Codex high-context price tiers.
 Generated direct-provider metadata now also includes Cerebras Gemma 4 31B,
 xAI Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with reviewed capabilities,
 limits, pricing, and existing compatibility defaults, while broad router catalog
@@ -416,6 +419,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - Generated direct OpenAI Responses metadata now includes GPT-5.6 Luna, Sol,
   and Terra with text/image, tool, and reasoning capabilities; cache-write
   pricing; and 272,000-token high-context price tiers.
+- Generated Azure OpenAI Responses and OpenAI Codex Responses metadata now
+  includes GPT-5.6 Luna, Sol, and Terra with route-specific context limits,
+  reasoning mappings, pricing, and Codex high-context price tiers.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so

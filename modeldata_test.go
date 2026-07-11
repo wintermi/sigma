@@ -325,6 +325,61 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			}
 		}
 	}
+	for _, tt := range []struct {
+		provider       ProviderID
+		id             ModelID
+		api            API
+		contextWindow  int
+		inputCost      float64
+		outputCost     float64
+		cacheReadCost  float64
+		cacheWriteCost float64
+		thinkingLevels map[ThinkingLevel]string
+	}{
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-luna", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-sol", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-terra", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", api: APIOpenAICodexResponses, contextWindow: 372_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", api: APIOpenAICodexResponses, contextWindow: 372_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", api: APIOpenAICodexResponses, contextWindow: 372_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s/%s model", tt.provider, tt.id)
+		}
+		if model.API != tt.api || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("%s/%s capabilities = %+v, want route API with tools, images, and reasoning", tt.provider, tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != 128_000 {
+			t.Fatalf("%s/%s limits = %d/%d, want %d/128000", tt.provider, tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != tt.cacheWriteCost {
+			t.Fatalf("%s/%s costs = %f/%f/%f/%f, want %f/%f/%f/%f", tt.provider, tt.id,
+				model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion,
+				tt.inputCost, tt.outputCost, tt.cacheReadCost, tt.cacheWriteCost)
+		}
+		for level, want := range tt.thinkingLevels {
+			if got, ok := model.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("%s/%s %s thinking level = %q, %v; want %q, true", tt.provider, tt.id, level, got, ok, want)
+			}
+		}
+		if tt.provider == ProviderAzureOpenAIResponses {
+			if model.SupportsThinkingLevel(ThinkingLevelOff) {
+				t.Fatalf("%s/%s unexpectedly supports disabled thinking", tt.provider, tt.id)
+			}
+			if model.AzureOpenAIResponses == nil || model.AzureOpenAIResponses.Deployment != string(tt.id) ||
+				model.AzureOpenAIResponses.APIKeyEnvVar != "AZURE_OPENAI_API_KEY" {
+				t.Fatalf("%s/%s Azure metadata = %#v, want deployment and API key metadata", tt.provider, tt.id, model.AzureOpenAIResponses)
+			}
+			assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AZURE_OPENAI_API_KEY"})
+			continue
+		}
+		if model.OpenAICodexResponses == nil || model.OpenAICodexResponses.Model != string(tt.id) {
+			t.Fatalf("%s/%s Codex metadata = %#v, want model mapping", tt.provider, tt.id, model.OpenAICodexResponses)
+		}
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENAI_CODEX_OAUTH_TOKEN"})
+	}
 	assertGeneratedCostTiers(t, registry)
 
 	googleFlash, ok := registry.Model(ProviderGoogle, "gemini-3.5-flash")
@@ -715,6 +770,9 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenAI, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5, CacheWriteInputCostPerMillion: 6.25}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.4", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 2, OutputCostPerMillion: 9, CacheReadInputCostPerMillion: 0.2, CacheWriteInputCostPerMillion: 2.5}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1, CacheWriteInputCostPerMillion: 12.5}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5, CacheWriteInputCostPerMillion: 6.25}},
 	}
 	for _, tt := range tests {
 		model, ok := registry.Model(tt.provider, tt.id)

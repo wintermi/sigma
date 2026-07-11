@@ -398,6 +398,9 @@ upstream.
       including generated metadata and deterministic input/cache accounting.
 - [x] Add focused direct OpenAI GPT-5.6 Luna, Sol, and Terra metadata with
       reasoning, cache-write pricing, and validated high-context cost tiers.
+- [x] Add focused GPT-5.6 Luna, Sol, and Terra metadata to existing Azure OpenAI
+      Responses and OpenAI Codex Responses routes, including route-specific
+      limits, reasoning mappings, pricing, and deterministic metadata coverage.
 - [x] Add focused direct-provider metadata for Cerebras Gemma 4 31B, xAI Grok
       4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 while keeping broad router
       catalog expansion deferred to the reviewed refresh workflow.
