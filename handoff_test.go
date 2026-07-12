@@ -302,6 +302,7 @@ func TestTransformRequestForModelDoesNotMutateInputs(t *testing.T) {
 					"nested": map[string]any{"key": "value"},
 				},
 			}},
+			AddedToolNames: []string{"late_lookup"},
 		}},
 		Tools: []sigma.Tool{{
 			Name:        "lookup",
@@ -324,12 +325,16 @@ func TestTransformRequestForModelDoesNotMutateInputs(t *testing.T) {
 	}
 
 	result.Request.Messages[0].Content[0].ProviderMetadata["nested"].(map[string]any)["key"] = "changed"
+	result.Request.Messages[0].AddedToolNames[0] = "changed_lookup"
 	result.Request.Tools[0].InputSchema.(sigma.Schema)["type"] = "array"
 	result.Request.Tools[0].ProviderDefinedOptions["config"].(map[string]any)["country"] = "US"
 
 	metadata := request.Messages[0].Content[0].ProviderMetadata["nested"].(map[string]any)
 	if got, want := metadata["key"], "value"; got != want {
 		t.Fatalf("original provider metadata = %q, want %q", got, want)
+	}
+	if got, want := request.Messages[0].AddedToolNames[0], "late_lookup"; got != want {
+		t.Fatalf("original added tool name = %q, want %q", got, want)
 	}
 	if got, want := request.Tools[0].InputSchema.(sigma.Schema)["type"], "object"; got != want {
 		t.Fatalf("original tool schema = %q, want %q", got, want)

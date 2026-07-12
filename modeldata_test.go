@@ -1464,10 +1464,86 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if !ok {
 		t.Fatal("fresh registry missing generated OpenAI Codex model")
 	}
-	if codex.API != APIOpenAICodexResponses || codex.OpenAICodexResponses == nil || codex.OpenAICodexResponses.Model != "gpt-5.4" {
+	if codex.API != APIOpenAICodexResponses || codex.OpenAICodexResponses == nil ||
+		codex.OpenAICodexResponses.Model != "gpt-5.4" || !codex.OpenAICodexResponses.SupportsToolSearch {
 		t.Fatalf("OpenAI Codex metadata = %+v, want Codex Responses model mapping", codex)
 	}
 	assertMetadataStrings(t, codex.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENAI_CODEX_OAUTH_TOKEN"})
+
+	for _, id := range []ModelID{
+		"gpt-5.4", "gpt-5.4-mini", "gpt-5.4-pro", "gpt-5.5",
+		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
+	} {
+		responses, ok := registry.Model(ProviderOpenAI, id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated OpenAI Responses model %s", id)
+		}
+		if responses.OpenAIResponsesCompat == nil || !responses.OpenAIResponsesCompat.SupportsToolSearch {
+			t.Fatalf("OpenAI Responses %s metadata = %#v, want tool search enabled", id, responses.OpenAIResponsesCompat)
+		}
+	}
+	for _, id := range []ModelID{
+		"gpt-5.4", "gpt-5.4-mini", "gpt-5.5",
+		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
+	} {
+		responses, ok := registry.Model(ProviderOpenAICodex, id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated OpenAI Codex Responses model %s", id)
+		}
+		if responses.OpenAICodexResponses == nil || !responses.OpenAICodexResponses.SupportsToolSearch {
+			t.Fatalf("OpenAI Codex Responses %s metadata = %#v, want tool search enabled", id, responses.OpenAICodexResponses)
+		}
+	}
+
+	for _, tt := range []struct {
+		provider ProviderID
+		id       ModelID
+	}{
+		{provider: ProviderOpenAI, id: "gpt-5.3-codex-spark"},
+		{provider: ProviderOpenAICodex, id: "gpt-5.3-codex-spark"},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing %s/%s", tt.provider, tt.id)
+		}
+		if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsToolSearch {
+			t.Fatalf("%s/%s Responses compatibility = %#v, want tool search disabled", tt.provider, tt.id, model.OpenAIResponsesCompat)
+		}
+		if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.SupportsToolSearch {
+			t.Fatalf("%s/%s Codex compatibility = %#v, want tool search disabled", tt.provider, tt.id, model.OpenAICodexResponses)
+		}
+	}
+
+	for _, id := range []ModelID{
+		"claude-fable-5", "claude-opus-4-5", "claude-opus-4-5-20251101",
+		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
+		"claude-sonnet-4-5", "claude-sonnet-4-5-20250929", "claude-sonnet-4-6", "claude-sonnet-5",
+	} {
+		directAnthropic, ok := registry.Model(ProviderAnthropic, id)
+		if !ok {
+			t.Fatalf("fresh registry missing direct Anthropic model %s", id)
+		}
+		if directAnthropic.AnthropicMessagesCompat == nil ||
+			directAnthropic.AnthropicMessagesCompat.SupportsToolReferences != AnthropicCompatSupported {
+			t.Fatalf("direct Anthropic %s compatibility = %#v, want tool references enabled", id, directAnthropic.AnthropicMessagesCompat)
+		}
+	}
+	for _, tt := range []struct {
+		provider ProviderID
+		id       ModelID
+	}{
+		{provider: ProviderAnthropic, id: "claude-haiku-4-5"},
+		{provider: ProviderGitHubCopilot, id: "claude-sonnet-5"},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing %s/%s", tt.provider, tt.id)
+		}
+		if model.AnthropicMessagesCompat != nil &&
+			model.AnthropicMessagesCompat.SupportsToolReferences == AnthropicCompatSupported {
+			t.Fatalf("%s/%s compatibility = %#v, want tool references disabled", tt.provider, tt.id, model.AnthropicMessagesCompat)
+		}
+	}
 }
 
 func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *Registry) {

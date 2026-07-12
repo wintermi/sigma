@@ -523,6 +523,7 @@ func safeHandoffToolCallID(id string, limit int) string {
 
 func cloneHandoffMessage(message Message) Message {
 	message.Content = cloneHandoffContentBlocks(message.Content)
+	message.AddedToolNames = append([]string(nil), message.AddedToolNames...)
 	return message
 }
 

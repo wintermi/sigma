@@ -30,7 +30,8 @@ const (
 
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
 	cleaned := transform.DropUnansweredToolCalls(req)
-	input, err := responsesInput(model, cleaned)
+	deferredTools := transform.PlanDeferredTools(cleaned, supportsResponsesToolSearch(model), nil)
+	input, err := responsesInput(model, cleaned, deferredTools.Deferred)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +63,8 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	}
 	addResponsesReasoning(payload, model, opts)
 	addResponsesReasoningInclude(payload, model, opts)
-	if len(cleaned.Tools) > 0 {
-		tools, err := responsesTools(cleaned.Tools)
+	if len(deferredTools.Immediate) > 0 {
+		tools, err := responsesTools(deferredTools.Immediate, false)
 		if err != nil {
 			return nil, err
 		}
@@ -74,10 +75,18 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	return payload, nil
 }
 
-func responsesInput(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
+func supportsResponsesToolSearch(model sigma.Model) bool {
+	if model.OpenAICodexResponses != nil {
+		return model.OpenAICodexResponses.SupportsToolSearch
+	}
+	return model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsToolSearch
+}
+
+func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[string]sigma.Tool) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
+	loadedToolNames := make(map[string]struct{})
 	for index, message := range req.Messages {
-		converted, err := responsesMessage(model, message, index)
+		converted, err := responsesMessage(model, message, index, deferredTools, loadedToolNames)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +95,7 @@ func responsesInput(model sigma.Model, req sigma.Request) ([]map[string]any, err
 	return items, nil
 }
 
-func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int) ([]map[string]any, error) {
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(model, message)
@@ -104,11 +113,17 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 		if err != nil {
 			return nil, err
 		}
-		return []map[string]any{{
+		searchItems, err := responsesToolSearchItems(message, deferredTools, loadedToolNames)
+		if err != nil {
+			return nil, err
+		}
+		items := make([]map[string]any, 1, 1+len(searchItems))
+		items[0] = map[string]any{
 			"type":    "function_call_output", //nolint:goconst
 			"call_id": responsesCallID(message.ToolCallID),
 			"output":  output,
-		}}, nil
+		}
+		return append(items, searchItems...), nil
 	default:
 		return nil, fmt.Errorf("openai responses: unsupported message role %q", message.Role)
 	}
@@ -257,7 +272,7 @@ func sameProviderDifferentModel(model sigma.Model, message sigma.Message) bool {
 		message.Model != model.ID
 }
 
-func responsesTools(tools []sigma.Tool) ([]map[string]any, error) {
+func responsesTools(tools []sigma.Tool, deferLoading bool) ([]map[string]any, error) {
 	converted := make([]map[string]any, 0, len(tools))
 	for _, tool := range tools {
 		if tool.ProviderDefinedType != "" {
@@ -286,9 +301,61 @@ func responsesTools(tools []sigma.Tool) ([]map[string]any, error) {
 		if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
 			convertedTool["strict"] = strict
 		}
+		if deferLoading {
+			convertedTool["defer_loading"] = true
+		}
 		converted = append(converted, convertedTool)
 	}
 	return converted, nil
+}
+
+func responsesToolSearchItems(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}) ([]map[string]any, error) {
+	if len(deferredTools) == 0 {
+		return nil, nil
+	}
+	tools := make([]sigma.Tool, 0, len(message.AddedToolNames))
+	names := make([]string, 0, len(message.AddedToolNames))
+	for _, name := range message.AddedToolNames {
+		tool, ok := deferredTools[name]
+		if !ok {
+			continue
+		}
+		if _, loaded := loadedToolNames[name]; loaded {
+			continue
+		}
+		loadedToolNames[name] = struct{}{}
+		tools = append(tools, tool)
+		names = append(names, tool.Name)
+	}
+	if len(tools) == 0 {
+		return nil, nil
+	}
+	converted, err := responsesTools(tools, true)
+	if err != nil {
+		return nil, err
+	}
+	callID := responsesToolSearchCallID(message.ToolCallID, names)
+	return []map[string]any{
+		{
+			"type":      "tool_search_call",
+			"call_id":   callID,
+			"execution": "client",
+			"status":    "completed",
+			"arguments": map[string]any{"query": strings.Join(names, " "), "limit": len(names)},
+		},
+		{
+			"type":      "tool_search_output",
+			"call_id":   callID,
+			"execution": "client",
+			"status":    "completed",
+			"tools":     converted,
+		},
+	}, nil
+}
+
+func responsesToolSearchCallID(toolCallID string, names []string) string {
+	sum := sha256.Sum256([]byte(toolCallID + ":" + strings.Join(names, ",")))
+	return "fc_sigma_tool_load_" + hex.EncodeToString(sum[:])[:16]
 }
 
 func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {

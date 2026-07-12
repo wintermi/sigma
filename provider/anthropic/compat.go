@@ -33,6 +33,7 @@ type messagesCompat struct {
 	emptyThinkingSignature   bool
 	supportsTemperature      bool
 	supportsDisabledThinking bool
+	supportsToolReferences   bool
 	thinkingFormat           sigma.AnthropicThinkingFormat
 	// claudeCodeIdentity is request-scoped: it is set when the resolved
 	// credential is an Anthropic OAuth token, which Anthropic only accepts
@@ -131,6 +132,9 @@ func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMe
 	}
 	if value, ok := anthropicCompatBool(override.SupportsDisabledThinking); ok {
 		compat.supportsDisabledThinking = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsToolReferences); ok {
+		compat.supportsToolReferences = value
 	}
 	if override.ThinkingFormat != "" {
 		compat.thinkingFormat = override.ThinkingFormat

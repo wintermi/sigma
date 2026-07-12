@@ -90,6 +90,51 @@ func TestCodexResponsesInjectsBearerTokenAndUsesCodexModelName(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/codex_responses/basic_payload.json")
 }
 
+func TestCodexResponsesDefersMarkedClientTools(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-deferred-tools")
+	model := codexResponsesTestModel(providerID)
+	model.OpenAICodexResponses.SupportsToolSearch = true
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertDeferredToolsPayload(t, receiveRequest(t, requests).Body)
+}
+
+func TestCodexResponsesKeepsDeferredToolMarkersEagerWhenUnsupported(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-no-deferred-tools")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertDeferredToolsRemainEager(t, receiveRequest(t, requests).Body)
+}
+
 func TestCodexResponsesPreservesSystemPromptInstructionsAndForcesStoreFalse(t *testing.T) {
 	t.Parallel()
 

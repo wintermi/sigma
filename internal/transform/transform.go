@@ -361,6 +361,7 @@ func (policy Policy) withDefaults() Policy {
 
 func cloneMessage(message sigma.Message) sigma.Message {
 	message.Content = cloneContentBlocks(message.Content)
+	message.AddedToolNames = append([]string(nil), message.AddedToolNames...)
 	return message
 }
 

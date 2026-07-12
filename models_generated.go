@@ -1952,6 +1952,7 @@ var builtinTextModels = []Model{
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2155,6 +2156,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2184,6 +2186,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2216,6 +2219,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2248,6 +2252,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2280,6 +2285,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2367,6 +2373,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2396,6 +2403,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2425,6 +2433,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2454,6 +2463,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -10545,6 +10555,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10571,6 +10584,9 @@ var builtinTextModels = []Model{
 		CacheReadInputCostPerMillion: 0.075,
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10629,6 +10645,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10664,6 +10683,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10733,6 +10755,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10770,6 +10795,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -10807,6 +10835,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsToolSearch: true,
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -11045,7 +11076,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.4",
+			Model:              "gpt-5.4",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},
@@ -11074,7 +11106,8 @@ var builtinTextModels = []Model{
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.4-mini",
+			Model:              "gpt-5.4-mini",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},
@@ -11111,7 +11144,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.5",
+			Model:              "gpt-5.5",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},
@@ -11151,7 +11185,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.6-luna",
+			Model:              "gpt-5.6-luna",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},
@@ -11191,7 +11226,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.6-sol",
+			Model:              "gpt-5.6-sol",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},
@@ -11231,7 +11267,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
-			Model: "gpt-5.6-terra",
+			Model:              "gpt-5.6-terra",
+			SupportsToolSearch: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_CODEX_OAUTH_TOKEN"},

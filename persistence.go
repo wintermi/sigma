@@ -63,7 +63,7 @@ func validateMessage(message Message, index int, toolCalls map[string]string) er
 		return invalidRequestError("message %d: unsupported role %q", index, message.Role)
 	}
 
-	if message.Role != RoleTool && (message.ToolCallID != "" || message.ToolName != "" || message.IsError) {
+	if message.Role != RoleTool && (message.ToolCallID != "" || message.ToolName != "" || len(message.AddedToolNames) > 0 || message.IsError) {
 		return invalidRequestError("message %d: tool result fields require role %q", index, RoleTool)
 	}
 	if message.Role != RoleAssistant && (message.Provider != "" || message.API != "" || message.Model != "" || message.StopReason != "") {

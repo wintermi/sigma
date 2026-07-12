@@ -51,7 +51,23 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		return nil, err
 	}
 
-	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat)
+	normalizeToolName := func(name string) string { return name }
+	if compat.claudeCodeIdentity {
+		normalizeToolName = toClaudeCodeToolName
+	}
+	deferredTools := transform.PlanDeferredTools(transformed, compat.supportsToolReferences, normalizeToolName)
+	clientToolNames := make(map[string]struct{})
+	for _, tool := range transformed.Tools {
+		if tool.ProviderDefinedType == "" && normalizeToolName(tool.Name) != "" {
+			clientToolNames[normalizeToolName(tool.Name)] = struct{}{}
+		}
+	}
+	if len(clientToolNames) > 0 && len(clientToolNames) == len(deferredTools.Deferred) {
+		deferredTools.Immediate = append([]sigma.Tool(nil), transformed.Tools...)
+		deferredTools.Deferred = nil
+	}
+
+	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat, deferredTools.Deferred, normalizeToolName)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +98,7 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		payload["metadata"] = map[string]any{"user_id": userID}
 	}
 	if len(transformed.Tools) > 0 {
-		tools, err := anthropicTools(transformed.Tools, opts.CacheRetention, compat)
+		tools, err := anthropicTools(transformed.Tools, opts.CacheRetention, compat, deferredTools.Deferred, normalizeToolName)
 		if err != nil {
 			return nil, err
 		}
@@ -128,8 +144,9 @@ func claudeCodeSystem(prompt string, retention sigma.CacheRetention, compat mess
 	return blocks
 }
 
-func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
+func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat messagesCompat, deferredTools map[string]sigma.Tool, normalizeToolName func(string) string) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages))
+	loadedToolNames := make(map[string]struct{})
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
@@ -140,6 +157,7 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 					return nil, err
 				}
 				blocks = append(blocks, block)
+				blocks = append(blocks, anthropicToolReferences(req.Messages[index], deferredTools, loadedToolNames, normalizeToolName)...)
 				index++
 			}
 			index--
@@ -397,7 +415,7 @@ func unsupportedDocumentInputError(model sigma.Model, provider string) error {
 	}
 }
 
-func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat messagesCompat) ([]map[string]any, error) {
+func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat messagesCompat, deferredTools map[string]sigma.Tool, normalizeToolName func(string) string) ([]map[string]any, error) {
 	converted := make([]map[string]any, 0, len(tools))
 	for index, tool := range tools {
 		if tool.ProviderDefinedType != "" {
@@ -433,12 +451,37 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 		if compat.eagerToolInputStreaming {
 			convertedTool["eager_input_streaming"] = true
 		}
+		if _, ok := deferredTools[normalizeToolName(tool.Name)]; ok {
+			convertedTool["defer_loading"] = true
+		}
 		if compat.cacheControlOnTools && index == len(tools)-1 {
 			addCacheControl(convertedTool, retention, compat)
 		}
 		converted = append(converted, convertedTool)
 	}
 	return converted, nil
+}
+
+func anthropicToolReferences(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, normalizeToolName func(string) string) []map[string]any {
+	if len(deferredTools) == 0 {
+		return nil
+	}
+	references := make([]map[string]any, 0, len(message.AddedToolNames))
+	for _, name := range message.AddedToolNames {
+		name = normalizeToolName(name)
+		if _, ok := deferredTools[name]; !ok {
+			continue
+		}
+		if _, loaded := loadedToolNames[name]; loaded {
+			continue
+		}
+		loadedToolNames[name] = struct{}{}
+		references = append(references, map[string]any{
+			"type":      "tool_reference",
+			"tool_name": name,
+		})
+	}
+	return references
 }
 
 func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, compat messagesCompat, maxTokens int) bool {

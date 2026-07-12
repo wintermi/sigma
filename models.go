@@ -36,6 +36,9 @@ type Model struct {
 	// AnthropicMessagesCompat overrides provider/base-URL compatibility
 	// detection for Anthropic Messages-compatible custom models.
 	AnthropicMessagesCompat *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
+	// OpenAIResponsesCompat configures compatibility behavior for OpenAI
+	// Responses models. Leave nil for the default conservative behavior.
+	OpenAIResponsesCompat *OpenAIResponsesCompat `json:"openAIResponsesCompat,omitempty"`
 	// AzureOpenAIResponses configures Azure OpenAI Responses models. Leave nil
 	// for non-Azure models.
 	AzureOpenAIResponses *AzureOpenAIResponsesConfig `json:"azureOpenAIResponses,omitempty"`
@@ -208,10 +211,17 @@ type AzureOpenAIResponsesConfig struct {
 	CredentialSource string `json:"credentialSource,omitempty"`
 }
 
+// OpenAIResponsesCompat describes OpenAI Responses API capabilities that vary
+// by model or compatible endpoint.
+type OpenAIResponsesCompat struct {
+	SupportsToolSearch bool `json:"supportsToolSearch,omitempty"`
+}
+
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model
 // is the model name sent to OpenAI when it differs from sigma's model ID.
 type OpenAICodexResponsesConfig struct {
-	Model string `json:"model,omitempty"`
+	Model              string `json:"model,omitempty"`
+	SupportsToolSearch bool   `json:"supportsToolSearch,omitempty"`
 }
 
 // ImageModel describes a provider image model available through sigma.
@@ -346,6 +356,7 @@ func cloneModel(model Model) Model {
 	model.CostTiers = append([]ModelCostTier(nil), model.CostTiers...)
 	model.OpenAICompletionsCompat = cloneOpenAICompletionsCompat(model.OpenAICompletionsCompat)
 	model.AnthropicMessagesCompat = cloneAnthropicMessagesCompat(model.AnthropicMessagesCompat)
+	model.OpenAIResponsesCompat = cloneOpenAIResponsesCompat(model.OpenAIResponsesCompat)
 	model.AzureOpenAIResponses = cloneAzureOpenAIResponsesConfig(model.AzureOpenAIResponses)
 	model.OpenAICodexResponses = cloneOpenAICodexResponsesConfig(model.OpenAICodexResponses)
 	model.ProviderMetadata = copyStringAnyMap(model.ProviderMetadata)
@@ -408,6 +419,14 @@ func cloneOpenAICompletionsCompat(compat *OpenAICompletionsCompat) *OpenAIComple
 }
 
 func cloneAnthropicMessagesCompat(compat *AnthropicMessagesCompat) *AnthropicMessagesCompat {
+	if compat == nil {
+		return nil
+	}
+	copied := *compat
+	return &copied
+}
+
+func cloneOpenAIResponsesCompat(compat *OpenAIResponsesCompat) *OpenAIResponsesCompat {
 	if compat == nil {
 		return nil
 	}

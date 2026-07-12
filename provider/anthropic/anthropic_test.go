@@ -115,6 +115,107 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/rich_payload.json")
 }
 
+func TestMessagesDefersMarkedClientTools(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-deferred-tools")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsToolReferences: sigma.AnthropicCompatSupported}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, deferredAnthropicRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	tools := payload["tools"].([]any)
+	if got, want := len(tools), 3; got != want {
+		t.Fatalf("tools = %#v, want %d", tools, want)
+	}
+	if got, want := anthropicToolByName(t, tools, "late")["defer_loading"], true; got != want {
+		t.Fatalf("late defer_loading = %v, want %v", got, want)
+	}
+	if _, ok := anthropicToolByName(t, tools, "base")["defer_loading"]; ok {
+		t.Fatalf("base tool was deferred: %#v", anthropicToolByName(t, tools, "base"))
+	}
+	if _, ok := anthropicToolByName(t, tools, "web_search")["defer_loading"]; ok {
+		t.Fatalf("provider-defined tool was deferred: %#v", anthropicToolByName(t, tools, "web_search"))
+	}
+
+	if got, want := countAnthropicToolReferences(payload), 1; got != want {
+		t.Fatalf("tool references = %d, want %d", got, want)
+	}
+}
+
+func TestMessagesDeferredToolsRemainEagerWhenUnsupportedOrAllDeferred(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		model func(sigma.Model) sigma.Model
+		req   sigma.Request
+	}{
+		{
+			name:  "unsupported model",
+			model: func(model sigma.Model) sigma.Model { return model },
+			req:   deferredAnthropicRequest(),
+		},
+		{
+			name: "all tools deferred",
+			model: func(model sigma.Model) sigma.Model {
+				model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsToolReferences: sigma.AnthropicCompatSupported}
+				return model
+			},
+			req: sigma.Request{
+				Tools: []sigma.Tool{
+					{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+					{Name: "web_search", ProviderDefinedType: "web_search_20250305"},
+				},
+				Messages: []sigma.Message{
+					{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+					{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("result")}, AddedToolNames: []string{"late"}},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("anthropic-deferred-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := tt.model(anthropicTestModel(providerID))
+			client := anthropicTestClient(t, providerID, model, server.URL)
+			if _, err := client.Complete(context.Background(), model, tt.req); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodePayload(t, receiveRequest(t, requests).Body)
+			if got := countAnthropicToolReferences(payload); got != 0 {
+				t.Fatalf("tool references = %d, want none", got)
+			}
+			for _, tool := range payload["tools"].([]any) {
+				if _, ok := tool.(map[string]any)["defer_loading"]; ok {
+					t.Fatalf("tool unexpectedly deferred: %#v", tool)
+				}
+			}
+		})
+	}
+}
+
 func TestCompleteBoundsCacheControlBreakpoints(t *testing.T) {
 	t.Parallel()
 
@@ -658,6 +759,7 @@ func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	model := anthropicTestModel(sigma.ProviderAnthropic)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsToolReferences: sigma.AnthropicCompatSupported}
 	registry := sigma.NewRegistry()
 	if err := registry.RegisterTextProvider(sigma.ProviderAnthropic, anthropic.NewProvider(anthropic.WithBaseURL(server.URL))); err != nil {
 		t.Fatalf("RegisterTextProvider returned error: %v", err)
@@ -683,13 +785,18 @@ func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
 						sigma.ToolCallBlock("toolu_prior", "read", map[string]any{"path": "old.txt"}),
 					},
 				},
-				{Role: sigma.RoleTool, ToolCallID: "toolu_prior", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("prior result")}},
+				{
+					Role:           sigma.RoleTool,
+					ToolCallID:     "toolu_prior",
+					ToolName:       "read",
+					Content:        []sigma.ContentBlock{sigma.Text("prior result")},
+					AddedToolNames: []string{"glob"},
+				},
 			},
-			Tools: []sigma.Tool{{
-				Name:        "read",
-				Description: "Read a file",
-				InputSchema: sigma.Schema{"type": "object"},
-			}},
+			Tools: []sigma.Tool{
+				{Name: "read", Description: "Read a file", InputSchema: sigma.Schema{"type": "object"}},
+				{Name: "glob", Description: "Find files", InputSchema: sigma.Schema{"type": "object"}},
+			},
 		},
 	)
 	if err != nil {
@@ -733,12 +840,24 @@ func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
 	if got, want := tool["name"], "Read"; got != want {
 		t.Fatalf("tool name = %q, want canonical Claude Code casing %q", got, want)
 	}
+	deferredTool := tools[1].(map[string]any)
+	if got, want := deferredTool["name"], "Glob"; got != want {
+		t.Fatalf("deferred tool name = %q, want canonical Claude Code casing %q", got, want)
+	}
+	if got, want := deferredTool["defer_loading"], true; got != want {
+		t.Fatalf("deferred tool flag = %v, want %v", got, want)
+	}
 
 	messages := payload["messages"].([]any)
 	assistant := messages[1].(map[string]any)
 	replayedTool := assistant["content"].([]any)[0].(map[string]any)
 	if got, want := replayedTool["name"], "Read"; got != want {
 		t.Fatalf("replayed tool name = %q, want canonical Claude Code casing %q", got, want)
+	}
+	toolResult := messages[2].(map[string]any)
+	toolReference := toolResult["content"].([]any)[1].(map[string]any)
+	if got, want := toolReference["tool_name"], "Glob"; got != want {
+		t.Fatalf("deferred tool reference name = %q, want canonical Claude Code casing %q", got, want)
 	}
 
 	var streamedTool *sigma.ContentBlock
@@ -2397,6 +2516,44 @@ func anthropicTestModel(providerID sigma.ProviderID) sigma.Model {
 		OutputCostPerMillion:         2,
 		CacheReadInputCostPerMillion: 0.5,
 	}
+}
+
+func deferredAnthropicRequest() sigma.Request {
+	return sigma.Request{
+		Tools: []sigma.Tool{
+			{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "web_search", ProviderDefinedType: "web_search_20250305"},
+		},
+		Messages: []sigma.Message{
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("first")}, AddedToolNames: []string{"late", "missing", "late"}},
+		},
+	}
+}
+
+func anthropicToolByName(t *testing.T, tools []any, name string) map[string]any {
+	t.Helper()
+	for _, value := range tools {
+		tool := value.(map[string]any)
+		if tool["name"] == name {
+			return tool
+		}
+	}
+	t.Fatalf("tool %q not found in %#v", name, tools)
+	return nil
+}
+
+func countAnthropicToolReferences(payload map[string]any) int {
+	count := 0
+	for _, message := range payload["messages"].([]any) {
+		for _, block := range message.(map[string]any)["content"].([]any) {
+			if block.(map[string]any)["type"] == "tool_reference" {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 func richRequest() sigma.Request {

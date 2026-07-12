@@ -73,8 +73,13 @@ func TestMessageJSONRoundTrip(t *testing.T) {
 			},
 		},
 		{
-			name:    "tool result",
-			message: sigma.ToolResult("call_1", "sunny"),
+			name: "tool result",
+			message: sigma.Message{
+				Role:           sigma.RoleTool,
+				ToolCallID:     "call_1",
+				Content:        []sigma.ContentBlock{sigma.Text("sunny")},
+				AddedToolNames: []string{"late_lookup"},
+			},
 		},
 		{
 			name:    "tool error",

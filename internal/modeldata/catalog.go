@@ -53,6 +53,7 @@ type TextModel struct {
 	DefaultTransport          string                   `json:"defaultTransport"`
 	OpenAICompletionsCompat   *OpenAICompletionsCompat `json:"openAICompletionsCompat,omitempty"`
 	AnthropicMessagesCompat   *AnthropicMessagesCompat `json:"anthropicMessagesCompat,omitempty"`
+	OpenAIResponsesCompat     *OpenAIResponsesCompat   `json:"openAIResponsesCompat,omitempty"`
 	AzureOpenAIResponses      *AzureOpenAIResponses    `json:"azureOpenAIResponses,omitempty"`
 	OpenAICodexResponses      *OpenAICodexResponses    `json:"openAICodexResponses,omitempty"`
 	ProviderMetadata          map[string]any           `json:"providerMetadata,omitempty"`
@@ -153,7 +154,13 @@ type AnthropicMessagesCompat struct {
 	SupportsEmptyThinkingSignature  string `json:"supportsEmptyThinkingSignature,omitempty"`
 	SupportsTemperature             string `json:"supportsTemperature,omitempty"`
 	SupportsDisabledThinking        string `json:"supportsDisabledThinking,omitempty"`
+	SupportsToolReferences          string `json:"supportsToolReferences,omitempty"`
 	ThinkingFormat                  string `json:"thinkingFormat,omitempty"`
+}
+
+// OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
+type OpenAIResponsesCompat struct {
+	SupportsToolSearch bool `json:"supportsToolSearch,omitempty"`
 }
 
 // OpenRouterRoutingPreference mirrors sigma.OpenRouterRoutingPreference.
@@ -193,7 +200,8 @@ type AzureOpenAIResponses struct {
 
 // OpenAICodexResponses mirrors sigma.OpenAICodexResponsesConfig.
 type OpenAICodexResponses struct {
-	Model string `json:"model,omitempty"`
+	Model              string `json:"model,omitempty"`
+	SupportsToolSearch bool   `json:"supportsToolSearch,omitempty"`
 }
 
 // Load reads and validates a catalog JSON file.

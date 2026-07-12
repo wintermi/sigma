@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Added
 
+- Metadata-marked Anthropic Messages and OpenAI/Codex Responses models can now
+  defer client-defined function schemas until an annotated tool result, using
+  native tool references or client tool-search records while unmarked routes
+  keep eager tool payloads.
 - Deterministic routing decisions now ship as pure helpers: `ClassifyRequest`
   scores requests into route tiers with weighted rule-based signals,
   `RoutePolicy.Select` picks the first usable tier candidate with escalation

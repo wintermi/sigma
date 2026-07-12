@@ -51,7 +51,10 @@ partial-message snapshots, best-effort decoded partial tool-call argument
 metadata, safer JSON/tool-argument persistence, stricter coercion, image
 request validation, explicit handoff coordinates, OpenAI-compatible
 usage/finish-reason normalization, request-scoped provider auth precedence, and
-cache-cost catalog validation. Kimi and Kimi
+cache-cost catalog validation. Metadata-marked Anthropic Messages and
+OpenAI/Codex Responses models can now defer client-defined function schemas
+until an annotated tool-result turn while unmarked models and provider-defined
+tools remain eager. Kimi and Kimi
 Coding are promoted as
 focused Anthropic-compatible provider slices with generated metadata,
 credential discovery, request headers, adaptive thinking metadata, and
@@ -210,6 +213,11 @@ advice without adding any execution loop or configuration format to Sigma.
 - Anthropic Messages prompt-cache markers are now bounded to API-valid
   breakpoints for cache-enabled agent loops, avoiding over-marked user turns,
   tool results, and tool definitions in long conversations.
+- Metadata-marked Anthropic Messages and OpenAI/Codex Responses models now
+  support deferred client-defined function loading from `Message.AddedToolNames`
+  on prior tool results. Anthropic emits deferred definitions and sibling tool
+  references; Responses emits deterministic client tool-search call/output
+  records. Unmarked models and provider-defined tools retain eager payloads.
 - Text-generation usage now populates provider/model identity on
   `sigma.Usage`, preserves a JSON-like `Usage.Raw` copy of provider usage
   payloads when providers report usage, normalizes provider tool/connector

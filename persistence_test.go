@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -49,6 +50,9 @@ func TestRequestPersistenceRoundTripCoversReplayContent(t *testing.T) {
 	if roundTripped.Messages[1].Usage == nil || roundTripped.Messages[1].Usage.Total() != 123 {
 		t.Fatalf("assistant usage after round trip = %#v, want total usage 123", roundTripped.Messages[1].Usage)
 	}
+	if got, want := roundTripped.Messages[2].AddedToolNames, []string{"forecast"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool additions after round trip = %#v, want %#v", got, want)
+	}
 }
 
 func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
@@ -76,6 +80,15 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 			name:      "orphaned tool result",
 			req:       sigma.Request{Messages: []sigma.Message{sigma.ToolResult("call_missing", "weather")}},
 			errorText: "no preceding assistant tool call",
+		},
+		{
+			name: "tool additions on a user message",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:           sigma.RoleUser,
+				Content:        []sigma.ContentBlock{sigma.Text("hello")},
+				AddedToolNames: []string{"late_lookup"},
+			}}},
+			errorText: "tool result fields require role",
 		},
 		{
 			name: "duplicate tool call id",
@@ -366,6 +379,8 @@ func persistedReplayRequest() sigma.Request {
 		"days": json.Number("1"),
 	})
 	toolCall.ProviderSignature = "opaque-tool-signature"
+	toolResult := sigma.ToolResult("call_weather", "18 C")
+	toolResult.AddedToolNames = []string{"forecast"}
 
 	return sigma.Request{
 		SystemPrompt: "Be concise.",
@@ -394,7 +409,7 @@ func persistedReplayRequest() sigma.Request {
 				StopReason: sigma.StopReasonToolCalls,
 				Usage:      &sigma.Usage{InputTokens: 100, OutputTokens: 23},
 			},
-			sigma.ToolResult("call_weather", "18 C"),
+			toolResult,
 			{
 				Role:       sigma.RoleAssistant,
 				Content:    []sigma.ContentBlock{sigma.Text("Partial answer")},

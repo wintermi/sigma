@@ -348,6 +348,7 @@ func textCatalogChangedFields(base, candidate modeldata.TextModel) []string {
 	appendChangedField(&fields, "defaultTransport", base.DefaultTransport, candidate.DefaultTransport)
 	appendChangedField(&fields, "openAICompletionsCompat", base.OpenAICompletionsCompat, candidate.OpenAICompletionsCompat)
 	appendChangedField(&fields, "anthropicMessagesCompat", base.AnthropicMessagesCompat, candidate.AnthropicMessagesCompat)
+	appendChangedField(&fields, "openAIResponsesCompat", base.OpenAIResponsesCompat, candidate.OpenAIResponsesCompat)
 	appendChangedField(&fields, "azureOpenAIResponses", base.AzureOpenAIResponses, candidate.AzureOpenAIResponses)
 	appendChangedField(&fields, "openAICodexResponses", base.OpenAICodexResponses, candidate.OpenAICodexResponses)
 	appendChangedField(&fields, "providerMetadata", base.ProviderMetadata, candidate.ProviderMetadata)
@@ -497,6 +498,7 @@ func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
 	writeStringField(b, "DefaultTransport", "Transport", model.DefaultTransport)
 	writeOpenAICompatField(b, model.OpenAICompletionsCompat)
 	writeAnthropicCompatField(b, model.AnthropicMessagesCompat)
+	writeOpenAIResponsesCompatField(b, model.OpenAIResponsesCompat)
 	writeAzureField(b, model.AzureOpenAIResponses)
 	writeCodexField(b, model.OpenAICodexResponses)
 	writeProviderMetadataField(b, textProviderMetadata(model))
@@ -602,7 +604,17 @@ func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessa
 	writeStringField(b, "SupportsEmptyThinkingSignature", "AnthropicCompatSupport", compat.SupportsEmptyThinkingSignature)
 	writeStringField(b, "SupportsTemperature", "AnthropicCompatSupport", compat.SupportsTemperature)
 	writeStringField(b, "SupportsDisabledThinking", "AnthropicCompatSupport", compat.SupportsDisabledThinking)
+	writeStringField(b, "SupportsToolReferences", "AnthropicCompatSupport", compat.SupportsToolReferences)
 	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
+	b.WriteString("\t\t},\n")
+}
+
+func writeOpenAIResponsesCompatField(b *bytes.Buffer, compat *modeldata.OpenAIResponsesCompat) {
+	if compat == nil {
+		return
+	}
+	b.WriteString("\t\tOpenAIResponsesCompat: &OpenAIResponsesCompat{\n")
+	writeBoolField(b, "SupportsToolSearch", compat.SupportsToolSearch)
 	b.WriteString("\t\t},\n")
 }
 
@@ -659,6 +671,7 @@ func writeCodexField(b *bytes.Buffer, config *modeldata.OpenAICodexResponses) {
 	}
 	b.WriteString("\t\tOpenAICodexResponses: &OpenAICodexResponsesConfig{\n")
 	writeStringField(b, "Model", "", config.Model)
+	writeBoolField(b, "SupportsToolSearch", config.SupportsToolSearch)
 	b.WriteString("\t\t},\n")
 }
 

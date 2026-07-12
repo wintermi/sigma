@@ -142,6 +142,64 @@ func TestResponsesPromptCacheDoesNotUseSessionIDAsPreviousResponseID(t *testing.
 	}
 }
 
+func TestResponsesDefersMarkedClientTools(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-deferred-tools")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsToolSearch: true}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertDeferredToolsPayload(t, receiveRequest(t, requests).Body)
+}
+
+func TestResponsesKeepsDeferredToolMarkersEagerWhenUnsupported(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-no-deferred-tools")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertDeferredToolsRemainEager(t, receiveRequest(t, requests).Body)
+}
+
+func assertDeferredToolsRemainEager(t *testing.T, body []byte) {
+	t.Helper()
+
+	payload := decodeResponsesPayload(t, body)
+	tools := payload["tools"].([]any)
+	if got, want := len(tools), 3; got != want {
+		t.Fatalf("root tools = %#v, want %d eager tools", tools, want)
+	}
+	if hasResponsesItemType(payload, "tool_search_call") || hasResponsesItemType(payload, "tool_search_output") {
+		t.Fatalf("unsupported payload included deferred tool records: %#v", payload["input"])
+	}
+}
+
 func TestResponsesNormalizesProviderTextInPayload(t *testing.T) {
 	t.Parallel()
 
@@ -1708,6 +1766,112 @@ func responsesTestModel(providerID sigma.ProviderID) sigma.Model {
 		OutputCostPerMillion:         2,
 		CacheReadInputCostPerMillion: 0.5,
 	}
+}
+
+func deferredToolsRequest() sigma.Request {
+	return sigma.Request{
+		Tools: []sigma.Tool{
+			{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "web_search", ProviderDefinedType: "web_search_preview"},
+		},
+		Messages: []sigma.Message{
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("first")}, AddedToolNames: []string{"late", "missing", "late"}},
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base_second", "base", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_base_second", Content: []sigma.ContentBlock{sigma.Text("second")}, AddedToolNames: []string{"late"}},
+		},
+	}
+}
+
+func assertDeferredToolsPayload(t *testing.T, body []byte) {
+	t.Helper()
+
+	payload := decodeResponsesPayload(t, body)
+	tools := payload["tools"].([]any)
+	if got, want := len(tools), 2; got != want {
+		t.Fatalf("root tools = %#v, want %d immediate tools", tools, want)
+	}
+	if got, want := tools[0].(map[string]any)["name"], "base"; got != want {
+		t.Fatalf("first root tool = %v, want %q", got, want)
+	}
+	if got, want := tools[1].(map[string]any)["type"], "web_search_preview"; got != want {
+		t.Fatalf("provider-defined root tool = %v, want %q", got, want)
+	}
+
+	input := payload["input"].([]any)
+	searchCalls := 0
+	searchOutputs := 0
+	for index, item := range input {
+		typed := item.(map[string]any)
+		switch typed["type"] {
+		case "tool_search_call":
+			searchCalls++
+			if index == 0 || input[index-1].(map[string]any)["type"] != "function_call_output" {
+				t.Fatalf("tool search call at input[%d] does not follow its tool output: %#v", index, input)
+			}
+			if index+1 >= len(input) || input[index+1].(map[string]any)["type"] != "tool_search_output" {
+				t.Fatalf("tool search call at input[%d] is not paired with output: %#v", index, input)
+			}
+			searchCall := typed
+			searchOutput := input[index+1].(map[string]any)
+			if got, want := searchCall["call_id"], searchOutput["call_id"]; got != want {
+				t.Fatalf("tool search ids = %v and %v, want match", got, want)
+			}
+			if got, want := searchCall["execution"], "client"; got != want {
+				t.Fatalf("tool search execution = %v, want %q", got, want)
+			}
+			if got, want := searchCall["status"], "completed"; got != want {
+				t.Fatalf("tool search status = %v, want %q", got, want)
+			}
+		case "tool_search_output":
+			searchOutputs++
+		}
+	}
+	if got, want := searchCalls, 1; got != want {
+		t.Fatalf("tool search calls = %d, want %d", got, want)
+	}
+	if got, want := searchOutputs, 1; got != want {
+		t.Fatalf("tool search outputs = %d, want %d", got, want)
+	}
+	var searchOutput map[string]any
+	for _, item := range input {
+		typed := item.(map[string]any)
+		if typed["type"] == "tool_search_output" {
+			searchOutput = typed
+			break
+		}
+	}
+	searchTools := searchOutput["tools"].([]any)
+	if got, want := len(searchTools), 1; got != want {
+		t.Fatalf("deferred tools = %#v, want %d", searchTools, want)
+	}
+	deferred := searchTools[0].(map[string]any)
+	if got, want := deferred["name"], "late"; got != want {
+		t.Fatalf("deferred tool name = %v, want %q", got, want)
+	}
+	if got, want := deferred["defer_loading"], true; got != want {
+		t.Fatalf("deferred tool flag = %v, want %v", got, want)
+	}
+}
+
+func decodeResponsesPayload(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	return payload
+}
+
+func hasResponsesItemType(payload map[string]any, itemType string) bool {
+	for _, item := range payload["input"].([]any) {
+		if item.(map[string]any)["type"] == itemType {
+			return true
+		}
+	}
+	return false
 }
 
 func assertResponsesFunctionToolChoice(t *testing.T, body []byte) {

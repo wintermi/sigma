@@ -2441,7 +2441,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "supportsDisabledThinking": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -3014,7 +3015,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "budget"
+        "thinkingFormat": "budget",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -3052,7 +3054,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "budget"
+        "thinkingFormat": "budget",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -3090,7 +3093,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "max"
@@ -3131,7 +3135,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -3172,7 +3177,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -3289,7 +3295,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "budget"
+        "thinkingFormat": "budget",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -3327,7 +3334,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "budget"
+        "thinkingFormat": "budget",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -3365,7 +3373,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -3403,7 +3412,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
       }
     },
     {
@@ -13421,7 +13431,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.4"
+        "model": "gpt-5.4",
+        "supportsToolSearch": true
       }
     },
     {
@@ -13457,7 +13468,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.4-mini"
+        "model": "gpt-5.4-mini",
+        "supportsToolSearch": true
       }
     },
     {
@@ -13501,7 +13513,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.5"
+        "model": "gpt-5.5",
+        "supportsToolSearch": true
       }
     },
     {
@@ -13548,7 +13561,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.6-luna"
+        "model": "gpt-5.6-luna",
+        "supportsToolSearch": true
       }
     },
     {
@@ -13595,7 +13609,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.6-sol"
+        "model": "gpt-5.6-sol",
+        "supportsToolSearch": true
       }
     },
     {
@@ -13642,7 +13657,8 @@
         "minimal": "low"
       },
       "openAICodexResponses": {
-        "model": "gpt-5.6-terra"
+        "model": "gpt-5.6-terra",
+        "supportsToolSearch": true
       }
     },
     {
@@ -14561,6 +14577,9 @@
       "thinkingLevelMap": {
         "off": "none",
         "xhigh": "xhigh"
+      },
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
       }
     },
     {
@@ -14594,6 +14613,9 @@
       "thinkingLevelMap": {
         "off": "none",
         "xhigh": "xhigh"
+      },
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
       }
     },
     {
@@ -14668,7 +14690,10 @@
       },
       "unsupportedThinkingLevels": [
         "off"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
+      }
     },
     {
       "id": "gpt-5.5",
@@ -14712,7 +14737,10 @@
       },
       "unsupportedThinkingLevels": [
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
+      }
     },
     {
       "id": "gpt-5.5-pro",
@@ -14799,6 +14827,9 @@
         "off": "none",
         "xhigh": "xhigh",
         "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
       }
     },
     {
@@ -14843,6 +14874,9 @@
         "off": "none",
         "xhigh": "xhigh",
         "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
       }
     },
     {
@@ -14887,6 +14921,9 @@
         "off": "none",
         "xhigh": "xhigh",
         "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsToolSearch": true
       }
     },
     {

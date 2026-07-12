@@ -365,6 +365,7 @@ type AnthropicMessagesCompat struct {
 	SupportsEmptyThinkingSignature  AnthropicCompatSupport  `json:"supportsEmptyThinkingSignature,omitempty"`
 	SupportsTemperature             AnthropicCompatSupport  `json:"supportsTemperature,omitempty"`
 	SupportsDisabledThinking        AnthropicCompatSupport  `json:"supportsDisabledThinking,omitempty"`
+	SupportsToolReferences          AnthropicCompatSupport  `json:"supportsToolReferences,omitempty"`
 	ThinkingFormat                  AnthropicThinkingFormat `json:"thinkingFormat,omitempty"`
 }
 
@@ -412,22 +413,23 @@ type Request struct {
 // Message is a conversation message discriminated by Role.
 //
 // User, developer, and assistant messages use Content. Tool-result messages use
-// Content plus ToolCallID and IsError. Provider, API, Model, and StopReason
-// preserve assistant provenance for later cross-provider replay. Go cannot make
-// those role-specific fields impossible to combine in a plain struct, so callers
-// should prefer UserText, UserContent, ToolResult, and ToolError when constructing
-// persisted conversations.
+// Content plus ToolCallID, optional AddedToolNames, and IsError. Provider, API,
+// Model, and StopReason preserve assistant provenance for later cross-provider
+// replay. Go cannot make those role-specific fields impossible to combine in a
+// plain struct, so callers should prefer UserText, UserContent, ToolResult, and
+// ToolError when constructing persisted conversations.
 type Message struct {
-	Role       Role           `json:"role"`
-	Content    []ContentBlock `json:"content,omitempty"`
-	ToolCallID string         `json:"toolCallID,omitempty"`
-	ToolName   string         `json:"toolName,omitempty"`
-	IsError    bool           `json:"isError,omitempty"`
-	Provider   ProviderID     `json:"provider,omitempty"`
-	API        API            `json:"api,omitempty"`
-	Model      ModelID        `json:"model,omitempty"`
-	StopReason StopReason     `json:"stopReason,omitempty"`
-	Usage      *Usage         `json:"usage,omitempty"`
+	Role           Role           `json:"role"`
+	Content        []ContentBlock `json:"content,omitempty"`
+	ToolCallID     string         `json:"toolCallID,omitempty"`
+	ToolName       string         `json:"toolName,omitempty"`
+	AddedToolNames []string       `json:"addedToolNames,omitempty"`
+	IsError        bool           `json:"isError,omitempty"`
+	Provider       ProviderID     `json:"provider,omitempty"`
+	API            API            `json:"api,omitempty"`
+	Model          ModelID        `json:"model,omitempty"`
+	StopReason     StopReason     `json:"stopReason,omitempty"`
+	Usage          *Usage         `json:"usage,omitempty"`
 }
 
 // ContentBlock is a discriminated unit of message content.
