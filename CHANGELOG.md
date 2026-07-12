@@ -162,6 +162,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated direct-provider metadata now includes Cerebras Gemma 4 31B, xAI
   Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with their reviewed
   capabilities, limits, pricing, and existing provider compatibility defaults.
+- Generated Google Vertex AI metadata now includes Gemini 3.1 Flash Lite,
+  Gemini 3.5 Flash, and the Flash/Flash-Lite latest aliases with reviewed
+  capabilities, limits, pricing, and existing native routing defaults.
 - Cloudflare Workers AI now has a first-class OpenAI-compatible Chat
   Completions wrapper for direct Workers AI routes, including request-scoped
   account placeholder resolution, normal bearer-token auth, generated metadata,

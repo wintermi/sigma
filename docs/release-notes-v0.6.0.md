@@ -94,6 +94,9 @@ Generated direct-provider metadata now also includes Cerebras Gemma 4 31B,
 xAI Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with reviewed capabilities,
 limits, pricing, and existing compatibility defaults, while broad router catalog
 expansion remains deferred to the reviewed refresh workflow.
+Generated Google Vertex AI metadata now also includes Gemini 3.1 Flash Lite,
+Gemini 3.5 Flash, and the Flash/Flash-Lite latest aliases with reviewed
+capabilities, limits, pricing, and existing native routing defaults.
 Generated OpenCode Go metadata now also includes GLM-5.2 and Qwen3.7 Plus with
 their routed Chat Completions and Messages API metadata, reviewed capabilities,
 limits, pricing, and GLM thinking-level compatibility.
@@ -268,6 +271,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - Generated GitHub Copilot metadata now includes `claude-fable-5` on the Chat
   Completions route with text/image, tool, reasoning, pricing, and context
   metadata plus conservative request compatibility flags.
+- Generated Google Vertex AI metadata now includes Gemini 3.1 Flash Lite,
+  Gemini 3.5 Flash, and the Flash/Flash-Lite latest aliases with reviewed
+  capabilities, limits, pricing, and existing native routing defaults.
 - OpenAI Codex Responses WebSocket transport now resolves `HTTP_PROXY`,
   `HTTPS_PROXY`, lowercase aliases, and `ALL_PROXY` for `ws://` and `wss://`
   endpoints, respects `NO_PROXY`, and tunnels through HTTP/HTTPS `CONNECT`

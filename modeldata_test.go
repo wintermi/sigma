@@ -1792,6 +1792,34 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 	}
 	assertMetadataString(t, vertex.ProviderMetadata, "vertexPublisher", "google")
 	assertMetadataStrings(t, vertex.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
+	for _, tt := range []struct {
+		id                               ModelID
+		inputCost, outputCost, cacheRead float64
+	}{
+		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
+		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
+		{id: "gemini-flash-latest", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
+		{id: "gemini-flash-lite-latest", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
+	} {
+		model, ok := registry.Model(ProviderGoogleVertex, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Vertex %s model", tt.id)
+		}
+		if model.API != APIGoogleVertex || model.DefaultTransport != TransportSSE || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("Vertex %s capabilities = %+v, want SSE tools, images, and reasoning", tt.id, model)
+		}
+		if model.ContextWindow != 1_048_576 || model.MaxOutputTokens != 65_536 {
+			t.Fatalf("Vertex %s limits = %d/%d, want 1048576/65536", tt.id, model.ContextWindow, model.MaxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheRead {
+			t.Fatalf("Vertex %s costs = %f/%f/%f, want %f/%f/%f", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheRead)
+		}
+		if model.SupportsThinkingLevel(ThinkingLevelOff) {
+			t.Fatalf("Vertex %s unexpectedly supports disabled thinking", tt.id)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "vertexPublisher", "google")
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
+	}
 	vertexPro, ok := registry.Model(ProviderGoogleVertex, "gemini-3.1-pro-preview")
 	if !ok {
 		t.Fatal("fresh registry missing generated Vertex Gemini 3.1 Pro Preview model")

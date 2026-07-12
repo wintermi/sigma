@@ -564,6 +564,8 @@ should still come through the catalog refresh workflow.
       with deterministic payload and response fixtures.
 - [x] Add focused Vertex AI embeddings and Imagen generation adapters with
       explicit project/location routing and deterministic fixtures.
+- [x] Add curated native Vertex Gemini 3.1 Flash Lite, Gemini 3.5 Flash, and
+      Flash/Flash-Lite latest metadata with deterministic registry coverage.
 - [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
       use credential-gated probes only for manual compatibility investigation.
 - [ ] Keep ambient Vertex project/location environment fallback and built-in ADC
