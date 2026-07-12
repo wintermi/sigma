@@ -54,6 +54,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated GitHub Copilot Chat Completions metadata now includes
   `kimi-k2.7-code` and `mai-code-1-flash-picker`, with reviewed input, tool,
   reasoning, context, pricing, and compatibility metadata.
+- Generated OpenCode Go metadata now includes `glm-5.2` and `qwen3.7-plus`,
+  with their Chat Completions and Messages routes, capability and pricing
+  metadata, and GLM `max_tokens`/reasoning-level compatibility.
 - OpenAI Codex OAuth login results can now be written into caller-supplied
   `sigma.CredentialStore` implementations with
   `openai.StoreCodexOAuthCredentials`, giving store-backed Codex Responses auth

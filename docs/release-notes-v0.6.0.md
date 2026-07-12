@@ -83,6 +83,9 @@ Generated direct-provider metadata now also includes Cerebras Gemma 4 31B,
 xAI Grok 4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 with reviewed capabilities,
 limits, pricing, and existing compatibility defaults, while broad router catalog
 expansion remains deferred to the reviewed refresh workflow.
+Generated OpenCode Go metadata now also includes GLM-5.2 and Qwen3.7 Plus with
+their routed Chat Completions and Messages API metadata, reviewed capabilities,
+limits, pricing, and GLM thinking-level compatibility.
 Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
 for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an
@@ -430,6 +433,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - Generated Azure OpenAI Responses and OpenAI Codex Responses metadata now
   includes GPT-5.6 Luna, Sol, and Terra with route-specific context limits,
   reasoning mappings, pricing, and Codex high-context price tiers.
+- Generated OpenCode Go metadata now includes GLM-5.2 and Qwen3.7 Plus with
+  their Chat Completions and Messages route metadata, reviewed capabilities,
+  limits, pricing, and GLM `max_tokens` reasoning-level compatibility.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so

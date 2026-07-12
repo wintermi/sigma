@@ -647,9 +647,56 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
 	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+	openCodeGoGLM, ok := registry.Model(ProviderOpenCodeGo, "glm-5.2")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Go GLM-5.2 model")
+	}
+	if !openCodeGoGLM.SupportsTools || openCodeGoGLM.SupportsImages() || !openCodeGoGLM.SupportsReasoning() {
+		t.Fatalf("OpenCode Go GLM-5.2 capabilities = %+v, want text/tools/reasoning", openCodeGoGLM)
+	}
+	if openCodeGoGLM.ContextWindow != 1000000 || openCodeGoGLM.MaxOutputTokens != 131072 {
+		t.Fatalf("OpenCode Go GLM-5.2 limits = %d/%d, want 1000000/131072", openCodeGoGLM.ContextWindow, openCodeGoGLM.MaxOutputTokens)
+	}
+	if openCodeGoGLM.InputCostPerMillion != 1.4 ||
+		openCodeGoGLM.OutputCostPerMillion != 4.4 ||
+		openCodeGoGLM.CacheReadInputCostPerMillion != 0.26 {
+		t.Fatalf("OpenCode Go GLM-5.2 costs = %v/%v/%v, want 1.4/4.4/0.26", openCodeGoGLM.InputCostPerMillion, openCodeGoGLM.OutputCostPerMillion, openCodeGoGLM.CacheReadInputCostPerMillion)
+	}
+	if openCodeGoGLM.OpenAICompletionsCompat == nil ||
+		openCodeGoGLM.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+		t.Fatalf("OpenCode Go GLM-5.2 compat = %#v, want max_tokens", openCodeGoGLM.OpenAICompletionsCompat)
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium} {
+		if openCodeGoGLM.SupportsThinkingLevel(level) {
+			t.Fatalf("OpenCode Go GLM-5.2 unexpectedly supports %q thinking", level)
+		}
+	}
+	if got, ok := openCodeGoGLM.ProviderThinkingLevel(ThinkingLevelHigh); !ok || got != "high" {
+		t.Fatalf("OpenCode Go GLM-5.2 high thinking level = %q, %v; want high, true", got, ok)
+	}
+	if got, ok := openCodeGoGLM.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
+		t.Fatalf("OpenCode Go GLM-5.2 xhigh thinking level = %q, %v; want max, true", got, ok)
+	}
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m3", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)
+	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-plus", APIAnthropicMessages)
+	openCodeGoQwen, ok := registry.Model(ProviderOpenCodeGo, "qwen3.7-plus")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Go Qwen3.7 Plus model")
+	}
+	if !openCodeGoQwen.SupportsTools || !openCodeGoQwen.SupportsImages() || !openCodeGoQwen.SupportsReasoning() {
+		t.Fatalf("OpenCode Go Qwen3.7 Plus capabilities = %+v, want text/image/tools/reasoning", openCodeGoQwen)
+	}
+	if openCodeGoQwen.ContextWindow != 1000000 || openCodeGoQwen.MaxOutputTokens != 65536 {
+		t.Fatalf("OpenCode Go Qwen3.7 Plus limits = %d/%d, want 1000000/65536", openCodeGoQwen.ContextWindow, openCodeGoQwen.MaxOutputTokens)
+	}
+	if openCodeGoQwen.InputCostPerMillion != 0.4 ||
+		openCodeGoQwen.OutputCostPerMillion != 1.6 ||
+		openCodeGoQwen.CacheReadInputCostPerMillion != 0.04 ||
+		openCodeGoQwen.CacheWriteInputCostPerMillion != 0.5 {
+		t.Fatalf("OpenCode Go Qwen3.7 Plus costs = %v/%v/%v/%v, want 0.4/1.6/0.04/0.5", openCodeGoQwen.InputCostPerMillion, openCodeGoQwen.OutputCostPerMillion, openCodeGoQwen.CacheReadInputCostPerMillion, openCodeGoQwen.CacheWriteInputCostPerMillion)
+	}
 
 	for _, id := range []ModelID{"kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code"} {
 		model, ok := registry.Model(ProviderOpenCodeGo, id)

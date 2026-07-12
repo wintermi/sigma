@@ -7,6 +7,7 @@ package opencode_test
 
 import (
 	"context"
+	"encoding/json"
 	stderrors "errors"
 	"io"
 	"net/http"
@@ -191,6 +192,84 @@ func TestOpenCodeRoutedResponsesRejectsLogprobsBeforeRequest(t *testing.T) {
 	}
 }
 
+func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		modelID     sigma.ModelID
+		wantPath    string
+		wantAuthKey string
+		response    string
+		maxTokens   int
+	}{
+		{
+			name:        "glm uses chat completions and max tokens",
+			modelID:     "glm-5.2",
+			wantPath:    "/chat/completions",
+			wantAuthKey: "Authorization",
+			response:    chatCompletedEvent,
+			maxTokens:   321,
+		},
+		{
+			name:        "qwen uses anthropic messages",
+			modelID:     "qwen3.7-plus",
+			wantPath:    "/messages",
+			wantAuthKey: "X-Api-Key",
+			response:    anthropicCompletedEvent,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, tt.response)
+			}))
+			t.Cleanup(server.Close)
+
+			client := generatedOpenCodeGoTestClient(t, tt.modelID, server.URL)
+			opts := []sigma.Option(nil)
+			if tt.maxTokens != 0 {
+				opts = append(opts, sigma.WithMaxTokens(tt.maxTokens))
+			}
+			_, err := client.Complete(
+				context.Background(),
+				sigma.Model{Provider: sigma.ProviderOpenCodeGo, ID: tt.modelID},
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("Reply with ok.")}},
+				opts...,
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			if got := request.Path; got != tt.wantPath {
+				t.Fatalf("request path = %q, want %q", got, tt.wantPath)
+			}
+			if got := request.Headers.Get(tt.wantAuthKey); got == "" {
+				t.Fatalf("missing auth header %q in %#v", tt.wantAuthKey, request.Headers)
+			}
+			if tt.maxTokens != 0 {
+				var body map[string]any
+				if err := json.Unmarshal(request.Body, &body); err != nil {
+					t.Fatalf("Unmarshal request body: %v", err)
+				}
+				if got, ok := body["max_tokens"].(float64); !ok || got != float64(tt.maxTokens) {
+					t.Fatalf("max_tokens = %v, %v; want %d, true", got, ok, tt.maxTokens)
+				}
+				if _, ok := body["max_completion_tokens"]; ok {
+					t.Fatalf("request body unexpectedly includes max_completion_tokens: %s", request.Body)
+				}
+			}
+		})
+	}
+}
+
 func opencodeTestClient(
 	t *testing.T,
 	providerID sigma.ProviderID,
@@ -227,20 +306,52 @@ func opencodeTestClient(
 	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
 }
 
+func generatedOpenCodeGoTestClient(t *testing.T, modelID sigma.ModelID, baseURL string) *sigma.Client {
+	t.Helper()
+
+	registry := sigma.DefaultRegistry()
+	model, ok := registry.Model(sigma.ProviderOpenCodeGo, modelID)
+	if !ok {
+		t.Fatalf("generated registry missing OpenCode Go model %q", modelID)
+	}
+	if err := opencode.RegisterGo(registry, opencode.WithHeader("X-Provider", "provider")); err != nil {
+		t.Fatalf("RegisterGo returned error: %v", err)
+	}
+	metadata := make(map[string]any, len(model.ProviderMetadata)+1)
+	for key, value := range model.ProviderMetadata {
+		metadata[key] = value
+	}
+	metadata["baseURL"] = baseURL
+	model.ProviderMetadata = metadata
+	if err := registry.RegisterModel(model, sigma.WithOverride()); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
+	})
+	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+}
+
 type capturedRequest struct {
 	Path    string
 	Query   string
 	Headers http.Header
+	Body    []byte
 }
 
 func captureRequest(t *testing.T, requests chan<- capturedRequest, r *http.Request) {
 	t.Helper()
 
-	_, _ = io.Copy(io.Discard, r.Body)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Errorf("ReadAll request body: %v", err)
+		return
+	}
 	requests <- capturedRequest{
 		Path:    r.URL.Path,
 		Query:   r.URL.RawQuery,
 		Headers: r.Header.Clone(),
+		Body:    body,
 	}
 }
 

@@ -14778,6 +14778,47 @@
       }
     },
     {
+      "id": "glm-5.2",
+      "name": "GLM-5.2",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium"
+      ],
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "kimi-k2.5",
       "name": "Kimi K2.5",
       "provider": "opencode-go",
@@ -15067,6 +15108,37 @@
         "outputPerMillion": 7.5,
         "cacheReadInputPerMillion": 0.5,
         "cacheWriteInputPerMillion": 3.125,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen",
+        "opencodeAPI": "anthropic-messages"
+      }
+    },
+    {
+      "id": "qwen3.7-plus",
+      "name": "Qwen3.7 Plus",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.4,
+        "outputPerMillion": 1.6,
+        "cacheReadInputPerMillion": 0.04,
+        "cacheWriteInputPerMillion": 0.5,
         "currency": "USD"
       },
       "contextWindow": 1000000,

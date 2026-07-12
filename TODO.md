@@ -420,6 +420,8 @@ upstream.
 - [x] Add OpenCode Go Kimi K2.6 and Kimi K2.7 Code metadata with
       `reasoning_effort` requests so thinking-off/default requests omit
       rejected disabled `thinking` objects.
+- [x] Add focused OpenCode Go GLM-5.2 and Qwen3.7 Plus metadata with
+      deterministic Chat Completions and Messages route coverage.
 - [x] Add disabled-thinking compatibility metadata to the generated Claude
       Fable 5 row so thinking-off requests omit the rejected disabled payload.
 - [x] Add an offline-friendly refresh command that ingests explicit
