@@ -616,6 +616,8 @@ should still come through the catalog refresh workflow.
       credential and signing path.
 - [x] Add request-scoped Bedrock bearer-token auth through typed Bedrock options
       before resolver and environment credential fallback.
+- [x] Treat bare request-scoped and stored API-key credentials as Bedrock bearer
+      tokens while preserving SigV4 signing for credentials with AWS key metadata.
 - [x] Add request-scoped Bedrock region and static AWS credential helpers before
       environment fallback while keeping AWS SDK integration and SSO deferred.
 - [x] Add stdlib Bedrock default-chain credential loading for shared profiles,

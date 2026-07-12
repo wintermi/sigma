@@ -974,6 +974,49 @@ func TestHTTPConverseStreamClientSignsRequestAndParsesEventStream(t *testing.T) 
 	}
 }
 
+func TestRequestAPIKeyUsesBedrockBearerAuthorization(t *testing.T) {
+	clearAWSCredentialEnv(t)
+
+	var gotAuthorization string
+	var gotAmzDate string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuthorization = r.Header.Get("Authorization")
+		gotAmzDate = r.Header.Get("X-Amz-Date")
+		_, _ = io.Copy(io.Discard, r.Body)
+		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+		_, _ = w.Write(bedrockEventStream(
+			bedrockEventStreamFrame("messageStart", []byte(`{"role":"assistant"}`)),
+			bedrockEventStreamFrame("contentBlockDelta", []byte(`{"contentBlockIndex":0,"delta":{"text":"ok"}}`)),
+			bedrockEventStreamFrame("messageStop", []byte(`{"stopReason":"end_turn"}`)),
+		))
+	}))
+	t.Cleanup(server.Close)
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	client := bedrockTestClient(t, sigma.ProviderAmazonBedrock, model, nil, nil,
+		WithRegion("us-east-1"),
+		WithEndpoint(server.URL),
+	)
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("bedrock-api-key"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "ok"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+	if got, want := gotAuthorization, "Bearer bedrock-api-key"; got != want {
+		t.Fatalf("Authorization = %q, want %q", got, want)
+	}
+	if gotAmzDate != "" {
+		t.Fatalf("X-Amz-Date = %q, want absent for bearer auth", gotAmzDate)
+	}
+}
+
 func TestHTTPConverseStreamClientSignsInferenceProfileARNWithEscapedPath(t *testing.T) {
 	t.Parallel()
 
@@ -1670,6 +1713,83 @@ func TestDefaultCredentialDetectorUsesBedrockBearerTokenFromEnvironment(t *testi
 	}
 	if info.AccessKeyID != "" || info.SecretAccessKey != "" {
 		t.Fatalf("static credentials = %q/%q, want bearer token precedence", info.AccessKeyID, info.SecretAccessKey)
+	}
+}
+
+func TestDefaultCredentialDetectorUsesBareAPIKeyCredentialAsBearerToken(t *testing.T) {
+	t.Parallel()
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "api-key"}, nil
+	})
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), model, sigma.Options{
+		AuthResolver: resolver,
+	}, Config{CredentialSource: CredentialSourceAuthResolver})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.BearerToken, "api-key"; got != want {
+		t.Fatalf("bearer token = %q, want %q", got, want)
+	}
+	if info.AccessKeyID != "" || info.SecretAccessKey != "" {
+		t.Fatalf("static credentials = %q/%q, want bearer token only", info.AccessKeyID, info.SecretAccessKey)
+	}
+}
+
+func TestDefaultCredentialDetectorUsesStoredAPIKeyAsBearerToken(t *testing.T) {
+	t.Parallel()
+
+	store := sigma.NewInMemoryCredentialStore()
+	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderAmazonBedrock, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+		return sigma.StoredCredential{
+			Type:  sigma.CredentialTypeAPIKey,
+			Value: "stored-api-key",
+		}, true, nil
+	})
+	if err != nil {
+		t.Fatalf("ModifyCredential returned error: %v", err)
+	}
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), model, sigma.Options{
+		AuthResolver: sigma.StoredCredentialAuthResolver{Store: store},
+	}, Config{CredentialSource: CredentialSourceAuthResolver})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if got, want := info.BearerToken, "stored-api-key"; got != want {
+		t.Fatalf("bearer token = %q, want %q", got, want)
+	}
+}
+
+func TestDefaultCredentialDetectorKeepsAPIKeyCredentialWithAWSMetadataAsSigV4(t *testing.T) {
+	t.Parallel()
+
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{
+			Type:  sigma.CredentialTypeAPIKey,
+			Value: "secret",
+			Metadata: map[string]any{
+				"accessKeyID": "AKIAEXAMPLE",
+			},
+		}, nil
+	})
+	info, err := (DefaultCredentialDetector{}).Detect(context.Background(), model, sigma.Options{
+		AuthResolver: resolver,
+	}, Config{CredentialSource: CredentialSourceAuthResolver})
+	if err != nil {
+		t.Fatalf("Detect returned error: %v", err)
+	}
+	if info.BearerToken != "" {
+		t.Fatalf("bearer token = %q, want empty", info.BearerToken)
+	}
+	if got, want := info.AccessKeyID, "AKIAEXAMPLE"; got != want {
+		t.Fatalf("access key ID = %q, want %q", got, want)
+	}
+	if got, want := info.SecretAccessKey, "secret"; got != want {
+		t.Fatalf("secret access key = %q, want %q", got, want)
 	}
 }
 

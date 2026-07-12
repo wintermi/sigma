@@ -66,6 +66,9 @@ can inspect candidate and configured API-key variable names before making a
 request, and focused provider helpers now let callers pass Cloudflare AI
 Gateway placeholder values and Bedrock region/static credential values without
 mutating process environment.
+Bare request-scoped and stored API-key credentials now also authorize Bedrock
+through bearer authentication, while credentials with AWS key metadata keep the
+existing SigV4 path.
 Generated Bedrock metadata now also includes focused EU Anthropic Claude
 regional rows that reuse the existing `eu.` inference-profile endpoint fallback
 for the EU runtime route.
@@ -437,6 +440,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - `bedrock.WithRequestRegion` and `bedrock.WithRequestStaticCredentials` now
   provide request-scoped Bedrock runtime region and static AWS credential values
   before the existing AWS region and static credential environment fallbacks.
+- Bare `CredentialTypeAPIKey` values, including request-scoped and stored API
+  keys, now authorize Bedrock through bearer authentication. Credentials with
+  AWS access-key metadata retain the existing SigV4 path.
 - Generated Amazon Bedrock metadata now includes focused EU Anthropic Claude
   regional rows for Fable 5, Haiku 4.5, Opus 4.5/4.6/4.7/4.8, and Sonnet 4.6,
   with deterministic registry assertions and the existing `eu.` runtime
@@ -725,6 +731,9 @@ advice without adding any execution loop or configuration format to Sigma.
 - Bedrock credential precedence remains explicit: typed bearer-token options
   and auth resolvers run before request static credentials, and request static
   credentials run before the existing static environment credential path.
+- Bare Bedrock API-key credentials now use bearer authentication. This changes
+  no public API and leaves credentials with AWS access-key metadata on the
+  existing SigV4 signing path.
 - Bedrock SigV4 path canonicalization now matches the escaped model-ID path
   sent on the wire for inference-profile ARNs. This is a bug fix with no public
   API change, and bearer-token Bedrock requests keep their existing unsigned

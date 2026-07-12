@@ -127,13 +127,18 @@ func authResolverCredential(ctx context.Context, model sigma.Model, opts sigma.O
 		stringMetadata(credential.Metadata, "accessKeyID"),
 		stringMetadata(credential.Metadata, "access_key_id"),
 	)
-	info.SecretAccessKey = firstNonEmpty(
+	secretAccessKey := firstNonEmpty(
 		stringMetadata(credential.Metadata, "secretAccessKey"),
 		stringMetadata(credential.Metadata, "secret_access_key"),
-		credential.Value,
 	)
 	if credential.Type == sigma.CredentialTypeOAuthToken && info.BearerToken == "" {
 		info.BearerToken = credential.Value
+	}
+	if credential.Type == sigma.CredentialTypeAPIKey && info.BearerToken == "" && info.AccessKeyID == "" && secretAccessKey == "" {
+		info.BearerToken = credential.Value
+	}
+	if info.BearerToken == "" {
+		info.SecretAccessKey = firstNonEmpty(secretAccessKey, credential.Value)
 	}
 	if info.BearerToken == "" && (info.AccessKeyID == "" || info.SecretAccessKey == "") {
 		return CredentialInfo{}, credentialError("bedrock converse stream: auth resolver returned incomplete AWS credentials", sigma.ErrCredentialUnavailable, Config{}, []string{"auth-resolver"})

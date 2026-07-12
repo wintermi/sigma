@@ -309,6 +309,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   and oversized numeric retry delays saturate so configured maximum-delay checks
   reject them. Amazon Bedrock Converse errors now read at most 4 KiB before
   closing the response body.
+- Amazon Bedrock Converse now treats bare API-key credentials as bearer tokens,
+  so request-scoped and stored API keys no longer fail as incomplete SigV4
+  credentials. API-key credentials with AWS access-key metadata remain signed.
 - Oversized-input embedding reconstruction now rejects split or cached vectors
   whose dimensions differ, rather than returning a partial weighted average.
 - Dynamic text, image, and embedding model refreshes now detect source
