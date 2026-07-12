@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-10",
+  "snapshotDate": "2026-07-12",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -7721,6 +7721,83 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gpt"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "provider": "github-copilot",
+      "api": "openai-completions",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.19
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 32000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
+      "id": "mai-code-1-flash-picker",
+      "name": "MAI-Code-1-Flash",
+      "provider": "github-copilot",
+      "api": "openai-completions",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 4.5,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.075
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "mai"
       },
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",

@@ -51,6 +51,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated GitHub Copilot metadata now includes `claude-fable-5` on the Chat
   Completions route with text/image, tool, reasoning, pricing, and context
   metadata plus conservative request compatibility flags.
+- Generated GitHub Copilot Chat Completions metadata now includes
+  `kimi-k2.7-code` and `mai-code-1-flash-picker`, with reviewed input, tool,
+  reasoning, context, pricing, and compatibility metadata.
 - OpenAI Codex OAuth login results can now be written into caller-supplied
   `sigma.CredentialStore` implementations with
   `openai.StoreCodexOAuthCredentials`, giving store-backed Codex Responses auth

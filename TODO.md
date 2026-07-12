@@ -450,6 +450,9 @@ upstream.
       workflow.
 - [x] Add GitHub Copilot Claude Fable 5 Chat Completions metadata with
       deterministic registry and request-shape coverage.
+- [x] Add GitHub Copilot Kimi K2.7 Code and MAI-Code-1-Flash Chat Completions
+      metadata with deterministic registry coverage while keeping the existing
+      adapter and request shape unchanged.
 - [x] Promote a focused Kimi Coding Anthropic-compatible provider slice with a
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.

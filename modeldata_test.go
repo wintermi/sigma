@@ -1306,6 +1306,45 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataString(t, copilotFable.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com")
 	assertMetadataStrings(t, copilotFable.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
 
+	for _, tt := range []struct {
+		id              ModelID
+		imageCapable    bool
+		maxOutputTokens int
+		inputCost       float64
+		outputCost      float64
+		cacheReadCost   float64
+		modelFamily     string
+	}{
+		{id: "kimi-k2.7-code", imageCapable: true, maxOutputTokens: 32000, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, modelFamily: "kimi"},
+		{id: "mai-code-1-flash-picker", imageCapable: false, maxOutputTokens: 128000, inputCost: 0.75, outputCost: 4.5, cacheReadCost: 0.075, modelFamily: "mai"},
+	} {
+		model, ok := registry.Model(ProviderGitHubCopilot, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated GitHub Copilot model %s", tt.id)
+		}
+		if model.API != APIOpenAICompletions || !model.SupportsTools || model.SupportsImages() != tt.imageCapable || !model.SupportsReasoning() {
+			t.Fatalf("GitHub Copilot %s capabilities = %+v, want Chat Completions tools, images %v, and reasoning", tt.id, model, tt.imageCapable)
+		}
+		if model.ContextWindow != 256000 || model.MaxOutputTokens != tt.maxOutputTokens ||
+			model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != 0 {
+			t.Fatalf("GitHub Copilot %s metadata = %+v, want reviewed limits and costs", tt.id, model)
+		}
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+			t.Fatalf("GitHub Copilot %s compat = %#v, want conservative Chat Completions support", tt.id, model.OpenAICompletionsCompat)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
+		headers, ok := model.ProviderMetadata["headers"].(map[string]string)
+		if !ok || headers["Copilot-Integration-Id"] != "vscode-chat" {
+			t.Fatalf("GitHub Copilot %s headers = %#v, want Copilot headers", tt.id, model.ProviderMetadata["headers"])
+		}
+	}
+
 	azure, ok := registry.Model(ProviderAzureOpenAIResponses, "gpt-5.4")
 	if !ok {
 		t.Fatal("fresh registry missing generated Azure OpenAI Responses model")

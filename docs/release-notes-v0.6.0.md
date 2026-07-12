@@ -70,6 +70,9 @@ Generated Claude metadata also expands focused Sonnet 5 and Fable 5 coverage
 across existing Anthropic-compatible routes, including direct Anthropic, direct
 Bedrock, Cloudflare AI Gateway, Vercel AI Gateway, OpenCode Zen, and GitHub
 Copilot Sonnet 5 rows without broad catalog expansion.
+Generated GitHub Copilot Chat Completions metadata also includes Kimi K2.7 Code
+and MAI-Code-1-Flash, with reviewed input, tool, reasoning, context, pricing,
+and compatibility metadata.
 Generated direct OpenAI Responses metadata now also includes GPT-5.6 Luna, Sol,
 and Terra with text/image, tool, and reasoning capabilities; cache-write
 pricing; and 272,000-token high-context price tiers.
