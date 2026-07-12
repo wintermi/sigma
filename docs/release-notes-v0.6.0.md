@@ -145,9 +145,12 @@ deterministic registration, request, error, and cancellation coverage.
 OpenRouter is also promoted as a focused OpenAI-compatible Chat Completions
 wrapper with generated text metadata reuse, request-scoped routing
 compatibility, and deterministic registration, request, error, and cancellation
-coverage. Generated OpenRouter image metadata now also includes focused current
-Gemini image and GPT Image routed rows while broad OpenRouter text expansion
-remains deferred to the reviewed catalog refresh workflow. Generated Fireworks
+coverage. Generated OpenRouter text metadata now also includes a curated
+Claude Sonnet 5, GPT-5.2 Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro cohort
+with route-specific compatibility, reasoning, pricing, and capability metadata.
+Generated OpenRouter image metadata now also includes focused current Gemini
+image and GPT Image routed rows while broader OpenRouter text expansion remains
+deferred to the reviewed catalog refresh workflow. Generated Fireworks
 metadata also expands focused OpenAI-compatible GLM 5.2 rows and
 Anthropic-compatible DeepSeek V4, GLM 5.1, GPT OSS, MiniMax, Qwen, and Kimi
 router rows while keeping live Fireworks validation out of deterministic CI. The
@@ -353,6 +356,9 @@ advice without adding any execution loop or configuration format to Sigma.
   opt-in network source. Refresh mode requires an explicit
   `-refresh-snapshot-date`, preserves existing image and embedding rows, and
   exits before writing generated Go files.
+- Generated OpenRouter text metadata now includes a curated Claude Sonnet 5,
+  GPT-5.2 Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro cohort with reviewed
+  route-specific compatibility, reasoning, pricing, and capability metadata.
 - Generated OpenRouter image metadata now includes focused current Gemini image
   and GPT Image routed rows while keeping broad OpenRouter text expansion
   deferred to the reviewed catalog refresh workflow.
@@ -709,9 +715,9 @@ advice without adding any execution loop or configuration format to Sigma.
   row.
 - OpenRouter direct text routing is additive and Chat Completions-only in this
   release. The wrapper reuses the shared OpenAI-compatible adapter, existing
-  focused text metadata, and OpenRouter compatibility handling; broad
-  OpenRouter catalog expansion remains deferred to the reviewed catalog refresh
-  workflow.
+  focused text metadata, including a curated Claude, GPT, Gemini, and DeepSeek
+  route cohort, and OpenRouter compatibility handling; broader catalog
+  expansion remains deferred to the reviewed catalog refresh workflow.
 - OpenRouter image-generation helpers now use explicit image names:
   `openrouter.RegisterImages`, `openrouter.RegisterImagesDefault`, and
   `openrouter.NewImagesProvider`. The generic `openrouter.Register` and
@@ -830,9 +836,9 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
   deferred until Sigma has an explicit provider-defined tool contract.
 - Broad Hugging Face Router catalog expansion remains deferred until it can
   flow through the reviewed catalog refresh workflow with deterministic diffs.
-- Broad OpenRouter text catalog expansion remains deferred until it can flow
-  through the reviewed catalog refresh workflow with deterministic routing,
-  pricing, and provider/API diffs.
+- Broad OpenRouter text catalog expansion beyond the curated route cohort
+  remains deferred until it can flow through the reviewed catalog refresh
+  workflow with deterministic routing, pricing, and provider/API diffs.
 - Provider-neutral routing policy, routed-model fallback selection, and
   automatic model substitution remain deferred; Sigma now exposes captured
   routed model metadata but does not act on it automatically.

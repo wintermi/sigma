@@ -601,6 +601,121 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if !ok || sort["by"] != "latency" {
 		t.Fatalf("OpenRouter routing sort = %#v, want latency object", routed.OpenAICompletionsCompat.OpenRouterRouting.Sort)
 	}
+	openRouterModels := []struct {
+		id                    ModelID
+		supportsImages        bool
+		contextWindow         int
+		maxOutputTokens       int
+		inputCost             float64
+		outputCost            float64
+		cacheReadCost         float64
+		cacheWriteCost        float64
+		thinkingLevels        map[ThinkingLevel]string
+		unsupportedLevels     []ThinkingLevel
+		modelFamily           string
+		routedProvider        string
+		supportsDeveloperRole OpenAICompatSupport
+		cacheControlFormat    OpenAICompletionsCacheControlFormat
+		requiresReasoning     OpenAICompatSupport
+	}{
+		{
+			id:                 "anthropic/claude-sonnet-5",
+			supportsImages:     true,
+			contextWindow:      1_000_000,
+			maxOutputTokens:    128_000,
+			inputCost:          2,
+			outputCost:         10,
+			cacheReadCost:      0.2,
+			cacheWriteCost:     2.5,
+			thinkingLevels:     map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"},
+			modelFamily:        "claude",
+			routedProvider:     "anthropic",
+			cacheControlFormat: OpenAICompletionsCacheControlAnthropic,
+		},
+		{
+			id:                    "deepseek/deepseek-v4-pro",
+			contextWindow:         1_048_576,
+			maxOutputTokens:       384_000,
+			inputCost:             0.435,
+			outputCost:            0.87,
+			cacheReadCost:         0.003625,
+			thinkingLevels:        map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevelXHigh: "xhigh"},
+			unsupportedLevels:     []ThinkingLevel{ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevel("max")},
+			modelFamily:           "deepseek",
+			routedProvider:        "deepseek",
+			supportsDeveloperRole: OpenAICompatUnsupported,
+			requiresReasoning:     OpenAICompatSupported,
+		},
+		{
+			id:                    "google/gemini-3.5-flash",
+			supportsImages:        true,
+			contextWindow:         1_048_576,
+			maxOutputTokens:       65_536,
+			inputCost:             1.5,
+			outputCost:            9,
+			cacheReadCost:         0.15,
+			cacheWriteCost:        0.083333,
+			unsupportedLevels:     []ThinkingLevel{ThinkingLevelOff},
+			modelFamily:           "gemini",
+			routedProvider:        "google",
+			supportsDeveloperRole: OpenAICompatUnsupported,
+		},
+		{
+			id:                "openai/gpt-5.2-codex",
+			supportsImages:    true,
+			contextWindow:     400_000,
+			maxOutputTokens:   128_000,
+			inputCost:         1.75,
+			outputCost:        14,
+			cacheReadCost:     0.175,
+			thinkingLevels:    map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh"},
+			unsupportedLevels: []ThinkingLevel{ThinkingLevelOff},
+			modelFamily:       "gpt",
+			routedProvider:    "openai",
+		},
+	}
+	for _, tt := range openRouterModels {
+		model, ok := registry.Model(ProviderOpenRouter, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated OpenRouter model %s", tt.id)
+		}
+		if model.API != APIOpenAICompletions || !model.SupportsTools || model.SupportsImages() != tt.supportsImages || !model.SupportsReasoning() {
+			t.Fatalf("OpenRouter model %s capabilities = %+v", tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("OpenRouter model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != tt.cacheWriteCost {
+			t.Fatalf("OpenRouter model %s costs = %f/%f/%f/%f, want %f/%f/%f/%f", tt.id,
+				model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion,
+				tt.inputCost, tt.outputCost, tt.cacheReadCost, tt.cacheWriteCost)
+		}
+		if len(model.ThinkingLevelMap) != len(tt.thinkingLevels) || len(model.UnsupportedThinkingLevels) != len(tt.unsupportedLevels) {
+			t.Fatalf("OpenRouter model %s thinking metadata = %#v/%#v, want %#v/%#v", tt.id, model.ThinkingLevelMap, model.UnsupportedThinkingLevels, tt.thinkingLevels, tt.unsupportedLevels)
+		}
+		for level, want := range tt.thinkingLevels {
+			if got, ok := model.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("OpenRouter model %s thinking level %q = %q, %v; want %q, true", tt.id, level, got, ok, want)
+			}
+		}
+		for index, want := range tt.unsupportedLevels {
+			if model.UnsupportedThinkingLevels[index] != want {
+				t.Fatalf("OpenRouter model %s unsupported thinking level %d = %q, want %q", tt.id, index, model.UnsupportedThinkingLevels[index], want)
+			}
+		}
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningObject ||
+			model.OpenAICompletionsCompat.SupportsDeveloperRole != tt.supportsDeveloperRole ||
+			model.OpenAICompletionsCompat.CacheControlFormat != tt.cacheControlFormat ||
+			model.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != tt.requiresReasoning {
+			t.Fatalf("OpenRouter model %s compat = %#v", tt.id, model.OpenAICompletionsCompat)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://openrouter.ai/api/v1")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
+		assertMetadataString(t, model.ProviderMetadata, "routedProvider", tt.routedProvider)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
+	}
 
 	openCode, ok := registry.Model(ProviderOpenCode, "kimi-k2.6")
 	if !ok {

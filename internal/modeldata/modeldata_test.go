@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "cd1ddd355292785e59f4d788d792f0f971ae78fc66ba157361c50733fbcd5751"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "3b7d31aec9b989c492d82c2f48c755fcc3a102c9f782dda0422368b491a407c4"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {

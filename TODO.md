@@ -390,6 +390,10 @@ upstream.
       expansion deferred.
 - [x] Add focused OpenRouter image metadata for current Gemini and GPT Image
       routes while keeping broad OpenRouter text expansion deferred.
+- [x] Add a curated OpenRouter text-model cohort for Claude Sonnet 5, GPT-5.2
+      Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro with route-specific
+      compatibility, reasoning, pricing, and capability metadata while keeping
+      broad text expansion deferred.
 - [x] Add the missing direct Anthropic Claude Fable 5 row with adaptive
       thinking metadata, xhigh thinking-level mapping, image input support,
       current limits, and pricing.
@@ -441,9 +445,9 @@ upstream.
 - [x] Extend the local summary into a candidate catalog diff report that lists
       added, removed, changed, and unchanged text, image, and embedding rows so
       catalog review is tractable before generated files are written.
-- [ ] Expand broad OpenRouter text metadata only through the catalog refresh
-      workflow, with deterministic diffs and reviewable routing/cost changes
-      instead of ad hoc catalog imports.
+- [ ] Expand OpenRouter text metadata beyond the curated route cohort only
+      through the catalog refresh workflow, with deterministic diffs and
+      reviewable routing/cost changes instead of ad hoc catalog imports.
 - [ ] Evaluate high-value Bedrock regional/application-inference-profile rows
       and current direct Anthropic rows through deterministic Bedrock/Anthropic
       metadata assertions before adding broad regional catalog coverage.
