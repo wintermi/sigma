@@ -35,6 +35,7 @@ const (
 	codexWebSocketDefaultConnectTimeout = 15 * time.Second
 	codexWebSocketMaxFrameBytes         = 16 << 20
 	codexWebSocketMaxMessageBytes       = 16 << 20
+	codexWebSocketConnectionLimitCode   = "websocket_connection_limit_reached"
 	webSocketGUID                       = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 	webSocketOpcodeContinuation = 0x0
@@ -175,25 +176,36 @@ func (p *CodexResponsesProvider) runWebSocket(ctx context.Context, writer sigma.
 		return
 	}
 
-	parser, err := p.processWebSocket(ctx, writer, model, req, opts)
-	if err == nil {
-		_ = writer.Done(ctx, parser.finalize(ctx))
+	for attempt := 0; ; attempt++ {
+		parser, err := p.processWebSocket(ctx, writer, model, req, opts)
+		if err == nil {
+			_ = writer.Done(ctx, parser.finalize(ctx))
+			return
+		}
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+			final.StopReason = sigma.StopReasonAborted
+			_ = writer.Error(ctx, contextError(ctx, err), final)
+			return
+		}
+		if attempt == 0 && (parser == nil || !parser.started) && codexWebSocketConnectionLimitReached(err) {
+			continue
+		}
+		recordCodexWebSocketFailure(opts.SessionID, err)
+		if parser == nil || !parser.started {
+			recordCodexWebSocketFallback(opts.SessionID)
+			p.runSSE(ctx, writer, model, req, opts, final)
+			return
+		}
+		final = parser.finalize(ctx)
+		final.StopReason = sigma.StopReasonError
+		_ = writer.Error(ctx, err, final)
 		return
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-		final.StopReason = sigma.StopReasonAborted
-		_ = writer.Error(ctx, contextError(ctx, err), final)
-		return
-	}
-	recordCodexWebSocketFailure(opts.SessionID, err)
-	if parser == nil || !parser.started {
-		recordCodexWebSocketFallback(opts.SessionID)
-		p.runSSE(ctx, writer, model, req, opts, final)
-		return
-	}
-	final = parser.finalize(ctx)
-	final.StopReason = sigma.StopReasonError
-	_ = writer.Error(ctx, err, final)
+}
+
+func codexWebSocketConnectionLimitReached(err error) bool {
+	var providerErr *sigma.ProviderError
+	return errors.As(err, &providerErr) && providerErr.ProviderCode == codexWebSocketConnectionLimitCode
 }
 
 func (p *CodexResponsesProvider) runSSE(ctx context.Context, writer sigma.StreamWriter, model sigma.Model, req sigma.Request, opts sigma.Options, final sigma.AssistantMessage) {

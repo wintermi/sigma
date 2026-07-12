@@ -569,6 +569,9 @@ advice without adding any execution loop or configuration format to Sigma.
   helpers and closing canceled streams even when callers abandon unread events.
   Cancellation of a collector's own context now has the same behavior even when
   the stream was created with a different live context.
+- OpenAI Codex Responses WebSocket transport now retries once when the backend
+  reports a connection limit before output begins; a repeated limit response or
+  any other pre-output failure retains the existing SSE fallback.
 - OpenAI Codex Responses WebSocket frames and complete fragmented messages are
   bounded to 16 MiB, oversized lengths are rejected before payload allocation,
   and canceled writes close promptly without serializing `Close` behind I/O.

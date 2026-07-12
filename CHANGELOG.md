@@ -298,6 +298,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 
 ### Fixed
 
+- OpenAI Codex Responses WebSocket transport now retries once when the backend
+  reports a connection limit before output begins; a repeated limit response or
+  any other pre-output failure retains the existing SSE fallback.
 - OpenAI Codex Responses WebSocket reads now reject frames and fragmented
   messages larger than 16 MiB before oversized payload allocation, and canceled
   writes now close promptly without making `Close` wait behind blocked I/O.

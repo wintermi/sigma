@@ -148,6 +148,8 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add Codex WebSocket-specific connect timeout and session-cache debug
       stats while keeping the preview transport on request contexts, explicit
       session cleanup helpers, and SSE fallback.
+- [x] Retry a pre-output Codex WebSocket connection-limit response exactly once
+      before retaining the existing SSE fallback for repeated or other failures.
 - [x] Add provider-neutral session resource cleanup so callers can release
       cached Codex WebSocket sessions through root `sigma` helpers while keeping
       provider-specific cleanup helpers available.

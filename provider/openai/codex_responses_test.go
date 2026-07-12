@@ -21,6 +21,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -730,9 +731,11 @@ func TestCodexResponsesWebSocketFallsBackToSSEBeforeStart(t *testing.T) {
 	openai.CloseCodexResponsesWebSocketSessions()
 	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
 
-	var postCalls int
+	var postCalls atomic.Int32
+	var webSocketCalls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			webSocketCalls.Add(1)
 			hijacker, ok := w.(http.Hijacker)
 			if !ok {
 				t.Fatal("response writer cannot hijack")
@@ -744,7 +747,7 @@ func TestCodexResponsesWebSocketFallsBackToSSEBeforeStart(t *testing.T) {
 			_ = conn.Close()
 			return
 		}
-		postCalls++
+		postCalls.Add(1)
 		writeResponsesSSE(t, w, responsesCompletedEvent)
 	}))
 	t.Cleanup(server.Close)
@@ -763,8 +766,142 @@ func TestCodexResponsesWebSocketFallsBackToSSEBeforeStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Complete returned error after fallback: %v", err)
 	}
-	if got, want := postCalls, 1; got != want {
+	if got, want := postCalls.Load(), int32(1); got != want {
 		t.Fatalf("fallback POST calls = %d, want %d", got, want)
+	}
+	if got, want := webSocketCalls.Load(), int32(1); got != want {
+		t.Fatalf("WebSocket calls = %d, want %d", got, want)
+	}
+}
+
+func TestCodexResponsesWebSocketRetriesConnectionLimitBeforeFallback(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	var postCalls atomic.Int32
+	var webSocketCalls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			postCalls.Add(1)
+			writeResponsesSSE(t, w, responsesCompletedEvent)
+			return
+		}
+
+		connection := webSocketCalls.Add(1)
+		ws := acceptCodexWebSocket(t, w, r)
+		defer ws.Close()
+		_ = ws.readJSON(t)
+		if connection == 1 {
+			ws.writeJSON(t, map[string]any{
+				"type":  "error",
+				"error": map[string]any{"code": "websocket_connection_limit_reached"},
+			})
+			return
+		}
+		writeCodexWebSocketTextResponse(t, ws, "retry_resp", "retry_msg", "retry_text", "recovered")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-ws-connection-limit-retry-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := "connection-limit-retry-session"
+
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "recovered"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+	if got, want := webSocketCalls.Load(), int32(2); got != want {
+		t.Fatalf("WebSocket calls = %d, want %d", got, want)
+	}
+	if got := postCalls.Load(); got != 0 {
+		t.Fatalf("fallback POST calls = %d, want 0", got)
+	}
+	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.WebSocketFailures, 0; got != want {
+		t.Fatalf("stats websocket failures = %d, want %d", got, want)
+	}
+	if got, want := stats.SSEFallbacks, 0; got != want {
+		t.Fatalf("stats sse fallbacks = %d, want %d", got, want)
+	}
+	if stats.WebSocketFallbackActive {
+		t.Fatal("stats websocket fallback active = true, want false")
+	}
+}
+
+func TestCodexResponsesWebSocketFallsBackAfterRepeatedConnectionLimit(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	var postCalls atomic.Int32
+	var webSocketCalls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			postCalls.Add(1)
+			writeResponsesSSE(t, w, responsesCompletedEvent)
+			return
+		}
+
+		webSocketCalls.Add(1)
+		ws := acceptCodexWebSocket(t, w, r)
+		defer ws.Close()
+		_ = ws.readJSON(t)
+		ws.writeJSON(t, map[string]any{
+			"type":  "error",
+			"error": map[string]any{"code": "websocket_connection_limit_reached"},
+		})
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-ws-connection-limit-fallback-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := "connection-limit-fallback-session"
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error after fallback: %v", err)
+	}
+	if got, want := webSocketCalls.Load(), int32(2); got != want {
+		t.Fatalf("WebSocket calls = %d, want %d", got, want)
+	}
+	if got, want := postCalls.Load(), int32(1); got != want {
+		t.Fatalf("fallback POST calls = %d, want %d", got, want)
+	}
+	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.WebSocketFailures, 1; got != want {
+		t.Fatalf("stats websocket failures = %d, want %d", got, want)
+	}
+	if got, want := stats.SSEFallbacks, 1; got != want {
+		t.Fatalf("stats sse fallbacks = %d, want %d", got, want)
+	}
+	if !stats.WebSocketFallbackActive {
+		t.Fatal("stats websocket fallback active = false, want true")
 	}
 }
 
@@ -1231,6 +1368,26 @@ func handleCodexWebSocketTestConnReader(t *testing.T, conn net.Conn, reader *buf
 	_, _ = fmt.Fprintf(conn, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", accept)
 	handler(req, &codexWebSocketTestConn{conn: conn, reader: reader})
 	_ = conn.Close()
+}
+
+func acceptCodexWebSocket(t *testing.T, w http.ResponseWriter, r *http.Request) *codexWebSocketTestConn {
+	t.Helper()
+
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		t.Fatal("response writer cannot hijack")
+	}
+	conn, reader, err := hijacker.Hijack()
+	if err != nil {
+		t.Fatalf("Hijack returned error: %v", err)
+	}
+	key := r.Header.Get("Sec-WebSocket-Key")
+	if key == "" {
+		_ = conn.Close()
+		t.Fatal("missing Sec-WebSocket-Key")
+	}
+	_, _ = fmt.Fprintf(conn, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", codexWebSocketTestAccept(key))
+	return &codexWebSocketTestConn{conn: conn, reader: reader.Reader}
 }
 
 type codexWebSocketProxyTestServer struct {
