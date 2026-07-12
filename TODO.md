@@ -448,8 +448,8 @@ upstream.
       Anthropic-compatible routes with deterministic modeldata assertions,
       while keeping broad catalog parity deferred to the reviewed refresh
       workflow.
-- [ ] Keep GitHub Copilot Claude Fable 5 deferred until the Chat
-      Completions-shaped route has deterministic request-shape evidence.
+- [x] Add GitHub Copilot Claude Fable 5 Chat Completions metadata with
+      deterministic registry and request-shape coverage.
 - [x] Promote a focused Kimi Coding Anthropic-compatible provider slice with a
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.

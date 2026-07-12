@@ -48,6 +48,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   refresh helpers, an in-memory OAuth token provider that also implements
   Sigma's auth resolver interface, and explicit opt-in helpers for enabling
   Copilot model policies while keeping credential persistence caller-owned.
+- Generated GitHub Copilot metadata now includes `claude-fable-5` on the Chat
+  Completions route with text/image, tool, reasoning, pricing, and context
+  metadata plus conservative request compatibility flags.
 - OpenAI Codex OAuth login results can now be written into caller-supplied
   `sigma.CredentialStore` implementations with
   `openai.StoreCodexOAuthCredentials`, giving store-backed Codex Responses auth

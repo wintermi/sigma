@@ -240,6 +240,9 @@ advice without adding any execution loop or configuration format to Sigma.
   `githubcopilot.EnableGitHubCopilotModel` and
   `githubcopilot.EnableGitHubCopilotModels`, which report per-model success or
   failure without making model enablement an automatic login side effect.
+- Generated GitHub Copilot metadata now includes `claude-fable-5` on the Chat
+  Completions route with text/image, tool, reasoning, pricing, and context
+  metadata plus conservative request compatibility flags.
 - OpenAI Codex Responses WebSocket transport now resolves `HTTP_PROXY`,
   `HTTPS_PROXY`, lowercase aliases, and `ALL_PROXY` for `ws://` and `wss://`
   endpoints, respects `NO_PROXY`, and tunnels through HTTP/HTTPS `CONNECT`

@@ -17,7 +17,7 @@ import (
 	"github.com/wintermi/sigma/provider/githubcopilot"
 )
 
-func TestChatCompletionsWrapperSendsCopilotHeaders(t *testing.T) {
+func TestGeneratedFableUsesChatCompletionsWithCopilotHeaders(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
@@ -27,19 +27,22 @@ func TestChatCompletionsWrapperSendsCopilotHeaders(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	model := copilotCompletionsModel()
-	registry := sigma.NewRegistry()
-	if err := githubcopilot.Register(registry, githubcopilot.WithBaseURL(server.URL)); err != nil {
+	registry := sigma.DefaultRegistry()
+	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-fable-5")
+	if !ok {
+		t.Fatal("default registry missing GitHub Copilot Claude Fable 5 model")
+	}
+	if err := githubcopilot.Register(registry); err != nil {
 		t.Fatalf("Register returned error: %v", err)
 	}
-	registerModel(t, registry, model)
 
 	client := sigma.NewClient(sigma.WithRegistry(registry))
 	if _, err := client.Complete(
 		context.Background(),
 		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Request{Messages: []sigma.Message{sigma.UserContent(sigma.Text("hi"), sigma.ImageBase64("image/png", "aGk="))}},
 		sigma.WithAPIKey("copilot-token"),
+		sigma.WithProviderOption(sigma.ProviderGitHubCopilot, "baseURL", server.URL),
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
@@ -49,8 +52,10 @@ func TestChatCompletionsWrapperSendsCopilotHeaders(t *testing.T) {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer copilot-token")
+	assertHeader(t, request.Headers, "User-Agent", "GitHubCopilotChat/0.35.0")
 	assertHeader(t, request.Headers, "X-Initiator", "user")
 	assertHeader(t, request.Headers, "Openai-Intent", "conversation-edits")
+	assertHeader(t, request.Headers, "Copilot-Vision-Request", "true")
 }
 
 func TestResponsesWrapperSendsCopilotHeaders(t *testing.T) {
@@ -127,15 +132,6 @@ func TestAnthropicWrapperUsesBearerAuthAndCopilotHeaders(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Initiator", "user")
 	assertHeader(t, request.Headers, "Openai-Intent", "conversation-edits")
 	assertHeader(t, request.Headers, "Copilot-Vision-Request", "true")
-}
-
-func copilotCompletionsModel() sigma.Model {
-	return sigma.Model{
-		ID:              "gpt-test",
-		Provider:        sigma.ProviderGitHubCopilot,
-		API:             sigma.APIOpenAICompletions,
-		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-	}
 }
 
 func copilotResponsesModel() sigma.Model {

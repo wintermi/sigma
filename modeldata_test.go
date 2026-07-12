@@ -1277,6 +1277,34 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if copilotSonnet5.ContextWindow != 1000000 || copilotSonnet5.MaxOutputTokens != 128000 {
 		t.Fatalf("GitHub Copilot Claude Sonnet 5 limits = %d/%d, want 1000000/128000", copilotSonnet5.ContextWindow, copilotSonnet5.MaxOutputTokens)
 	}
+	copilotFable, ok := registry.Model(ProviderGitHubCopilot, "claude-fable-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated GitHub Copilot Claude Fable 5 model")
+	}
+	if copilotFable.API != APIOpenAICompletions || !copilotFable.SupportsTools || !copilotFable.SupportsImages() || !copilotFable.SupportsReasoning() {
+		t.Fatalf("GitHub Copilot Claude Fable 5 metadata = %+v, want Chat Completions tools, images, and reasoning", copilotFable)
+	}
+	if copilotFable.ContextWindow != 1000000 || copilotFable.MaxOutputTokens != 128000 ||
+		copilotFable.InputCostPerMillion != 10 || copilotFable.OutputCostPerMillion != 50 ||
+		copilotFable.CacheReadInputCostPerMillion != 1 || copilotFable.CacheWriteInputCostPerMillion != 12.5 {
+		t.Fatalf("GitHub Copilot Claude Fable 5 metadata = %+v, want reviewed limits and costs", copilotFable)
+	}
+	if copilotFable.OpenAICompletionsCompat == nil ||
+		copilotFable.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+		copilotFable.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+		copilotFable.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+		t.Fatalf("GitHub Copilot Claude Fable 5 compat = %#v, want conservative Chat Completions support", copilotFable.OpenAICompletionsCompat)
+	}
+	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
+		if got, ok := copilotFable.ProviderThinkingLevel(level); !ok || got != want {
+			t.Fatalf("GitHub Copilot Claude Fable 5 thinking level %s = %q, %v; want %q, true", level, got, ok, want)
+		}
+	}
+	if copilotFable.SupportsThinkingLevel(ThinkingLevelOff) {
+		t.Fatalf("GitHub Copilot Claude Fable 5 thinking support = %+v / %+v, want disabled thinking unsupported", copilotFable.ThinkingLevelMap, copilotFable.UnsupportedThinkingLevels)
+	}
+	assertMetadataString(t, copilotFable.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com")
+	assertMetadataStrings(t, copilotFable.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
 
 	azure, ok := registry.Model(ProviderAzureOpenAIResponses, "gpt-5.4")
 	if !ok {

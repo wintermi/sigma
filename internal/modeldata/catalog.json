@@ -7137,6 +7137,53 @@
       }
     },
     {
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5",
+      "provider": "github-copilot",
+      "api": "openai-completions",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
       "id": "claude-haiku-4.5",
       "name": "Claude Haiku 4.5 (latest)",
       "provider": "github-copilot",
