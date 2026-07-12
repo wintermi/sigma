@@ -138,6 +138,12 @@ See [release notes](docs/release-notes-v0.6.0.md).
   regional rows for Fable 5, Haiku 4.5, Opus 4.5/4.6/4.7/4.8, and Sonnet 4.6,
   reusing the existing EU runtime endpoint fallback for `eu.` inference-profile
   model IDs.
+- Generated Amazon Bedrock metadata now also includes curated non-regional
+  Gemma 3, Llama 3.1/3.3/4, Nemotron 3, GPT-5.4/5.5, Palmyra X4/X5, and Grok
+  4.3 Converse Stream rows with reviewed input, tool, limit, and pricing data.
+  Nova 2 Lite now maps supported provider-neutral reasoning levels to its
+  Bedrock reasoning configuration and rejects incompatible local options before
+  dispatch.
 - Generated Claude metadata now includes focused current Sonnet 5 and Fable 5
   rows across existing Anthropic-compatible routes, including direct
   Anthropic, direct Amazon Bedrock, Cloudflare AI Gateway, Vercel AI Gateway,

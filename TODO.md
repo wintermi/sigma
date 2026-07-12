@@ -404,6 +404,9 @@ upstream.
 - [x] Add focused direct-provider metadata for Cerebras Gemma 4 31B, xAI Grok
       4.5, and NVIDIA NIM MiniMax M3 and GLM 5.2 while keeping broad router
       catalog expansion deferred to the reviewed refresh workflow.
+- [x] Add curated non-regional Bedrock Converse Stream metadata for Gemma 3,
+      Llama 3.1/3.3/4, Nemotron 3, GPT-5.4/5.5, Palmyra X4/X5, and Grok 4.3,
+      with deterministic registry coverage.
 - [x] Correct the Azure GPT-5.4/GPT-5.5 context windows to the 1,050,000-token
       Azure Foundry deployments and the OpenAI/Azure GPT-5 Pro max output
       tokens to 128,000.
@@ -442,6 +445,9 @@ upstream.
 - [ ] Evaluate high-value Bedrock regional/application-inference-profile rows
       and current direct Anthropic rows through deterministic Bedrock/Anthropic
       metadata assertions before adding broad regional catalog coverage.
+- [ ] Keep Bedrock model families without a documented provider-neutral
+      Converse reasoning-control mapping conservative, even when they emit
+      reasoning content.
 - [ ] Evaluate Anthropic-routed aliases through Cloudflare AI Gateway,
       OpenRouter, Vercel AI Gateway, OpenCode, and Bedrock only after route
       shape, auth, compatibility metadata, pricing, and regional availability
@@ -619,6 +625,9 @@ should still come through the catalog refresh workflow.
       blank replayed assistant text blocks that Bedrock Converse rejects.
 - [x] Append the AWS data-retention documentation link to Bedrock provider
       errors that reject the configured data retention mode.
+- [x] Add Nova 2 Lite `reasoningConfig` support for low, medium, and high
+      provider-neutral reasoning levels, with local validation for unsupported
+      budgets, levels, and high-effort inference combinations.
 - [ ] Keep live Bedrock validation out of `mise run ci`; use credential-gated
       checks only for manual compatibility investigation.
 - [ ] Expand broad Bedrock generated metadata only through the catalog refresh

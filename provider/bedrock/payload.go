@@ -45,6 +45,7 @@ const (
 	providerOptionInterleavedThinking          = "interleaved_thinking"
 	providerOptionInterleavedThinkingGo        = "interleavedThinking"
 	bedrockResponseFormatToolName              = "__sigma_json_response"
+	bedrockFieldType                           = "type"
 )
 
 const (
@@ -233,12 +234,37 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 	if opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff && !model.SupportsThinking {
 		return unsupportedError(model, "target model does not support thinking options")
 	}
+	if err := validateNova2LiteThinking(model, opts); err != nil {
+		return err
+	}
 	for messageIndex, message := range req.Messages {
 		for _, block := range message.Content {
 			if block.Type == sigma.ContentBlockImage && !supportsInput(model, sigma.ContentBlockImage) {
 				return unsupportedError(model, fmt.Sprintf("message %d: target model does not declare image input support", messageIndex))
 			}
 		}
+	}
+	return nil
+}
+
+func validateNova2LiteThinking(model sigma.Model, opts sigma.Options) error {
+	if !isNova2LiteBedrockModel(model) {
+		return nil
+	}
+	if opts.ThinkingBudgetTokens != nil {
+		return unsupportedError(model, "Nova 2 Lite requires a reasoning level instead of a thinking token budget")
+	}
+	if opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		return nil
+	}
+	if !model.SupportsThinkingLevel(opts.ReasoningLevel) {
+		return unsupportedError(model, fmt.Sprintf("Nova 2 Lite does not support reasoning level %q", opts.ReasoningLevel))
+	}
+	if opts.ReasoningLevel != sigma.ThinkingLevelHigh {
+		return nil
+	}
+	if opts.MaxTokens != nil || opts.Temperature != nil || (opts.BedrockOptions != nil && opts.BedrockOptions.TopP != nil) {
+		return unsupportedError(model, "Nova 2 Lite high reasoning cannot be combined with max tokens, temperature, or top-p")
 	}
 	return nil
 }
@@ -718,6 +744,15 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config)
 	if opts.ThinkingBudgetTokens == nil && (opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff) {
 		return nil
 	}
+	if isNova2LiteBedrockModel(model) {
+		effort, _ := model.ProviderThinkingLevel(opts.ReasoningLevel)
+		return map[string]any{
+			"reasoningConfig": map[string]any{
+				bedrockFieldType:     "enabled",
+				"maxReasoningEffort": effort,
+			},
+		}
+	}
 	if !isClaudeBedrockModel(model) {
 		if opts.ThinkingBudgetTokens == nil {
 			return nil
@@ -850,6 +885,15 @@ func isClaudeBedrockModel(model sigma.Model) bool {
 		if strings.Contains(candidate, "anthropic.claude") ||
 			strings.Contains(candidate, "anthropic/claude") ||
 			strings.Contains(candidate, "claude") {
+			return true
+		}
+	}
+	return false
+}
+
+func isNova2LiteBedrockModel(model sigma.Model) bool {
+	for _, candidate := range modelMatchCandidates(model) {
+		if strings.Contains(candidate, "amazon.nova-2-lite") || strings.Contains(candidate, "amazon-nova-2-lite") {
 			return true
 		}
 	}

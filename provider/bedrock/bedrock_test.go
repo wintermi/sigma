@@ -420,6 +420,35 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 				"anthropic_beta": []string{"interleaved-thinking-2025-05-14"},
 			},
 		},
+		{
+			name:  "Nova low reasoning",
+			model: nova2LiteTestModel(),
+			opts:  sigma.Options{ReasoningLevel: sigma.ThinkingLevelLow},
+			want: map[string]any{
+				"reasoningConfig": map[string]any{"type": "enabled", "maxReasoningEffort": "low"},
+			},
+		},
+		{
+			name:  "Nova medium reasoning",
+			model: nova2LiteTestModel(),
+			opts:  sigma.Options{ReasoningLevel: sigma.ThinkingLevelMedium},
+			want: map[string]any{
+				"reasoningConfig": map[string]any{"type": "enabled", "maxReasoningEffort": "medium"},
+			},
+		},
+		{
+			name:  "Nova high reasoning",
+			model: nova2LiteTestModel(),
+			opts:  sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
+			want: map[string]any{
+				"reasoningConfig": map[string]any{"type": "enabled", "maxReasoningEffort": "high"},
+			},
+		},
+		{
+			name:  "Nova reasoning disabled",
+			model: nova2LiteTestModel(),
+			opts:  sigma.Options{ReasoningLevel: sigma.ThinkingLevelOff},
+		},
 	}
 
 	for _, tt := range tests {
@@ -432,6 +461,43 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 			}
 			if !reflect.DeepEqual(payload.AdditionalModelRequestFields, tt.want) {
 				t.Fatalf("thinking fields = %#v, want %#v", payload.AdditionalModelRequestFields, tt.want)
+			}
+		})
+	}
+}
+
+func TestNova2LiteThinkingValidation(t *testing.T) {
+	t.Parallel()
+
+	maxTokens := 1024
+	temperature := 0.2
+	topP := 0.9
+	tests := []struct {
+		name string
+		opts sigma.Options
+	}{
+		{name: "token budget", opts: sigma.Options{ThinkingBudgetTokens: intPtr(1024)}},
+		{name: "minimal level", opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelMinimal}},
+		{name: "extra high level", opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelXHigh}},
+		{name: "high with max tokens", opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh, MaxTokens: &maxTokens}},
+		{name: "high with temperature", opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh, Temperature: &temperature}},
+		{name: "high with top p", opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh, BedrockOptions: &sigma.BedrockOptions{TopP: &topP}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := conversePayload(nova2LiteTestModel(), sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}, tt.opts, Config{})
+			if err == nil {
+				t.Fatal("conversePayload returned nil error")
+			}
+			var sigmaErr *sigma.Error
+			if !errors.As(err, &sigmaErr) {
+				t.Fatalf("error type = %T, want *sigma.Error", err)
+			}
+			if sigmaErr.Code != sigma.ErrorUnsupported {
+				t.Fatalf("error code = %q, want %q", sigmaErr.Code, sigma.ErrorUnsupported)
 			}
 		})
 	}
@@ -2143,6 +2209,18 @@ func bedrockTestModel(providerID sigma.ProviderID) sigma.Model {
 		InputCostPerMillion:  1,
 		OutputCostPerMillion: 2,
 	}
+}
+
+func nova2LiteTestModel() sigma.Model {
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.ID = "amazon.nova-2-lite-v1:0"
+	model.Name = "Nova 2 Lite"
+	model.ThinkingLevels = []sigma.ThinkingLevel{
+		sigma.ThinkingLevelLow,
+		sigma.ThinkingLevelMedium,
+		sigma.ThinkingLevelHigh,
+	}
+	return model
 }
 
 func invalidProviderText() string {

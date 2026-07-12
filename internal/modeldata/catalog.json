@@ -103,7 +103,12 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
+      "thinkingLevels": [
+        "low",
+        "medium",
+        "high"
+      ],
       "cost": {
         "inputPerMillion": 0.33,
         "outputPerMillion": 2.75,
@@ -1813,6 +1818,481 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "glm"
+      }
+    },
+    {
+      "id": "google.gemma-3-27b-it",
+      "name": "Google Gemma 3 27B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.12,
+        "outputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 202752,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemma"
+      }
+    },
+    {
+      "id": "google.gemma-3-4b-it",
+      "name": "Gemma 3 4B IT",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.04,
+        "outputPerMillion": 0.08,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemma"
+      }
+    },
+    {
+      "id": "meta.llama3-1-70b-instruct-v1:0",
+      "name": "Llama 3.1 70B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.72,
+        "outputPerMillion": 0.72,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "meta.llama3-1-8b-instruct-v1:0",
+      "name": "Llama 3.1 8B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.22,
+        "outputPerMillion": 0.22,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "meta.llama3-3-70b-instruct-v1:0",
+      "name": "Llama 3.3 70B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.72,
+        "outputPerMillion": 0.72,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "meta.llama4-maverick-17b-instruct-v1:0",
+      "name": "Llama 4 Maverick 17B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.24,
+        "outputPerMillion": 0.97,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "meta.llama4-scout-17b-instruct-v1:0",
+      "name": "Llama 4 Scout 17B Instruct",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.17,
+        "outputPerMillion": 0.66,
+        "currency": "USD"
+      },
+      "contextWindow": 3500000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "nvidia.nemotron-nano-12b-v2",
+      "name": "NVIDIA Nemotron Nano 12B v2 VL BF16",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.2,
+        "outputPerMillion": 0.6,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      }
+    },
+    {
+      "id": "nvidia.nemotron-nano-3-30b",
+      "name": "NVIDIA Nemotron Nano 3 30B",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.06,
+        "outputPerMillion": 0.24,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      }
+    },
+    {
+      "id": "nvidia.nemotron-nano-9b-v2",
+      "name": "NVIDIA Nemotron Nano 9B v2",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.06,
+        "outputPerMillion": 0.23,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 4096,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      }
+    },
+    {
+      "id": "nvidia.nemotron-super-3-120b",
+      "name": "NVIDIA Nemotron 3 Super 120B A12B",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.65,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      }
+    },
+    {
+      "id": "openai.gpt-5.4",
+      "name": "GPT-5.4",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 2.75,
+        "outputPerMillion": 16.5,
+        "cacheReadInputPerMillion": 0.275,
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      }
+    },
+    {
+      "id": "openai.gpt-5.5",
+      "name": "GPT-5.5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 33,
+        "cacheReadInputPerMillion": 0.55,
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      }
+    },
+    {
+      "id": "writer.palmyra-x4-v1:0",
+      "name": "Palmyra X4",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 122880,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "palmyra"
+      }
+    },
+    {
+      "id": "writer.palmyra-x5-v1:0",
+      "name": "Palmyra X5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.6,
+        "outputPerMillion": 6,
+        "currency": "USD"
+      },
+      "contextWindow": 1040000,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "palmyra"
+      }
+    },
+    {
+      "id": "xai.grok-4.3",
+      "name": "Grok 4.3",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok"
       }
     },
     {
