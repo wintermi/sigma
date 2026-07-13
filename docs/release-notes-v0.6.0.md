@@ -215,6 +215,9 @@ advice without adding any execution loop or configuration format to Sigma.
 
 ## Added
 
+- OpenAI Responses-style streams now preserve final reasoning content and
+  multi-part summary boundaries, emit block-end events as output items complete,
+  and use a non-empty placeholder when replaying empty tool results.
 - Anthropic Messages usage now populates
   `sigma.Usage.LongCacheWriteInputTokens` from long prompt-cache write usage
   and `sigma.CostForUsage` prices those writes at the long-cache input

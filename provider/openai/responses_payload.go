@@ -604,7 +604,7 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 		if hasImage {
 			return "(see attached image)", nil
 		}
-		return "", nil
+		return "(no tool output)", nil
 	}
 	if text.Len() > 0 {
 		parts = append([]map[string]any{{

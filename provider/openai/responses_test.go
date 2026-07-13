@@ -314,6 +314,56 @@ func TestResponsesSynthesizesUnansweredToolCallsBeforeUserTurn(t *testing.T) {
 	}
 }
 
+func TestResponsesUsesPlaceholderForEmptyToolResult(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-empty-tool-output-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("Run the command."),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("call_empty", "shell", map[string]any{"command": "true"}),
+				},
+			},
+			sigma.ToolResult("call_empty", ""),
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	for _, item := range payload.Input {
+		if item["type"] != "function_call_output" {
+			continue
+		}
+		if got, want := item["output"], "(no tool output)"; got != want {
+			t.Fatalf("tool output = %v, want %q", got, want)
+		}
+		return
+	}
+	t.Fatal("function_call_output was not sent")
+}
+
 func TestResponsesStreamingNormalizesInvalidUTF8(t *testing.T) {
 	t.Parallel()
 
@@ -1097,6 +1147,105 @@ data: {"type":"response.completed","response":{"id":"resp_stream","model":"gpt-t
 	}
 	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.Raw["input_tokens"] != float64(10) {
 		t.Fatalf("terminal usage = %#v, want raw input tokens", events[len(events)-1].Usage)
+	}
+}
+
+func TestResponsesStreamingFinalizesOutputItemsAsTheyComplete(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w,
+			`data: {"type":"response.output_item.added","response_id":"resp_items","output_index":0,"item":{"type":"reasoning","id":"rs_1","summary":[]}}
+
+data: {"type":"response.reasoning_summary_text.delta","response_id":"resp_items","item_id":"rs_1","output_index":0,"summary_index":0,"delta":"Checked"}
+
+data: {"type":"response.reasoning_summary_part.done","response_id":"resp_items","item_id":"rs_1","output_index":0,"summary_index":0}
+
+data: {"type":"response.reasoning_summary_text.delta","response_id":"resp_items","item_id":"rs_1","output_index":0,"summary_index":1,"delta":"constraints."}
+
+data: {"type":"response.output_item.done","response_id":"resp_items","output_index":0,"item":{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"Checked"},{"type":"summary_text","text":"constraints."}]}}
+
+data: {"type":"response.output_item.added","response_id":"resp_items","output_index":1,"item":{"type":"message","id":"msg_1","role":"assistant","content":[]}}
+
+data: {"type":"response.output_text.delta","response_id":"resp_items","item_id":"msg_1","output_index":1,"content_index":0,"delta":"Hello"}
+
+data: {"type":"response.output_item.done","response_id":"resp_items","output_index":1,"item":{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"output_text","id":"text_1","text":"Hello"}]}}
+
+data: {"type":"response.output_item.added","response_id":"resp_items","output_index":2,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"lookup","arguments":""}}
+
+data: {"type":"response.output_item.done","response_id":"resp_items","output_index":2,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"lookup","arguments":"{\"query\":\"weather\"}"}}
+
+data: {"type":"response.completed","response":{"id":"resp_items","status":"completed","output":[{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"Checked"},{"type":"summary_text","text":"constraints."}]},{"type":"message","id":"msg_1","role":"assistant","content":[{"type":"output_text","id":"text_1","text":"Hello"}]},{"type":"function_call","id":"fc_1","call_id":"call_1","name":"lookup","arguments":"{\"query\":\"weather\"}"}]}}
+`,
+		)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-item-lifecycle-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindThinkingStart,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingEnd,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindToolCallStart,
+		sigma.EventKindToolCallDelta,
+		sigma.EventKindToolCallEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if got, want := final.Content[0].ThinkingText, "Checked\n\nconstraints."; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "Hello"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.Content[2].ToolCallID, "call_1"; got != want {
+		t.Fatalf("tool call id = %q, want %q", got, want)
+	}
+}
+
+func TestResponsesStreamingPreservesReasoningContentWithoutSummary(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w,
+			`data: {"type":"response.output_item.done","response_id":"resp_reasoning_content","output_index":0,"item":{"type":"reasoning","id":"rs_1","content":[{"type":"reasoning_text","text":"Checked private constraints."}]}}
+
+data: {"type":"response.completed","response":{"id":"resp_reasoning_content","status":"completed","output":[{"type":"reasoning","id":"rs_1","content":[{"type":"reasoning_text","text":"Checked private constraints."}]}]}}
+`,
+		)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-reasoning-content-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].ThinkingText, "Checked private constraints."; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
 	}
 }
 

@@ -134,6 +134,9 @@ integrations remain future work until they have the same local evidence bar.
       IDs with prior function-call item IDs.
 - [x] Harden OpenAI Responses stream terminal handling so premature EOF is an
       error and terminal incomplete responses preserve usage as max-token stops.
+- [x] Harden OpenAI Responses completion and replay so final reasoning content
+      and multi-part summaries are preserved, started blocks end when their
+      output item completes, and empty tool results remain non-empty.
 - [x] Harden OpenAI Responses reasoning defaults and OpenAI-compatible Chat
       Completions replay for empty assistant turns and opt-in tool-history
       payload requirements.

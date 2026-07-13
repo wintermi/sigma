@@ -254,8 +254,7 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		}
 		return false, p.handleOutputItemAdded(ctx, parsed)
 	case "response.output_item.done":
-		p.captureOutputItem(parsed.OutputIndex, parsed.Item)
-		return false, nil
+		return false, p.finishOutputItem(ctx, parsed.OutputIndex, parsed.Item)
 	case "response.output_text.delta":
 		if err := p.emitStart(ctx); err != nil {
 			return false, err
@@ -287,6 +286,12 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 	case "response.reasoning_summary_text.done":
 		p.finishThinking(parsed.OutputIndex, parsed.ItemID, parsed.Text)
 		return false, nil
+	case "response.reasoning_summary_part.done":
+		state := p.thinking[parsed.OutputIndex]
+		if state == nil || !state.Started || state.String() == "" {
+			return false, nil
+		}
+		return false, p.emitThinking(ctx, parsed.OutputIndex, parsed.ItemID, "\n\n")
 	case "response.function_call_arguments.delta":
 		if err := p.emitStart(ctx); err != nil {
 			return false, err
@@ -388,17 +393,30 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 		state.itemID = firstNonEmpty(state.itemID, item.ID)
 		state.Signature = firstNonEmpty(state.Signature, item.Signature)
 		state.ProviderSignature = firstNonEmpty(state.ProviderSignature, item.EncryptedContent)
-		var summary string
+		summaryParts := make([]string, 0, len(item.Summary))
 		for _, part := range item.Summary {
 			if part.Text != "" {
-				summary += part.Text
+				summaryParts = append(summaryParts, part.Text)
 			}
 			if part.Signature != "" {
 				state.Signature = part.Signature
 			}
 		}
-		if summary != "" {
-			state.Set(providerText(summary))
+		reasoning := strings.Join(summaryParts, "\n\n")
+		if reasoning == "" {
+			contentParts := make([]string, 0, len(item.Content))
+			for _, part := range item.Content {
+				if part.Text != "" {
+					contentParts = append(contentParts, part.Text)
+				}
+				if part.Signature != "" {
+					state.Signature = part.Signature
+				}
+			}
+			reasoning = strings.Join(contentParts, "\n\n")
+		}
+		if reasoning != "" {
+			state.Set(providerText(reasoning))
 		}
 	case "function_call":
 		state := p.toolCallState(outputIndex)
@@ -418,6 +436,11 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 	case "image_generation_call":
 		p.finishImage(outputIndex, item.ID, item.Status, firstNonEmpty(item.Result, item.B64JSON, item.ImageURL))
 	}
+}
+
+func (p *responsesStreamParser) finishOutputItem(ctx context.Context, outputIndex int, item responsesOutputItem) error {
+	p.captureOutputItem(outputIndex, item)
+	return p.emitEndEvents(ctx, &outputIndex)
 }
 
 func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event responsesEvent) error {
@@ -627,7 +650,7 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		block.ProviderMetadata = responsesMetadata(p.toolItemID(state), "", state.ID())
 		contentByIndex[state.ContentIndex] = block
 	}
-	p.emitEndEvents(ctx)
+	_ = p.emitEndEvents(ctx, nil)
 
 	if len(contentByIndex) > 0 {
 		indexes := make([]int, 0, len(contentByIndex))
@@ -662,86 +685,106 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 	return p.final
 }
 
-func (p *responsesStreamParser) emitEndEvents(ctx context.Context) {
+func (p *responsesStreamParser) emitEndEvents(ctx context.Context, outputIndex *int) error {
 	events := make([]struct {
 		index int
-		emit  func()
+		emit  func() error
 	}, 0, len(p.text)+len(p.thinking)+len(p.images)+len(p.toolCalls))
-	for _, state := range p.text {
+	for index, state := range p.text {
+		if outputIndex != nil && index != *outputIndex {
+			continue
+		}
 		state := state
 		if state.Started && !state.Closed {
 			events = append(events, struct {
 				index int
-				emit  func()
-			}{index: state.ContentIndex, emit: func() {
-				_ = p.writer.Emit(ctx, sigma.Event{
+				emit  func() error
+			}{index: state.ContentIndex, emit: func() error {
+				err := p.writer.Emit(ctx, sigma.Event{
 					Kind:         sigma.EventKindTextEnd,
 					ContentIndex: intPtr(state.ContentIndex),
 					Text:         state.String(),
 				})
 				state.Closed = true
+				return err
 			}})
 		}
 	}
-	for _, state := range p.thinking {
+	for index, state := range p.thinking {
+		if outputIndex != nil && index != *outputIndex {
+			continue
+		}
 		state := state
 		if state.Started && !state.Closed {
 			events = append(events, struct {
 				index int
-				emit  func()
-			}{index: state.ContentIndex, emit: func() {
-				_ = p.writer.Emit(ctx, sigma.Event{
+				emit  func() error
+			}{index: state.ContentIndex, emit: func() error {
+				err := p.writer.Emit(ctx, sigma.Event{
 					Kind:         sigma.EventKindThinkingEnd,
 					ContentIndex: intPtr(state.ContentIndex),
 					Thinking:     state.String(),
 				})
 				state.Closed = true
+				return err
 			}})
 		}
 	}
-	for _, state := range p.toolCalls {
+	for index, state := range p.toolCalls {
+		if outputIndex != nil && index != *outputIndex {
+			continue
+		}
 		state := state
 		if state.Started && !state.Closed {
 			events = append(events, struct {
 				index int
-				emit  func()
-			}{index: state.ContentIndex, emit: func() {
+				emit  func() error
+			}{index: state.ContentIndex, emit: func() error {
 				call := state.ToolCall()
-				_ = p.writer.Emit(ctx, sigma.Event{
+				err := p.writer.Emit(ctx, sigma.Event{
 					Kind:         sigma.EventKindToolCallEnd,
 					ContentIndex: intPtr(state.ContentIndex),
 					ToolCall:     &call,
 				})
 				state.Closed = true
+				return err
 			}})
 		}
 	}
-	for _, state := range p.images {
+	for index, state := range p.images {
+		if outputIndex != nil && index != *outputIndex {
+			continue
+		}
 		state := state
 		if state.Started && !state.Closed {
 			events = append(events, struct {
 				index int
-				emit  func()
-			}{index: state.ContentIndex, emit: func() {
+				emit  func() error
+			}{index: state.ContentIndex, emit: func() error {
 				image := state.image
 				if image.Type == "" {
 					image = sigma.ContentBlock{Type: sigma.ContentBlockImage}
 				}
-				_ = p.writer.Emit(ctx, sigma.Event{
+				err := p.writer.Emit(ctx, sigma.Event{
 					Kind:         sigma.EventKindImageEnd,
 					ContentIndex: intPtr(state.ContentIndex),
 					Image:        &image,
 				})
 				state.Closed = true
+				return err
 			}})
 		}
 	}
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].index < events[j].index
 	})
+	var firstErr error
 	for _, event := range events {
-		event.emit()
+		if err := event.emit(); err != nil && firstErr == nil {
+			firstErr = err
+		}
 	}
+	return firstErr
 }
 
 func (p *responsesStreamParser) textState(outputIndex int) *responsesTextState {
