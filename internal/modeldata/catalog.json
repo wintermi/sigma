@@ -220,6 +220,248 @@
       }
     },
     {
+      "id": "au.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "name": "Claude Haiku 4.5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-opus-4-6-v1",
+      "name": "AU Anthropic Claude Opus 4.6",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 16.5,
+        "outputPerMillion": 82.5,
+        "cacheReadInputPerMillion": 1.65,
+        "cacheWriteInputPerMillion": 20.625,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-opus-4-8",
+      "name": "Claude Opus 4.8 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "name": "Claude Sonnet 4.5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-sonnet-4-6",
+      "name": "AU Anthropic Claude Sonnet 4.6",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3.3,
+        "outputPerMillion": 16.5,
+        "cacheReadInputPerMillion": 0.33,
+        "cacheWriteInputPerMillion": 4.125,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
       "id": "anthropic.claude-fable-5",
       "name": "Claude Fable 5",
       "provider": "amazon-bedrock",
@@ -1414,6 +1656,64 @@
       }
     },
     {
+      "id": "openai.gpt-oss-120b",
+      "name": "gpt-oss-120b",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      }
+    },
+    {
+      "id": "openai.gpt-oss-20b",
+      "name": "gpt-oss-20b",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.07,
+        "outputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      }
+    },
+    {
       "id": "openai.gpt-oss-120b-1:0",
       "name": "gpt-oss-120b",
       "provider": "amazon-bedrock",
@@ -1821,6 +2121,449 @@
       }
     },
     {
+      "id": "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "name": "Claude Sonnet 4.5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3.3,
+        "outputPerMillion": 16.5,
+        "cacheReadInputPerMillion": 0.33,
+        "cacheWriteInputPerMillion": 4.125,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "eu.anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 2.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-fable-5",
+      "name": "Claude Fable 5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "name": "Claude Haiku 4.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-opus-4-5-20251101-v1:0",
+      "name": "Claude Opus 4.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-opus-4-6-v1",
+      "name": "Claude Opus 4.6 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-opus-4-7",
+      "name": "Claude Opus 4.7 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-opus-4-8",
+      "name": "Claude Opus 4.8 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "name": "Claude Sonnet 4.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
       "id": "google.gemma-3-27b-it",
       "name": "Google Gemma 3 27B Instruct",
       "provider": "amazon-bedrock",
@@ -1878,6 +2621,248 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gemma"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "name": "Claude Haiku 4.5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-opus-4-7",
+      "name": "Claude Opus 4.7 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-opus-4-8",
+      "name": "Claude Opus 4.8 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "name": "Claude Sonnet 4.5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
       }
     },
     {
@@ -2204,6 +3189,500 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-fable-5",
+      "name": "Claude Fable 5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "name": "Claude Haiku 4.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-4-1-20250805-v1:0",
+      "name": "Claude Opus 4.1 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 15,
+        "outputPerMillion": 75,
+        "cacheReadInputPerMillion": 1.5,
+        "cacheWriteInputPerMillion": 18.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+      "name": "Claude Opus 4.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-4-6-v1",
+      "name": "Claude Opus 4.6 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-4-7",
+      "name": "Claude Opus 4.7 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-4-8",
+      "name": "Claude Opus 4.8 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "name": "Claude Sonnet 4.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-sonnet-4-6",
+      "name": "Claude Sonnet 4.6 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "cacheWriteInputPerMillion": 3.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-sonnet-5",
+      "name": "Claude Sonnet 5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.deepseek.r1-v1:0",
+      "name": "DeepSeek-R1 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.35,
+        "outputPerMillion": 5.4,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      }
+    },
+    {
+      "id": "us.meta.llama4-maverick-17b-instruct-v1:0",
+      "name": "Llama 4 Maverick 17B Instruct (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.24,
+        "outputPerMillion": 0.97,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
+      }
+    },
+    {
+      "id": "us.meta.llama4-scout-17b-instruct-v1:0",
+      "name": "Llama 4 Scout 17B Instruct (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.17,
+        "outputPerMillion": 0.66,
+        "currency": "USD"
+      },
+      "contextWindow": 3500000,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama"
       }
     },
     {
@@ -6641,6 +8120,38 @@
       }
     },
     {
+      "id": "@cf/moonshotai/kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "provider": "cloudflare-workers-ai",
+      "api": "openai-completions",
+      "baseURL": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.19
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "CLOUDFLARE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "supportsSessionAffinity": "supported"
+      }
+    },
+    {
       "id": "@cf/nvidia/nemotron-3-120b-a12b",
       "name": "Nemotron 3 Super 120B",
       "provider": "cloudflare-workers-ai",
@@ -6778,6 +8289,37 @@
       },
       "contextWindow": 131072,
       "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "CLOUDFLARE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsSessionAffinity": "supported"
+      }
+    },
+    {
+      "id": "@cf/zai-org/glm-5.2",
+      "name": "Glm 5.2",
+      "provider": "cloudflare-workers-ai",
+      "api": "openai-completions",
+      "baseURL": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.26
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
       "headers": {},
       "authEnvNames": [
         "CLOUDFLARE_API_KEY"

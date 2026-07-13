@@ -321,6 +321,9 @@ metadata-only and backed by compatibility checks.
       fixtures.
 - [x] Cloudflare Workers AI — promote to a first-class provider row with
       fixtures.
+- [x] Cloudflare Workers AI — add focused Kimi K2.7 Code and GLM 5.2 generated
+      metadata with deterministic registry coverage, preserving session
+      affinity through the existing adapter.
 - [x] Azure OpenAI Responses — promote to a first-class provider row with
       provider-scoped registration and request-option helpers.
 - [x] NVIDIA NIM — promote to a first-class provider row with fixtures.
@@ -453,9 +456,9 @@ upstream.
 - [ ] Expand OpenRouter text metadata beyond the curated route cohort only
       through the catalog refresh workflow, with deterministic diffs and
       reviewable routing/cost changes instead of ad hoc catalog imports.
-- [ ] Evaluate high-value Bedrock regional/application-inference-profile rows
-      and current direct Anthropic rows through deterministic Bedrock/Anthropic
-      metadata assertions before adding broad regional catalog coverage.
+- [x] Add focused current Bedrock Claude regional inference-profile and direct
+      GPT-OSS, DeepSeek R1, and Llama 4 metadata with deterministic registry
+      assertions, while keeping broad catalog refresh work deferred.
 - [ ] Keep Bedrock model families without a documented provider-neutral
       Converse reasoning-control mapping conservative, even when they emit
       reasoning content.

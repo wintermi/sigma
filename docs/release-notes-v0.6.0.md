@@ -212,6 +212,10 @@ Deterministic routing-decision helpers now classify requests into route tiers
 with weighted rule-based signals, select tier candidates from caller-defined
 policies, and turn classified upstream errors into retry, fallback, or abort
 advice without adding any execution loop or configuration format to Sigma.
+Generated model coverage now also includes current Amazon Bedrock Claude
+regional inference profiles and selected direct models, plus Cloudflare Workers
+AI Kimi K2.7 Code and GLM 5.2 routes, with reviewed capabilities, limits,
+pricing, credential defaults, and compatibility metadata.
 
 ## Added
 
@@ -248,6 +252,13 @@ advice without adding any execution loop or configuration format to Sigma.
   the context-aware max-token clamp during text dispatch. It can be configured
   as a client default, disabled per request, and leaves default dispatch
   behavior unchanged unless explicitly enabled.
+- Generated Amazon Bedrock metadata now includes current Claude regional
+  inference profiles across AU, EU, Global, Japan, and US routes, plus
+  GPT-OSS, DeepSeek R1, and Llama 4 direct models with reviewed capabilities,
+  limits, prices, cache rates, and credential defaults.
+- Generated Cloudflare Workers AI metadata now includes Kimi K2.7 Code and
+  GLM 5.2 with reviewed reasoning, tool, image, pricing, and session-affinity
+  compatibility.
 - `sigma.ReasoningBudgetForContext` and
   `sigma.WithReasoningBudgetForContext` now combine visible output caps,
   hidden thinking budgets, model context/output metadata, and

@@ -43,6 +43,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated Z.ai and Z.ai Coding CN metadata now includes `glm-5.2` with
   provider-specific reasoning-effort mapping, `tool_stream` support, and
   GLM-family model metadata.
+- Generated Amazon Bedrock metadata now includes current Claude regional
+  inference profiles across AU, EU, Global, Japan, and US routes, plus
+  GPT-OSS, DeepSeek R1, and Llama 4 direct models with reviewed capabilities,
+  limits, prices, cache rates, and credential defaults.
+- Generated Cloudflare Workers AI metadata now includes Kimi K2.7 Code and
+  GLM 5.2 with reviewed reasoning, tool, image, pricing, and session-affinity
+  compatibility.
 - Xiaomi now has a first-class OpenAI-compatible provider wrapper for the
   API-billing route and regional token-plan routes, including generated
   metadata, regional API-key discovery, and deterministic registration/request

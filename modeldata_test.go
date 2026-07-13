@@ -901,6 +901,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 
 	assertProviderConstantsHaveGeneratedTextMetadata(t, registry)
+	assertGeneratedRegionalBedrockMetadata(t, registry)
 	assertGeneratedOpenAICompatibleProviderMetadata(t, registry)
 	assertGeneratedAnthropicCompatibleProviderMetadata(t, registry)
 	assertGeneratedVertexMetadata(t, registry)
@@ -969,6 +970,122 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataString(t, riverflowImage.ProviderMetadata, "routedProvider", "sourceful")
 	assertMetadataString(t, riverflowImage.ProviderMetadata, "modelFamily", "riverflow")
 	assertMetadataStrings(t, riverflowImage.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
+}
+
+func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	const baseURL = "https://bedrock-runtime.{region}.amazonaws.com"
+	const cacheEnv = "AWS_ACCESS_KEY_ID"
+	profiles := []struct {
+		id                                           ModelID
+		contextWindow, maxOutputTokens               int
+		inputCost, outputCost, cacheRead, cacheWrite float64
+		thinkingFormat                               AnthropicThinkingFormat
+		xhigh                                        string
+		disabledThinkingUnsupported                  bool
+	}{
+		{id: "au.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "au.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 16.5, outputCost: 82.5, cacheRead: 1.65, cacheWrite: 20.625, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
+		{id: "au.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "au.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "au.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 3.3, outputCost: 16.5, cacheRead: 0.33, cacheWrite: 4.125, thinkingFormat: AnthropicThinkingBudget},
+		{id: "au.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheRead: 0.2, cacheWrite: 2.5, thinkingFormat: AnthropicThinkingBudget},
+		{id: "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3.3, outputCost: 16.5, cacheRead: 0.33, cacheWrite: 4.125, thinkingFormat: AnthropicThinkingBudget},
+		{id: "eu.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2.2, outputCost: 11, cacheRead: 0.22, cacheWrite: 2.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "global.anthropic.claude-fable-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 10, outputCost: 50, cacheRead: 1, cacheWrite: 12.5, thinkingFormat: AnthropicThinkingAdaptive, xhigh: "xhigh", disabledThinkingUnsupported: true},
+		{id: "global.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "global.anthropic.claude-opus-4-5-20251101-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "global.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
+		{id: "global.anthropic.claude-opus-4-7", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "global.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "global.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "global.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "global.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheRead: 0.2, cacheWrite: 2.5, thinkingFormat: AnthropicThinkingBudget},
+		{id: "jp.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "jp.anthropic.claude-opus-4-7", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "jp.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "jp.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "jp.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "jp.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheRead: 0.2, cacheWrite: 2.5, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-fable-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 10, outputCost: 50, cacheRead: 1, cacheWrite: 12.5, thinkingFormat: AnthropicThinkingAdaptive, xhigh: "xhigh", disabledThinkingUnsupported: true},
+		{id: "us.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-opus-4-1-20250805-v1:0", contextWindow: 200000, maxOutputTokens: 32000, inputCost: 15, outputCost: 75, cacheRead: 1.5, cacheWrite: 18.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-opus-4-5-20251101-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
+		{id: "us.anthropic.claude-opus-4-7", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "us.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
+		{id: "us.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheRead: 0.2, cacheWrite: 2.5, thinkingFormat: AnthropicThinkingBudget},
+	}
+	for _, tt := range profiles {
+		model, ok := registry.Model(ProviderAmazonBedrock, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Bedrock profile %s", tt.id)
+		}
+		if model.API != APIBedrockConverseStream || model.DefaultTransport != TransportSSE || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("Bedrock profile %s capabilities = %+v, want SSE Converse Stream tools, images, and reasoning", tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("Bedrock profile %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost ||
+			model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheRead ||
+			model.CacheWriteInputCostPerMillion != tt.cacheWrite {
+			t.Fatalf("Bedrock profile %s costs = %f/%f/%f/%f, want %f/%f/%f/%f", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheRead, tt.cacheWrite)
+		}
+		if model.AnthropicMessagesCompat == nil || model.AnthropicMessagesCompat.ThinkingFormat != tt.thinkingFormat {
+			t.Fatalf("Bedrock profile %s compat = %#v, want %s thinking", tt.id, model.AnthropicMessagesCompat, tt.thinkingFormat)
+		}
+		if tt.disabledThinkingUnsupported && model.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported {
+			t.Fatalf("Bedrock profile %s disabled thinking support = %q, want unsupported", tt.id, model.AnthropicMessagesCompat.SupportsDisabledThinking)
+		}
+		if tt.xhigh != "" {
+			if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != tt.xhigh {
+				t.Fatalf("Bedrock profile %s xhigh level = %q, %v; want %q, true", tt.id, got, ok, tt.xhigh)
+			}
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", baseURL)
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", "claude")
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{cacheEnv, "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"})
+	}
+
+	directModels := []struct {
+		id                                           ModelID
+		modelFamily                                  string
+		supportsImages, supportsThinking             bool
+		contextWindow, maxOutputTokens               int
+		inputCost, outputCost, cacheRead, cacheWrite float64
+	}{
+		{id: "openai.gpt-oss-120b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.15, outputCost: 0.6},
+		{id: "openai.gpt-oss-20b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.07, outputCost: 0.3},
+		{id: "us.deepseek.r1-v1:0", modelFamily: "deepseek", supportsThinking: true, contextWindow: 128000, maxOutputTokens: 32768, inputCost: 1.35, outputCost: 5.4},
+		{id: "us.meta.llama4-maverick-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 16384, inputCost: 0.24, outputCost: 0.97},
+		{id: "us.meta.llama4-scout-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 3500000, maxOutputTokens: 16384, inputCost: 0.17, outputCost: 0.66},
+	}
+	for _, tt := range directModels {
+		model, ok := registry.Model(ProviderAmazonBedrock, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated direct Bedrock model %s", tt.id)
+		}
+		if model.API != APIBedrockConverseStream || model.DefaultTransport != TransportSSE || !model.SupportsTools || model.SupportsImages() != tt.supportsImages || model.SupportsReasoning() != tt.supportsThinking {
+			t.Fatalf("direct Bedrock model %s capabilities = %+v", tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("direct Bedrock model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost ||
+			model.OutputCostPerMillion != tt.outputCost ||
+			model.CacheReadInputCostPerMillion != tt.cacheRead ||
+			model.CacheWriteInputCostPerMillion != tt.cacheWrite {
+			t.Fatalf("direct Bedrock model %s costs = %f/%f/%f/%f, want %f/%f/%f/%f", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheRead, tt.cacheWrite)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", baseURL)
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{cacheEnv, "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"})
+	}
 }
 
 func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
@@ -1221,6 +1338,36 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	if !moonshotK26.SupportsThinkingLevel(ThinkingLevelOff) {
 		t.Fatalf("Moonshot AI Kimi K2.6 thinking support = %+v / %+v, want off supported", moonshotK26.ThinkingLevelMap, moonshotK26.UnsupportedThinkingLevels)
+	}
+
+	for _, tt := range []struct {
+		id                                   ModelID
+		modelFamily                          string
+		supportsImages                       bool
+		inputCost, outputCost, cacheReadCost float64
+	}{
+		{id: "@cf/moonshotai/kimi-k2.7-code", modelFamily: "kimi", supportsImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
+		{id: "@cf/zai-org/glm-5.2", modelFamily: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.26},
+	} {
+		model, ok := registry.Model(ProviderCloudflareWorkersAI, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Cloudflare Workers AI model %s", tt.id)
+		}
+		if model.API != APIOpenAICompletions || model.DefaultTransport != TransportSSE || !model.SupportsTools || model.SupportsImages() != tt.supportsImages || !model.SupportsReasoning() {
+			t.Fatalf("Cloudflare Workers AI model %s capabilities = %+v", tt.id, model)
+		}
+		if model.ContextWindow != 262144 || model.MaxOutputTokens != 262144 {
+			t.Fatalf("Cloudflare Workers AI model %s limits = %d/%d, want 262144/262144", tt.id, model.ContextWindow, model.MaxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != 0 {
+			t.Fatalf("Cloudflare Workers AI model %s costs = %f/%f/%f/%f, want %f/%f/%f/0", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
+		}
+		if model.OpenAICompletionsCompat == nil || model.OpenAICompletionsCompat.SupportsSessionAffinity != OpenAICompatSupported {
+			t.Fatalf("Cloudflare Workers AI model %s compat = %#v, want session affinity", tt.id, model.OpenAICompletionsCompat)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"CLOUDFLARE_API_KEY"})
 	}
 
 	for _, id := range []ModelID{
