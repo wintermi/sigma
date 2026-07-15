@@ -1352,6 +1352,41 @@ data: {"type":"response.completed","response":{"id":"resp_tool","status":"comple
 	if got, want := args["city"], "Melbourne"; got != want {
 		t.Fatalf("tool city = %v, want %v", got, want)
 	}
+	for _, key := range []string{"arguments", "argumentsText"} {
+		if _, ok := final.Content[0].ProviderMetadata[key]; ok {
+			t.Fatalf("final tool metadata retained transient %q: %#v", key, final.Content[0].ProviderMetadata)
+		}
+	}
+
+	var sawIncompleteArguments, sawCompletedArguments bool
+	for _, event := range events {
+		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil {
+			continue
+		}
+		metadata := event.PartialToolCall.ProviderMetadata
+		switch metadata["argumentsText"] {
+		case `{"city"`:
+			sawIncompleteArguments = true
+			if _, ok := metadata["arguments"]; ok {
+				t.Fatalf("incomplete arguments exposed decoded metadata: %#v", metadata)
+			}
+		case `{"city":"Melbourne"}`:
+			arguments, ok := metadata["arguments"].(map[string]any)
+			if !ok {
+				t.Fatalf("completed arguments = %#v, want decoded map", metadata["arguments"])
+			}
+			if got, want := arguments["city"], "Melbourne"; got != want {
+				t.Fatalf("partial tool city = %v, want %v", got, want)
+			}
+			sawCompletedArguments = true
+		}
+	}
+	if !sawIncompleteArguments {
+		t.Fatal("tool-call deltas did not retain incomplete argument text")
+	}
+	if !sawCompletedArguments {
+		t.Fatal("tool-call deltas did not expose decoded completed arguments")
+	}
 }
 
 func TestResponsesAppliesServiceTierCostMultiplier(t *testing.T) {

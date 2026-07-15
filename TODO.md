@@ -276,6 +276,9 @@ work until their API boundaries are explicit.
       Bedrock, OpenAI-compatible, Azure Responses, and GitHub Copilot OAuth
       with deterministic fixtures for signatures, private reasoning metadata,
       empty replay blocks, endpoint normalization, and credential precedence.
+- [x] Add deterministic replay regression coverage for Responses partial tool
+      arguments, Google tool-call signature filtering, and Bedrock malformed or
+      unsupported replay content.
 - [x] Add metadata-gated deferred client-tool loading for Anthropic Messages
       tool references and OpenAI/Codex Responses client tool-search replay.
 - [ ] Add broader provider-neutral sampling controls such as top-p, top-k,

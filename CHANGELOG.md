@@ -15,6 +15,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - OpenAI Responses-style streams now preserve final reasoning content and
   multi-part summary boundaries, emit block-end events as output items complete,
   and use a non-empty placeholder when replaying empty tool results.
+- Deterministic regression coverage now protects Responses partial tool
+  arguments, Google tool-call signature replay, and Bedrock replay content
+  sanitization and rejection boundaries.
 - Metadata-marked Anthropic Messages and OpenAI/Codex Responses models can now
   defer client-defined function schemas until an annotated tool result, using
   native tool references or client tool-search records while unmarked routes

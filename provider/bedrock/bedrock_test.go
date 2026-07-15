@@ -256,6 +256,74 @@ func TestConversePayloadReplacesBlankTextAndDropsBlankReplayBlocks(t *testing.T)
 	}
 }
 
+func TestConverseReplaySanitizesInvalidUTF8AndRejectsUnsupportedBlocks(t *testing.T) {
+	t.Parallel()
+
+	invalidUTF8 := string([]byte{0xff})
+	userContent, err := converseInputContent([]sigma.ContentBlock{sigma.Text(invalidUTF8)})
+	if err != nil {
+		t.Fatalf("converseInputContent returned error: %v", err)
+	}
+	if got, want := userContent[0].Text, emptyTextPlaceholder; got != want {
+		t.Fatalf("invalid UTF-8 user text = %q, want placeholder %q", got, want)
+	}
+
+	assistantContent, err := converseAssistantContent([]sigma.ContentBlock{sigma.Text(invalidUTF8)})
+	if err != nil {
+		t.Fatalf("converseAssistantContent returned error: %v", err)
+	}
+	if got := len(assistantContent); got != 0 {
+		t.Fatalf("invalid UTF-8 assistant blocks = %d, want dropped", got)
+	}
+
+	toolContent, err := converseToolResultContent([]sigma.ContentBlock{sigma.Text(invalidUTF8)})
+	if err != nil {
+		t.Fatalf("converseToolResultContent returned error: %v", err)
+	}
+	if got, want := toolContent[0].Text, emptyTextPlaceholder; got != want {
+		t.Fatalf("invalid UTF-8 tool text = %q, want placeholder %q", got, want)
+	}
+
+	unsupported := sigma.DocumentBase64("application/pdf", "input.pdf", "JVBERi0xLjQ=")
+	for _, tt := range []struct {
+		name    string
+		convert func([]sigma.ContentBlock) error
+		want    string
+	}{
+		{
+			name: "user",
+			convert: func(blocks []sigma.ContentBlock) error {
+				_, err := converseInputContent(blocks)
+				return err
+			},
+			want: "unsupported user content block",
+		},
+		{
+			name: "assistant",
+			convert: func(blocks []sigma.ContentBlock) error {
+				_, err := converseAssistantContent(blocks)
+				return err
+			},
+			want: "unsupported assistant content block",
+		},
+		{
+			name: "tool result",
+			convert: func(blocks []sigma.ContentBlock) error {
+				_, err := converseToolResultContent(blocks)
+				return err
+			},
+			want: "unsupported tool result content block",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.convert([]sigma.ContentBlock{unsupported})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("conversion error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestBedrockOptionsOverrideProviderOptionsAndMapToolChoice(t *testing.T) {
 	t.Parallel()
 

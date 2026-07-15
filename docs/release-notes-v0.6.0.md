@@ -229,6 +229,9 @@ pricing, credential defaults, and compatibility metadata.
 - OpenAI Responses-style streams now preserve final reasoning content and
   multi-part summary boundaries, emit block-end events as output items complete,
   and use a non-empty placeholder when replaying empty tool results.
+- Deterministic regression coverage now protects Responses partial tool
+  arguments, Google tool-call signature replay, and Bedrock replay content
+  sanitization and rejection boundaries.
 - Anthropic Messages usage now populates
   `sigma.Usage.LongCacheWriteInputTokens` from long prompt-cache write usage
   and `sigma.CostForUsage` prices those writes at the long-cache input

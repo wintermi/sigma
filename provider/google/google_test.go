@@ -582,6 +582,83 @@ func TestAssistantReplayOnlyKeepsSameModelBase64ThoughtSignatures(t *testing.T) 
 	}
 }
 
+func TestAssistantToolCallReplayOnlyKeepsSameModelBase64ThoughtSignatures(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeGoogleSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-tool-signature-replay-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+	validSignature := "AAAAAAAAAAAAAAAAAAAAAA=="
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{
+			{
+				Role:     sigma.RoleAssistant,
+				Provider: providerID,
+				API:      sigma.APIGoogleGenerativeAI,
+				Model:    model.ID,
+				Content: []sigma.ContentBlock{
+					withProviderSignature(sigma.ToolCallBlock("call_valid", "lookup", map[string]any{"query": "valid"}), validSignature),
+					withProviderSignature(sigma.ToolCallBlock("call_invalid", "lookup", map[string]any{"query": "invalid"}), "not_base64"),
+					sigma.ToolCallBlock("call_unsigned", "lookup", map[string]any{"query": "unsigned"}),
+				},
+			},
+			{
+				Role:     sigma.RoleAssistant,
+				Provider: sigma.ProviderAnthropic,
+				API:      sigma.APIAnthropicMessages,
+				Model:    "claude-sonnet",
+				Content: []sigma.ContentBlock{
+					withProviderSignature(sigma.ToolCallBlock("call_foreign", "lookup", map[string]any{"query": "foreign"}), validSignature),
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+	contents := payload["contents"].([]any)
+	toolParts := make(map[string]map[string]any)
+	for _, content := range contents {
+		parts, ok := content.(map[string]any)["parts"].([]any)
+		if !ok {
+			continue
+		}
+		for _, part := range parts {
+			typed, ok := part.(map[string]any)
+			if !ok {
+				continue
+			}
+			call, ok := typed["functionCall"].(map[string]any)
+			if !ok {
+				continue
+			}
+			id, _ := call["id"].(string)
+			toolParts[id] = typed
+		}
+	}
+	if got, want := len(toolParts), 4; got != want {
+		t.Fatalf("tool-call parts = %d, want %d", got, want)
+	}
+	if got, want := toolParts["call_valid"]["thoughtSignature"], validSignature; got != want {
+		t.Fatalf("valid tool signature = %v, want %q", got, want)
+	}
+	for _, id := range []string{"call_invalid", "call_unsigned", "call_foreign"} {
+		if _, ok := toolParts[id]["thoughtSignature"]; ok {
+			t.Fatalf("tool call %q retained a non-native thought signature: %#v", id, toolParts[id])
+		}
+	}
+}
+
 func TestToolResultsMergeAndRouteImagesByGeminiVersion(t *testing.T) {
 	t.Parallel()
 
