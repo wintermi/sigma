@@ -1,13 +1,12 @@
 # Release notes: sigma v0.6.0
 
-This is the maintainer-facing development note for the next `sigma` tag. Add
-the v0.6.0 summary and scope as changes land. For the itemized change list see
-[CHANGELOG.md](../CHANGELOG.md); for the validation commands and pre-tag
-checklist see [RELEASING.md](../RELEASING.md).
+This is the maintainer-facing release note for `sigma` v0.6.0. For the
+itemized change list see [CHANGELOG.md](../CHANGELOG.md); for the validation
+commands and pre-tag checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.6.0 opens with stronger provider usage and cost accounting for text
+`sigma` v0.6.0 adds stronger provider usage and cost accounting for text
 generation, including long prompt-cache write splits, raw provider usage
 payloads for diagnostics, standalone provider/model identity on usage records,
 and a clear split between provider-reported cost and Sigma's model-metadata
@@ -917,12 +916,8 @@ cancellation bar described in [RELEASING.md](../RELEASING.md).
 
 ## Validation status
 
-Current v0.6.0 development state validated on 2026-07-03 with:
+Validated on 2026-07-15 with:
 
-- `mise run mise:validate`.
-- `mise run go:fmt`.
-- `mise run go:fmt:check`.
-- `mise run go:test`.
-- `mise run go:vet`.
+- `mise run go:generate` with no generated metadata drift.
 - `mise run ci`.
 - `git diff --check`.
