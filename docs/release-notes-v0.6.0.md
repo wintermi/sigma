@@ -104,6 +104,13 @@ capabilities, limits, pricing, and existing native routing defaults.
 Generated OpenCode Go metadata now also includes GLM-5.2 and Qwen3.7 Plus with
 their routed Chat Completions and Messages API metadata, reviewed capabilities,
 limits, pricing, and GLM thinking-level compatibility.
+Generated OpenCode Zen metadata now also includes GPT-5.6 Luna, Sol, and Terra
+on Responses plus DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7 Code,
+MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free on Chat
+Completions, with reviewed routing, capabilities, limits, pricing, and
+compatibility metadata. Cached Zen Responses requests preserve the client
+request ID while omitting `session_id` unless callers explicitly provide
+session headers.
 Bedrock SigV4 signing now also preserves escaped inference-profile ARN paths
 for AWS-credential Converse Stream and embeddings requests.
 Credential stores and provider auth descriptors now give applications an
@@ -501,6 +508,13 @@ pricing, credential defaults, and compatibility metadata.
 - Generated OpenCode Go metadata now includes GLM-5.2 and Qwen3.7 Plus with
   their Chat Completions and Messages route metadata, reviewed capabilities,
   limits, pricing, and GLM `max_tokens` reasoning-level compatibility.
+- Generated OpenCode Zen metadata now includes GPT-5.6 Luna, Sol, and Terra
+  on Responses plus DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7
+  Code, MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free on Chat
+  Completions, with reviewed routing, capabilities, limits, pricing, and
+  compatibility metadata. Cached Zen Responses requests preserve the client
+  request ID while omitting `session_id` unless callers explicitly provide
+  session headers.
 - `cmd/sigma-surface-probe -handoff` now builds a small tool-call context for
   each selected live route/model and replays it pairwise into the other selected
   routes, emitting JSONL diagnostics with `sourceRoute` and `sourceModel` so

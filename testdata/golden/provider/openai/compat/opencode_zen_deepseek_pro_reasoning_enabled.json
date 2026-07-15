@@ -1,0 +1,18 @@
+{
+  "max_tokens": 12,
+  "messages": [
+    {
+      "content": "hi",
+      "role": "user"
+    }
+  ],
+  "model": "deepseek-v4-pro",
+  "reasoning_effort": "high",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "thinking": {
+    "type": "enabled"
+  }
+}

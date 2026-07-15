@@ -526,6 +526,75 @@ func TestResponsesSessionAffinityHeaders(t *testing.T) {
 	assertHeader(t, headers, "x-client-request-id", "responses-session")
 }
 
+func TestResponsesOmitsSessionIDForNoSessionAffinityFormat(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-no-session-affinity-test")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
+		SessionAffinityFormat: sigma.OpenAIResponsesSessionAffinityOpenAINoSession,
+	}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID("responses-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionShort),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	headers := receiveRequest(t, requests).Headers
+	assertHeaderAbsent(t, headers, "session_id")
+	assertHeader(t, headers, "x-client-request-id", "responses-session")
+}
+
+func TestResponsesSessionAffinityOverridesNoSessionFormat(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-no-session-affinity-override-test")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
+		SessionAffinityFormat: sigma.OpenAIResponsesSessionAffinityOpenAINoSession,
+	}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID("responses-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionShort),
+		sigma.WithProviderOption(providerID, "session_id_header", "X-Session-ID"),
+		sigma.WithHeader("session_id", "caller-session"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	headers := receiveRequest(t, requests).Headers
+	assertHeader(t, headers, "X-Session-ID", "responses-session")
+	assertHeader(t, headers, "session_id", "caller-session")
+	assertHeaderAbsent(t, headers, "x-client-request-id")
+}
+
 func TestResponsesOmitsSessionAffinityHeadersWhenCacheDisabled(t *testing.T) {
 	t.Parallel()
 

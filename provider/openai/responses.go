@@ -144,7 +144,7 @@ func (p *ResponsesProvider) newRequest(ctx context.Context, model sigma.Model, r
 	httpReq.Header.Set("User-Agent", "sigma/openai-responses")
 
 	p.base.addAuthCredentialHeader(httpReq, model, credential)
-	p.addProviderHeaders(httpReq, model.Provider, opts)
+	p.addProviderHeaders(httpReq, model, opts)
 	for key, value := range p.base.headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -160,24 +160,33 @@ func (p *ResponsesProvider) newRequest(ctx context.Context, model sigma.Model, r
 	return httpReq, nil
 }
 
-func (p *ResponsesProvider) addProviderHeaders(req *http.Request, provider sigma.ProviderID, opts sigma.Options) {
-	options := providerOptions(opts, provider)
+func (p *ResponsesProvider) addProviderHeaders(req *http.Request, model sigma.Model, opts sigma.Options) {
+	options := providerOptions(opts, model.Provider)
 	if organization, ok := stringOption(options, providerOptionOrganization); ok {
 		req.Header.Set("OpenAI-Organization", organization)
 	}
 	if project, ok := stringOption(options, providerOptionProject); ok {
 		req.Header.Set("OpenAI-Project", project)
 	}
-	if opts.SessionID != "" {
-		if header, ok := stringOption(options, providerOptionSessionHeader); ok {
-			req.Header.Set(header, opts.SessionID)
-		} else if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
-			req.Header.Set(header, opts.SessionID)
-		} else if opts.CacheRetention.CacheEnabled() {
-			req.Header.Set("session_id", opts.SessionID)
-			req.Header.Set("x-client-request-id", opts.SessionID)
-		}
+	if opts.SessionID == "" {
+		return
 	}
+	if header, ok := stringOption(options, providerOptionSessionHeader); ok {
+		req.Header.Set(header, opts.SessionID)
+		return
+	}
+	if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
+		req.Header.Set(header, opts.SessionID)
+		return
+	}
+	if !opts.CacheRetention.CacheEnabled() {
+		return
+	}
+	if model.OpenAIResponsesCompat == nil ||
+		model.OpenAIResponsesCompat.SessionAffinityFormat != sigma.OpenAIResponsesSessionAffinityOpenAINoSession {
+		req.Header.Set("session_id", opts.SessionID)
+	}
+	req.Header.Set("x-client-request-id", opts.SessionID)
 }
 
 func (p *ResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {

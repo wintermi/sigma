@@ -270,6 +270,47 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 	}
 }
 
+func TestOpenCodeZenGeneratedGPT56ResponsesAffinity(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	client := generatedOpenCodeZenTestClient(t, "gpt-5.6-luna", server.URL)
+	_, err := client.Complete(
+		context.Background(),
+		sigma.Model{Provider: sigma.ProviderOpenCode, ID: "gpt-5.6-luna"},
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("Reply with ok.")}},
+		sigma.WithSessionID("zen-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionShort),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/responses"; got != want {
+		t.Fatalf("request path = %q, want %q", got, want)
+	}
+	if got := request.Headers.Get("Authorization"); got == "" {
+		t.Fatalf("missing Authorization header in %#v", request.Headers)
+	}
+	if got, want := request.Headers.Get("X-Provider"), "provider"; got != want {
+		t.Fatalf("provider header = %q, want %q", got, want)
+	}
+	if got, want := request.Headers.Get("x-client-request-id"), "zen-session"; got != want {
+		t.Fatalf("request ID = %q, want %q", got, want)
+	}
+	if got := request.Headers.Get("session_id"); got != "" {
+		t.Fatalf("session_id = %q, want omitted", got)
+	}
+}
+
 func opencodeTestClient(
 	t *testing.T,
 	providerID sigma.ProviderID,
@@ -316,6 +357,32 @@ func generatedOpenCodeGoTestClient(t *testing.T, modelID sigma.ModelID, baseURL 
 	}
 	if err := opencode.RegisterGo(registry, opencode.WithHeader("X-Provider", "provider")); err != nil {
 		t.Fatalf("RegisterGo returned error: %v", err)
+	}
+	metadata := make(map[string]any, len(model.ProviderMetadata)+1)
+	for key, value := range model.ProviderMetadata {
+		metadata[key] = value
+	}
+	metadata["baseURL"] = baseURL
+	model.ProviderMetadata = metadata
+	if err := registry.RegisterModel(model, sigma.WithOverride()); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
+	})
+	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+}
+
+func generatedOpenCodeZenTestClient(t *testing.T, modelID sigma.ModelID, baseURL string) *sigma.Client {
+	t.Helper()
+
+	registry := sigma.DefaultRegistry()
+	model, ok := registry.Model(sigma.ProviderOpenCode, modelID)
+	if !ok {
+		t.Fatalf("generated registry missing OpenCode Zen model %q", modelID)
+	}
+	if err := opencode.RegisterZen(registry, opencode.WithHeader("X-Provider", "provider")); err != nil {
+		t.Fatalf("RegisterZen returned error: %v", err)
 	}
 	metadata := make(map[string]any, len(model.ProviderMetadata)+1)
 	for key, value := range model.ProviderMetadata {

@@ -513,9 +513,13 @@ families that need Google Generative AI, Anthropic Messages, OpenAI Responses,
 or OpenAI-compatible Chat Completions routes. Broader catalog coverage should
 still be promoted only with deterministic evidence.
 
-- [ ] Continue refreshing curated OpenCode Zen and OpenCode Go metadata after
-      checking current provider catalogs, prioritizing remaining high-value
-      routed families and avoiding advertised-but-unavailable models.
+- [x] Complete the reviewed OpenCode Zen catalog cohort for GPT-5.6 Luna/Sol/
+      Terra, DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7 Code,
+      MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free, including
+      cached Responses request-ID affinity compatibility.
+- [ ] Continue reviewing later OpenCode Zen and OpenCode Go catalog changes,
+      prioritizing high-value routed families and avoiding advertised-but-
+      unavailable models.
 - [x] Evaluate and fixture selected OpenCode-routed OpenAI Responses,
       Anthropic Messages, and Google API models before promoting them to
       built-in metadata.
@@ -523,8 +527,9 @@ still be promoted only with deterministic evidence.
       MiniMax M3, Grok Build, Kimi K2.6/K2.7 Code, and Claude adaptive-thinking rows,
       including unsupported thinking-level and temperature compatibility
       metadata.
-- [ ] Cover each promoted OpenCode addition with deterministic modeldata and
-      golden payload tests; no live OpenCode calls should be required.
+- [x] Add deterministic generated-metadata, Responses route/header, and
+      DeepSeek V4 Pro payload coverage for the completed Zen cohort; no live
+      OpenCode calls are required.
 - [ ] Keep `cmd/sigma-surface-probe` as an opt-in live diagnostic tool for
       route-shape regressions, capability limits, and upstream availability
       changes; do not add live OpenCode calls to `mise run ci`.

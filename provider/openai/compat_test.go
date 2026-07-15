@@ -881,6 +881,32 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 	}
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_go_deepseek_reasoning_enabled.json")
 
+	zenDeepSeekPro, ok := sigma.DefaultRegistry().Model(sigma.ProviderOpenCode, "deepseek-v4-pro")
+	if !ok {
+		t.Fatal("generated registry missing OpenCode Zen DeepSeek V4 Pro")
+	}
+	payload, err = chatCompletionsPayload(
+		zenDeepSeekPro,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{MaxTokens: compatIntPtr(12)},
+		openAICompletionsCompat(zenDeepSeekPro, "https://opencode.ai/zen/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for disabled OpenCode Zen DeepSeek Pro reasoning returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_deepseek_pro_reasoning_disabled.json")
+
+	payload, err = chatCompletionsPayload(
+		zenDeepSeekPro,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{MaxTokens: compatIntPtr(12), ReasoningLevel: sigma.ThinkingLevelHigh},
+		openAICompletionsCompat(zenDeepSeekPro, "https://opencode.ai/zen/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for enabled OpenCode Zen DeepSeek Pro reasoning returned error: %v", err)
+	}
+	goldentest.AssertJSON(t, payload, "provider/openai/compat/opencode_zen_deepseek_pro_reasoning_enabled.json")
+
 	zenKimi := sigma.Model{
 		ID:               "kimi-k2.6",
 		Provider:         sigma.ProviderOpenCode,

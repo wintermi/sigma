@@ -77,6 +77,13 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated OpenCode Go metadata now includes `glm-5.2` and `qwen3.7-plus`,
   with their Chat Completions and Messages routes, capability and pricing
   metadata, and GLM `max_tokens`/reasoning-level compatibility.
+- Generated OpenCode Zen metadata now includes GPT-5.6 Luna, Sol, and Terra
+  on Responses plus DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7
+  Code, MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free on Chat
+  Completions, with reviewed routing, capabilities, limits, pricing, and
+  compatibility metadata. Cached Zen Responses requests preserve the client
+  request ID while omitting `session_id` unless callers explicitly provide
+  session headers.
 - OpenAI Codex OAuth login results can now be written into caller-supplied
   `sigma.CredentialStore` implementations with
   `openai.StoreCodexOAuthCredentials`, giving store-backed Codex Responses auth

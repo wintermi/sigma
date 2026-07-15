@@ -211,10 +211,21 @@ type AzureOpenAIResponsesConfig struct {
 	CredentialSource string `json:"credentialSource,omitempty"`
 }
 
+// OpenAIResponsesSessionAffinityFormat describes how cached Responses requests
+// identify an affinity session.
+type OpenAIResponsesSessionAffinityFormat string
+
+const (
+	// OpenAIResponsesSessionAffinityOpenAINoSession sends an OpenAI-compatible
+	// request ID without sending the OpenAI session_id header.
+	OpenAIResponsesSessionAffinityOpenAINoSession OpenAIResponsesSessionAffinityFormat = "openai-nosession"
+)
+
 // OpenAIResponsesCompat describes OpenAI Responses API capabilities that vary
 // by model or compatible endpoint.
 type OpenAIResponsesCompat struct {
-	SupportsToolSearch bool `json:"supportsToolSearch,omitempty"`
+	SupportsToolSearch    bool                                 `json:"supportsToolSearch,omitempty"`
+	SessionAffinityFormat OpenAIResponsesSessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
 }
 
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model

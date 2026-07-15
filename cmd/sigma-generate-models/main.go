@@ -615,6 +615,7 @@ func writeOpenAIResponsesCompatField(b *bytes.Buffer, compat *modeldata.OpenAIRe
 	}
 	b.WriteString("\t\tOpenAIResponsesCompat: &OpenAIResponsesCompat{\n")
 	writeBoolField(b, "SupportsToolSearch", compat.SupportsToolSearch)
+	writeStringField(b, "SessionAffinityFormat", "OpenAIResponsesSessionAffinityFormat", compat.SessionAffinityFormat)
 	b.WriteString("\t\t},\n")
 }
 

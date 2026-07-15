@@ -15717,6 +15717,39 @@
       }
     },
     {
+      "id": "glm-5.2",
+      "name": "GLM-5.2",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "gpt-5",
       "name": "GPT-5",
       "provider": "openai",
@@ -17934,6 +17967,50 @@
       }
     },
     {
+      "id": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.74,
+        "outputPerMillion": 3.84,
+        "cacheReadInputPerMillion": 0.145,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "thinkingLevelMap": {
+        "high": "high",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens",
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      }
+    },
+    {
       "id": "gemini-3-flash",
       "name": "Gemini 3 Flash",
       "provider": "opencode",
@@ -18124,6 +18201,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18159,6 +18239,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18196,6 +18279,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18231,6 +18317,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18268,6 +18357,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18303,6 +18395,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18340,6 +18435,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18375,6 +18473,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18413,6 +18514,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18449,6 +18553,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18487,6 +18594,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18523,6 +18633,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18561,6 +18674,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18597,6 +18713,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "minimal": "minimal",
@@ -18635,6 +18754,9 @@
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
       },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
       "thinkingLevelMap": {
         "minimal": "minimal",
         "low": "low",
@@ -18671,6 +18793,9 @@
       "providerMetadata": {
         "modelFamily": "gpt",
         "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
       },
       "thinkingLevelMap": {
         "medium": "medium",
@@ -18714,6 +18839,129 @@
       }
     },
     {
+      "id": "gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "name": "GPT-5.6 Sol",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 30,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "name": "GPT-5.6 Terra",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 3.125,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
       "id": "grok-build-0.1",
       "name": "Grok Build 0.1",
       "provider": "opencode",
@@ -18752,6 +19000,72 @@
       ],
       "openAICompletionsCompat": {
         "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
+      "id": "grok-4.5",
+      "name": "Grok 4.5",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.5,
+        "currency": "USD"
+      },
+      "contextWindow": 500000,
+      "maxOutputTokens": 500000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "hy3-free",
+      "name": "Hy3 Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 190000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "hy3"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
       }
     },
     {
@@ -18845,6 +19159,40 @@
       }
     },
     {
+      "id": "kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.19,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "minimax-m2.5",
       "name": "MiniMax M2.5",
       "provider": "opencode",
@@ -18930,6 +19278,40 @@
       }
     },
     {
+      "id": "minimax-m3",
+      "name": "MiniMax-M3",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.06,
+        "currency": "USD"
+      },
+      "contextWindow": 512000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "nemotron-3-super-free",
       "name": "Nemotron 3 Super Free",
       "provider": "opencode",
@@ -18985,6 +19367,70 @@
       "providerMetadata": {
         "modelFamily": "qwen",
         "opencodeAPI": "anthropic-messages"
+      }
+    },
+    {
+      "id": "nemotron-3-ultra-free",
+      "name": "Nemotron 3 Ultra Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "north-mini-code-free",
+      "name": "North Mini Code Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 256000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "north"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
       }
     },
     {

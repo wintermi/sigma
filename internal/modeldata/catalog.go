@@ -160,7 +160,8 @@ type AnthropicMessagesCompat struct {
 
 // OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
 type OpenAIResponsesCompat struct {
-	SupportsToolSearch bool `json:"supportsToolSearch,omitempty"`
+	SupportsToolSearch    bool   `json:"supportsToolSearch,omitempty"`
+	SessionAffinityFormat string `json:"sessionAffinityFormat,omitempty"`
 }
 
 // OpenRouterRoutingPreference mirrors sigma.OpenRouterRoutingPreference.
