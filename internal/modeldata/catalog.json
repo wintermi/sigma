@@ -9899,7 +9899,7 @@
       "id": "mai-code-1-flash-picker",
       "name": "MAI-Code-1-Flash",
       "provider": "github-copilot",
-      "api": "openai-completions",
+      "api": "openai-responses",
       "baseURL": "https://api.individual.githubcopilot.com",
       "supportedInputs": [
         "text"
@@ -9926,11 +9926,6 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "mai"
-      },
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
       }
     },
     {

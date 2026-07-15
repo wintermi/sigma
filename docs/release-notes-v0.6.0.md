@@ -66,6 +66,9 @@ can inspect candidate and configured API-key variable names before making a
 request, and focused provider helpers now let callers pass Cloudflare AI
 Gateway placeholder values and Bedrock region/static credential values without
 mutating process environment.
+Stored Cloudflare API-key credentials now also fill missing account and gateway
+routing values from the matching environment variables while preserving stored
+and request-scoped values.
 Bare request-scoped and stored API-key credentials now also authorize Bedrock
 through bearer authentication, while credentials with AWS key metadata keep the
 existing SigV4 path.
@@ -82,9 +85,9 @@ Generated Claude metadata also expands focused Sonnet 5 and Fable 5 coverage
 across existing Anthropic-compatible routes, including direct Anthropic, direct
 Bedrock, Cloudflare AI Gateway, Vercel AI Gateway, OpenCode Zen, and GitHub
 Copilot Sonnet 5 rows without broad catalog expansion.
-Generated GitHub Copilot Chat Completions metadata also includes Kimi K2.7 Code
-and MAI-Code-1-Flash, with reviewed input, tool, reasoning, context, pricing,
-and compatibility metadata.
+Generated GitHub Copilot metadata also includes Kimi K2.7 Code on Chat
+Completions and MAI-Code-1-Flash on Responses, with reviewed input, tool,
+reasoning, context, pricing, and compatibility metadata.
 Generated direct OpenAI Responses metadata now also includes GPT-5.6 Luna, Sol,
 and Terra with text/image, tool, and reasoning capabilities; cache-write
 pricing; and 272,000-token high-context price tiers.

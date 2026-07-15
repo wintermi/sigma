@@ -68,9 +68,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
 - Generated GitHub Copilot metadata now includes `claude-fable-5` on the Chat
   Completions route with text/image, tool, reasoning, pricing, and context
   metadata plus conservative request compatibility flags.
-- Generated GitHub Copilot Chat Completions metadata now includes
-  `kimi-k2.7-code` and `mai-code-1-flash-picker`, with reviewed input, tool,
-  reasoning, context, pricing, and compatibility metadata.
+- Generated GitHub Copilot metadata now includes `kimi-k2.7-code` on Chat
+  Completions and `mai-code-1-flash-picker` on Responses, with reviewed input,
+  tool, reasoning, context, pricing, and compatibility metadata.
 - Generated OpenCode Go metadata now includes `glm-5.2` and `qwen3.7-plus`,
   with their Chat Completions and Messages routes, capability and pricing
   metadata, and GLM `max_tokens`/reasoning-level compatibility.
@@ -313,6 +313,12 @@ See [release notes](docs/release-notes-v0.6.0.md).
   `openrouter.NewProvider` for the text Chat Completions provider.
 
 ### Fixed
+
+- GitHub Copilot `mai-code-1-flash-picker` now routes through the Responses
+  endpoint instead of Chat Completions.
+- Stored Cloudflare API-key credentials now fill missing account and gateway
+  routing values from the matching environment variables while preserving
+  stored and request-scoped values.
 
 - OpenAI Codex Responses WebSocket transport now retries once when the backend
   reports a connection limit before output begins; a repeated limit response or

@@ -95,6 +95,9 @@ func TestAIGatewayAnthropicResolvesPlaceholdersAndUsesGatewayAuth(t *testing.T) 
 }
 
 func TestAIGatewayCompletionsUsesStoredProviderConfig(t *testing.T) {
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "env-account")
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "env-gateway")
+
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captureRequest(t, requests, r)
@@ -174,6 +177,46 @@ func TestAIGatewayResponsesUsesStoredProviderConfig(t *testing.T) {
 	}
 	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer stored-token")
 	assertHeader(t, request.Headers, "Authorization", "")
+}
+
+func TestAIGatewayResponsesStoredAPIKeyFallsBackToEnvironmentProviderConfig(t *testing.T) {
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "env-account")
+	t.Setenv("CLOUDFLARE_GATEWAY_ID", "env-gateway")
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := cloudflareResponsesModel()
+	registry := sigma.NewRegistry()
+	if err := cloudflare.RegisterAIGatewayResponses(
+		registry,
+		cloudflare.WithBaseURL(server.URL+"/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai"),
+	); err != nil {
+		t.Fatalf("RegisterAIGatewayResponses returned error: %v", err)
+	}
+	if err := cloudflare.RegisterAIGatewayAuth(registry); err != nil {
+		t.Fatalf("RegisterAIGatewayAuth returned error: %v", err)
+	}
+	registerModel(t, registry, model)
+
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithCredentialStore(storedCloudflareStore(t, sigma.ProviderCloudflareAIGateway, nil)),
+		sigma.WithStoredProviderAuth(),
+	)
+	if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/env-account/env-gateway/openai/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "cf-aig-authorization", "Bearer stored-token")
 }
 
 func TestAIGatewayAnthropicUsesStoredProviderConfig(t *testing.T) {
@@ -354,6 +397,8 @@ func TestWorkersAIFallsBackToEnvironmentPlaceholder(t *testing.T) {
 }
 
 func TestWorkersAIUsesStoredProviderConfig(t *testing.T) {
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "env-account")
+
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captureRequest(t, requests, r)
@@ -391,6 +436,45 @@ func TestWorkersAIUsesStoredProviderConfig(t *testing.T) {
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer stored-token")
 	assertHeader(t, request.Headers, "cf-aig-authorization", "")
+}
+
+func TestWorkersAIStoredAPIKeyFallsBackToEnvironmentProviderConfig(t *testing.T) {
+	t.Setenv("CLOUDFLARE_ACCOUNT_ID", "env-account")
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeChatCompletionsCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := cloudflareWorkersAIModel()
+	registry := sigma.NewRegistry()
+	if err := cloudflare.RegisterWorkersAI(
+		registry,
+		cloudflare.WithBaseURL(server.URL+"/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"),
+	); err != nil {
+		t.Fatalf("RegisterWorkersAI returned error: %v", err)
+	}
+	if err := cloudflare.RegisterWorkersAIAuth(registry); err != nil {
+		t.Fatalf("RegisterWorkersAIAuth returned error: %v", err)
+	}
+	registerModel(t, registry, model)
+
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithCredentialStore(storedCloudflareStore(t, sigma.ProviderCloudflareWorkersAI, nil)),
+		sigma.WithStoredProviderAuth(),
+	)
+	if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/env-account/ai/v1/chat/completions"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "Authorization", "Bearer stored-token")
 }
 
 func TestWorkersAIReportsMissingPlaceholderBeforeNetwork(t *testing.T) {

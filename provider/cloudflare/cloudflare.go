@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/provider/anthropic"
@@ -216,11 +217,33 @@ func resolveCloudflareAuth(
 		return resolution, false, nil
 	}
 
-	accountID := stored.ProviderEnv["CLOUDFLARE_ACCOUNT_ID"]
-	gatewayID := stored.ProviderEnv["CLOUDFLARE_GATEWAY_ID"]
+	accountID := cloudflareProviderEnvValue(stored.ProviderEnv, "CLOUDFLARE_ACCOUNT_ID")
+	gatewayID := ""
+	if gateway {
+		gatewayID = cloudflareProviderEnvValue(stored.ProviderEnv, "CLOUDFLARE_GATEWAY_ID")
+	}
 	resolution.ProviderEnv = copyStringMap(stored.ProviderEnv)
+	if accountID != "" {
+		if resolution.ProviderEnv == nil {
+			resolution.ProviderEnv = make(map[string]string)
+		}
+		resolution.ProviderEnv["CLOUDFLARE_ACCOUNT_ID"] = accountID
+	}
+	if gateway && gatewayID != "" {
+		if resolution.ProviderEnv == nil {
+			resolution.ProviderEnv = make(map[string]string)
+		}
+		resolution.ProviderEnv["CLOUDFLARE_GATEWAY_ID"] = gatewayID
+	}
 	resolution.ProviderOptions = cloudflareProviderOptions(accountID, gatewayID, gateway)
 	return resolution, true, nil
+}
+
+func cloudflareProviderEnvValue(values map[string]string, name string) string {
+	if value := values[name]; value != "" {
+		return value
+	}
+	return os.Getenv(name)
 }
 
 func cloudflareProviderOptions(accountID string, gatewayID string, gateway bool) map[string]any {

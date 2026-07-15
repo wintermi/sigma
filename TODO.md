@@ -14,6 +14,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add provider-specific request configuration helpers for Cloudflare AI
       Gateway account/gateway placeholders and Bedrock request region/static
       credential values without adding a generic environment override surface.
+- [x] Let stored Cloudflare API-key credentials fill missing account and
+      gateway routing values from the matching environment variables while
+      preserving stored and request-scoped precedence.
 - [x] Add request-scoped final header suppression across text, image, and
       embedding calls without adding generic environment overrides or changing
       credential resolution.
@@ -171,6 +174,8 @@ integrations remain future work until they have the same local evidence bar.
       first-class Cloudflare OpenAI-compatible row.
 - [x] Promote GitHub Copilot to first-class compatible provider wrappers for
       Chat Completions, Responses, and Anthropic Messages.
+- [x] Route GitHub Copilot `mai-code-1-flash-picker` through its supported
+      Responses endpoint in generated model metadata.
 - [x] Promote Cloudflare AI Gateway to first-class compatible provider wrappers
       for OpenAI-compatible and Anthropic-compatible text routes.
 - [x] Send Z.ai reasoning requests as `thinking` objects with enabled or

@@ -1676,34 +1676,40 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataStrings(t, copilotFable.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
 
 	for _, tt := range []struct {
-		id              ModelID
-		imageCapable    bool
-		maxOutputTokens int
-		inputCost       float64
-		outputCost      float64
-		cacheReadCost   float64
-		modelFamily     string
+		id                ModelID
+		api               API
+		imageCapable      bool
+		maxOutputTokens   int
+		inputCost         float64
+		outputCost        float64
+		cacheReadCost     float64
+		modelFamily       string
+		completionsCompat bool
 	}{
-		{id: "kimi-k2.7-code", imageCapable: true, maxOutputTokens: 32000, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, modelFamily: "kimi"},
-		{id: "mai-code-1-flash-picker", imageCapable: false, maxOutputTokens: 128000, inputCost: 0.75, outputCost: 4.5, cacheReadCost: 0.075, modelFamily: "mai"},
+		{id: "kimi-k2.7-code", api: APIOpenAICompletions, imageCapable: true, maxOutputTokens: 32000, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, modelFamily: "kimi", completionsCompat: true},
+		{id: "mai-code-1-flash-picker", api: APIOpenAIResponses, imageCapable: false, maxOutputTokens: 128000, inputCost: 0.75, outputCost: 4.5, cacheReadCost: 0.075, modelFamily: "mai"},
 	} {
 		model, ok := registry.Model(ProviderGitHubCopilot, tt.id)
 		if !ok {
 			t.Fatalf("fresh registry missing generated GitHub Copilot model %s", tt.id)
 		}
-		if model.API != APIOpenAICompletions || !model.SupportsTools || model.SupportsImages() != tt.imageCapable || !model.SupportsReasoning() {
-			t.Fatalf("GitHub Copilot %s capabilities = %+v, want Chat Completions tools, images %v, and reasoning", tt.id, model, tt.imageCapable)
+		if model.API != tt.api || !model.SupportsTools || model.SupportsImages() != tt.imageCapable || !model.SupportsReasoning() {
+			t.Fatalf("GitHub Copilot %s capabilities = %+v, want %s tools, images %v, and reasoning", tt.id, model, tt.api, tt.imageCapable)
 		}
 		if model.ContextWindow != 256000 || model.MaxOutputTokens != tt.maxOutputTokens ||
 			model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
 			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != 0 {
 			t.Fatalf("GitHub Copilot %s metadata = %+v, want reviewed limits and costs", tt.id, model)
 		}
-		if model.OpenAICompletionsCompat == nil ||
-			model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
-			model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-			model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
-			t.Fatalf("GitHub Copilot %s compat = %#v, want conservative Chat Completions support", tt.id, model.OpenAICompletionsCompat)
+		if tt.completionsCompat {
+			if model.OpenAICompletionsCompat == nil ||
+				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+				t.Fatalf("GitHub Copilot %s compat = %#v, want conservative Chat Completions support", tt.id, model.OpenAICompletionsCompat)
+			}
+		} else if model.OpenAICompletionsCompat != nil || model.OpenAIResponsesCompat != nil {
+			t.Fatalf("GitHub Copilot %s compat = %#v / %#v, want default Responses support", tt.id, model.OpenAICompletionsCompat, model.OpenAIResponsesCompat)
 		}
 		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com")
 		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
