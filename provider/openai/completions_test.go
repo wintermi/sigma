@@ -766,6 +766,65 @@ func TestChatCompletionsSessionAffinityHeaders(t *testing.T) {
 	}
 }
 
+func TestOpenRouterSessionAffinityHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		options    []sigma.Option
+		wantHeader string
+	}{
+		{
+			name:       "uses OpenRouter header",
+			wantHeader: "session-affinity",
+		},
+		{
+			name: "caller header overrides generated value",
+			options: []sigma.Option{
+				sigma.WithHeader("x-session-id", "caller-session"),
+			},
+			wantHeader: "caller-session",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			model := openAITestModel(sigma.ProviderOpenRouter)
+			client := openAITestClient(t, sigma.ProviderOpenRouter, model, server.URL)
+			options := []sigma.Option{
+				sigma.WithSessionID("session-affinity"),
+				sigma.WithCacheRetention(sigma.CacheRetentionShort),
+			}
+			options = append(options, tt.options...)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				options...,
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			headers := receiveRequest(t, requests).Headers
+			assertHeader(t, headers, "x-session-id", tt.wantHeader)
+			assertHeaderAbsent(t, headers, "session_id")
+			assertHeaderAbsent(t, headers, "x-client-request-id")
+			assertHeaderAbsent(t, headers, "x-session-affinity")
+		})
+	}
+}
+
 func TestChatCompletionsNormalizesReplayToolIDsAndCarriesToolResultImages(t *testing.T) {
 	t.Parallel()
 

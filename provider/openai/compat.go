@@ -104,6 +104,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		}
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
+		compat.supportsSessionAffinity = true
 		compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlMessage
 		compat.supportsMessageCacheControl = true
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningObject

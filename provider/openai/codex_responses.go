@@ -303,14 +303,14 @@ func (p *CodexResponsesProvider) addProviderHeaders(req *http.Request, provider 
 	if project, ok := stringOption(options, providerOptionProject); ok {
 		req.Header.Set("OpenAI-Project", project)
 	}
-	if opts.SessionID != "" {
+	if sessionID := clampOpenAIPromptCacheKey(opts.SessionID); sessionID != "" {
 		if header, ok := stringOption(options, providerOptionSessionHeader); ok {
-			req.Header.Set(header, opts.SessionID)
+			req.Header.Set(header, sessionID)
 		} else if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
-			req.Header.Set(header, opts.SessionID)
+			req.Header.Set(header, sessionID)
 		}
-		req.Header.Set("session-id", opts.SessionID)
-		req.Header.Set("x-client-request-id", opts.SessionID)
+		req.Header.Set("session-id", sessionID)
+		req.Header.Set("x-client-request-id", sessionID)
 	}
 }
 

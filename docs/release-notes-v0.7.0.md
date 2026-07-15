@@ -7,15 +7,19 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.7.0 is open for development.
+`sigma` v0.7.0 hardens existing provider protocol compatibility without
+expanding Sigma's public provider surface.
 
-## Added
+## Changed
 
-- Nothing yet.
+- Codex request-affinity headers now limit session IDs to 64 characters while
+  preserving local session resource management. OpenRouter uses its native
+  cache-affinity header, and Bedrock terminal responses with unrecognised stop
+  reasons now surface typed provider errors.
 
 ## Compatibility
 
-- No compatibility changes yet.
+- No public API, provider-ID, model-metadata, or serialized-message changes.
 
 ## Deferred work
 

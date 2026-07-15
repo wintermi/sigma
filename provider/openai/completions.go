@@ -240,17 +240,30 @@ func (p *Provider) addProviderHeaders(req *http.Request, provider sigma.Provider
 	if project, ok := stringOption(options, providerOptionProject); ok {
 		req.Header.Set("OpenAI-Project", project)
 	}
-	if opts.SessionID != "" && compat.supportsSessionAffinity {
-		if header, ok := stringOption(options, providerOptionSessionHeader); ok {
-			req.Header.Set(header, opts.SessionID)
-		} else if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
-			req.Header.Set(header, opts.SessionID)
-		} else if opts.CacheRetention.CacheEnabled() {
-			req.Header.Set("session_id", opts.SessionID)
-			req.Header.Set("x-client-request-id", opts.SessionID)
-			req.Header.Set("x-session-affinity", opts.SessionID)
-		}
+	if opts.SessionID == "" || !compat.supportsSessionAffinity {
+		return
 	}
+	if header, ok := stringOption(options, providerOptionSessionHeader); ok {
+		req.Header.Set(header, opts.SessionID)
+		return
+	}
+	if header, ok := stringOption(options, providerOptionSessionHeaderGo); ok {
+		req.Header.Set(header, opts.SessionID)
+		return
+	}
+	if opts.CacheRetention.CacheEnabled() {
+		addOpenAICompatibleSessionAffinityHeaders(req, opts.SessionID, compat)
+	}
+}
+
+func addOpenAICompatibleSessionAffinityHeaders(req *http.Request, sessionID string, compat completionsCompat) {
+	if compat.openRouterRouting != nil {
+		req.Header.Set("x-session-id", sessionID)
+		return
+	}
+	req.Header.Set("session_id", sessionID)
+	req.Header.Set("x-client-request-id", sessionID)
+	req.Header.Set("x-session-affinity", sessionID)
 }
 
 func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {

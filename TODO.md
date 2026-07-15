@@ -128,6 +128,10 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add cache-affinity headers for OpenAI-compatible Chat Completions and
       direct OpenAI Responses when prompt caching and `sigma.WithSessionID` are
       enabled.
+- [x] Clamp Codex request-affinity headers to the provider's 64-character
+      session-ID limit while preserving Sigma's local session-cache keys.
+- [x] Send OpenRouter cache affinity through `x-session-id`, preserving caller
+      header overrides and avoiding generic OpenAI session-affinity headers.
 - [x] Keep OpenAI and Azure OpenAI Responses `previous_response_id` payloads
       explicit so cache-affinity `sigma.WithSessionID` values are not sent as
       provider continuation IDs.
@@ -655,6 +659,8 @@ should still come through the catalog refresh workflow.
 - [x] Harden Bedrock Claude replay compatibility for split reasoning
       signatures, redacted reasoning content, event-stream exception
       classification, and Claude 5-family thinking/cache predicates.
+- [x] Treat unrecognised Bedrock Converse terminal stop reasons as typed
+      provider errors instead of successful unknown completions.
 - [x] Replace blank required user/tool-result text with a placeholder and drop
       blank replayed assistant text blocks that Bedrock Converse rejects.
 - [x] Append the AWS data-retention documentation link to Bedrock provider

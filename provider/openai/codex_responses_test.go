@@ -250,8 +250,41 @@ func TestCodexResponsesDerivesPromptCacheKey(t *testing.T) {
 	if _, ok := payload["previous_response_id"]; ok {
 		t.Fatalf("previous_response_id was sent in Codex payload: %#v", payload)
 	}
-	assertHeader(t, request.Headers, "session-id", sessionID)
-	assertHeader(t, request.Headers, "x-client-request-id", sessionID)
+	assertHeader(t, request.Headers, "session-id", strings.Repeat("x", 64))
+	assertHeader(t, request.Headers, "x-client-request-id", strings.Repeat("x", 64))
+}
+
+func TestCodexResponsesClampsSessionAffinityHeaders(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-session-header-clamp-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := strings.Repeat("é", 65)
+	wantSessionID := strings.Repeat("é", 64)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID(sessionID),
+		sigma.WithProviderOption(providerID, "session_id_header", "X-Session-ID"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	headers := receiveRequest(t, requests).Headers
+	assertHeader(t, headers, "X-Session-ID", wantSessionID)
+	assertHeader(t, headers, "session-id", wantSessionID)
+	assertHeader(t, headers, "x-client-request-id", wantSessionID)
 }
 
 func TestCodexResponsesAppliesRequestServiceTierWhenResponseReportsDefault(t *testing.T) {
@@ -457,7 +490,7 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.WithTransport(sigma.TransportWebSocket),
-		sigma.WithSessionID("ws-session"),
+		sigma.WithSessionID(strings.Repeat("x", 65)),
 	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -482,8 +515,11 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 	assertHeader(t, request.Headers, "Authorization", "Bearer codex-oauth-token")
 	assertHeader(t, request.Headers, "chatgpt-account-id", "acct_codex")
 	assertHeader(t, request.Headers, "OpenAI-Beta", "responses_websockets=2026-02-06")
-	assertHeader(t, request.Headers, "session-id", "ws-session")
-	assertHeader(t, request.Headers, "x-client-request-id", "ws-session")
+	assertHeader(t, request.Headers, "session-id", strings.Repeat("x", 64))
+	assertHeader(t, request.Headers, "x-client-request-id", strings.Repeat("x", 64))
+	if _, ok := openai.CodexResponsesWebSocketStats(strings.Repeat("x", 65)); !ok {
+		t.Fatal("CodexResponsesWebSocketStats did not retain the original session id")
+	}
 	if got, want := request.Body["type"], "response.create"; got != want {
 		t.Fatalf("request type = %v, want %v", got, want)
 	}

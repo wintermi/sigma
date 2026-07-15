@@ -887,6 +887,49 @@ func TestCompleteUsesFakeCredentialDetectorAndClient(t *testing.T) {
 	}
 }
 
+func TestUnknownBedrockStopReasonReturnsProviderError(t *testing.T) {
+	t.Parallel()
+
+	fakeClient := &fakeConverseClient{
+		stream: fakeStream(
+			ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+			ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, TextDelta: "partial"},
+			ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "service_unavailable"},
+		),
+	}
+	providerID := sigma.ProviderID("bedrock-unknown-stop-test")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	_ = collectEvents(t, stream)
+	err := stream.Err()
+	if err == nil {
+		t.Fatal("stream error was nil")
+	}
+	var providerErr *sigma.ProviderError
+	if !errors.As(err, &providerErr) {
+		t.Fatalf("error type = %T, want *sigma.ProviderError", err)
+	}
+	if !strings.Contains(providerErr.BodyPreview, "service_unavailable") {
+		t.Fatalf("body preview = %q, want raw stop reason", providerErr.BodyPreview)
+	}
+
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "partial"; got != want {
+		t.Fatalf("partial text = %q, want %q", got, want)
+	}
+	if len(final.Diagnostics) != 1 || !strings.Contains(final.Diagnostics[0].BodyPreview, "service_unavailable") {
+		t.Fatalf("diagnostics = %#v, want raw stop reason", final.Diagnostics)
+	}
+}
+
 func TestCompleteMapsNeutralStructuredOutputToResponseFormatTool(t *testing.T) {
 	t.Parallel()
 

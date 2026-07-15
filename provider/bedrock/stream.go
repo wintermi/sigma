@@ -145,6 +145,9 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 		return nil
 	case ConverseEventMessageStop:
 		p.stop = bedrockStopReason(event.StopReason)
+		if p.stop == sigma.StopReasonUnknown {
+			return providerError(p.model, fmt.Errorf("bedrock converse stream: unhandled stop reason %q", event.StopReason))
+		}
 		return nil
 	case ConverseEventMetadata:
 		if event.Usage != nil {

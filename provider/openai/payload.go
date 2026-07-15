@@ -161,7 +161,11 @@ func openAIPromptCacheKey(opts sigma.Options) string {
 	if opts.SessionID == "" || !opts.CacheRetention.CacheEnabled() {
 		return ""
 	}
-	runes := []rune(opts.SessionID)
+	return clampOpenAIPromptCacheKey(opts.SessionID)
+}
+
+func clampOpenAIPromptCacheKey(value string) string {
+	runes := []rune(value)
 	if len(runes) > openAIPromptCacheKeyMaxLength {
 		runes = runes[:openAIPromptCacheKeyMaxLength]
 	}

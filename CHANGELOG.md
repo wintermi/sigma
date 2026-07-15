@@ -10,6 +10,12 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 See [release notes](docs/release-notes-v0.7.0.md).
 
+### Changed
+
+- Codex request-affinity headers now clamp session IDs to 64 characters,
+  OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
+  Bedrock terminal stop reasons now return typed provider errors.
+
 ## [0.6.0] - 2026-07-15
 
 See [release notes](docs/release-notes-v0.6.0.md).
