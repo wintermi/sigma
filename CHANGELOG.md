@@ -47,6 +47,9 @@ See [release notes](docs/release-notes-v0.6.0.md).
   inference profiles across AU, EU, Global, Japan, and US routes, plus
   GPT-OSS, DeepSeek R1, and Llama 4 direct models with reviewed capabilities,
   limits, prices, cache rates, and credential defaults.
+- Generated Amazon Bedrock metadata now includes direct GPT-5.6 Luna, Sol, and
+  Terra Converse Stream rows with text/image and tool capabilities, reviewed
+  limits, and input, output, cache-read, and cache-write pricing.
 - Generated Cloudflare Workers AI metadata now includes Kimi K2.7 Code and
   GLM 5.2 with reviewed reasoning, tool, image, pricing, and session-affinity
   compatibility.

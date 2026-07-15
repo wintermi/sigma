@@ -646,6 +646,9 @@ should still come through the catalog refresh workflow.
 - [x] Add Nova 2 Lite `reasoningConfig` support for low, medium, and high
       provider-neutral reasoning levels, with local validation for unsupported
       budgets, levels, and high-effort inference combinations.
+- [x] Add focused direct Bedrock GPT-5.6 Luna, Sol, and Terra metadata with
+      reviewed text/image, tool, limit, and cache-pricing coverage while
+      preserving conservative reasoning-control metadata.
 - [ ] Keep live Bedrock validation out of `mise run ci`; use credential-gated
       checks only for manual compatibility investigation.
 - [ ] Expand broad Bedrock generated metadata only through the catalog refresh

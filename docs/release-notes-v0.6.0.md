@@ -73,10 +73,11 @@ Generated Bedrock metadata now also includes focused EU Anthropic Claude
 regional rows that reuse the existing `eu.` inference-profile endpoint fallback
 for the EU runtime route.
 Generated Bedrock metadata now also includes curated non-regional Gemma 3,
-Llama 3.1/3.3/4, Nemotron 3, GPT-5.4/5.5, Palmyra X4/X5, and Grok 4.3 Converse
-Stream rows with reviewed input, tool, limit, and pricing metadata. Nova 2 Lite
-now maps supported provider-neutral reasoning levels to its Bedrock reasoning
-configuration and rejects incompatible local options before dispatch.
+Llama 3.1/3.3/4, Nemotron 3, GPT-5.4/5.5, GPT-5.6 Luna/Sol/Terra, Palmyra
+X4/X5, and Grok 4.3 Converse Stream rows with reviewed input, tool, limit, and
+pricing metadata. Nova 2 Lite now maps supported provider-neutral reasoning
+levels to its Bedrock reasoning configuration and rejects incompatible local
+options before dispatch.
 Generated Claude metadata also expands focused Sonnet 5 and Fable 5 coverage
 across existing Anthropic-compatible routes, including direct Anthropic, direct
 Bedrock, Cloudflare AI Gateway, Vercel AI Gateway, OpenCode Zen, and GitHub
@@ -219,6 +220,9 @@ pricing, credential defaults, and compatibility metadata.
 
 ## Added
 
+- Generated Amazon Bedrock metadata now includes direct GPT-5.6 Luna, Sol, and
+  Terra Converse Stream rows with text/image and tool capabilities, 272,000
+  token contexts, 128,000-token output limits, and reviewed cache pricing.
 - OpenAI Responses-style streams now preserve final reasoning content and
   multi-part summary boundaries, emit block-end events as output items complete,
   and use a non-empty placeholder when replaying empty tool results.

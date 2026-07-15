@@ -446,6 +446,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		inputCost       float64
 		outputCost      float64
 		cacheReadCost   float64
+		cacheWriteCost  float64
 		modelFamily     string
 	}{
 		{id: "google.gemma-3-27b-it", supportsImages: true, contextWindow: 202752, maxOutputTokens: 8192, inputCost: 0.12, outputCost: 0.2, modelFamily: "gemma"},
@@ -461,6 +462,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{id: "nvidia.nemotron-super-3-120b", contextWindow: 262144, maxOutputTokens: 131072, inputCost: 0.15, outputCost: 0.65, modelFamily: "nemotron"},
 		{id: "openai.gpt-5.4", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.75, outputCost: 16.5, cacheReadCost: 0.275, modelFamily: "o-series"},
 		{id: "openai.gpt-5.5", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5.5, outputCost: 33, cacheReadCost: 0.55, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-luna", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-sol", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-terra", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, modelFamily: "o-series"},
 		{id: "writer.palmyra-x4-v1:0", contextWindow: 122880, maxOutputTokens: 8192, inputCost: 2.5, outputCost: 10, modelFamily: "palmyra"},
 		{id: "writer.palmyra-x5-v1:0", contextWindow: 1040000, maxOutputTokens: 8192, inputCost: 0.6, outputCost: 6, modelFamily: "palmyra"},
 		{id: "xai.grok-4.3", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 131072, inputCost: 1.25, outputCost: 2.5, cacheReadCost: 0.2, modelFamily: "grok"},
@@ -476,8 +480,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
 			t.Fatalf("curated Bedrock model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
 		}
-		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != 0 {
-			t.Fatalf("curated Bedrock model %s costs = %f/%f/%f/%f, want %f/%f/%f/0", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != tt.cacheWriteCost {
+			t.Fatalf("curated Bedrock model %s costs = %f/%f/%f/%f, want %f/%f/%f/%f", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost, tt.cacheWriteCost)
 		}
 		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://bedrock-runtime.{region}.amazonaws.com")
 		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
