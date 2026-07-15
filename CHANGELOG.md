@@ -206,9 +206,10 @@ See [release notes](docs/release-notes-v0.6.0.md).
   and GPT Image routed rows while keeping broad OpenRouter text expansion
   deferred to the catalog refresh workflow.
 - Generated OpenRouter text metadata now includes curated Claude Sonnet 5,
-  GPT-5.2 Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro routes with reviewed
-  compatibility, reasoning, pricing, and capability metadata. Broader catalog
-  expansion remains deferred to the catalog refresh workflow.
+  GPT-5.2 Codex, GPT-5.6 Luna/Sol/Terra, Gemini 3.5 Flash, and DeepSeek V4 Pro
+  routes with reviewed compatibility, reasoning, pricing, and capability
+  metadata. Broader catalog expansion remains deferred to the catalog refresh
+  workflow.
 - Generated Fireworks metadata now includes focused GLM 5.2
   OpenAI-compatible rows plus additional Anthropic-compatible Messages rows for
   DeepSeek V4, GLM 5.1, GPT OSS, MiniMax, Qwen, and Kimi router variants while

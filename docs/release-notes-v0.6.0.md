@@ -157,7 +157,9 @@ wrapper with generated text metadata reuse, request-scoped routing
 compatibility, and deterministic registration, request, error, and cancellation
 coverage. Generated OpenRouter text metadata now also includes a curated
 Claude Sonnet 5, GPT-5.2 Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro cohort
-with route-specific compatibility, reasoning, pricing, and capability metadata.
+with route-specific compatibility, reasoning, pricing, and capability metadata,
+plus GPT-5.6 Luna, Sol, and Terra routes with reviewed text/image, tool,
+reasoning, limit, and cache-pricing metadata.
 Generated OpenRouter image metadata now also includes focused current Gemini
 image and GPT Image routed rows while broader OpenRouter text expansion remains
 deferred to the reviewed catalog refresh workflow. Generated Fireworks
@@ -392,6 +394,9 @@ pricing, credential defaults, and compatibility metadata.
 - Generated OpenRouter text metadata now includes a curated Claude Sonnet 5,
   GPT-5.2 Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro cohort with reviewed
   route-specific compatibility, reasoning, pricing, and capability metadata.
+- Generated OpenRouter text metadata now also includes GPT-5.6 Luna, Sol, and
+  Terra routes with reviewed text/image, tool, reasoning, limit, and
+  cache-pricing metadata.
 - Generated OpenRouter image metadata now includes focused current Gemini image
   and GPT Image routed rows while keeping broad OpenRouter text expansion
   deferred to the reviewed catalog refresh workflow.

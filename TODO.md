@@ -410,6 +410,9 @@ upstream.
       Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro with route-specific
       compatibility, reasoning, pricing, and capability metadata while keeping
       broad text expansion deferred.
+- [x] Add curated OpenRouter GPT-5.6 Luna, Sol, and Terra route metadata with
+      reviewed reasoning, text/image, tool, limit, and cache-pricing coverage
+      while keeping broad text expansion deferred.
 - [x] Add the missing direct Anthropic Claude Fable 5 row with adaptive
       thinking metadata, xhigh thinking-level mapping, image input support,
       current limits, and pricing.

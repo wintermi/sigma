@@ -19249,6 +19249,129 @@
       }
     },
     {
+      "id": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "provider": "openrouter",
+      "api": "openai-completions",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "routedProvider": "openai"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning"
+      }
+    },
+    {
+      "id": "openai/gpt-5.6-sol",
+      "name": "OpenAI: GPT-5.6 Sol",
+      "provider": "openrouter",
+      "api": "openai-completions",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 30,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "routedProvider": "openai"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning"
+      }
+    },
+    {
+      "id": "openai/gpt-5.6-terra",
+      "name": "OpenAI: GPT-5.6 Terra",
+      "provider": "openrouter",
+      "api": "openai-completions",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 3.125,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "routedProvider": "openai"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning"
+      }
+    },
+    {
       "id": "deepseek-ai/DeepSeek-V3",
       "name": "DeepSeek V3",
       "provider": "together",
