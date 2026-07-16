@@ -18807,7 +18807,7 @@
       "id": "grok-4.5",
       "name": "Grok 4.5",
       "provider": "xai",
-      "api": "openai-completions",
+      "api": "openai-responses",
       "baseURL": "https://api.x.ai/v1",
       "supportedInputs": [
         "text",
@@ -18828,15 +18828,20 @@
         "XAI_API_KEY"
       ],
       "defaultTransport": "sse",
-      "openAICompletionsCompat": {
-        "supportsReasoningEffort": "unsupported",
-        "supportsStreamingUsage": "supported",
-        "supportsStrictTools": "supported",
-        "maxTokensField": "max_completion_tokens"
+      "openAIResponsesCompat": {
+        "supportsLongCacheRetention": "unsupported"
       },
       "providerMetadata": {
         "modelFamily": "grok"
-      }
+      },
+      "thinkingLevels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
     },
     {
       "id": "gpt-5.6-luna",

@@ -374,10 +374,13 @@ metadata-only and backed by compatibility checks.
 ## xAI/Grok parity
 
 Sigma now has a first-class preview xAI/Grok provider over the shared
-OpenAI-compatible Chat Completions adapter and curated generated metadata for
-the direct xAI Grok Chat Completions routes. Future additions should still be
-promoted only with deterministic request-shape evidence.
+OpenAI-compatible Chat Completions adapter, plus Grok 4.5 over the shared
+OpenAI Responses adapter. Curated generated metadata covers the direct xAI
+routes. Future additions should still be promoted only with deterministic
+request-shape evidence.
 
+- [x] Route Grok 4.5 through OpenAI Responses with bounded reasoning-level and
+      prompt-cache-retention compatibility metadata.
 - [ ] Keep future xAI/Grok generated metadata refreshes tied to deterministic
       modeldata, payload, error, and compatibility coverage.
 - [x] Add OpenRouter-routed Grok Imagine image metadata without introducing a
@@ -386,6 +389,8 @@ promoted only with deterministic request-shape evidence.
       provider calls out of `mise run ci`.
 - [ ] Evaluate direct xAI/Grok image-provider semantics only after the API
       shape is backed by deterministic request and response fixtures.
+- [ ] Keep xAI subscription OAuth and token persistence deferred until they
+      have a separate public auth contract.
 
 ## Model registry generation
 

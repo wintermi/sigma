@@ -20,10 +20,19 @@ type Provider = openai.Provider
 // ProviderOption configures a Provider.
 type ProviderOption = openai.ProviderOption
 
+// ResponsesProvider adapts xAI's OpenAI-compatible Responses endpoint to sigma.
+type ResponsesProvider = openai.ResponsesProvider
+
 // NewProvider constructs an xAI provider.
 func NewProvider(opts ...ProviderOption) *Provider {
 	providerOpts := append([]ProviderOption{openai.WithBaseURL(DefaultBaseURL)}, opts...)
 	return openai.NewProvider(providerOpts...)
+}
+
+// NewResponsesProvider constructs an xAI Responses provider.
+func NewResponsesProvider(opts ...ProviderOption) *ResponsesProvider {
+	providerOpts := append([]ProviderOption{openai.WithBaseURL(DefaultBaseURL)}, opts...)
+	return openai.NewResponsesProvider(providerOpts...)
 }
 
 // WithBaseURL configures the provider base URL, for example an httptest server URL.
@@ -54,7 +63,20 @@ func Register(registry *sigma.Registry, opts ...ProviderOption) error {
 	return registry.RegisterTextProvider(sigma.ProviderXAI, NewProvider(opts...))
 }
 
+// RegisterResponses adds an xAI Responses provider to registry.
+func RegisterResponses(registry *sigma.Registry, opts ...ProviderOption) error {
+	if registry == nil {
+		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
+	}
+	return registry.RegisterTextProvider(sigma.ProviderXAI, NewResponsesProvider(opts...))
+}
+
 // RegisterDefault adds an xAI text provider to sigma's default registry.
 func RegisterDefault(opts ...ProviderOption) error {
 	return sigma.RegisterDefaultTextProvider(sigma.ProviderXAI, NewProvider(opts...))
+}
+
+// RegisterResponsesDefault adds an xAI Responses provider to sigma's default registry.
+func RegisterResponsesDefault(opts ...ProviderOption) error {
+	return sigma.RegisterDefaultTextProvider(sigma.ProviderXAI, NewResponsesProvider(opts...))
 }

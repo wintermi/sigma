@@ -28,7 +28,7 @@ Release scope values:
 | OpenAI-compatible Chat Completions and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
-| xAI/Grok OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| xAI/Grok Chat Completions and Grok 4.5 Responses | `openai-completions`, `openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | NVIDIA NIM OpenAI-compatible Chat Completions and Embeddings | `openai-completions`, `openai-embeddings` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Xiaomi MiMo OpenAI-compatible Chat Completions and token-plan routes | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | OpenCode Zen and OpenCode Go OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `partial` | `intentionally omitted` |
@@ -56,7 +56,7 @@ Release scope values:
 
 - `openai-completions`: [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/sse/testdata/openai/text_usage.sse](../internal/sse/testdata/openai/text_usage.sse), [internal/sse/testdata/openai/tool_call.sse](../internal/sse/testdata/openai/tool_call.sse).
 - Fireworks `openai-completions`: [provider/fireworks/fireworks_test.go](../provider/fireworks/fireworks_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
-- xAI/Grok `openai-completions`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
+- xAI/Grok `openai-completions` and Grok 4.5 `openai-responses`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - NVIDIA NIM `openai-completions` and `openai-embeddings`: [provider/nvidia/nvidia_test.go](../provider/nvidia/nvidia_test.go), [modeldata_test.go](../modeldata_test.go).
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
 - OpenCode `openai-completions`: [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/modeldata/modeldata_test.go](../internal/modeldata/modeldata_test.go).
@@ -98,8 +98,9 @@ Release scope values:
 - Promoted OpenAI-compatible wrappers such as Fireworks, OpenRouter, xAI,
   Xiaomi, OpenCode, NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub
   Copilot, Cloudflare AI Gateway, and Cloudflare Workers AI rely on shared
-  compatibility detection or explicit `OpenAICompletionsCompat` metadata;
-  unpromoted OpenAI-compatible rows are not independently release-complete.
+  compatibility detection or explicit Chat Completions metadata. Grok 4.5
+  instead uses Responses compatibility metadata; unpromoted compatible rows
+  are not independently release-complete.
 - NVIDIA NIM uses shared OpenAI-compatible text and embedding adapters through
   a thin wrapper. Its first-class coverage is limited to direct route
   registration, text request shape, embedding request shape, generated

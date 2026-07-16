@@ -38,6 +38,61 @@ func TestRegisterReportsOpenAICompletionsAPI(t *testing.T) {
 	}
 }
 
+func TestRegisterResponsesReportsOpenAIResponsesAPI(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	if err := xai.RegisterResponses(registry); err != nil {
+		t.Fatalf("RegisterResponses returned error: %v", err)
+	}
+	if err := registry.RegisterModel(xaiResponsesTestModel()); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+
+	providers := registry.ListProviders()
+	if got, want := providers[0].TextAPI, sigma.APIOpenAIResponses; got != want {
+		t.Fatalf("provider API = %q, want %q", got, want)
+	}
+}
+
+func TestCompleteSendsGrok45ResponsesRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, xaiResponsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := xaiResponsesTestModel()
+	client := xaiResponsesTestClient(t, model, server.URL)
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("xai-test-token"),
+		sigma.WithSessionID("xai-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionLong),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelMedium),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertHeader(t, request.Headers, "Authorization", "Bearer xai-test-token")
+	assertHeader(t, request.Headers, "session_id", "xai-session")
+	assertJSONPath(t, request.Body, []string{"store"}, false)
+	assertJSONPath(t, request.Body, []string{"prompt_cache_key"}, "xai-session")
+	assertNoJSONPath(t, request.Body, []string{"prompt_cache_retention"})
+	assertJSONPath(t, request.Body, []string{"reasoning", "effort"}, "medium")
+	assertJSONPath(t, request.Body, []string{"include"}, []any{"reasoning.encrypted_content"})
+}
+
 func TestCompleteStreamsTextWithXAIDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -220,6 +275,23 @@ func xaiTestClient(t *testing.T, model sigma.Model, baseURL string, opts ...xai.
 	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
 }
 
+func xaiResponsesTestClient(t *testing.T, model sigma.Model, baseURL string, opts ...xai.ProviderOption) *sigma.Client {
+	t.Helper()
+
+	registry := sigma.NewRegistry()
+	providerOpts := append([]xai.ProviderOption{xai.WithBaseURL(baseURL)}, opts...)
+	if err := xai.RegisterResponses(registry, providerOpts...); err != nil {
+		t.Fatalf("RegisterResponses returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
+	})
+	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+}
+
 func xaiTestModel() sigma.Model {
 	return sigma.Model{
 		ID:                   "grok-3",
@@ -232,6 +304,29 @@ func xaiTestModel() sigma.Model {
 		OutputCostPerMillion: 15,
 	}
 }
+
+func xaiResponsesTestModel() sigma.Model {
+	return sigma.Model{
+		ID:                           "grok-4.5",
+		Provider:                     sigma.ProviderXAI,
+		API:                          sigma.APIOpenAIResponses,
+		SupportedInputs:              []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		SupportsTools:                true,
+		SupportsThinking:             true,
+		ThinkingLevels:               []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh},
+		UnsupportedThinkingLevels:    []sigma.ThinkingLevel{sigma.ThinkingLevelOff},
+		InputCostPerMillion:          2,
+		OutputCostPerMillion:         6,
+		CacheReadInputCostPerMillion: 0.5,
+		OpenAIResponsesCompat: &sigma.OpenAIResponsesCompat{
+			SupportsLongCacheRetention: sigma.OpenAICompatUnsupported,
+		},
+	}
+}
+
+const xaiResponsesCompletedEvent = `data: {"type":"response.completed","response":{"id":"resp_xai","model":"grok-4.5","status":"completed","output":[{"type":"message","id":"msg_xai","role":"assistant","content":[{"type":"output_text","id":"text_xai","text":"ok"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}
+
+`
 
 type capturedRequest struct {
 	Method  string

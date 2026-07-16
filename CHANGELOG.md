@@ -10,11 +10,18 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 See [release notes](docs/release-notes-v0.7.0.md).
 
+### Added
+
+- xAI now exposes first-class OpenAI Responses provider registration helpers.
+
 ### Changed
 
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.
+- Generated xAI Grok 4.5 metadata now routes through OpenAI Responses with
+  low, medium, and high reasoning levels. Long-lived prompt-cache retention is
+  omitted for this route while cache keys and session affinity remain available.
 
 ## [0.6.0] - 2026-07-15
 

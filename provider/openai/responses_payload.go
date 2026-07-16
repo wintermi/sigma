@@ -54,7 +54,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)
 	}
-	addOpenAIPromptCache(payload, opts)
+	addResponsesOpenAIPromptCache(payload, model, opts)
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
@@ -80,6 +80,22 @@ func supportsResponsesToolSearch(model sigma.Model) bool {
 		return model.OpenAICodexResponses.SupportsToolSearch
 	}
 	return model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsToolSearch
+}
+
+func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, opts sigma.Options) {
+	if key := openAIPromptCacheKey(opts); key != "" {
+		payload["prompt_cache_key"] = key
+	}
+	if opts.CacheRetention.CacheLongLived() &&
+		(opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") &&
+		responsesSupportsLongCacheRetention(model) {
+		payload["prompt_cache_retention"] = "24h"
+	}
+}
+
+func responsesSupportsLongCacheRetention(model sigma.Model) bool {
+	return model.OpenAIResponsesCompat == nil ||
+		model.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported
 }
 
 func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[string]sigma.Tool) ([]map[string]any, error) {
@@ -419,7 +435,7 @@ func addResponsesOpenAIOptions(payload map[string]any, model sigma.Model, opts s
 		}
 		text["format"] = responsesTextFormat(opts.OpenAIOptions.ResponseFormat)
 	}
-	if opts.OpenAIOptions.PromptCacheRetention != "" {
+	if opts.OpenAIOptions.PromptCacheRetention != "" && responsesSupportsLongCacheRetention(model) {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
 	}
 	if opts.OpenAIOptions.ParallelToolCalls != nil {

@@ -142,6 +142,99 @@ func TestResponsesPromptCacheDoesNotUseSessionIDAsPreviousResponseID(t *testing.
 	}
 }
 
+func TestResponsesSuppressesUnsupportedLongCacheRetention(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		options []sigma.Option
+	}{
+		{
+			name: "automatic",
+			options: []sigma.Option{
+				sigma.WithCacheRetention(sigma.CacheRetentionLong),
+			},
+		},
+		{
+			name: "standard option",
+			options: []sigma.Option{
+				sigma.WithCacheRetention(sigma.CacheRetentionLong),
+				sigma.WithOpenAIOptions(sigma.OpenAIOptions{PromptCacheRetention: "24h"}),
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-no-long-cache-retention-test")
+			model := responsesTestModel(providerID)
+			model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
+				SupportsLongCacheRetention: sigma.OpenAICompatUnsupported,
+			}
+			client := responsesTestClient(t, providerID, model, server.URL)
+
+			options := append([]sigma.Option{sigma.WithSessionID("responses-session")}, tt.options...)
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				options...,
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			if got, want := payload["prompt_cache_key"], "responses-session"; got != want {
+				t.Fatalf("prompt_cache_key = %v, want %q", got, want)
+			}
+			if got, ok := payload["prompt_cache_retention"]; ok {
+				t.Fatalf("prompt_cache_retention = %v, want absent", got)
+			}
+		})
+	}
+}
+
+func TestResponsesPreservesRawLongCacheRetentionOverride(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-raw-long-cache-retention-test")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
+		SupportsLongCacheRetention: sigma.OpenAICompatUnsupported,
+	}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID("responses-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionLong),
+		sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+			"prompt_cache_retention": "24h",
+		}),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+	if got, want := payload["prompt_cache_retention"], "24h"; got != want {
+		t.Fatalf("prompt_cache_retention = %v, want %q", got, want)
+	}
+}
+
 func TestResponsesDefersMarkedClientTools(t *testing.T) {
 	t.Parallel()
 

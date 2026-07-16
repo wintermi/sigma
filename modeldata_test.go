@@ -1569,7 +1569,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		"grok-4.20-0309-non-reasoning",
 		"grok-4.20-0309-reasoning",
 		"grok-4.3",
-		"grok-4.5",
 		"grok-build-0.1",
 		"grok-code-fast-1",
 	} {
@@ -1592,6 +1591,35 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if !grok43.SupportsTools || !grok43.SupportsImages() || !grok43.SupportsReasoning() {
 		t.Fatalf("Grok 4.3 capabilities were not generated: %+v", grok43)
 	}
+	grok45, ok := registry.Model(ProviderXAI, "grok-4.5")
+	if !ok {
+		t.Fatal("fresh registry missing generated xAI Grok 4.5 model")
+	}
+	if grok45.API != APIOpenAIResponses || !grok45.SupportsTools || !grok45.SupportsImages() || !grok45.SupportsReasoning() {
+		t.Fatalf("Grok 4.5 capabilities were not generated: %+v", grok45)
+	}
+	if grok45.ContextWindow != 500000 || grok45.MaxOutputTokens != 500000 ||
+		grok45.InputCostPerMillion != 2 || grok45.OutputCostPerMillion != 6 || grok45.CacheReadInputCostPerMillion != 0.5 {
+		t.Fatalf("Grok 4.5 limits or costs = %+v", grok45)
+	}
+	if grok45.OpenAICompletionsCompat != nil ||
+		grok45.OpenAIResponsesCompat == nil ||
+		grok45.OpenAIResponsesCompat.SupportsLongCacheRetention != OpenAICompatUnsupported {
+		t.Fatalf("Grok 4.5 Responses compat = %#v / %#v, want long cache retention unsupported", grok45.OpenAICompletionsCompat, grok45.OpenAIResponsesCompat)
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelHigh} {
+		if !grok45.SupportsThinkingLevel(level) {
+			t.Fatalf("Grok 4.5 does not support reasoning level %q", level)
+		}
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelXHigh} {
+		if grok45.SupportsThinkingLevel(level) {
+			t.Fatalf("Grok 4.5 unexpectedly supports reasoning level %q", level)
+		}
+	}
+	assertMetadataString(t, grok45.ProviderMetadata, "baseURL", "https://api.x.ai/v1")
+	assertMetadataString(t, grok45.ProviderMetadata, "modelFamily", "grok")
+	assertMetadataStrings(t, grok45.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"XAI_API_KEY"})
 
 	for _, tt := range []struct {
 		provider       ProviderID
@@ -1607,7 +1635,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		supportsImages bool
 	}{
 		{provider: ProviderCerebras, id: "gemma-4-31b", baseURL: "https://api.cerebras.ai/v1", envVar: "CEREBRAS_API_KEY", modelFamily: "gemma", contextWindow: 131072, maxOutput: 40960, inputCost: 0.99, outputCost: 1.49, supportsImages: true},
-		{provider: ProviderXAI, id: "grok-4.5", baseURL: "https://api.x.ai/v1", envVar: "XAI_API_KEY", modelFamily: "grok", contextWindow: 500000, maxOutput: 500000, inputCost: 2, outputCost: 6, cacheReadCost: 0.5, supportsImages: true},
 		{provider: ProviderNVIDIA, id: "minimaxai/minimax-m3", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "minimax", contextWindow: 1000000, maxOutput: 16384, supportsImages: true},
 		{provider: ProviderNVIDIA, id: "z-ai/glm-5.2", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "glm", contextWindow: 1000000, maxOutput: 131072},
 	} {

@@ -224,8 +224,9 @@ const (
 // OpenAIResponsesCompat describes OpenAI Responses API capabilities that vary
 // by model or compatible endpoint.
 type OpenAIResponsesCompat struct {
-	SupportsToolSearch    bool                                 `json:"supportsToolSearch,omitempty"`
-	SessionAffinityFormat OpenAIResponsesSessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
+	SupportsToolSearch         bool                                 `json:"supportsToolSearch,omitempty"`
+	SupportsLongCacheRetention OpenAICompatSupport                  `json:"supportsLongCacheRetention,omitempty"`
+	SessionAffinityFormat      OpenAIResponsesSessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
 }
 
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model

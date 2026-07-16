@@ -7,8 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.7.0 hardens existing provider protocol compatibility without
-expanding Sigma's public provider surface.
+`sigma` v0.7.0 hardens existing provider protocol compatibility and adds a
+focused xAI OpenAI Responses registration surface.
 
 ## Changed
 
@@ -16,10 +16,15 @@ expanding Sigma's public provider surface.
   preserving local session resource management. OpenRouter uses its native
   cache-affinity header, and Bedrock terminal responses with unrecognised stop
   reasons now surface typed provider errors.
+- Grok 4.5 now uses the xAI OpenAI Responses route with low, medium, and high
+  reasoning levels. Long-lived prompt-cache retention is omitted for that route
+  while cache keys and session affinity remain available.
 
 ## Compatibility
 
-- No public API, provider-ID, model-metadata, or serialized-message changes.
+- `provider/xai` adds Responses registration helpers. Built-in `xai/grok-4.5`
+  now dispatches through OpenAI Responses rather than Chat Completions; no
+  provider ID or serialized-message shape changes.
 
 ## Deferred work
 

@@ -111,7 +111,7 @@ Probe xAI/Grok with a known model:
 ```bash
 XAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes xai \
-  -models grok-4.3 \
+  -models grok-4.5 \
   -repair
 ```
 
