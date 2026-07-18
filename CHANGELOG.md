@@ -13,6 +13,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 ### Added
 
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
+- xAI now supports caller-configured device-code OAuth login, token refresh,
+  in-memory credential resolution, and opt-in provider-auth registration while
+  applications retain OAuth client registration and token persistence ownership.
 - Generated Kimi Coding metadata now includes K3 and Kimi For Coding HighSpeed
   with reviewed context, output, image-input, tool, reasoning, and estimated
   cost metadata.

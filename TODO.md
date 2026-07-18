@@ -389,8 +389,10 @@ request-shape evidence.
       provider calls out of `mise run ci`.
 - [ ] Evaluate direct xAI/Grok image-provider semantics only after the API
       shape is backed by deterministic request and response fixtures.
-- [ ] Keep xAI subscription OAuth and token persistence deferred until they
-      have a separate public auth contract.
+- [x] Add caller-configured xAI device-code OAuth login, token refresh,
+      in-memory credential resolution, and provider-auth descriptors while
+      leaving OAuth client registration and durable token persistence
+      caller-owned.
 
 ## Model registry generation
 
