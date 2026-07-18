@@ -13,6 +13,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 ### Added
 
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
+- Generated Kimi Coding metadata now includes K3 and Kimi For Coding HighSpeed
+  with reviewed context, output, image-input, tool, reasoning, and estimated
+  cost metadata.
 
 ### Changed
 
@@ -22,6 +25,8 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated xAI Grok 4.5 metadata now routes through OpenAI Responses with
   low, medium, and high reasoning levels. Long-lived prompt-cache retention is
   omitted for this route while cache keys and session affinity remain available.
+- Kimi Coding metadata now uses current estimated rates, adaptive-thinking
+  controls, and empty-signature replay compatibility where supported.
 
 ## [0.6.0] - 2026-07-15
 

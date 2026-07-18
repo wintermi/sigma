@@ -56,7 +56,7 @@ func TestRenderGeneratedFilesIsDeterministic(t *testing.T) {
 	if !bytes.Equal(firstEmbeddings, secondEmbeddings) {
 		t.Fatal("embedding model rendering was not deterministic")
 	}
-	if !strings.Contains(string(firstText), "Source snapshot date: 2026-07-15") {
+	if !strings.Contains(string(firstText), "Source snapshot date: 2026-07-18") {
 		t.Fatal("generated text models missing source snapshot date")
 	}
 	if !strings.Contains(string(firstText), "https://platform.openai.com/docs/models") {

@@ -7,8 +7,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.7.0 hardens existing provider protocol compatibility and adds a
-focused xAI OpenAI Responses registration surface.
+`sigma` v0.7.0 hardens existing provider protocol compatibility, refreshes the
+Kimi Coding catalog, and adds a focused xAI OpenAI Responses registration
+surface.
 
 ## Changed
 
@@ -19,12 +20,18 @@ focused xAI OpenAI Responses registration surface.
 - Grok 4.5 now uses the xAI OpenAI Responses route with low, medium, and high
   reasoning levels. Long-lived prompt-cache retention is omitted for that route
   while cache keys and session affinity remain available.
+- Kimi Coding now includes K3 and Kimi For Coding HighSpeed with current
+  context, output, image-input, tool, reasoning, and estimated cost metadata.
+  K3 exposes its supported `max` reasoning level, while K3 and Kimi For Coding
+  preserve empty thinking signatures during replay.
 
 ## Compatibility
 
 - `provider/xai` adds Responses registration helpers. Built-in `xai/grok-4.5`
   now dispatches through OpenAI Responses rather than Chat Completions; no
   provider ID or serialized-message shape changes.
+- `ProviderKimiCoding` retains its existing registration API while its built-in
+  model catalog expands; no serialized-message shape changes.
 
 ## Deferred work
 

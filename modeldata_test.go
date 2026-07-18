@@ -2053,12 +2053,22 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 	assertMetadataStrings(t, kimi.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"KIMI_API_KEY"})
 
 	for _, tt := range []struct {
-		id         ModelID
-		wantImages bool
+		id                          ModelID
+		wantImages                  bool
+		contextWindow               int
+		maxOutputTokens             int
+		inputCost                   float64
+		outputCost                  float64
+		cacheReadCost               float64
+		thinkingLevels              map[ThinkingLevel]string
+		unsupportedThinkingLevels   []ThinkingLevel
+		supportsEmptyThinkSignature bool
 	}{
-		{id: "k2p7", wantImages: true},
-		{id: "kimi-for-coding", wantImages: true},
-		{id: "kimi-k2-thinking"},
+		{id: "k2p7", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
+		{id: "k3", wantImages: true, contextWindow: 1048576, maxOutputTokens: 131072, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, thinkingLevels: map[ThinkingLevel]string{ThinkingLevel("max"): "max"}, unsupportedThinkingLevels: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelHigh, ThinkingLevelXHigh}, supportsEmptyThinkSignature: true},
+		{id: "kimi-for-coding", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, supportsEmptyThinkSignature: true},
+		{id: "kimi-for-coding-highspeed", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 1.9, outputCost: 8, cacheReadCost: 0.38},
+		{id: "kimi-k2-thinking", contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.6, outputCost: 2.5, cacheReadCost: 0.15},
 	} {
 		kimiCoding, ok := registry.Model(ProviderKimiCoding, tt.id)
 		if !ok {
@@ -2070,10 +2080,36 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		if got := kimiCoding.SupportsImages(); got != tt.wantImages {
 			t.Fatalf("Kimi Coding model %q SupportsImages() = %v, want %v", tt.id, got, tt.wantImages)
 		}
+		if kimiCoding.ContextWindow != tt.contextWindow || kimiCoding.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("Kimi Coding model %q limits = %d/%d, want %d/%d", tt.id, kimiCoding.ContextWindow, kimiCoding.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if kimiCoding.InputCostPerMillion != tt.inputCost || kimiCoding.OutputCostPerMillion != tt.outputCost || kimiCoding.CacheReadInputCostPerMillion != tt.cacheReadCost {
+			t.Fatalf("Kimi Coding model %q costs = %v/%v/%v, want %v/%v/%v", tt.id, kimiCoding.InputCostPerMillion, kimiCoding.OutputCostPerMillion, kimiCoding.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
+		}
+		if len(kimiCoding.ThinkingLevelMap) != len(tt.thinkingLevels) || len(kimiCoding.UnsupportedThinkingLevels) != len(tt.unsupportedThinkingLevels) {
+			t.Fatalf("Kimi Coding model %q thinking metadata = %#v/%#v, want %#v/%#v", tt.id, kimiCoding.ThinkingLevelMap, kimiCoding.UnsupportedThinkingLevels, tt.thinkingLevels, tt.unsupportedThinkingLevels)
+		}
+		for level, want := range tt.thinkingLevels {
+			if got, ok := kimiCoding.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("Kimi Coding model %q thinking level %q = %q, %v; want %q, true", tt.id, level, got, ok, want)
+			}
+		}
+		for index, want := range tt.unsupportedThinkingLevels {
+			if got := kimiCoding.UnsupportedThinkingLevels[index]; got != want {
+				t.Fatalf("Kimi Coding model %q unsupported thinking level %d = %q, want %q", tt.id, index, got, want)
+			}
+		}
 		if kimiCoding.AnthropicMessagesCompat == nil ||
 			kimiCoding.AnthropicMessagesCompat.SupportsSessionAffinity != AnthropicCompatSupported ||
 			kimiCoding.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
 			t.Fatalf("Kimi Coding model %q compat = %#v, want adaptive Anthropic-compatible metadata", tt.id, kimiCoding.AnthropicMessagesCompat)
+		}
+		wantEmptySignature := AnthropicCompatDefault
+		if tt.supportsEmptyThinkSignature {
+			wantEmptySignature = AnthropicCompatSupported
+		}
+		if got := kimiCoding.AnthropicMessagesCompat.SupportsEmptyThinkingSignature; got != wantEmptySignature {
+			t.Fatalf("Kimi Coding model %q empty thinking signature compatibility = %q, want %q", tt.id, got, wantEmptySignature)
 		}
 		assertMetadataString(t, kimiCoding.ProviderMetadata, "baseURL", "https://api.kimi.com/coding/v1")
 		assertMetadataStrings(t, kimiCoding.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"KIMI_API_KEY"})

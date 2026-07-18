@@ -7,6 +7,7 @@ package kimi_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ type capturedRequest struct {
 	Method  string
 	Path    string
 	Headers http.Header
+	Body    []byte
 }
 
 type providerCase struct {
@@ -42,7 +44,7 @@ func providerCases() []providerCase {
 		{
 			name:     "kimi coding",
 			provider: sigma.ProviderKimiCoding,
-			modelIDs: []sigma.ModelID{"k2p7", "kimi-for-coding", "kimi-k2-thinking"},
+			modelIDs: []sigma.ModelID{"k2p7", "k3", "kimi-for-coding", "kimi-for-coding-highspeed", "kimi-k2-thinking"},
 			register: kimi.RegisterCoding,
 		},
 	}
@@ -94,6 +96,91 @@ func TestRegisterAcceptsCatalogModels(t *testing.T) {
 				if err := registry.RegisterModel(model); err != nil {
 					t.Fatalf("RegisterModel(%q) returned error: %v", modelID, err)
 				}
+			}
+		})
+	}
+}
+
+func TestKimiCodingGeneratedCompatibilityShapesPayload(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		modelID    sigma.ModelID
+		reasoning  sigma.ThinkingLevel
+		wantEffort string
+	}{
+		{name: "k3", modelID: "k3", reasoning: sigma.ThinkingLevel("max"), wantEffort: "max"},
+		{name: "kimi for coding", modelID: "kimi-for-coding", reasoning: sigma.ThinkingLevelMedium, wantEffort: "medium"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeCompleted(t, w)
+			}))
+			t.Cleanup(server.Close)
+
+			model, ok := sigma.DefaultRegistry().Model(sigma.ProviderKimiCoding, tt.modelID)
+			if !ok {
+				t.Fatalf("default registry missing Kimi Coding model %q", tt.modelID)
+			}
+			model.ProviderMetadata = map[string]any{"baseURL": server.URL}
+			registry := sigma.NewRegistry()
+			if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL)); err != nil {
+				t.Fatalf("RegisterCoding returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{
+					{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Thinking("internal reasoning", " ")}},
+					sigma.UserText("continue"),
+				}},
+				sigma.WithAPIKey("request-key"),
+				sigma.WithReasoningLevel(tt.reasoning),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			var payload map[string]any
+			if err := json.Unmarshal(request.Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request payload: %v", err)
+			}
+			thinking, ok := payload["thinking"].(map[string]any)
+			if !ok || thinking["type"] != "adaptive" || thinking["display"] != "summarized" {
+				t.Fatalf("thinking payload = %#v, want adaptive summarized thinking", payload["thinking"])
+			}
+			outputConfig, ok := payload["output_config"].(map[string]any)
+			if !ok || outputConfig["effort"] != tt.wantEffort {
+				t.Fatalf("output_config = %#v, want effort %q", payload["output_config"], tt.wantEffort)
+			}
+			messages, ok := payload["messages"].([]any)
+			if !ok || len(messages) == 0 {
+				t.Fatalf("messages payload = %#v, want assistant replay", payload["messages"])
+			}
+			assistant, ok := messages[0].(map[string]any)
+			if !ok {
+				t.Fatalf("assistant replay = %#v, want object", messages[0])
+			}
+			content, ok := assistant["content"].([]any)
+			if !ok || len(content) != 1 {
+				t.Fatalf("assistant content = %#v, want one thinking block", assistant["content"])
+			}
+			block, ok := content[0].(map[string]any)
+			if !ok || block["type"] != "thinking" || block["signature"] != "" {
+				t.Fatalf("assistant thinking replay = %#v, want empty-signature thinking block", content[0])
 			}
 		})
 	}
@@ -314,11 +401,12 @@ func kimiTestModel(provider sigma.ProviderID) sigma.Model {
 func captureRequest(t *testing.T, ch chan<- capturedRequest, r *http.Request) {
 	t.Helper()
 
-	_, _ = io.Copy(io.Discard, r.Body)
+	body, _ := io.ReadAll(r.Body)
 	ch <- capturedRequest{
 		Method:  r.Method,
 		Path:    r.URL.Path,
 		Headers: r.Header.Clone(),
+		Body:    body,
 	}
 }
 

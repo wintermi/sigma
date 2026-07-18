@@ -498,6 +498,9 @@ upstream.
 - [x] Promote a focused Kimi Coding Anthropic-compatible provider slice with a
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.
+- [x] Refresh Kimi Coding metadata with K3 and HighSpeed routes, reviewed
+      limits and estimated costs, adaptive-thinking controls, and empty-signature
+      replay compatibility while preserving the existing adapter.
 - [x] Add focused Hugging Face Router metadata after settling provider ID,
       credential env var, compatibility metadata, and first-class provider-row
       requirements.

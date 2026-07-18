@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-15",
+  "snapshotDate": "2026-07-18",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -12462,8 +12462,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.19,
         "currency": "USD"
       },
       "contextWindow": 262144,
@@ -12484,6 +12485,53 @@
       }
     },
     {
+      "id": "k3",
+      "name": "Kimi K3",
+      "provider": "kimi-coding",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {
+        "User-Agent": "KimiCLI/1.5"
+      },
+      "authEnvNames": [
+        "KIMI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "supportsEmptyThinkingSignature": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    },
+    {
       "id": "kimi-for-coding",
       "name": "Kimi For Coding",
       "provider": "kimi-coding",
@@ -12496,8 +12544,45 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.19,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 32768,
+      "headers": {
+        "User-Agent": "KimiCLI/1.5"
+      },
+      "authEnvNames": [
+        "KIMI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "supportsEmptyThinkingSignature": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      }
+    },
+    {
+      "id": "kimi-for-coding-highspeed",
+      "name": "Kimi For Coding HighSpeed",
+      "provider": "kimi-coding",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.9,
+        "outputPerMillion": 8,
+        "cacheReadInputPerMillion": 0.38,
         "currency": "USD"
       },
       "contextWindow": 262144,
@@ -12529,8 +12614,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.6,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.15,
         "currency": "USD"
       },
       "contextWindow": 262144,
