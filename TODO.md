@@ -371,6 +371,11 @@ metadata-only and backed by compatibility checks.
 - [x] Vercel AI Gateway — promote to a first-class provider row with fixtures.
 - [x] Kimi — promote to a first-class provider row with fixtures.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
+- [x] Radius gateway — add an API-key-authenticated dynamic text provider with
+      gateway catalog refresh, native streaming, replay, typed errors, and
+      cancellation fixtures while keeping the default registry catalog-free.
+- [ ] Radius gateway — keep OAuth and durable model-catalog persistence
+      deferred until they have separate public contracts.
 - [ ] For each promoted provider, add streaming, tools, usage, typed error
       classification, redaction, and cancellation coverage.
 

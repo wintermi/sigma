@@ -44,6 +44,7 @@ Release scope values:
 | Google Generative AI | `google-generative-ai` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
 | Google Vertex AI | `google-vertex` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `not supported by provider` | `partial` | `partial` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Mistral Conversations | `mistral-conversations` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
+| Radius gateway Messages | `radius-messages` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | MiniMax and MiniMax CN Anthropic-compatible Messages | `anthropic-messages` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `implemented` | `implemented` | `implemented` | `implemented` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `partial` |
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
@@ -74,6 +75,7 @@ Release scope values:
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
 - `google-vertex`: [provider/google/vertex_test.go](../provider/google/vertex_test.go).
 - `mistral-conversations`: [provider/mistral/mistral_test.go](../provider/mistral/mistral_test.go).
+- `radius-messages`: [provider/radius/radius_test.go](../provider/radius/radius_test.go).
 - MiniMax `anthropic-messages`: [provider/minimax/minimax_test.go](../provider/minimax/minimax_test.go), [modeldata_test.go](../modeldata_test.go).
 - `bedrock-converse-stream`: [provider/bedrock/bedrock_test.go](../provider/bedrock/bedrock_test.go).
 - `openai-images`: [provider/openai/images_test.go](../provider/openai/images_test.go), [image_models_generated.go](../image_models_generated.go).
@@ -147,6 +149,9 @@ Release scope values:
   models, and replays image-bearing tool results as string image references.
   File image references, built-in
   connector tools, append, and restart remain deferred.
+- Radius gateway begins with no static models; applications explicitly refresh
+  its API-key-authenticated runtime source before selecting a model. OAuth and
+  durable gateway catalog persistence remain deferred.
 - Anthropic Messages supports Claude Pro/Max OAuth: browser callback login with
   a manual code-paste fallback, refresh helpers, an in-memory OAuth token
   provider, and automatic Claude Code identity (beta headers, identity system

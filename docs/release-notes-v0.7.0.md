@@ -10,7 +10,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 `sigma` v0.7.0 hardens existing provider protocol compatibility and
 caller-directed stream recovery, refreshes the Kimi Coding, Fireworks, and
 selected OpenCode Go catalogs, and adds focused xAI OpenAI Responses
-registration and caller-configured device-code OAuth surfaces.
+registration and caller-configured device-code OAuth surfaces. It also adds a
+dynamic API-key Radius gateway text provider.
 
 ## Changed
 
@@ -39,6 +40,9 @@ registration and caller-configured device-code OAuth surfaces.
   surface as transient, retryable failures while preserving partial finals.
   Sigma does not re-dispatch a stream after its body begins; applications own
   retry and fallback decisions.
+- Radius gateway models now refresh explicitly from the gateway at runtime and
+  use its native text streaming protocol with image, thinking, function-tool,
+  usage, and response-ID handling. There is no static Radius catalog.
 
 ## Compatibility
 
@@ -53,6 +57,10 @@ registration and caller-configured device-code OAuth surfaces.
 - `ProviderOpenCodeGo` retains its existing registration API and request route;
   the built-in catalog adds two Chat Completions models without changing
   serialized-message shapes.
+- `ProviderRadius` is a new opt-in registration. Its models are empty until an
+  explicit refresh succeeds; requests use standard API-key resolver precedence
+  with `RADIUS_API_KEY` as the environment fallback. OAuth and persisted
+  gateway catalogs remain deferred.
 
 ## Deferred work
 

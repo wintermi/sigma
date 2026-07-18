@@ -192,6 +192,12 @@ func RegisterDefaultTextProvider(id ProviderID, provider TextProvider, opts ...R
 	return defaultRegistry.RegisterTextProvider(id, provider, opts...)
 }
 
+// RegisterDefaultTextModelSource registers a runtime text model source on the
+// default registry.
+func RegisterDefaultTextModelSource(provider ProviderID, source TextModelSource, opts ...RegisterOption) error {
+	return defaultRegistry.RegisterTextModelSource(provider, source, opts...)
+}
+
 // RegisterDefaultImageProvider registers an image provider on the default registry.
 func RegisterDefaultImageProvider(id ProviderID, provider ImageProvider, opts ...RegisterOption) error {
 	return defaultRegistry.RegisterImageProvider(id, provider, opts...)

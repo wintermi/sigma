@@ -84,6 +84,8 @@ const (
 	APIGoogleVertex API = "google-vertex"
 	// APIMistralConversations identifies the Mistral conversations API.
 	APIMistralConversations API = "mistral-conversations"
+	// APIRadiusMessages identifies the Radius gateway messages API.
+	APIRadiusMessages API = "radius-messages"
 )
 
 const (
@@ -105,6 +107,8 @@ const (
 	ProviderGoogleVertexAnthropic ProviderID = "google-vertex-anthropic"
 	// ProviderMistral identifies Mistral AI.
 	ProviderMistral ProviderID = "mistral"
+	// ProviderRadius identifies the Radius gateway.
+	ProviderRadius ProviderID = "radius"
 	// ProviderAmazonBedrock identifies Amazon Bedrock.
 	ProviderAmazonBedrock ProviderID = "amazon-bedrock"
 	// ProviderOpenRouter identifies OpenRouter.

@@ -22,6 +22,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated OpenCode Go metadata now includes Grok 4.5 and Kimi K3 on Chat
   Completions, with reviewed text/image, tool, reasoning, limit, pricing, and
   `max_tokens` metadata.
+- Radius gateway now has a first-class API-key-authenticated text provider that
+  refreshes gateway-owned model metadata at runtime and supports native
+  streaming, replay, usage, and response IDs without adding a static catalog.
 
 ### Changed
 

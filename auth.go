@@ -44,6 +44,7 @@ const (
 	defaultGoogleAPIKeyEnv       = "GOOGLE_API_KEY"
 	defaultGoogleCloudAPIKeyEnv  = "GOOGLE_CLOUD_API_KEY"
 	defaultMistralAPIKeyEnv      = "MISTRAL_API_KEY"
+	defaultRadiusAPIKeyEnv       = "RADIUS_API_KEY"
 	defaultOpenRouterAPIKeyEnv   = "OPENROUTER_API_KEY"
 	defaultXAIAPIKeyEnv          = "XAI_API_KEY"
 	defaultCloudflareAPIKeyEnv   = "CLOUDFLARE_API_KEY"
@@ -68,6 +69,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderGoogleVertexOpenAI:    {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderGoogleVertexAnthropic: {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderMistral:               {defaultMistralAPIKeyEnv},
+	ProviderRadius:                {defaultRadiusAPIKeyEnv},
 	ProviderOpenRouter:            {defaultOpenRouterAPIKeyEnv},
 	ProviderDeepSeek:              {"DEEPSEEK_API_KEY"},
 	ProviderGroq:                  {defaultGroqAPIKeyEnv},
