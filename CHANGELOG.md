@@ -30,6 +30,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   omitted for this route while cache keys and session affinity remain available.
 - Kimi Coding metadata now uses current estimated rates, adaptive-thinking
   controls, and empty-signature replay compatibility where supported.
+- Premature OpenAI Responses and Anthropic Messages stream endings now classify
+  as transient, retryable failures while preserving partial final messages;
+  applications continue to own post-body request retries.
 
 ## [0.6.0] - 2026-07-15
 

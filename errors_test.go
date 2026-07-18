@@ -263,6 +263,11 @@ func TestClassifyError(t *testing.T) {
 			class: ErrorClassProvider,
 		},
 		{
+			name:  "unclassified stream error",
+			err:   &Error{Code: ErrorStream, Message: "stream parser failed"},
+			class: ErrorClassProvider,
+		},
+		{
 			name:      "rate limit text wins over token overflow text on 429",
 			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 429, "", 0, []byte(`{"error":{"message":"Throttling error: Too many tokens, please wait before trying again."}}`), ErrProviderResponse),
 			class:     ErrorClassRateLimited,

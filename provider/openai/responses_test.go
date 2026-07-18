@@ -1821,6 +1821,13 @@ data: {"type":"response.output_text.delta","response_id":"resp_early","output_in
 	if got, want := final.ProviderMetadata["id"], "resp_early"; got != want {
 		t.Fatalf("response id = %v, want %v", got, want)
 	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if !classification.RetryHint.Retryable {
+		t.Fatal("early EOF was not retryable")
+	}
 }
 
 func TestResponsesStreamIncompleteFinalizesAsMaxTokens(t *testing.T) {

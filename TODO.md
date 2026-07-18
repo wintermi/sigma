@@ -49,6 +49,9 @@ cancellation/error coverage (see the coverage standards in
       validation, explicit handoff output coordinates, cache-hit usage
       fallbacks, local/custom streaming-usage defaults, request-scoped provider
       auth precedence, and cache-cost catalog checks.
+- [x] Classify premature OpenAI Responses and Anthropic Messages terminal-event
+      gaps as transient and retryable while preserving partial finals and
+      keeping post-body retry execution caller-owned.
 
 ## Image generation
 

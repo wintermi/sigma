@@ -2273,6 +2273,13 @@ data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text
 	if got, want := final.ProviderMetadata["id"], "msg_truncated"; got != want {
 		t.Fatalf("response id = %v, want %v", got, want)
 	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if !classification.RetryHint.Retryable {
+		t.Fatal("early EOF was not retryable")
+	}
 }
 
 func TestProviderErrorIsTypedAndRedacted(t *testing.T) {

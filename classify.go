@@ -114,7 +114,12 @@ func classifySigmaError(err error, sigmaErr *Error) ErrorClass {
 	switch sigmaErr.Code {
 	case ErrorInvalidOptions, ErrorUnsupported, ErrorProviderNotFound, ErrorModelNotFound, ErrorToolValidation, ErrorInvalidRequest, ErrorInvalidStreamEvent, ErrorStreamClosed:
 		return ErrorClassInvalidRequest
-	case ErrorProviderResponse, ErrorStream:
+	case ErrorProviderResponse:
+		return ErrorClassProvider
+	case ErrorStream:
+		if messageIndicatesPrematureProviderStreamTermination(sigmaErr.Message) {
+			return ErrorClassTransient
+		}
 		return ErrorClassProvider
 	case ErrorContextOverflow:
 		return ErrorClassContextOverflow
@@ -303,6 +308,11 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "internal error") ||
 		strings.Contains(message, "upstream connect") ||
 		strings.Contains(message, "connection refused")
+}
+
+func messageIndicatesPrematureProviderStreamTermination(message string) bool {
+	return strings.Contains(message, "stream ended before terminal response event") ||
+		strings.Contains(message, "stream ended before message_stop")
 }
 
 func messageIndicatesContextOverflow(message string) bool {
