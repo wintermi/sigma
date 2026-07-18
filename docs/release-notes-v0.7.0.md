@@ -11,7 +11,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 caller-directed stream recovery, refreshes the Kimi Coding, Fireworks, and
 selected OpenCode Go catalogs, and adds focused xAI OpenAI Responses
 registration and caller-configured device-code OAuth surfaces. It also adds a
-dynamic API-key Radius gateway text provider.
+dynamic API-key Radius gateway text provider and adds NVIDIA Nemotron 3 Ultra
+to the existing Fireworks text routes.
 
 ## Changed
 
@@ -36,6 +37,9 @@ dynamic API-key Radius gateway text provider.
   standard-serverless input, cached-input, and output pricing. Deterministic
   Messages coverage also protects cache-affinity headers and omitted unsupported
   tool fields.
+- NVIDIA Nemotron 3 Ultra NVFP4 is now available on the existing Fireworks Chat
+  Completions and Anthropic-compatible Messages routes with text-only input,
+  tool and reasoning support, current limits, and standard serverless pricing.
 - Premature OpenAI Responses and Anthropic Messages terminal-event gaps now
   surface as transient, retryable failures while preserving partial finals.
   Sigma does not re-dispatch a stream after its body begins; applications own

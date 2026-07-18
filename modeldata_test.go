@@ -97,13 +97,18 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataStrings(t, fireworksKimiCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
 
 	for _, tt := range []struct {
-		id            ModelID
-		inputCost     float64
-		outputCost    float64
-		cacheReadCost float64
+		id               ModelID
+		family           string
+		inputCost        float64
+		outputCost       float64
+		cacheReadCost    float64
+		contextWindow    int
+		maxOutputTokens  int
+		thinkingLevelMap map[ThinkingLevel]string
 	}{
-		{id: "accounts/fireworks/models/glm-5p2", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.14},
-		{id: "accounts/fireworks/routers/glm-5p2-fast", inputCost: 2.1, outputCost: 6.6, cacheReadCost: 0.21},
+		{id: "accounts/fireworks/models/glm-5p2", family: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.14},
+		{id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4", family: "nemotron", inputCost: 0.6, outputCost: 2.4, cacheReadCost: 0.12, contextWindow: 262144, maxOutputTokens: 32768, thinkingLevelMap: map[ThinkingLevel]string{ThinkingLevelLow: "none", ThinkingLevelMedium: "medium", ThinkingLevelHigh: "high"}},
+		{id: "accounts/fireworks/routers/glm-5p2-fast", family: "glm", inputCost: 2.1, outputCost: 6.6, cacheReadCost: 0.21},
 	} {
 		fireworksOpenAI, ok := registry.Model(ProviderFireworks, tt.id)
 		if !ok {
@@ -134,21 +139,32 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		}
 		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "fireworksSurface", "openai")
-		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "modelFamily", "glm")
+		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "modelFamily", tt.family)
 		if _, ok := fireworksOpenAI.ProviderMetadata["pricingStatus"]; ok {
 			t.Fatalf("Fireworks OpenAI-compatible %s retained unverified pricing metadata: %#v", tt.id, fireworksOpenAI.ProviderMetadata)
 		}
 		assertMetadataStrings(t, fireworksOpenAI.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
+		if tt.contextWindow != 0 && (fireworksOpenAI.ContextWindow != tt.contextWindow || fireworksOpenAI.MaxOutputTokens != tt.maxOutputTokens) {
+			t.Fatalf("Fireworks OpenAI-compatible %s limits = %d/%d, want %d/%d", tt.id, fireworksOpenAI.ContextWindow, fireworksOpenAI.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		for level, want := range tt.thinkingLevelMap {
+			if got, ok := fireworksOpenAI.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("Fireworks OpenAI-compatible %s thinking level %q = %q, %v; want %q, true", tt.id, level, got, ok, want)
+			}
+		}
 	}
 
 	fireworksAnthropicRows := []struct {
-		id            ModelID
-		family        string
-		wantImages    bool
-		wantRouter    bool
-		inputCost     float64
-		outputCost    float64
-		cacheReadCost float64
+		id               ModelID
+		family           string
+		wantImages       bool
+		wantRouter       bool
+		inputCost        float64
+		outputCost       float64
+		cacheReadCost    float64
+		contextWindow    int
+		maxOutputTokens  int
+		thinkingLevelMap map[ThinkingLevel]string
 	}{
 		{id: "accounts/fireworks/models/deepseek-v4-flash", family: "deepseek", inputCost: 0.14, outputCost: 0.28, cacheReadCost: 0.028},
 		{id: "accounts/fireworks/models/deepseek-v4-pro", family: "deepseek", inputCost: 1.74, outputCost: 3.48, cacheReadCost: 0.145},
@@ -159,6 +175,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{id: "accounts/fireworks/models/kimi-k2p7-code", family: "kimi", wantImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
 		{id: "accounts/fireworks/models/minimax-m2p7", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
 		{id: "accounts/fireworks/models/minimax-m3", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
+		{id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4", family: "nemotron", inputCost: 0.6, outputCost: 2.4, cacheReadCost: 0.12, contextWindow: 262144, maxOutputTokens: 32768, thinkingLevelMap: map[ThinkingLevel]string{ThinkingLevelLow: "none", ThinkingLevelMedium: "medium", ThinkingLevelHigh: "high"}},
 		{id: "accounts/fireworks/models/qwen3p7-plus", family: "qwen", wantImages: true, inputCost: 0.4, outputCost: 1.6, cacheReadCost: 0.08},
 		{id: "accounts/fireworks/routers/glm-5p1-fast", family: "glm", wantRouter: true, inputCost: 2.8, outputCost: 8.8, cacheReadCost: 0.52},
 		{id: "accounts/fireworks/routers/kimi-k2p6-fast", family: "kimi", wantImages: true, wantRouter: true, inputCost: 2, outputCost: 8, cacheReadCost: 0.3},
@@ -201,6 +218,14 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			t.Fatalf("Fireworks Anthropic %s retained unverified pricing metadata: %#v", id.id, fireworksAnthropic.ProviderMetadata)
 		}
 		assertMetadataStrings(t, fireworksAnthropic.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
+		if id.contextWindow != 0 && (fireworksAnthropic.ContextWindow != id.contextWindow || fireworksAnthropic.MaxOutputTokens != id.maxOutputTokens) {
+			t.Fatalf("Fireworks Anthropic %s limits = %d/%d, want %d/%d", id.id, fireworksAnthropic.ContextWindow, fireworksAnthropic.MaxOutputTokens, id.contextWindow, id.maxOutputTokens)
+		}
+		for level, want := range id.thinkingLevelMap {
+			if got, ok := fireworksAnthropic.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("Fireworks Anthropic %s thinking level %q = %q, %v; want %q, true", id.id, level, got, ok, want)
+			}
+		}
 		if id.wantRouter {
 			if got, ok := fireworksAnthropic.ProviderMetadata["router"].(bool); !ok || !got {
 				t.Fatalf("Fireworks Anthropic %s router metadata = %#v, want true", id.id, fireworksAnthropic.ProviderMetadata["router"])

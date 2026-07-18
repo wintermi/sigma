@@ -8552,6 +8552,47 @@
       }
     },
     {
+      "id": "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+      "name": "NVIDIA Nemotron 3 Ultra NVFP4 (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "none",
+        "medium": "medium",
+        "high": "high"
+      },
+      "cost": {
+        "inputPerMillion": 0.6,
+        "outputPerMillion": 2.4,
+        "cacheReadInputPerMillion": 0.12,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "nemotron"
+      }
+    },
+    {
       "id": "accounts/fireworks/routers/kimi-k2p6-turbo",
       "name": "Kimi K2.6 Turbo (Firepass)",
       "provider": "fireworks",
@@ -8720,6 +8761,47 @@
       "providerMetadata": {
         "fireworksSurface": "anthropic",
         "modelFamily": "deepseek"
+      }
+    },
+    {
+      "id": "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+      "name": "NVIDIA Nemotron 3 Ultra NVFP4 (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "none",
+        "medium": "medium",
+        "high": "high"
+      },
+      "cost": {
+        "inputPerMillion": 0.6,
+        "outputPerMillion": 2.4,
+        "cacheReadInputPerMillion": 0.12,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "budget"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "nemotron"
       }
     },
     {
