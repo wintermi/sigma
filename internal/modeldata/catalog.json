@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-18",
+  "snapshotDate": "2026-07-19",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -17224,6 +17224,35 @@
       }
     },
     {
+      "id": "grok-4.5",
+      "name": "Grok 4.5",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.5,
+        "currency": "USD"
+      },
+      "contextWindow": 500000,
+      "maxOutputTokens": 500000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok"
+      }
+    },
+    {
       "id": "kimi-k2.5",
       "name": "Kimi K2.5",
       "provider": "opencode-go",
@@ -17318,6 +17347,38 @@
       "openAICompletionsCompat": {
         "reasoningFormat": "reasoning_effort",
         "supportsRequiredToolChoice": "unsupported"
+      }
+    },
+    {
+      "id": "kimi-k3",
+      "name": "Kimi K3",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
       }
     },
     {

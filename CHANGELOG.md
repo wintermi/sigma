@@ -19,6 +19,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated Kimi Coding metadata now includes K3 and Kimi For Coding HighSpeed
   with reviewed context, output, image-input, tool, reasoning, and estimated
   cost metadata.
+- Generated OpenCode Go metadata now includes Grok 4.5 and Kimi K3 on Chat
+  Completions, with reviewed text/image, tool, reasoning, limit, pricing, and
+  `max_tokens` metadata.
 
 ### Changed
 

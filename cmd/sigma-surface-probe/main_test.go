@@ -369,6 +369,17 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 	if !hasRepairVariant(kimi26Cases, "reasoning_effort_high") {
 		t.Fatal("OpenCode Go Kimi K2.6 should probe reasoning_effort")
 	}
+
+	kimiK3 := discoveredOpenCodeModel(route, "kimi-k3")
+	k3Cases := openAICompatibleProbeCases(route, kimiK3)
+	for _, name := range []string{"thinking_string_none", "thinking_object_disabled", "thinking_bool_false", "enable_thinking_false"} {
+		if hasRepairVariant(k3Cases, name) {
+			t.Fatalf("OpenCode Go Kimi K3 should not probe raw thinking control %q", name)
+		}
+	}
+	if !hasRepairVariant(k3Cases, "reasoning_effort_high") {
+		t.Fatal("OpenCode Go Kimi K3 should probe reasoning_effort")
+	}
 }
 
 func TestMoonshotK27ProbeCasesSkipDisabledThinkingControls(t *testing.T) {

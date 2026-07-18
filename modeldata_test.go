@@ -1041,6 +1041,50 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got, ok := openCodeGoGLM.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("OpenCode Go GLM-5.2 xhigh thinking level = %q, %v; want max, true", got, ok)
 	}
+	for _, tt := range []struct {
+		id              ModelID
+		contextWindow   int
+		maxOutputTokens int
+		inputCost       float64
+		outputCost      float64
+		cacheReadCost   float64
+		family          string
+		reasoningEffort bool
+	}{
+		{
+			id: "grok-4.5", contextWindow: 500_000, maxOutputTokens: 500_000,
+			inputCost: 2, outputCost: 6, cacheReadCost: 0.5, family: "grok",
+		},
+		{
+			id: "kimi-k3", contextWindow: 1_048_576, maxOutputTokens: 131_072,
+			inputCost: 3, outputCost: 15, cacheReadCost: 0.3, family: "kimi", reasoningEffort: true,
+		},
+	} {
+		model, ok := registry.Model(ProviderOpenCodeGo, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing generated OpenCode Go model %s", tt.id)
+		}
+		if model.API != APIOpenAICompletions || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
+			t.Fatalf("OpenCode Go %s capabilities = %+v", tt.id, model)
+		}
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
+			t.Fatalf("OpenCode Go %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost {
+			t.Fatalf("OpenCode Go %s costs = %v/%v/%v, want %v/%v/%v", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
+		}
+		if tt.reasoningEffort {
+			if model.OpenAICompletionsCompat == nil ||
+				model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningEffort {
+				t.Fatalf("OpenCode Go %s compat = %#v, want reasoning effort", tt.id, model.OpenAICompletionsCompat)
+			}
+		} else if model.OpenAICompletionsCompat != nil {
+			t.Fatalf("OpenCode Go %s compat = %#v, want ordinary OpenCode compatibility", tt.id, model.OpenAICompletionsCompat)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.family)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
+	}
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m3", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)

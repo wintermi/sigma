@@ -212,6 +212,22 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			maxTokens:   321,
 		},
 		{
+			name:        "grok uses chat completions and max tokens",
+			modelID:     "grok-4.5",
+			wantPath:    "/chat/completions",
+			wantAuthKey: "Authorization",
+			response:    chatCompletedEvent,
+			maxTokens:   321,
+		},
+		{
+			name:        "kimi k3 uses chat completions and max tokens",
+			modelID:     "kimi-k3",
+			wantPath:    "/chat/completions",
+			wantAuthKey: "Authorization",
+			response:    chatCompletedEvent,
+			maxTokens:   321,
+		},
+		{
 			name:        "qwen uses anthropic messages",
 			modelID:     "qwen3.7-plus",
 			wantPath:    "/messages",

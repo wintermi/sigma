@@ -1176,7 +1176,7 @@ func applyDiscoveredOpenCodeCompat(model *sigma.Model, routeName string, id stri
 		return
 	}
 	switch id {
-	case "kimi-k2.6":
+	case "kimi-k2.6", "kimi-k3":
 		model.OpenAICompletionsCompat = &sigma.OpenAICompletionsCompat{
 			ReasoningFormat: sigma.OpenAICompletionsReasoningEffort,
 		}

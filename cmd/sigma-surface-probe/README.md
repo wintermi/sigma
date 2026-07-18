@@ -61,7 +61,7 @@ Probe only OpenCode Zen with a known model:
 ```bash
 OPENCODE_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes zen \
-  -models kimi-k2.6 \
+  -models kimi-k3 \
   -repair
 ```
 
@@ -70,7 +70,7 @@ Probe only OpenCode Go with a known model:
 ```bash
 OPENCODE_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes go \
-  -models kimi-k2.6 \
+  -models kimi-k3 \
   -repair
 ```
 
