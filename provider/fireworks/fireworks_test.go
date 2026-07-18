@@ -103,6 +103,68 @@ func TestCompleteStreamsTextWithFireworksAnthropicDefaults(t *testing.T) {
 	assertJSONPath(t, request.Body, []string{"model"}, "accounts/fireworks/models/kimi-k2p6")
 }
 
+func TestAnthropicDefaultsPreserveFireworksCacheCompatibility(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeAnthropicCompleted(t, w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := fireworksAnthropicTestModel()
+	registry := sigma.NewRegistry()
+	if err := fireworks.RegisterAnthropic(registry, fireworks.WithAnthropicBaseURL(server.URL)); err != nil {
+		t.Fatalf("RegisterAnthropic returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	request := sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("look up the value")},
+		Tools: []sigma.Tool{{
+			Name:        "lookup",
+			Description: "Look up a value",
+			InputSchema: sigma.Schema{"type": "object"},
+		}},
+	}
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		request,
+		sigma.WithAPIKey("request-key"),
+		sigma.WithCacheRetention(sigma.CacheRetentionShort),
+		sigma.WithSessionID("fireworks-session"),
+	)
+	if err != nil {
+		t.Fatalf("Complete with cached request returned error: %v", err)
+	}
+	first := receiveRequest(t, requests)
+	assertHeader(t, first.Headers, "X-Session-Affinity", "fireworks-session")
+	assertJSONPath(t, first.Body, []string{"tools", "0", "name"}, "lookup")
+	assertNoJSONPath(t, first.Body, []string{"tools", "0", "cache_control"})
+	assertNoJSONPath(t, first.Body, []string{"tools", "0", "eager_input_streaming"})
+
+	_, err = client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("look up the value")}},
+		sigma.WithAPIKey("request-key"),
+		sigma.WithCacheRetention(sigma.CacheRetentionNone),
+		sigma.WithSessionID("fireworks-session"),
+	)
+	if err != nil {
+		t.Fatalf("Complete without cache retention returned error: %v", err)
+	}
+	second := receiveRequest(t, requests)
+	if got := second.Headers.Get("X-Session-Affinity"); got != "" {
+		t.Fatalf("X-Session-Affinity without cache retention = %q, want empty", got)
+	}
+}
+
 func TestCompleteStreamsTextWithFireworksDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -482,15 +544,21 @@ func assertNoJSONPath(t *testing.T, data []byte, path []string) {
 	}
 	current := value
 	for _, segment := range path {
-		object, ok := current.(map[string]any)
-		if !ok {
+		switch typed := current.(type) {
+		case map[string]any:
+			next, ok := typed[segment]
+			if !ok {
+				return
+			}
+			current = next
+		case []any:
+			if segment != "0" || len(typed) == 0 {
+				return
+			}
+			current = typed[0]
+		default:
 			return
 		}
-		next, ok := object[segment]
-		if !ok {
-			return
-		}
-		current = next
 	}
 	t.Fatalf("JSON path %s was present", strings.Join(path, "."))
 }

@@ -570,9 +570,12 @@ evidence bar.
 - [x] Promote focused Fireworks OpenAI-compatible and Anthropic-compatible
       metadata after matching deterministic modeldata and compatibility
       coverage exists.
-- [ ] Keep broader Fireworks metadata, payload, error, and live-provider
-      coverage deferred until specific routes need evidence beyond the shared
-      adapters.
+- [x] Record verified standard-serverless input, cached-input, and output
+      pricing for the curated Fireworks routes, with deterministic request
+      coverage for Messages cache affinity and tool compatibility.
+- [ ] Keep broader Fireworks catalog discovery, unrequested payload/error
+      behavior, and live-provider coverage deferred until specific routes need
+      evidence beyond the shared adapters.
 
 ## Google parity
 

@@ -54,8 +54,10 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		fireworks.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningFireworks {
 		t.Fatalf("Fireworks reasoning compat = %#v, want fireworks format", fireworks.OpenAICompletionsCompat)
 	}
-	if fireworks.InputCostPerMillion != 0 || fireworks.OutputCostPerMillion != 0 {
-		t.Fatalf("Fireworks Fire Pass costs = input %v output %v, want zero", fireworks.InputCostPerMillion, fireworks.OutputCostPerMillion)
+	if fireworks.InputCostPerMillion != 2 || fireworks.OutputCostPerMillion != 8 ||
+		fireworks.CacheReadInputCostPerMillion != 0.3 {
+		t.Fatalf("Fireworks Fire Pass costs = %v/%v/%v, want 2/8/0.3",
+			fireworks.InputCostPerMillion, fireworks.OutputCostPerMillion, fireworks.CacheReadInputCostPerMillion)
 	}
 	if got, ok := fireworks.ProviderMetadata["firepass"].(bool); !ok || !got {
 		t.Fatalf("Fireworks firepass metadata = %#v, want true", fireworks.ProviderMetadata["firepass"])
@@ -82,62 +84,86 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		fireworksKimiCode.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
 		t.Fatalf("Fireworks Kimi K2.7 Code compat = %#v, want Fireworks OpenAI completions compat", fireworksKimiCode.OpenAICompletionsCompat)
 	}
+	if fireworksKimiCode.InputCostPerMillion != 0.95 || fireworksKimiCode.OutputCostPerMillion != 4 ||
+		fireworksKimiCode.CacheReadInputCostPerMillion != 0.19 {
+		t.Fatalf("Fireworks Kimi K2.7 Code costs = %v/%v/%v, want 0.95/4/0.19",
+			fireworksKimiCode.InputCostPerMillion, fireworksKimiCode.OutputCostPerMillion, fireworksKimiCode.CacheReadInputCostPerMillion)
+	}
 	assertMetadataString(t, fireworksKimiCode.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 	assertMetadataString(t, fireworksKimiCode.ProviderMetadata, "fireworksSurface", "openai")
-	assertMetadataString(t, fireworksKimiCode.ProviderMetadata, "pricingStatus", "unverified")
+	if _, ok := fireworksKimiCode.ProviderMetadata["pricingStatus"]; ok {
+		t.Fatalf("Fireworks Kimi K2.7 Code retained unverified pricing metadata: %#v", fireworksKimiCode.ProviderMetadata)
+	}
 	assertMetadataStrings(t, fireworksKimiCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
 
-	for _, id := range []ModelID{
-		"accounts/fireworks/models/glm-5p2",
-		"accounts/fireworks/routers/glm-5p2-fast",
+	for _, tt := range []struct {
+		id            ModelID
+		inputCost     float64
+		outputCost    float64
+		cacheReadCost float64
+	}{
+		{id: "accounts/fireworks/models/glm-5p2", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.14},
+		{id: "accounts/fireworks/routers/glm-5p2-fast", inputCost: 2.1, outputCost: 6.6, cacheReadCost: 0.21},
 	} {
-		fireworksOpenAI, ok := registry.Model(ProviderFireworks, id)
+		fireworksOpenAI, ok := registry.Model(ProviderFireworks, tt.id)
 		if !ok {
-			t.Fatalf("fresh registry missing generated Fireworks OpenAI-compatible model %s", id)
+			t.Fatalf("fresh registry missing generated Fireworks OpenAI-compatible model %s", tt.id)
 		}
 		if fireworksOpenAI.API != APIOpenAICompletions {
-			t.Fatalf("Fireworks OpenAI-compatible %s API = %q, want %q", id, fireworksOpenAI.API, APIOpenAICompletions)
+			t.Fatalf("Fireworks OpenAI-compatible %s API = %q, want %q", tt.id, fireworksOpenAI.API, APIOpenAICompletions)
 		}
 		if !fireworksOpenAI.SupportsTools || fireworksOpenAI.SupportsImages() {
-			t.Fatalf("Fireworks OpenAI-compatible %s capabilities = %+v, want tools without image input", id, fireworksOpenAI)
+			t.Fatalf("Fireworks OpenAI-compatible %s capabilities = %+v, want tools without image input", tt.id, fireworksOpenAI)
 		}
 		if !fireworksOpenAI.SupportsReasoning() || !fireworksOpenAI.SupportsThinkingLevel(ThinkingLevelMedium) {
-			t.Fatalf("Fireworks OpenAI-compatible %s reasoning metadata was not generated: %+v", id, fireworksOpenAI)
+			t.Fatalf("Fireworks OpenAI-compatible %s reasoning metadata was not generated: %+v", tt.id, fireworksOpenAI)
 		}
 		if fireworksOpenAI.OpenAICompletionsCompat == nil ||
 			fireworksOpenAI.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningFireworks ||
 			fireworksOpenAI.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
 			fireworksOpenAI.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
 			fireworksOpenAI.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
-			t.Fatalf("Fireworks OpenAI-compatible %s compat = %#v, want Fireworks OpenAI completions compat", id, fireworksOpenAI.OpenAICompletionsCompat)
+			t.Fatalf("Fireworks OpenAI-compatible %s compat = %#v, want Fireworks OpenAI completions compat", tt.id, fireworksOpenAI.OpenAICompletionsCompat)
+		}
+		if fireworksOpenAI.InputCostPerMillion != tt.inputCost ||
+			fireworksOpenAI.OutputCostPerMillion != tt.outputCost ||
+			fireworksOpenAI.CacheReadInputCostPerMillion != tt.cacheReadCost {
+			t.Fatalf("Fireworks OpenAI-compatible %s costs = %v/%v/%v, want %v/%v/%v", tt.id,
+				fireworksOpenAI.InputCostPerMillion, fireworksOpenAI.OutputCostPerMillion, fireworksOpenAI.CacheReadInputCostPerMillion,
+				tt.inputCost, tt.outputCost, tt.cacheReadCost)
 		}
 		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "fireworksSurface", "openai")
 		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "modelFamily", "glm")
-		assertMetadataString(t, fireworksOpenAI.ProviderMetadata, "pricingStatus", "unverified")
+		if _, ok := fireworksOpenAI.ProviderMetadata["pricingStatus"]; ok {
+			t.Fatalf("Fireworks OpenAI-compatible %s retained unverified pricing metadata: %#v", tt.id, fireworksOpenAI.ProviderMetadata)
+		}
 		assertMetadataStrings(t, fireworksOpenAI.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
 	}
 
 	fireworksAnthropicRows := []struct {
-		id         ModelID
-		family     string
-		wantImages bool
-		wantRouter bool
+		id            ModelID
+		family        string
+		wantImages    bool
+		wantRouter    bool
+		inputCost     float64
+		outputCost    float64
+		cacheReadCost float64
 	}{
-		{id: "accounts/fireworks/models/deepseek-v4-flash", family: "deepseek"},
-		{id: "accounts/fireworks/models/deepseek-v4-pro", family: "deepseek"},
-		{id: "accounts/fireworks/models/glm-5p1", family: "glm"},
-		{id: "accounts/fireworks/models/gpt-oss-120b", family: "gpt-oss"},
-		{id: "accounts/fireworks/models/gpt-oss-20b", family: "gpt-oss"},
-		{id: "accounts/fireworks/models/kimi-k2p6", family: "kimi", wantImages: true},
-		{id: "accounts/fireworks/models/kimi-k2p7-code", family: "kimi", wantImages: true},
-		{id: "accounts/fireworks/models/minimax-m2p7", family: "minimax"},
-		{id: "accounts/fireworks/models/minimax-m3", family: "minimax"},
-		{id: "accounts/fireworks/models/qwen3p7-plus", family: "qwen", wantImages: true},
-		{id: "accounts/fireworks/routers/glm-5p1-fast", family: "glm", wantRouter: true},
-		{id: "accounts/fireworks/routers/kimi-k2p6-fast", family: "kimi", wantImages: true, wantRouter: true},
-		{id: "accounts/fireworks/routers/kimi-k2p6-turbo", family: "kimi", wantImages: true, wantRouter: true},
-		{id: "accounts/fireworks/routers/kimi-k2p7-code-fast", family: "kimi", wantImages: true, wantRouter: true},
+		{id: "accounts/fireworks/models/deepseek-v4-flash", family: "deepseek", inputCost: 0.14, outputCost: 0.28, cacheReadCost: 0.028},
+		{id: "accounts/fireworks/models/deepseek-v4-pro", family: "deepseek", inputCost: 1.74, outputCost: 3.48, cacheReadCost: 0.145},
+		{id: "accounts/fireworks/models/glm-5p1", family: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.26},
+		{id: "accounts/fireworks/models/gpt-oss-120b", family: "gpt-oss", inputCost: 0.15, outputCost: 0.6, cacheReadCost: 0.015},
+		{id: "accounts/fireworks/models/gpt-oss-20b", family: "gpt-oss", inputCost: 0.07, outputCost: 0.3, cacheReadCost: 0.035},
+		{id: "accounts/fireworks/models/kimi-k2p6", family: "kimi", wantImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.16},
+		{id: "accounts/fireworks/models/kimi-k2p7-code", family: "kimi", wantImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
+		{id: "accounts/fireworks/models/minimax-m2p7", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
+		{id: "accounts/fireworks/models/minimax-m3", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
+		{id: "accounts/fireworks/models/qwen3p7-plus", family: "qwen", wantImages: true, inputCost: 0.4, outputCost: 1.6, cacheReadCost: 0.08},
+		{id: "accounts/fireworks/routers/glm-5p1-fast", family: "glm", wantRouter: true, inputCost: 2.8, outputCost: 8.8, cacheReadCost: 0.52},
+		{id: "accounts/fireworks/routers/kimi-k2p6-fast", family: "kimi", wantImages: true, wantRouter: true, inputCost: 2, outputCost: 8, cacheReadCost: 0.3},
+		{id: "accounts/fireworks/routers/kimi-k2p6-turbo", family: "kimi", wantImages: true, wantRouter: true, inputCost: 2, outputCost: 8, cacheReadCost: 0.3},
+		{id: "accounts/fireworks/routers/kimi-k2p7-code-fast", family: "kimi", wantImages: true, wantRouter: true, inputCost: 1.9, outputCost: 8, cacheReadCost: 0.38},
 	}
 	for _, id := range fireworksAnthropicRows {
 		fireworksAnthropic, ok := registry.Model(ProviderFireworksAnthropic, id.id)
@@ -161,10 +187,19 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			fireworksAnthropic.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingBudget {
 			t.Fatalf("Fireworks Anthropic %s compat = %#v, want Messages compatibility overrides", id.id, fireworksAnthropic.AnthropicMessagesCompat)
 		}
+		if fireworksAnthropic.InputCostPerMillion != id.inputCost ||
+			fireworksAnthropic.OutputCostPerMillion != id.outputCost ||
+			fireworksAnthropic.CacheReadInputCostPerMillion != id.cacheReadCost {
+			t.Fatalf("Fireworks Anthropic %s costs = %v/%v/%v, want %v/%v/%v", id.id,
+				fireworksAnthropic.InputCostPerMillion, fireworksAnthropic.OutputCostPerMillion, fireworksAnthropic.CacheReadInputCostPerMillion,
+				id.inputCost, id.outputCost, id.cacheReadCost)
+		}
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "fireworksSurface", "anthropic")
 		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "modelFamily", id.family)
-		assertMetadataString(t, fireworksAnthropic.ProviderMetadata, "pricingStatus", "unverified")
+		if _, ok := fireworksAnthropic.ProviderMetadata["pricingStatus"]; ok {
+			t.Fatalf("Fireworks Anthropic %s retained unverified pricing metadata: %#v", id.id, fireworksAnthropic.ProviderMetadata)
+		}
 		assertMetadataStrings(t, fireworksAnthropic.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
 		if id.wantRouter {
 			if got, ok := fireworksAnthropic.ProviderMetadata["router"].(bool); !ok || !got {

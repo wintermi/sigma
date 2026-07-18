@@ -8527,8 +8527,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.14,
         "currency": "USD"
       },
       "contextWindow": 1048575,
@@ -8547,8 +8548,7 @@
       "providerMetadata": {
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
-        "modelFamily": "glm",
-        "pricingStatus": "unverified"
+        "modelFamily": "glm"
       }
     },
     {
@@ -8569,8 +8569,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 2,
+        "outputPerMillion": 8,
+        "cacheReadInputPerMillion": 0.3,
         "currency": "USD"
       },
       "contextWindow": 256000,
@@ -8613,8 +8614,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 6.6,
+        "cacheReadInputPerMillion": 0.21,
         "currency": "USD"
       },
       "contextWindow": 1048575,
@@ -8634,7 +8636,6 @@
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
         "modelFamily": "glm",
-        "pricingStatus": "unverified",
         "router": true
       }
     },
@@ -8656,8 +8657,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.19,
         "currency": "USD"
       },
       "contextWindow": 262144,
@@ -8676,8 +8678,7 @@
       "providerMetadata": {
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
-        "modelFamily": "kimi",
-        "pricingStatus": "unverified"
+        "modelFamily": "kimi"
       }
     },
     {
@@ -8697,8 +8698,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.14,
+        "outputPerMillion": 0.28,
+        "cacheReadInputPerMillion": 0.028,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -8717,8 +8719,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek",
-        "pricingStatus": "unverified"
+        "modelFamily": "deepseek"
       }
     },
     {
@@ -8738,8 +8739,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.74,
+        "outputPerMillion": 3.48,
+        "cacheReadInputPerMillion": 0.145,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -8758,8 +8760,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek",
-        "pricingStatus": "unverified"
+        "modelFamily": "deepseek"
       }
     },
     {
@@ -8779,8 +8780,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
         "currency": "USD"
       },
       "contextWindow": 202800,
@@ -8799,8 +8801,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "glm",
-        "pricingStatus": "unverified"
+        "modelFamily": "glm"
       }
     },
     {
@@ -8820,8 +8821,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.015,
         "currency": "USD"
       },
       "contextWindow": 131072,
@@ -8840,8 +8842,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "gpt-oss",
-        "pricingStatus": "unverified"
+        "modelFamily": "gpt-oss"
       }
     },
     {
@@ -8861,8 +8862,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.07,
+        "outputPerMillion": 0.3,
+        "cacheReadInputPerMillion": 0.035,
         "currency": "USD"
       },
       "contextWindow": 131072,
@@ -8881,8 +8883,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "gpt-oss",
-        "pricingStatus": "unverified"
+        "modelFamily": "gpt-oss"
       }
     },
     {
@@ -8903,8 +8904,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.16,
         "currency": "USD"
       },
       "contextWindow": 262000,
@@ -8923,8 +8925,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "kimi",
-        "pricingStatus": "unverified"
+        "modelFamily": "kimi"
       }
     },
     {
@@ -8945,8 +8946,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.19,
         "currency": "USD"
       },
       "contextWindow": 262144,
@@ -8965,8 +8967,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "kimi",
-        "pricingStatus": "unverified"
+        "modelFamily": "kimi"
       }
     },
     {
@@ -8986,8 +8987,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.06,
         "currency": "USD"
       },
       "contextWindow": 196608,
@@ -9006,8 +9008,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "minimax",
-        "pricingStatus": "unverified"
+        "modelFamily": "minimax"
       }
     },
     {
@@ -9027,8 +9028,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.06,
         "currency": "USD"
       },
       "contextWindow": 512000,
@@ -9047,8 +9049,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "minimax",
-        "pricingStatus": "unverified"
+        "modelFamily": "minimax"
       }
     },
     {
@@ -9069,8 +9070,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.4,
+        "outputPerMillion": 1.6,
+        "cacheReadInputPerMillion": 0.08,
         "currency": "USD"
       },
       "contextWindow": 262144,
@@ -9089,8 +9091,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "qwen",
-        "pricingStatus": "unverified"
+        "modelFamily": "qwen"
       }
     },
     {
@@ -9110,8 +9111,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 2.8,
+        "outputPerMillion": 8.8,
+        "cacheReadInputPerMillion": 0.52,
         "currency": "USD"
       },
       "contextWindow": 202800,
@@ -9131,7 +9133,6 @@
       "providerMetadata": {
         "fireworksSurface": "anthropic",
         "modelFamily": "glm",
-        "pricingStatus": "unverified",
         "router": true
       }
     },
@@ -9153,8 +9154,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 2,
+        "outputPerMillion": 8,
+        "cacheReadInputPerMillion": 0.3,
         "currency": "USD"
       },
       "contextWindow": 262000,
@@ -9174,7 +9176,6 @@
       "providerMetadata": {
         "fireworksSurface": "anthropic",
         "modelFamily": "kimi",
-        "pricingStatus": "unverified",
         "router": true
       }
     },
@@ -9196,8 +9197,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 2,
+        "outputPerMillion": 8,
+        "cacheReadInputPerMillion": 0.3,
         "currency": "USD"
       },
       "contextWindow": 262000,
@@ -9217,7 +9219,6 @@
       "providerMetadata": {
         "fireworksSurface": "anthropic",
         "modelFamily": "kimi",
-        "pricingStatus": "unverified",
         "router": true
       }
     },
@@ -9239,8 +9240,9 @@
         "high"
       ],
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.9,
+        "outputPerMillion": 8,
+        "cacheReadInputPerMillion": 0.38,
         "currency": "USD"
       },
       "contextWindow": 262000,
@@ -9260,7 +9262,6 @@
       "providerMetadata": {
         "fireworksSurface": "anthropic",
         "modelFamily": "kimi",
-        "pricingStatus": "unverified",
         "router": true
       }
     },

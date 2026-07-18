@@ -8,9 +8,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 ## Release summary
 
 `sigma` v0.7.0 hardens existing provider protocol compatibility and
-caller-directed stream recovery, refreshes the Kimi Coding and selected
-OpenCode Go catalogs, and adds focused xAI OpenAI Responses registration and
-caller-configured device-code OAuth surfaces.
+caller-directed stream recovery, refreshes the Kimi Coding, Fireworks, and
+selected OpenCode Go catalogs, and adds focused xAI OpenAI Responses
+registration and caller-configured device-code OAuth surfaces.
 
 ## Changed
 
@@ -31,6 +31,10 @@ caller-configured device-code OAuth surfaces.
 - OpenCode Go now includes Grok 4.5 and Kimi K3 on Chat Completions with
   text/image, tool, reasoning, context, output, pricing, and `max_tokens`
   metadata.
+- Curated Fireworks Chat Completions and Messages models now include verified
+  standard-serverless input, cached-input, and output pricing. Deterministic
+  Messages coverage also protects cache-affinity headers and omitted unsupported
+  tool fields.
 - Premature OpenAI Responses and Anthropic Messages terminal-event gaps now
   surface as transient, retryable failures while preserving partial finals.
   Sigma does not re-dispatch a stream after its body begins; applications own
