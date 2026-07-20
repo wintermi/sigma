@@ -19,9 +19,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated Kimi Coding metadata now includes K3 and Kimi For Coding HighSpeed
   with reviewed context, output, image-input, tool, reasoning, and estimated
   cost metadata.
-- Generated OpenCode Go metadata now includes Grok 4.5 and Kimi K3 on Chat
-  Completions, with reviewed text/image, tool, reasoning, limit, pricing, and
-  `max_tokens` metadata.
+- Generated OpenCode Go metadata now routes Grok 4.5 through OpenAI Responses
+  and Kimi K3 through Chat Completions, with reviewed text/image, tool,
+  reasoning, limit, and pricing metadata.
 - Radius gateway now has a first-class API-key-authenticated text provider that
   refreshes gateway-owned model metadata at runtime and supports native
   streaming, replay, usage, and response IDs without adding a static catalog.

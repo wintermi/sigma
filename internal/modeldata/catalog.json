@@ -17332,7 +17332,8 @@
       ],
       "defaultTransport": "sse",
       "providerMetadata": {
-        "modelFamily": "grok"
+        "modelFamily": "grok",
+        "opencodeAPI": "openai-responses"
       }
     },
     {

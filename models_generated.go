@@ -14523,6 +14523,7 @@ var builtinTextModels = []Model{
 			"baseURL":             "https://opencode.ai/zen/go/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
+			"opencodeAPI":         "openai-responses",
 		},
 	},
 	{

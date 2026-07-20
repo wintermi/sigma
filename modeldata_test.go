@@ -1145,6 +1145,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.family)
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
 	}
+	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "grok-4.5", APIOpenAIResponses)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m3", APIAnthropicMessages)
 	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)

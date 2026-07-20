@@ -34,9 +34,9 @@ Ultra to the existing Fireworks text routes.
   context, output, image-input, tool, reasoning, and estimated cost metadata.
   K3 exposes its supported `max` reasoning level, while K3 and Kimi For Coding
   preserve empty thinking signatures during replay.
-- OpenCode Go now includes Grok 4.5 and Kimi K3 on Chat Completions with
-  text/image, tool, reasoning, context, output, pricing, and `max_tokens`
-  metadata.
+- OpenCode Go routes Grok 4.5 through OpenAI Responses and Kimi K3 through
+  Chat Completions, with reviewed text/image, tool, reasoning, context,
+  output, and pricing metadata.
 - Curated Fireworks Chat Completions and Messages models now include verified
   standard-serverless input, cached-input, and output pricing. Deterministic
   Messages coverage also protects cache-affinity headers and omitted unsupported
@@ -62,9 +62,9 @@ Ultra to the existing Fireworks text routes.
   serialized-message shapes.
 - `ProviderKimiCoding` retains its existing registration API while its built-in
   model catalog expands; no serialized-message shape changes.
-- `ProviderOpenCodeGo` retains its existing registration API and request route;
-  the built-in catalog adds two Chat Completions models without changing
-  serialized-message shapes.
+- `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
+  catalog row now uses the existing Responses dispatch path, while Kimi K3
+  remains on Chat Completions.
 - `ProviderRadius` is a new opt-in registration. Its models are empty until an
   explicit refresh succeeds; requests use standard API-key resolver precedence
   with `RADIUS_API_KEY` as the environment fallback. OAuth and persisted

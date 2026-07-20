@@ -541,8 +541,8 @@ still be promoted only with deterministic evidence.
       Terra, DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7 Code,
       MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free, including
       cached Responses request-ID affinity compatibility.
-- [x] Add OpenCode Go Grok 4.5 and Kimi K3 Chat Completions metadata with
-      deterministic generated-registry and request-shape coverage.
+- [x] Add OpenCode Go Grok 4.5 OpenAI Responses and Kimi K3 Chat Completions
+      metadata with deterministic generated-registry and request-shape coverage.
 - [ ] Continue reviewing later OpenCode Zen and OpenCode Go catalog changes,
       prioritizing high-value routed families and avoiding advertised-but-
       unavailable models.

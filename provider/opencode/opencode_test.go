@@ -202,6 +202,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 		wantAuthKey string
 		response    string
 		maxTokens   int
+		maxTokenKey string
 	}{
 		{
 			name:        "glm uses chat completions and max tokens",
@@ -210,14 +211,16 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			wantAuthKey: "Authorization",
 			response:    chatCompletedEvent,
 			maxTokens:   321,
+			maxTokenKey: "max_tokens",
 		},
 		{
-			name:        "grok uses chat completions and max tokens",
+			name:        "grok uses responses and max output tokens",
 			modelID:     "grok-4.5",
-			wantPath:    "/chat/completions",
+			wantPath:    "/responses",
 			wantAuthKey: "Authorization",
-			response:    chatCompletedEvent,
+			response:    responsesCompletedEvent,
 			maxTokens:   321,
+			maxTokenKey: "max_output_tokens",
 		},
 		{
 			name:        "kimi k3 uses chat completions and max tokens",
@@ -226,6 +229,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			wantAuthKey: "Authorization",
 			response:    chatCompletedEvent,
 			maxTokens:   321,
+			maxTokenKey: "max_tokens",
 		},
 		{
 			name:        "qwen uses anthropic messages",
@@ -253,7 +257,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			if tt.maxTokens != 0 {
 				opts = append(opts, sigma.WithMaxTokens(tt.maxTokens))
 			}
-			_, err := client.Complete(
+			message, err := client.Complete(
 				context.Background(),
 				sigma.Model{Provider: sigma.ProviderOpenCodeGo, ID: tt.modelID},
 				sigma.Request{Messages: []sigma.Message{sigma.UserText("Reply with ok.")}},
@@ -261,6 +265,9 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			)
 			if err != nil {
 				t.Fatalf("Complete returned error: %v", err)
+			}
+			if len(message.Content) != 1 || message.Content[0].Text != "ok" {
+				t.Fatalf("parsed completion content = %#v, want one text block containing ok", message.Content)
 			}
 
 			request := receiveRequest(t, requests)
@@ -275,11 +282,16 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 				if err := json.Unmarshal(request.Body, &body); err != nil {
 					t.Fatalf("Unmarshal request body: %v", err)
 				}
-				if got, ok := body["max_tokens"].(float64); !ok || got != float64(tt.maxTokens) {
-					t.Fatalf("max_tokens = %v, %v; want %d, true", got, ok, tt.maxTokens)
+				if got, ok := body[tt.maxTokenKey].(float64); !ok || got != float64(tt.maxTokens) {
+					t.Fatalf("%s = %v, %v; want %d, true", tt.maxTokenKey, got, ok, tt.maxTokens)
 				}
 				if _, ok := body["max_completion_tokens"]; ok {
 					t.Fatalf("request body unexpectedly includes max_completion_tokens: %s", request.Body)
+				}
+				if tt.maxTokenKey == "max_output_tokens" {
+					if _, ok := body["max_tokens"]; ok {
+						t.Fatalf("Responses request unexpectedly includes max_tokens: %s", request.Body)
+					}
 				}
 			}
 		})
