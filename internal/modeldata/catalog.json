@@ -15483,7 +15483,7 @@
           }
         ]
       },
-      "contextWindow": 372000,
+      "contextWindow": 272000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -15531,7 +15531,7 @@
           }
         ]
       },
-      "contextWindow": 372000,
+      "contextWindow": 272000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -15579,7 +15579,7 @@
           }
         ]
       },
-      "contextWindow": 372000,
+      "contextWindow": 272000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [

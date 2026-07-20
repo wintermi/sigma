@@ -8,18 +8,22 @@ checklist see [RELEASING.md](../RELEASING.md).
 ## Release summary
 
 `sigma` v0.7.0 hardens existing provider protocol compatibility and
-caller-directed stream recovery, refreshes the Kimi Coding, Fireworks, and
-selected OpenCode Go catalogs, and adds focused xAI OpenAI Responses
-registration and caller-configured device-code OAuth surfaces. It also adds a
-dynamic API-key Radius gateway text provider and adds NVIDIA Nemotron 3 Ultra
-to the existing Fireworks text routes.
+caller-directed stream recovery, including reliable sessionless Codex WebSocket
+request IDs and corrected Codex GPT-5.6 context limits. It refreshes the Kimi
+Coding, Fireworks, and selected OpenCode Go catalogs, adds focused xAI OpenAI
+Responses registration and caller-configured device-code OAuth surfaces, and
+adds a dynamic API-key Radius gateway text provider plus NVIDIA Nemotron 3
+Ultra to the existing Fireworks text routes.
 
 ## Changed
 
 - Codex request-affinity headers now limit session IDs to 64 characters while
-  preserving local session resource management. OpenRouter uses its native
-  cache-affinity header, and Bedrock terminal responses with unrecognised stop
-  reasons now surface typed provider errors.
+  preserving local session resource management. Sessionless WebSocket
+  handshakes now use monotonic UUIDv7 request IDs, and GPT-5.6 Codex models use
+  their 272K context limit so unavailable long-context budgets and price tiers
+  are not selected. OpenRouter uses its native cache-affinity header, and
+  Bedrock terminal responses with unrecognised stop reasons now surface typed
+  provider errors.
 - Grok 4.5 now uses the xAI OpenAI Responses route with low, medium, and high
   reasoning levels. Long-lived prompt-cache retention is omitted for that route
   while cache keys and session affinity remain available.

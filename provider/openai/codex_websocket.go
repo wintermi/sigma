@@ -14,6 +14,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,6 +66,13 @@ type codexWebSocketContinuation struct {
 	lastResponseID    string
 	lastResponseItems []any
 }
+
+var codexWebSocketRequestIDs = struct {
+	sync.Mutex
+	milliseconds uint64
+	randA        uint16
+	randB        uint64
+}{}
 
 // CodexResponsesWebSocketStatsSnapshot reports observable behavior from the
 // Codex Responses WebSocket session cache.
@@ -264,7 +272,11 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 	if err != nil {
 		return nil, err
 	}
-	headers, err := p.codexWebSocketHeaders(ctx, model, opts)
+	requestID, err := codexWebSocketRequestID(opts.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	headers, err := p.codexWebSocketHeaders(ctx, model, opts, requestID)
 	if err != nil {
 		return nil, err
 	}
@@ -579,7 +591,7 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 	return out
 }
 
-func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options) (http.Header, error) {
+func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options, requestID string) (http.Header, error) {
 	opts, credential, hasCredential, err := p.resolveRequestAuth(ctx, model, opts)
 	if err != nil {
 		return nil, err
@@ -599,6 +611,8 @@ func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, mode
 		return nil, err
 	}
 	p.addProviderHeaders(req, model.Provider, opts)
+	req.Header.Set("session-id", requestID)
+	req.Header.Set("x-client-request-id", requestID)
 	for key, value := range p.base.headers {
 		req.Header.Set(key, value)
 	}
@@ -608,6 +622,61 @@ func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, mode
 	}
 	sigma.ApplySuppressedHeaders(req.Header, opts)
 	return req.Header, nil
+}
+
+func codexWebSocketRequestID(sessionID string) (string, error) {
+	if sessionID = clampOpenAIPromptCacheKey(sessionID); sessionID != "" {
+		return sessionID, nil
+	}
+
+	now := time.Now().UnixMilli()
+	if now < 0 {
+		return "", fmt.Errorf("openai codex responses: invalid websocket request timestamp %d", now)
+	}
+	milliseconds := uint64(now)
+	codexWebSocketRequestIDs.Lock()
+	defer codexWebSocketRequestIDs.Unlock()
+	if milliseconds > codexWebSocketRequestIDs.milliseconds {
+		var random [10]byte
+		if _, err := rand.Read(random[:]); err != nil {
+			return "", fmt.Errorf("openai codex responses: generate websocket request id: %w", err)
+		}
+		codexWebSocketRequestIDs.milliseconds = milliseconds
+		codexWebSocketRequestIDs.randA = uint16(random[0]&0x0f)<<8 | uint16(random[1])
+		codexWebSocketRequestIDs.randB = binary.BigEndian.Uint64(random[2:]) & ((uint64(1) << 62) - 1)
+	} else {
+		incrementCodexWebSocketRequestID()
+	}
+
+	return formatCodexWebSocketRequestID(
+		codexWebSocketRequestIDs.milliseconds,
+		codexWebSocketRequestIDs.randA,
+		codexWebSocketRequestIDs.randB,
+	), nil
+}
+
+func incrementCodexWebSocketRequestID() {
+	const maxRandA = (1 << 12) - 1
+	const maxRandB = (uint64(1) << 62) - 1
+	if codexWebSocketRequestIDs.randB < maxRandB {
+		codexWebSocketRequestIDs.randB++
+		return
+	}
+	codexWebSocketRequestIDs.randB = 0
+	if codexWebSocketRequestIDs.randA < maxRandA {
+		codexWebSocketRequestIDs.randA++
+		return
+	}
+	codexWebSocketRequestIDs.milliseconds++
+	codexWebSocketRequestIDs.randA = 0
+}
+
+func formatCodexWebSocketRequestID(milliseconds uint64, randA uint16, randB uint64) string {
+	var value [16]byte
+	binary.BigEndian.PutUint64(value[:8], milliseconds<<16|uint64(0x7000)|uint64(randA))
+	binary.BigEndian.PutUint64(value[8:], uint64(0x8000000000000000)|randB)
+	encoded := hex.EncodeToString(value[:])
+	return encoded[:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:]
 }
 
 func dialCodexWebSocket(ctx context.Context, rawURL string, headers http.Header, connectTimeout time.Duration) (*codexWebSocketConnection, error) {

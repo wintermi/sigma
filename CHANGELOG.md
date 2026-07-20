@@ -47,6 +47,12 @@ See [release notes](docs/release-notes-v0.7.0.md).
   as transient, retryable failures while preserving partial final messages;
   applications continue to own post-body request retries.
 
+### Fixed
+
+- Sessionless Codex WebSocket handshakes now use monotonic UUIDv7 request IDs,
+  and built-in GPT-5.6 Codex metadata reports its 272K context limit so
+  impossible long-context budgets and price tiers are not selected.
+
 ## [0.6.0] - 2026-07-15
 
 See [release notes](docs/release-notes-v0.6.0.md).

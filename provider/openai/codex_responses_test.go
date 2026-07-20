@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -530,6 +531,47 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 		t.Fatalf("parallel tool calls = %v, want %v", got, want)
 	}
 }
+
+func TestCodexResponsesWebSocketSessionlessRequestUsesUUIDv7Headers(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+
+	requests := make(chan codexWebSocketTestRequest, 1)
+	server := newCodexWebSocketTestServer(t, func(req *http.Request, ws *codexWebSocketTestConn) {
+		requests <- codexWebSocketTestRequest{Headers: req.Header.Clone()}
+		_ = ws.readJSON(t)
+		writeCodexWebSocketTextResponse(t, ws, "sessionless_resp", "sessionless_msg", "sessionless_text", "ok")
+	})
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-sessionless-ws-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "ok"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+
+	request := receiveCodexWebSocketRequest(t, requests)
+	requestID := request.Headers.Get("x-client-request-id")
+	if got := request.Headers.Get("session-id"); got != requestID {
+		t.Fatalf("session id = %q, want matching request id %q", got, requestID)
+	}
+	if !uuidV7Pattern.MatchString(requestID) {
+		t.Fatalf("request id = %q, want UUIDv7", requestID)
+	}
+}
+
+var uuidV7Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
 func TestCodexResponsesWebSocketSessionCacheSendsInputDelta(t *testing.T) {
 	openai.CloseCodexResponsesWebSocketSessions()

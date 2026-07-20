@@ -19,6 +19,28 @@ import (
 	"time"
 )
 
+func TestCodexWebSocketRequestIDsAreOrderedUUIDv7(t *testing.T) {
+	t.Parallel()
+
+	first, err := codexWebSocketRequestID("")
+	if err != nil {
+		t.Fatalf("first request id returned error: %v", err)
+	}
+	second, err := codexWebSocketRequestID("")
+	if err != nil {
+		t.Fatalf("second request id returned error: %v", err)
+	}
+	for _, requestID := range []string{first, second} {
+		if len(requestID) != 36 || requestID[8] != '-' || requestID[13] != '-' || requestID[14] != '7' ||
+			requestID[18] != '-' || requestID[23] != '-' || !strings.ContainsRune("89ab", rune(requestID[19])) {
+			t.Fatalf("request id = %q, want UUIDv7", requestID)
+		}
+	}
+	if first >= second {
+		t.Fatalf("request ids = %q, %q; want increasing order", first, second)
+	}
+}
+
 func TestCodexWebSocketRejectsOversized64BitFrameBeforePayload(t *testing.T) {
 	t.Parallel()
 

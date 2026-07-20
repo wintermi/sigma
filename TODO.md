@@ -133,6 +133,8 @@ integrations remain future work until they have the same local evidence bar.
       enabled.
 - [x] Clamp Codex request-affinity headers to the provider's 64-character
       session-ID limit while preserving Sigma's local session-cache keys.
+- [x] Use monotonic UUIDv7 handshake IDs for sessionless Codex WebSocket
+      requests and keep the built-in GPT-5.6 Codex context limits at 272K.
 - [x] Send OpenRouter cache affinity through `x-session-id`, preserving caller
       header overrides and avoiding generic OpenAI session-affinity headers.
 - [x] Keep OpenAI and Azure OpenAI Responses `previous_response_id` payloads
