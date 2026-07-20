@@ -511,8 +511,9 @@ upstream.
       distinct provider ID, credential env var, compatibility metadata, and
       deterministic wrapper coverage.
 - [x] Refresh Kimi Coding metadata with K3 and HighSpeed routes, reviewed
-      limits and estimated costs, adaptive-thinking controls, and empty-signature
-      replay compatibility while preserving the existing adapter.
+      limits and estimated costs, K3 low/high/max adaptive-thinking controls,
+      empty-signature replay compatibility, and retirement of the stale `k2p7`
+      row while preserving the existing adapter.
 - [x] Add focused Hugging Face Router metadata after settling provider ID,
       credential env var, compatibility metadata, and first-class provider-row
       requirements.

@@ -34,8 +34,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated xAI Grok 4.5 metadata now routes through OpenAI Responses with
   low, medium, and high reasoning levels. Long-lived prompt-cache retention is
   omitted for this route while cache keys and session affinity remain available.
-- Kimi Coding metadata now uses current estimated rates, adaptive-thinking
-  controls, and empty-signature replay compatibility where supported.
+- Kimi Coding K3 now supports low, high, and max adaptive-thinking efforts;
+  the stale `k2p7` catalog row is no longer included. Current estimated rates
+  and empty-signature replay compatibility remain available where supported.
 - Generated Fireworks metadata now includes verified standard-serverless input,
   cached-input, and output rates for its curated Chat Completions and Messages
   routes. Deterministic coverage also locks the Messages route's cache-affinity

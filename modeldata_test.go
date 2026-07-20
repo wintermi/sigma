@@ -2169,8 +2169,7 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		unsupportedThinkingLevels   []ThinkingLevel
 		supportsEmptyThinkSignature bool
 	}{
-		{id: "k2p7", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
-		{id: "k3", wantImages: true, contextWindow: 1048576, maxOutputTokens: 131072, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, thinkingLevels: map[ThinkingLevel]string{ThinkingLevel("max"): "max"}, unsupportedThinkingLevels: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelHigh, ThinkingLevelXHigh}, supportsEmptyThinkSignature: true},
+		{id: "k3", wantImages: true, contextWindow: 1048576, maxOutputTokens: 131072, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}, unsupportedThinkingLevels: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelMedium, ThinkingLevelXHigh}, supportsEmptyThinkSignature: true},
 		{id: "kimi-for-coding", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, supportsEmptyThinkSignature: true},
 		{id: "kimi-for-coding-highspeed", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 1.9, outputCost: 8, cacheReadCost: 0.38},
 		{id: "kimi-k2-thinking", contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.6, outputCost: 2.5, cacheReadCost: 0.15},

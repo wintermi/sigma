@@ -44,7 +44,7 @@ func providerCases() []providerCase {
 		{
 			name:     "kimi coding",
 			provider: sigma.ProviderKimiCoding,
-			modelIDs: []sigma.ModelID{"k2p7", "k3", "kimi-for-coding", "kimi-for-coding-highspeed", "kimi-k2-thinking"},
+			modelIDs: []sigma.ModelID{"k3", "kimi-for-coding", "kimi-for-coding-highspeed", "kimi-k2-thinking"},
 			register: kimi.RegisterCoding,
 		},
 	}
@@ -74,6 +74,14 @@ func TestRegisterReportsMessagesAPI(t *testing.T) {
 				t.Fatalf("provider API = %q, want %q", got, want)
 			}
 		})
+	}
+}
+
+func TestKimiCodingRetiresK2P7(t *testing.T) {
+	t.Parallel()
+
+	if _, ok := sigma.DefaultRegistry().Model(sigma.ProviderKimiCoding, "k2p7"); ok {
+		t.Fatal("default registry still includes retired Kimi Coding model k2p7")
 	}
 }
 
@@ -110,7 +118,9 @@ func TestKimiCodingGeneratedCompatibilityShapesPayload(t *testing.T) {
 		reasoning  sigma.ThinkingLevel
 		wantEffort string
 	}{
-		{name: "k3", modelID: "k3", reasoning: sigma.ThinkingLevel("max"), wantEffort: "max"},
+		{name: "k3 low", modelID: "k3", reasoning: sigma.ThinkingLevelLow, wantEffort: "low"},
+		{name: "k3 high", modelID: "k3", reasoning: sigma.ThinkingLevelHigh, wantEffort: "high"},
+		{name: "k3 max", modelID: "k3", reasoning: sigma.ThinkingLevel("max"), wantEffort: "max"},
 		{name: "kimi for coding", modelID: "kimi-for-coding", reasoning: sigma.ThinkingLevelMedium, wantEffort: "medium"},
 	}
 

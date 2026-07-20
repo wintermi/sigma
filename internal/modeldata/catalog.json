@@ -12533,41 +12533,6 @@
       }
     },
     {
-      "id": "k2p7",
-      "name": "Kimi K2.7 Code",
-      "provider": "kimi-coding",
-      "api": "anthropic-messages",
-      "baseURL": "https://api.kimi.com/coding/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.95,
-        "outputPerMillion": 4,
-        "cacheReadInputPerMillion": 0.19,
-        "currency": "USD"
-      },
-      "contextWindow": 262144,
-      "maxOutputTokens": 32768,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
-      "authEnvNames": [
-        "KIMI_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "anthropicMessagesCompat": {
-        "supportsSessionAffinity": "supported",
-        "thinkingFormat": "adaptive"
-      },
-      "providerMetadata": {
-        "modelFamily": "kimi"
-      }
-    },
-    {
       "id": "k3",
       "name": "Kimi K3",
       "provider": "kimi-coding",
@@ -12603,14 +12568,14 @@
         "modelFamily": "kimi"
       },
       "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
         "max": "max"
       },
       "unsupportedThinkingLevels": [
         "off",
         "minimal",
-        "low",
         "medium",
-        "high",
         "xhigh"
       ]
     },

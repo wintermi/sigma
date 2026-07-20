@@ -259,9 +259,10 @@ The Kimi wrappers use Sigma's shared Anthropic-compatible Messages adapter with
 the Kimi endpoint base URL and Kimi CLI request header defaults. Built-in
 metadata is available under `ProviderKimi` for the canonical `kimi-for-coding`
 route. `ProviderKimiCoding` carries the expanded coding model family with
-`k2p7`, `kimi-for-coding`, and `kimi-k2-thinking`, including adaptive thinking,
-session-affinity, tool-use, and image-input metadata where supported by the
-model.
+`k3`, `kimi-for-coding`, `kimi-for-coding-highspeed`, and `kimi-k2-thinking`,
+including adaptive thinking, session-affinity, tool-use, and image-input
+metadata where supported by the model. K3 supports `low`, `high`, and `max`
+adaptive-thinking efforts.
 
 ### Fireworks AI
 
