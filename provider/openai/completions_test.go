@@ -2316,6 +2316,18 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			},
 		},
 		{
+			name:   "qwen enables thinking when a level is requested",
+			format: sigma.OpenAICompletionsReasoningQwen,
+			level:  sigma.ThinkingLevelLow,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				if got := body["enable_thinking"]; got != true {
+					t.Fatalf("enable_thinking = %#v, want true", got)
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{sigma.ThinkingLevelLow: "low"},
+		},
+		{
 			name:   "ant ling sends mapped explicit effort",
 			format: sigma.OpenAICompletionsReasoningAntLing,
 			level:  sigma.ThinkingLevelXHigh,

@@ -1455,6 +1455,8 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 		ProviderOpenCode,
 		ProviderOpenCodeGo,
 		ProviderOpenRouter,
+		ProviderQwenTokenPlan,
+		ProviderQwenTokenPlanCN,
 		ProviderTogether,
 		ProviderVercelAIGateway,
 		ProviderXAI,
@@ -1581,6 +1583,57 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			tokenPlan.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
 			tokenPlan.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
 			t.Fatalf("%s compat = %#v, want deepseek reasoning content replay", tt.provider, tokenPlan.OpenAICompletionsCompat)
+		}
+	}
+
+	for _, tt := range []struct {
+		provider ProviderID
+		baseURL  string
+		envVars  []string
+	}{
+		{provider: ProviderQwenTokenPlan, baseURL: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_API_KEY"}},
+		{provider: ProviderQwenTokenPlanCN, baseURL: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_CN_API_KEY"}},
+	} {
+		qwenMax, ok := registry.Model(tt.provider, "qwen3.7-max")
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s qwen3.7-max model", tt.provider)
+		}
+		qwenPreview, ok := registry.Model(tt.provider, "qwen3.8-max-preview")
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s qwen3.8-max-preview model", tt.provider)
+		}
+		if qwenMax.API != APIOpenAICompletions ||
+			qwenMax.DefaultTransport != TransportSSE ||
+			!qwenMax.SupportsTools ||
+			!qwenMax.SupportsReasoning() ||
+			qwenMax.SupportsImages() ||
+			qwenMax.ContextWindow != 1000000 ||
+			qwenMax.MaxOutputTokens != 65536 ||
+			qwenMax.InputCostPerMillion != 0 ||
+			qwenMax.OutputCostPerMillion != 0 {
+			t.Fatalf("%s qwen3.7-max metadata = %+v", tt.provider, qwenMax)
+		}
+		if qwenPreview.API != APIOpenAICompletions ||
+			qwenPreview.DefaultTransport != TransportSSE ||
+			!qwenPreview.SupportsImages() ||
+			!qwenPreview.SupportsTools ||
+			!qwenPreview.SupportsReasoning() ||
+			qwenPreview.ContextWindow != 1000000 ||
+			qwenPreview.MaxOutputTokens != 65536 ||
+			qwenPreview.InputCostPerMillion != 0 ||
+			qwenPreview.OutputCostPerMillion != 0 {
+			t.Fatalf("%s qwen3.8-max-preview metadata = %+v", tt.provider, qwenPreview)
+		}
+		for _, model := range []Model{qwenMax, qwenPreview} {
+			assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
+			assertMetadataString(t, model.ProviderMetadata, "modelFamily", "qwen")
+			assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
+			if model.OpenAICompletionsCompat == nil ||
+				model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningQwen ||
+				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported {
+				t.Fatalf("%s %s compat = %#v, want qwen reasoning with store and developer role unsupported", tt.provider, model.ID, model.OpenAICompletionsCompat)
+			}
 		}
 	}
 

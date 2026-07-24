@@ -157,6 +157,8 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "xiaomi token plan cn", provider: sigma.ProviderXiaomiTokenPlanCN, env: "XIAOMI_TOKEN_PLAN_CN_API_KEY"},
 		{name: "xiaomi token plan ams", provider: sigma.ProviderXiaomiTokenPlanAMS, env: "XIAOMI_TOKEN_PLAN_AMS_API_KEY"},
 		{name: "xiaomi token plan sgp", provider: sigma.ProviderXiaomiTokenPlanSGP, env: "XIAOMI_TOKEN_PLAN_SGP_API_KEY"},
+		{name: "qwen token plan", provider: sigma.ProviderQwenTokenPlan, env: "QWEN_TOKEN_PLAN_API_KEY"},
+		{name: "qwen token plan china", provider: sigma.ProviderQwenTokenPlanCN, env: "QWEN_TOKEN_PLAN_CN_API_KEY"},
 	}
 
 	for _, tt := range tests {

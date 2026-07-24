@@ -99,6 +99,8 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderXiaomiTokenPlanCN:     {"XIAOMI_TOKEN_PLAN_CN_API_KEY"},
 	ProviderXiaomiTokenPlanAMS:    {"XIAOMI_TOKEN_PLAN_AMS_API_KEY"},
 	ProviderXiaomiTokenPlanSGP:    {"XIAOMI_TOKEN_PLAN_SGP_API_KEY"},
+	ProviderQwenTokenPlan:         {"QWEN_TOKEN_PLAN_API_KEY"},
+	ProviderQwenTokenPlanCN:       {"QWEN_TOKEN_PLAN_CN_API_KEY"},
 }
 
 // Credential carries authentication material for a provider.

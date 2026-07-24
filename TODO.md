@@ -373,6 +373,11 @@ metadata-only and backed by compatibility checks.
 - [x] Vercel AI Gateway — promote to a first-class provider row with fixtures.
 - [x] Kimi — promote to a first-class provider row with fixtures.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
+- [x] Qwen Token Plan — promote focused international and China regional
+      Chat Completions rows with generated metadata and fixtures.
+- [ ] Qwen Token Plan — expand the remaining catalog and add provider-specific
+      hosted-tool behavior only after those contracts have deterministic
+      request-shape coverage.
 - [x] Radius gateway — add an API-key-authenticated dynamic text provider with
       gateway catalog refresh, native streaming, replay, typed errors, and
       cancellation fixtures while keeping the default registry catalog-free.

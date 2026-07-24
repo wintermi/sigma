@@ -170,6 +170,10 @@ const (
 	ProviderXiaomiTokenPlanAMS ProviderID = "xiaomi-token-plan-ams"
 	// ProviderXiaomiTokenPlanSGP identifies Xiaomi Token Plan SGP.
 	ProviderXiaomiTokenPlanSGP ProviderID = "xiaomi-token-plan-sgp"
+	// ProviderQwenTokenPlan identifies Qwen Token Plan.
+	ProviderQwenTokenPlan ProviderID = "qwen-token-plan"
+	// ProviderQwenTokenPlanCN identifies Qwen Token Plan China.
+	ProviderQwenTokenPlanCN ProviderID = "qwen-token-plan-cn"
 	// ProviderCustom identifies a user-defined provider path.
 	ProviderCustom ProviderID = "custom"
 )

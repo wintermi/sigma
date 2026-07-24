@@ -13,7 +13,9 @@ request IDs and corrected Codex GPT-5.6 context limits. It refreshes the Kimi
 Coding, Fireworks, and selected OpenCode Go catalogs, adds focused xAI OpenAI
 Responses registration and caller-configured device-code OAuth surfaces, and
 adds a dynamic API-key Radius gateway text provider plus NVIDIA Nemotron 3
-Ultra to the existing Fireworks text routes.
+Ultra to the existing Fireworks text routes. It also adds direct Qwen Token
+Plan registrations for international and China regional endpoints with a
+focused Qwen3.7 Max and Qwen3.8 Max Preview catalog.
 
 ## Changed
 
@@ -52,6 +54,10 @@ Ultra to the existing Fireworks text routes.
 - Radius gateway models now refresh explicitly from the gateway at runtime and
   use its native text streaming protocol with image, thinking, function-tool,
   usage, and response-ID handling. There is no static Radius catalog.
+- Qwen Token Plan now has international and China regional Chat Completions
+  registrations with the matching environment API-key fallbacks. The focused
+  catalog includes text-only Qwen3.7 Max plus text/image Qwen3.8 Max Preview,
+  both with tool and Qwen thinking compatibility metadata.
 
 ## Compatibility
 
@@ -72,6 +78,10 @@ Ultra to the existing Fireworks text routes.
   explicit refresh succeeds; requests use standard API-key resolver precedence
   with `RADIUS_API_KEY` as the environment fallback. OAuth and persisted
   gateway catalogs remain deferred.
+- `provider/qwen` adds additive opt-in registrations for
+  `ProviderQwenTokenPlan` and `ProviderQwenTokenPlanCN`. Requests retain the
+  existing shared Chat Completions payload shape; API-key discovery uses
+  `QWEN_TOKEN_PLAN_API_KEY` and `QWEN_TOKEN_PLAN_CN_API_KEY` respectively.
 
 ## Deferred work
 

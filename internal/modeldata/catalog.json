@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-19",
+  "snapshotDate": "2026-07-24",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -77,6 +77,10 @@
     {
       "name": "OpenRouter models",
       "url": "https://openrouter.ai/models"
+    },
+    {
+      "name": "Qwen Token Plan setup",
+      "url": "https://help.aliyun.com/en/model-studio/cline"
     },
     {
       "name": "Vercel AI Gateway models",
@@ -20016,6 +20020,136 @@
       },
       "openAICompletionsCompat": {
         "reasoningFormat": "reasoning"
+      }
+    },
+    {
+      "id": "qwen3.7-max",
+      "name": "Qwen3.7 Max",
+      "provider": "qwen-token-plan",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.8-max-preview",
+      "name": "Qwen3.8 Max Preview",
+      "provider": "qwen-token-plan",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.7-max",
+      "name": "Qwen3.7 Max",
+      "provider": "qwen-token-plan-cn",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.8-max-preview",
+      "name": "Qwen3.8 Max Preview",
+      "provider": "qwen-token-plan-cn",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "qwen"
       }
     },
     {

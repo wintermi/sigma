@@ -31,6 +31,7 @@ Release scope values:
 | xAI/Grok Chat Completions and Grok 4.5 Responses | `openai-completions`, `openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | NVIDIA NIM OpenAI-compatible Chat Completions and Embeddings | `openai-completions`, `openai-embeddings` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Xiaomi MiMo OpenAI-compatible Chat Completions and token-plan routes | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| Qwen Token Plan regional Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | OpenCode Zen and OpenCode Go routed text APIs | `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `partial` | `intentionally omitted` |
 | OpenAI Responses | `openai-responses` | `preview` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Azure OpenAI Responses | `azure-openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
@@ -60,6 +61,7 @@ Release scope values:
 - xAI/Grok `openai-completions` and Grok 4.5 `openai-responses`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - NVIDIA NIM `openai-completions` and `openai-embeddings`: [provider/nvidia/nvidia_test.go](../provider/nvidia/nvidia_test.go), [modeldata_test.go](../modeldata_test.go).
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
+- Qwen Token Plan `openai-completions`: [provider/qwen/qwen_test.go](../provider/qwen/qwen_test.go), [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [modeldata_test.go](../modeldata_test.go).
 - OpenCode routed text APIs: [provider/opencode/opencode_test.go](../provider/opencode/opencode_test.go), [modeldata_test.go](../modeldata_test.go).
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - `azure-openai-responses`: [provider/azure/azure_test.go](../provider/azure/azure_test.go), [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
@@ -98,7 +100,7 @@ Release scope values:
   wrapper over the existing Responses adapter. Codex Responses has generated
   metadata and remains registered through the OpenAI provider package.
 - Promoted OpenAI-compatible wrappers such as Fireworks, OpenRouter, xAI,
-  Xiaomi, NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub Copilot,
+  Xiaomi, Qwen Token Plan, NVIDIA NIM, DeepSeek, Groq, Cerebras, Together, GitHub Copilot,
   Cloudflare AI Gateway, and Cloudflare Workers AI rely on shared compatibility
   detection or explicit Chat Completions metadata. Grok 4.5 instead uses
   Responses compatibility metadata; unpromoted compatible rows are not
@@ -127,6 +129,10 @@ Release scope values:
   adapter through a thin provider wrapper. Its first-class coverage is limited
   to direct route registration, request shape, focused generated metadata,
   provider errors, and stream cancellation.
+- Qwen Token Plan uses the shared OpenAI-compatible Chat Completions adapter
+  through regional thin wrappers. Its first-class catalog is focused on
+  Qwen3.7 Max and Qwen3.8 Max Preview; broader catalog coverage and
+  provider-specific hosted-tool behavior remain deferred.
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
 - Codex Responses includes browser callback and device-code OAuth login, refresh
   helpers, a caller-wrapped token provider, and fixture-tested direct

@@ -329,6 +329,24 @@ metadata includes direct Kimi K2 rows such as `kimi-k2.7-code` and
 thinking controls, streaming usage, and K2.7 compatibility metadata that omits
 explicit disabled-thinking payloads by default.
 
+### Qwen Token Plan
+
+```go
+registry := sigma.DefaultRegistry()
+_ = qwen.Register(registry)
+_ = qwen.RegisterCN(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `QWEN_TOKEN_PLAN_API_KEY` for `ProviderQwenTokenPlan` and
+`QWEN_TOKEN_PLAN_CN_API_KEY` for `ProviderQwenTokenPlanCN`.
+
+The Qwen Token Plan wrappers use Sigma's shared OpenAI-compatible Chat
+Completions adapter with international and China regional base URL defaults.
+Built-in metadata includes `qwen3.7-max` for text requests and
+`qwen3.8-max-preview` for text and image requests. Both include tool and Qwen
+thinking compatibility metadata.
+
 ### Xiaomi MiMo
 
 ```go
