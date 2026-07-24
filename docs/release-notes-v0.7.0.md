@@ -12,10 +12,11 @@ caller-directed stream recovery, including reliable sessionless Codex WebSocket
 request IDs and corrected Codex GPT-5.6 context limits. It refreshes the Kimi
 Coding, Fireworks, and selected OpenCode Go catalogs, adds focused xAI OpenAI
 Responses registration and caller-configured device-code OAuth surfaces, and
-adds a dynamic API-key Radius gateway text provider plus NVIDIA Nemotron 3
-Ultra to the existing Fireworks text routes. It also adds direct Qwen Token
-Plan registrations for international and China regional endpoints with a
-focused Qwen3.7 Max and Qwen3.8 Max Preview catalog.
+adds Kimi Coding subscription device-code OAuth alongside a dynamic API-key
+Radius gateway text provider plus NVIDIA Nemotron 3 Ultra to the existing
+Fireworks text routes. It also adds direct Qwen Token Plan registrations for
+international and China regional endpoints with a focused Qwen3.7 Max and
+Qwen3.8 Max Preview catalog.
 
 ## Changed
 
@@ -37,6 +38,10 @@ focused Qwen3.7 Max and Qwen3.8 Max Preview catalog.
   K3 supports `low`, `high`, and `max` reasoning levels, while K3 and Kimi For
   Coding preserve empty thinking signatures during replay. The stale `k2p7`
   catalog row is no longer included.
+- Kimi Coding subscriptions can now use opt-in device-code OAuth login, token
+  refresh, in-memory credential resolution, and provider-auth registration.
+  Tokens use the existing Messages bearer-auth path while applications retain
+  persistence ownership.
 - OpenCode Go routes Grok 4.5 through OpenAI Responses and Kimi K3 through
   Chat Completions, with reviewed text/image, tool, reasoning, context,
   output, and pricing metadata.
@@ -71,6 +76,10 @@ focused Qwen3.7 Max and Qwen3.8 Max Preview catalog.
   `low`, `high`, and `max` reasoning levels, while `kimi-coding/k2p7` no longer
   resolves from the built-in catalog; supported-model message shapes are
   unchanged.
+- Kimi Coding subscription OAuth is opt-in through `provider/kimi` auth
+  registration or an in-memory token provider. It does not change the existing
+  API-key fallback, provider ID, request route, or serialized-message shape;
+  applications continue to own token persistence.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.

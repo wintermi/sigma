@@ -11,6 +11,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add model-aware environment credential discovery helpers that expose
       candidate and configured environment variable names without returning
       secret values.
+- [x] Add opt-in Kimi Coding subscription device-code OAuth login, token
+      refresh, and provider-auth registration while applications retain token
+      persistence ownership.
 - [x] Add provider-specific request configuration helpers for Cloudflare AI
       Gateway account/gateway placeholders and Bedrock request region/static
       credential values without adding a generic environment override surface.

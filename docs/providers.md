@@ -264,6 +264,27 @@ including adaptive thinking, session-affinity, tool-use, and image-input
 metadata where supported by the model. K3 supports `low`, `high`, and `max`
 adaptive-thinking efforts.
 
+Kimi Coding subscriptions can authenticate with device-code OAuth instead of
+an API key. Use `kimi.LoginKimiCodingDeviceCode`,
+`kimi.RefreshKimiCodingToken`, and `kimi.NewKimiCodingOAuthTokenProvider` for
+login, refresh, and request-time token resolution. Register
+`kimi.RegisterAuth` when resolving a caller-owned stored credential. OAuth
+registration is opt-in, `KIMI_API_KEY` remains the API-key fallback, and token
+persistence remains owned by the application.
+
+```go
+credentials, _ := kimi.LoginKimiCodingDeviceCode(ctx, kimi.KimiCodingDeviceCodeLoginOptions{
+	OnDeviceCode: func(info kimi.KimiCodingDeviceCodeInfo) {
+		// Show info.UserCode and info.VerificationURI to the user.
+	},
+})
+auth := kimi.NewKimiCodingOAuthTokenProvider(credentials, kimi.KimiCodingOAuthTokenProviderOptions{})
+client := sigma.NewClient(
+	sigma.WithRegistry(registry),
+	sigma.WithDefaultOptions(sigma.WithProviderAuthResolver(sigma.ProviderKimiCoding, auth)),
+)
+```
+
 ### Fireworks AI
 
 ```go

@@ -19,6 +19,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated Kimi Coding metadata now includes K3 and Kimi For Coding HighSpeed
   with reviewed context, output, image-input, tool, reasoning, and estimated
   cost metadata.
+- Kimi Coding now supports opt-in subscription device-code OAuth login, token
+  refresh, in-memory credential resolution, and provider-auth registration
+  while applications retain token persistence ownership.
 - Generated OpenCode Go metadata now routes Grok 4.5 through OpenAI Responses
   and Kimi K3 through Chat Completions, with reviewed text/image, tool,
   reasoning, limit, and pricing metadata.

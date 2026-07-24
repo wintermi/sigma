@@ -250,6 +250,52 @@ func TestCompleteUsesDefaults(t *testing.T) {
 	}
 }
 
+func TestKimiCodingOAuthUsesBearerAuth(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeCompleted(t, w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := kimiTestModel(sigma.ProviderKimiCoding)
+	registry := sigma.NewRegistry()
+	if err := kimi.RegisterCoding(registry, kimi.WithBaseURL(server.URL)); err != nil {
+		t.Fatalf("RegisterCoding returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	auth := kimi.NewKimiCodingOAuthTokenProvider(
+		kimi.KimiCodingOAuthCredentials{AccessToken: "oauth-access"},
+		kimi.KimiCodingOAuthTokenProviderOptions{},
+	)
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithDefaultOptions(sigma.WithProviderAuthResolver(sigma.ProviderKimiCoding, auth)),
+	)
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Headers.Get("Authorization"), "Bearer oauth-access"; got != want {
+		t.Fatalf("Authorization header = %q, want %q", got, want)
+	}
+	if got := request.Headers.Get("X-Api-Key"); got != "" {
+		t.Fatalf("X-Api-Key header = %q, want empty", got)
+	}
+	if got, want := request.Headers.Get("User-Agent"), kimi.DefaultUserAgent; got != want {
+		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+}
+
 func TestRequestHeaderOverridesDefaultUserAgent(t *testing.T) {
 	t.Parallel()
 
