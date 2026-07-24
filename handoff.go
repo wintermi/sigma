@@ -542,6 +542,10 @@ func cloneHandoffTool(tool Tool) Tool {
 	tool.InputSchema = cloneHandoffAny(tool.InputSchema)
 	tool.ProviderDefinedOptions = cloneHandoffProviderDefinedOptions(tool.ProviderDefinedOptions)
 	tool.ProviderMetadata = cloneHandoffStringAnyMap(tool.ProviderMetadata)
+	if tool.OpenAIGrammar != nil {
+		grammar := *tool.OpenAIGrammar
+		tool.OpenAIGrammar = &grammar
+	}
 	return tool
 }
 

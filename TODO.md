@@ -145,6 +145,9 @@ integrations remain future work until they have the same local evidence bar.
       provider continuation IDs.
 - [x] Add OpenAI Responses/Codex service-tier cost accounting for `flex` and
       `priority` request tiers.
+- [x] Add OpenAI Responses grammar-constrained custom tools with Lark/regex
+      definitions, GPT-5.4 capability metadata, compatible-endpoint opt-in or
+      opt-out, deferred loading, replay, and streamed input reconstruction.
 - [x] Harden OpenAI Responses replay when same-provider history crosses model
       IDs with prior function-call item IDs.
 - [x] Harden OpenAI Responses stream terminal handling so premature EOF is an

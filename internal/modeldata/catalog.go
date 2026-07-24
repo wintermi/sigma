@@ -161,6 +161,7 @@ type AnthropicMessagesCompat struct {
 // OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
 type OpenAIResponsesCompat struct {
 	SupportsToolSearch         bool   `json:"supportsToolSearch,omitempty"`
+	SupportsGrammarTools       bool   `json:"supportsGrammarTools,omitempty"`
 	SupportsLongCacheRetention string `json:"supportsLongCacheRetention,omitempty"`
 	SessionAffinityFormat      string `json:"sessionAffinityFormat,omitempty"`
 }

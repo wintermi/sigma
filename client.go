@@ -620,19 +620,30 @@ func validateOptions(model Model, options Options) error {
 			return invalidOptionsError(model, "bedrock tool choice must be auto, none, any, or a named tool")
 		}
 	}
-	if options.OpenAIOptions != nil {
-		if options.OpenAIOptions.TopLogprobs < 0 {
-			return invalidOptionsError(model, "openai top logprobs must be non-negative")
-		}
-		if options.OpenAIOptions.CodexWebSocketConnectTimeout != nil && *options.OpenAIOptions.CodexWebSocketConnectTimeout < 0 {
-			return invalidOptionsError(model, "openai codex websocket connect timeout must be non-negative")
-		}
-		if options.OpenAIOptions.TopLogprobs > 0 && api != APIOpenAICompletions {
-			return invalidOptionsError(model, "openai logprobs are only supported by openai-completions")
-		}
-		if options.OpenAIOptions.ResponseFormat != nil && !supportsOpenAIResponseFormat(api) {
-			return invalidOptionsError(model, "openai response format is only supported by OpenAI-compatible APIs")
-		}
+	if err := validateOpenAIOptions(model, api, options.OpenAIOptions); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateOpenAIOptions(model Model, api API, options *OpenAIOptions) error {
+	if options == nil {
+		return nil
+	}
+	if options.TopLogprobs < 0 {
+		return invalidOptionsError(model, "openai top logprobs must be non-negative")
+	}
+	if options.CodexWebSocketConnectTimeout != nil && *options.CodexWebSocketConnectTimeout < 0 {
+		return invalidOptionsError(model, "openai codex websocket connect timeout must be non-negative")
+	}
+	if options.TopLogprobs > 0 && api != APIOpenAICompletions {
+		return invalidOptionsError(model, "openai logprobs are only supported by openai-completions")
+	}
+	if options.ResponseFormat != nil && !supportsOpenAIResponseFormat(api) {
+		return invalidOptionsError(model, "openai response format is only supported by OpenAI-compatible APIs")
+	}
+	if options.EnableGrammarTools != nil && *options.EnableGrammarTools && !supportsOpenAIGrammarTools(api) {
+		return invalidOptionsError(model, "openai grammar tools are only supported by OpenAI Responses APIs")
 	}
 	return nil
 }
@@ -755,6 +766,15 @@ func effectiveTextAPI(model Model) API {
 func supportsOpenAIResponseFormat(api API) bool {
 	switch api {
 	case APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
+		return true
+	default:
+		return false
+	}
+}
+
+func supportsOpenAIGrammarTools(api API) bool {
+	switch api {
+	case APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
 		return true
 	default:
 		return false

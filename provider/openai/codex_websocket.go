@@ -241,7 +241,12 @@ func (p *CodexResponsesProvider) runSSE(ctx context.Context, writer sigma.Stream
 		return
 	}
 
-	final, err = parseResponsesStream(ctx, body, writer, model, codexResponsesStreamOptions(opts))
+	streamOptions, err := codexResponsesStreamOptions(model, req, opts)
+	if err != nil {
+		_ = writer.Error(ctx, err, final)
+		return
+	}
+	final, err = parseResponsesStream(ctx, body, writer, model, streamOptions)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -285,7 +290,11 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 		return nil, err
 	}
 	keepConnection := false
-	parser := newResponsesStreamParser(writer, model, codexResponsesStreamOptions(opts))
+	streamOptions, err := codexResponsesStreamOptions(model, req, opts)
+	if err != nil {
+		return nil, err
+	}
+	parser := newResponsesStreamParser(writer, model, streamOptions)
 	defer func() {
 		acquired.release(keepConnection)
 	}()
@@ -328,7 +337,7 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 		acquired.entry.continuation = &codexWebSocketContinuation{
 			lastRequestBody:   fullBody,
 			lastResponseID:    parser.responseID,
-			lastResponseItems: codexResponsesAssistantInputItems(model, final),
+			lastResponseItems: codexResponsesAssistantInputItems(model, final, streamOptions.grammarToolInputProperties),
 		}
 		keepConnection = true
 	}
@@ -569,7 +578,7 @@ func codexRequestWithoutInput(body map[string]any) map[string]any {
 	return copied
 }
 
-func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantMessage) []any {
+func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantMessage, grammarToolInputProperties map[string]string) []any {
 	message := sigma.Message{
 		Role:     sigma.RoleAssistant,
 		Content:  final.Content,
@@ -577,7 +586,7 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 		API:      model.API,
 		Model:    final.Model,
 	}
-	items, err := responsesAssistantItems(model, message, 0)
+	items, err := responsesAssistantItems(model, message, 0, grammarToolInputProperties)
 	if err != nil {
 		return nil
 	}

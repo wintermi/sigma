@@ -225,6 +225,7 @@ const (
 // by model or compatible endpoint.
 type OpenAIResponsesCompat struct {
 	SupportsToolSearch         bool                                 `json:"supportsToolSearch,omitempty"`
+	SupportsGrammarTools       bool                                 `json:"supportsGrammarTools,omitempty"`
 	SupportsLongCacheRetention OpenAICompatSupport                  `json:"supportsLongCacheRetention,omitempty"`
 	SessionAffinityFormat      OpenAIResponsesSessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
 }

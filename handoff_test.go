@@ -44,6 +44,32 @@ func TestTransformRequestForModelPreservesSameModelThinking(t *testing.T) {
 	}
 }
 
+func TestTransformRequestForModelClonesOpenAIGrammarTools(t *testing.T) {
+	t.Parallel()
+
+	request := sigma.Request{Tools: []sigma.Tool{{
+		Name:        "parse",
+		InputSchema: sigma.Schema{"type": "object"},
+		OpenAIGrammar: &sigma.OpenAIGrammar{
+			Syntax:     sigma.OpenAIGrammarRegex,
+			Definition: "[a-z]+",
+		},
+	}}}
+	result, err := sigma.TransformRequestForModel(sigma.Model{
+		ID:            "gpt-test",
+		Provider:      sigma.ProviderOpenAI,
+		API:           sigma.APIOpenAIResponses,
+		SupportsTools: true,
+	}, request)
+	if err != nil {
+		t.Fatalf("TransformRequestForModel returned error: %v", err)
+	}
+	request.Tools[0].OpenAIGrammar.Definition = "changed"
+	if got, want := result.Request.Tools[0].OpenAIGrammar.Definition, "[a-z]+"; got != want {
+		t.Fatalf("grammar definition = %q, want %q after source mutation", got, want)
+	}
+}
+
 func TestTransformRequestForModelConvertsForeignThinkingWithReport(t *testing.T) {
 	t.Parallel()
 

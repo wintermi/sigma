@@ -31,7 +31,11 @@ const (
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
 	cleaned := transform.DropUnansweredToolCalls(req)
 	deferredTools := transform.PlanDeferredTools(cleaned, supportsResponsesToolSearch(model), nil)
-	input, err := responsesInput(model, cleaned, deferredTools.Deferred)
+	grammarToolInputProperties, err := responsesGrammarToolInputProperties(model, cleaned, opts)
+	if err != nil {
+		return nil, err
+	}
+	input, err := responsesInput(model, cleaned, deferredTools.Deferred, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +68,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	addResponsesReasoning(payload, model, opts)
 	addResponsesReasoningInclude(payload, model, opts)
 	if len(deferredTools.Immediate) > 0 {
-		tools, err := responsesTools(deferredTools.Immediate, false)
+		tools, err := responsesTools(deferredTools.Immediate, false, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -73,6 +77,69 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	addResponsesPreviousResponseID(payload, model.Provider, opts)
 	addResponsesProviderOptions(payload, model.Provider, opts)
 	return payload, nil
+}
+
+func responsesGrammarToolsEnabled(model sigma.Model, opts sigma.Options) bool {
+	if opts.OpenAIOptions != nil && opts.OpenAIOptions.EnableGrammarTools != nil {
+		return *opts.OpenAIOptions.EnableGrammarTools
+	}
+	return model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsGrammarTools
+}
+
+func responsesGrammarToolInputProperties(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]string, error) {
+	if !responsesGrammarToolsEnabled(model, opts) {
+		return nil, nil
+	}
+	properties := make(map[string]string)
+	for _, tool := range req.Tools {
+		if tool.OpenAIGrammar == nil {
+			continue
+		}
+		property, err := responsesGrammarToolInputProperty(tool)
+		if err != nil {
+			return nil, err
+		}
+		properties[tool.Name] = property
+	}
+	return properties, nil
+}
+
+func responsesGrammarToolInputProperty(tool sigma.Tool) (string, error) {
+	if tool.ProviderDefinedType != "" {
+		return "", fmt.Errorf("openai responses: grammar tool %q cannot combine a grammar with a provider-defined type", tool.Name)
+	}
+	grammar := tool.OpenAIGrammar
+	if grammar == nil {
+		return "", fmt.Errorf("openai responses: grammar tool %q grammar is required", tool.Name)
+	}
+	if grammar.Syntax != sigma.OpenAIGrammarLark && grammar.Syntax != sigma.OpenAIGrammarRegex {
+		return "", fmt.Errorf("openai responses: grammar tool %q syntax must be lark or regex", tool.Name)
+	}
+	if strings.TrimSpace(grammar.Definition) == "" {
+		return "", fmt.Errorf("openai responses: grammar tool %q definition is required", tool.Name)
+	}
+	value, err := jsonValue(tool.InputSchema)
+	if err != nil {
+		return "", fmt.Errorf("openai responses: grammar tool %q schema: %w", tool.Name, err)
+	}
+	schema := anyMap(value)
+	if schema == nil || schema[providerToolOptionTypeKey] != "object" {
+		return "", fmt.Errorf("openai responses: grammar tool %q schema must be an object", tool.Name)
+	}
+	required, ok := schema["required"].([]any)
+	if !ok || len(required) != 1 {
+		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+	}
+	property, ok := required[0].(string)
+	if !ok || property == "" {
+		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+	}
+	properties := anyMap(schema["properties"])
+	propertySchema := anyMap(properties[property])
+	if propertySchema == nil || propertySchema[providerToolOptionTypeKey] != "string" {
+		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+	}
+	return property, nil
 }
 
 func supportsResponsesToolSearch(model sigma.Model) bool {
@@ -98,11 +165,12 @@ func responsesSupportsLongCacheRetention(model sigma.Model) bool {
 		model.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported
 }
 
-func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[string]sigma.Tool) ([]map[string]any, error) {
+func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
 	loadedToolNames := make(map[string]struct{})
+	toolNamesByCallID := responsesToolNamesByCallID(req.Messages)
 	for index, message := range req.Messages {
-		converted, err := responsesMessage(model, message, index, deferredTools, loadedToolNames)
+		converted, err := responsesMessage(model, message, index, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +179,24 @@ func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[stri
 	return items, nil
 }
 
-func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}) ([]map[string]any, error) {
+func responsesToolNamesByCallID(messages []sigma.Message) map[string]string {
+	names := make(map[string]string)
+	for _, message := range messages {
+		if message.Role != sigma.RoleAssistant {
+			continue
+		}
+		for _, block := range message.Content {
+			if block.Type != sigma.ContentBlockToolCall || block.ToolCallID == "" || block.ToolName == "" {
+				continue
+			}
+			names[block.ToolCallID] = block.ToolName
+			names[responsesCallID(block.ToolCallID)] = block.ToolName
+		}
+	}
+	return names
+}
+
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(model, message)
@@ -123,21 +208,26 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 			"content": content,
 		}}, nil
 	case sigma.RoleAssistant:
-		return responsesAssistantItems(model, message, messageIndex)
+		return responsesAssistantItems(model, message, messageIndex, grammarToolInputProperties)
 	case sigma.RoleTool:
 		output, err := responsesToolOutput(model, message)
 		if err != nil {
 			return nil, err
 		}
-		searchItems, err := responsesToolSearchItems(message, deferredTools, loadedToolNames)
+		searchItems, err := responsesToolSearchItems(message, deferredTools, loadedToolNames, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
 		items := make([]map[string]any, 1, 1+len(searchItems))
+		toolName := firstNonEmpty(message.ToolName, toolNamesByCallID[message.ToolCallID], toolNamesByCallID[responsesCallID(message.ToolCallID)])
+		outputType := "function_call_output"
+		if _, ok := grammarToolInputProperties[toolName]; ok {
+			outputType = "custom_tool_call_output"
+		}
 		items[0] = map[string]any{
-			"type":    "function_call_output", //nolint:goconst
-			"call_id": responsesCallID(message.ToolCallID),
-			"output":  output,
+			providerToolOptionTypeKey: outputType,
+			"call_id":                 responsesCallID(message.ToolCallID),
+			"output":                  output,
 		}
 		return append(items, searchItems...), nil
 	default:
@@ -147,15 +237,15 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 
 func responsesInputContent(model sigma.Model, message sigma.Message) ([]map[string]any, error) {
 	if len(message.Content) == 0 {
-		return []map[string]any{{"type": "input_text", providerOptionText: ""}}, nil
+		return []map[string]any{{providerToolOptionTypeKey: "input_text", providerOptionText: ""}}, nil
 	}
 	parts := make([]map[string]any, 0, len(message.Content))
 	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			parts = append(parts, map[string]any{
-				"type":             "input_text",
-				providerOptionText: providerText(block.Text),
+				providerToolOptionTypeKey: "input_text",
+				providerOptionText:        providerText(block.Text),
 			})
 		case sigma.ContentBlockImage:
 			if message.Role != sigma.RoleUser {
@@ -166,9 +256,9 @@ func responsesInputContent(model sigma.Model, message sigma.Message) ([]map[stri
 				return nil, err
 			}
 			parts = append(parts, map[string]any{
-				"detail":    "auto",
-				"type":      "input_image",
-				"image_url": url,
+				"detail":                  "auto",
+				providerToolOptionTypeKey: "input_image",
+				"image_url":               url,
 			})
 		case sigma.ContentBlockDocument:
 			if !model.SupportsDocuments() {
@@ -191,11 +281,11 @@ func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("openai responses: %w", err)
 	}
-	file["type"] = "input_file"
+	file[providerToolOptionTypeKey] = "input_file"
 	return file, nil
 }
 
-func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int) ([]map[string]any, error) {
+func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
@@ -206,9 +296,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			return
 		}
 		item := map[string]any{
-			"type":    "message",
-			"role":    "assistant",
-			"content": content,
+			providerToolOptionTypeKey: "message",
+			"role":                    "assistant",
+			"content":                 content,
 		}
 		item["id"] = responsesBoundedID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
 		items = append(items, item)
@@ -223,8 +313,8 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 		case sigma.ContentBlockText:
 			messageID = firstNonEmpty(messageID, providerID(block.ProviderMetadata))
 			part := map[string]any{
-				"type":             "output_text",
-				providerOptionText: providerText(block.Text),
+				providerToolOptionTypeKey: "output_text",
+				providerOptionText:        providerText(block.Text),
 			}
 			part["id"] = responsesBoundedID(
 				providerOptionText,
@@ -239,10 +329,10 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 		case sigma.ContentBlockThinking:
 			flushMessage()
 			item := map[string]any{
-				"type": "reasoning",
+				providerToolOptionTypeKey: "reasoning",
 				"summary": []map[string]any{{
-					"type":             "summary_text",
-					providerOptionText: providerText(block.ThinkingText),
+					providerToolOptionTypeKey: "summary_text",
+					providerOptionText:        providerText(block.ThinkingText),
 				}},
 			}
 			item["id"] = responsesBoundedID("rs", providerID(block.ProviderMetadata), fmt.Sprintf("rs_sigma_%d", messageIndex))
@@ -255,16 +345,35 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			items = append(items, item)
 		case sigma.ContentBlockToolCall:
 			flushMessage()
+			if property, ok := grammarToolInputProperties[block.ToolName]; ok {
+				input, err := responsesGrammarToolCallInput(block.ToolName, block.ToolArguments, property)
+				if err != nil {
+					return nil, err
+				}
+				callID, itemID := responsesCustomToolCallIDs(block, fmt.Sprintf("ctc_sigma_%d", messageIndex))
+				item := map[string]any{
+					providerToolOptionTypeKey: "custom_tool_call",
+					"call_id":                 callID,
+					"name":                    block.ToolName,
+					"input":                   input,
+				}
+				item["id"] = itemID
+				if block.ProviderSignature != "" {
+					item["encrypted_content"] = block.ProviderSignature
+				}
+				items = append(items, item)
+				continue
+			}
 			arguments, err := toolArgumentsString(block.ToolArguments)
 			if err != nil {
 				return nil, err
 			}
 			callID, itemID := responsesToolCallIDs(block, fmt.Sprintf("fc_sigma_%d", messageIndex))
 			item := map[string]any{
-				"type":      "function_call",
-				"call_id":   callID,
-				"name":      block.ToolName,
-				"arguments": arguments,
+				providerToolOptionTypeKey: "function_call",
+				"call_id":                 callID,
+				"name":                    block.ToolName,
+				"arguments":               arguments,
 			}
 			if !omitToolItemID {
 				item["id"] = itemID
@@ -288,15 +397,33 @@ func sameProviderDifferentModel(model sigma.Model, message sigma.Message) bool {
 		message.Model != model.ID
 }
 
-func responsesTools(tools []sigma.Tool, deferLoading bool) ([]map[string]any, error) {
+func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	converted := make([]map[string]any, 0, len(tools))
 	for _, tool := range tools {
 		if tool.ProviderDefinedType != "" {
 			convertedTool := map[string]any{
-				"type": tool.ProviderDefinedType,
+				providerToolOptionTypeKey: tool.ProviderDefinedType,
 			}
 			for key, value := range tool.ProviderDefinedOptions {
 				convertedTool[key] = value
+			}
+			converted = append(converted, convertedTool)
+			continue
+		}
+		if _, ok := grammarToolInputProperties[tool.Name]; ok {
+			grammar := tool.OpenAIGrammar
+			convertedTool := map[string]any{
+				providerToolOptionTypeKey: "custom",
+				"name":                    tool.Name,
+				"description":             tool.Description,
+				"format": map[string]any{
+					providerToolOptionTypeKey: "grammar",
+					"syntax":                  string(grammar.Syntax),
+					"definition":              grammar.Definition,
+				},
+			}
+			if deferLoading {
+				convertedTool["defer_loading"] = true
 			}
 			converted = append(converted, convertedTool)
 			continue
@@ -306,13 +433,13 @@ func responsesTools(tools []sigma.Tool, deferLoading bool) ([]map[string]any, er
 			return nil, fmt.Errorf("openai responses: tool %q schema: %w", tool.Name, err)
 		}
 		if parameters == nil {
-			parameters = map[string]any{"type": "object"}
+			parameters = map[string]any{providerToolOptionTypeKey: "object"}
 		}
 		convertedTool := map[string]any{
-			"type":        "function",
-			"name":        tool.Name,
-			"description": tool.Description,
-			"parameters":  parameters,
+			providerToolOptionTypeKey: "function",
+			"name":                    tool.Name,
+			"description":             tool.Description,
+			"parameters":              parameters,
 		}
 		if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
 			convertedTool["strict"] = strict
@@ -325,7 +452,7 @@ func responsesTools(tools []sigma.Tool, deferLoading bool) ([]map[string]any, er
 	return converted, nil
 }
 
-func responsesToolSearchItems(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}) ([]map[string]any, error) {
+func responsesToolSearchItems(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	if len(deferredTools) == 0 {
 		return nil, nil
 	}
@@ -346,25 +473,25 @@ func responsesToolSearchItems(message sigma.Message, deferredTools map[string]si
 	if len(tools) == 0 {
 		return nil, nil
 	}
-	converted, err := responsesTools(tools, true)
+	converted, err := responsesTools(tools, true, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
 	}
 	callID := responsesToolSearchCallID(message.ToolCallID, names)
 	return []map[string]any{
 		{
-			"type":      "tool_search_call",
-			"call_id":   callID,
-			"execution": "client",
-			"status":    "completed",
-			"arguments": map[string]any{"query": strings.Join(names, " "), "limit": len(names)},
+			providerToolOptionTypeKey: "tool_search_call",
+			"call_id":                 callID,
+			"execution":               "client",
+			"status":                  "completed",
+			"arguments":               map[string]any{"query": strings.Join(names, " "), "limit": len(names)},
 		},
 		{
-			"type":      "tool_search_output",
-			"call_id":   callID,
-			"execution": "client",
-			"status":    "completed",
-			"tools":     converted,
+			providerToolOptionTypeKey: "tool_search_output",
+			"call_id":                 callID,
+			"execution":               "client",
+			"status":                  "completed",
+			"tools":                   converted,
 		},
 	}, nil
 }
@@ -457,14 +584,14 @@ func responsesTextFormat(value any) any {
 	if responseFormat == nil {
 		return value
 	}
-	if formatType, _ := responseFormat["type"].(string); formatType != "json_schema" {
+	if formatType, _ := responseFormat[providerToolOptionTypeKey].(string); formatType != "json_schema" {
 		return copyAnyMap(responseFormat)
 	}
 	jsonSchema := anyMap(responseFormat["json_schema"])
 	if jsonSchema == nil {
 		return copyAnyMap(responseFormat)
 	}
-	textFormat := map[string]any{"type": "json_schema"}
+	textFormat := map[string]any{providerToolOptionTypeKey: "json_schema"}
 	for key, value := range jsonSchema {
 		textFormat[key] = value
 	}
@@ -550,7 +677,7 @@ func setResponsesToolChoice(payload map[string]any, value any) {
 		payload["tool_choice"] = value
 		return
 	}
-	if choiceType, _ := choice["type"].(string); choiceType != "function" {
+	if choiceType, _ := choice[providerToolOptionTypeKey].(string); choiceType != "function" {
 		payload["tool_choice"] = value
 		return
 	}
@@ -596,9 +723,9 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 				return nil, err
 			}
 			parts = append(parts, map[string]any{
-				"detail":    "auto",
-				"type":      "input_image",
-				"image_url": url,
+				"detail":                  "auto",
+				providerToolOptionTypeKey: "input_image",
+				"image_url":               url,
 			})
 		case sigma.ContentBlockDocument:
 			if !model.SupportsDocuments() {
@@ -624,8 +751,8 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 	}
 	if text.Len() > 0 {
 		parts = append([]map[string]any{{
-			"type":             "input_text",
-			providerOptionText: text.String(),
+			providerToolOptionTypeKey: "input_text",
+			providerOptionText:        text.String(),
 		}}, parts...)
 	}
 	return parts, nil
@@ -646,6 +773,39 @@ func responsesToolCallIDs(block sigma.ContentBlock, fallbackItemID string) (stri
 		itemID = responsesBoundedID("fc", "fc_"+itemID, fallbackItemID)
 	}
 	return callID, itemID
+}
+
+func responsesCustomToolCallIDs(block sigma.ContentBlock, fallbackItemID string) (string, string) {
+	callID := firstNonEmpty(block.ToolCallID, providerMetadataString(block.ProviderMetadata, "call_id"))
+	itemID := providerID(block.ProviderMetadata)
+	if before, after, ok := strings.Cut(callID, "|"); ok {
+		callID = before
+		if itemID == "" {
+			itemID = after
+		}
+	}
+	callID = responsesBoundedID("call", callID, fallbackItemID+"_call")
+	itemID = responsesBoundedID("ctc", itemID, fallbackItemID)
+	if !strings.HasPrefix(itemID, "ctc_") {
+		itemID = responsesBoundedID("ctc", "ctc_"+itemID, fallbackItemID)
+	}
+	return callID, itemID
+}
+
+func responsesGrammarToolCallInput(toolName string, arguments any, property string) (string, error) {
+	argumentsText, err := toolArgumentsString(arguments)
+	if err != nil {
+		return "", fmt.Errorf("openai responses: grammar tool %q arguments: %w", toolName, err)
+	}
+	var values map[string]any
+	if err := json.Unmarshal([]byte(argumentsText), &values); err != nil {
+		return "", fmt.Errorf("openai responses: grammar tool %q arguments must be a JSON object: %w", toolName, err)
+	}
+	input, ok := values[property].(string)
+	if !ok {
+		return "", fmt.Errorf("openai responses: grammar tool %q arguments must contain string property %q", toolName, property)
+	}
+	return input, nil
 }
 
 func responsesCallID(raw string) string {

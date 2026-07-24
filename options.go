@@ -27,6 +27,7 @@ type OpenAIOptions struct {
 	TopLogprobs                  int
 	PromptCacheRetention         string
 	ParallelToolCalls            *bool
+	EnableGrammarTools           *bool
 	TextVerbosity                string
 	CodexWebSocketConnectTimeout *time.Duration
 }
@@ -569,6 +570,7 @@ func cloneOpenAIOptions(options *OpenAIOptions) *OpenAIOptions {
 	}
 	copied := *options
 	copied.ParallelToolCalls = cloneBoolPtr(options.ParallelToolCalls)
+	copied.EnableGrammarTools = cloneBoolPtr(options.EnableGrammarTools)
 	copied.CodexWebSocketConnectTimeout = cloneDurationPtr(options.CodexWebSocketConnectTimeout)
 	return &copied
 }

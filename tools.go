@@ -18,6 +18,23 @@ package sigma
 // ignored respectively; coercion remains off by default.
 type Schema map[string]any
 
+// OpenAIGrammarSyntax identifies the grammar format accepted by OpenAI custom
+// tools.
+type OpenAIGrammarSyntax string
+
+const (
+	// OpenAIGrammarLark identifies a Lark grammar definition.
+	OpenAIGrammarLark OpenAIGrammarSyntax = "lark"
+	// OpenAIGrammarRegex identifies a regular-expression grammar definition.
+	OpenAIGrammarRegex OpenAIGrammarSyntax = "regex"
+)
+
+// OpenAIGrammar configures an OpenAI custom tool grammar.
+type OpenAIGrammar struct {
+	Syntax     OpenAIGrammarSyntax `json:"syntax"`
+	Definition string              `json:"definition"`
+}
+
 // Tool describes a callable model tool.
 type Tool struct {
 	Name        string `json:"name"`
@@ -31,6 +48,9 @@ type Tool struct {
 	ProviderDefinedType    string         `json:"providerDefinedType,omitempty"`
 	ProviderDefinedOptions map[string]any `json:"providerDefinedOptions,omitempty"`
 	ProviderMetadata       map[string]any `json:"providerMetadata,omitempty"`
+	// OpenAIGrammar configures this tool as an OpenAI Responses custom tool
+	// when grammar tools are enabled for the request.
+	OpenAIGrammar *OpenAIGrammar `json:"openAIGrammar,omitempty"`
 }
 
 // ToolCall describes a model request to invoke a tool.

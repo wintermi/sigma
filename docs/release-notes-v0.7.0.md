@@ -16,7 +16,9 @@ adds Kimi Coding subscription device-code OAuth alongside a dynamic API-key
 Radius gateway text provider plus NVIDIA Nemotron 3 Ultra to the existing
 Fireworks text routes. It also adds direct Qwen Token Plan registrations for
 international and China regional endpoints with a focused Qwen3.7 Max and
-Qwen3.8 Max Preview catalog.
+Qwen3.8 Max Preview catalog. OpenAI Responses also gains grammar-constrained
+custom tools with direct GPT-5.4 capability metadata and explicit
+compatible-endpoint opt-in or opt-out.
 
 ## Changed
 
@@ -63,6 +65,12 @@ Qwen3.8 Max Preview catalog.
   registrations with the matching environment API-key fallbacks. The focused
   catalog includes text-only Qwen3.7 Max plus text/image Qwen3.8 Max Preview,
   both with tool and Qwen thinking compatibility metadata.
+- OpenAI Responses grammar-constrained custom tools now accept typed Lark or
+  regex definitions when their JSON Schema has one required string input.
+  GPT-5.4 enables the native custom-tool payload from generated metadata;
+  callers may explicitly enable or disable it for compatible Responses
+  endpoints. Deferred tool loading, assistant and tool-result replay, and
+  streamed custom input continue to use Sigma's normal tool-call surface.
 
 ## Compatibility
 
@@ -91,6 +99,10 @@ Qwen3.8 Max Preview catalog.
   `ProviderQwenTokenPlan` and `ProviderQwenTokenPlanCN`. Requests retain the
   existing shared Chat Completions payload shape; API-key discovery uses
   `QWEN_TOKEN_PLAN_API_KEY` and `QWEN_TOKEN_PLAN_CN_API_KEY` respectively.
+- Grammar custom tools are opt-in by metadata or `OpenAIOptions`; setting
+  `EnableGrammarTools` to `false` preserves function-tool serialization, and
+  explicit enablement is rejected on non-Responses APIs. This adds no new
+  provider or provider-neutral constrained-sampling surface.
 
 ## Deferred work
 

@@ -127,6 +127,10 @@ func TestRequestWithToolsJSONRoundTrip(t *testing.T) {
 					},
 					"required": []any{"city"},
 				},
+				OpenAIGrammar: &sigma.OpenAIGrammar{
+					Syntax:     sigma.OpenAIGrammarRegex,
+					Definition: "[A-Za-z ]+",
+				},
 			},
 			{
 				Name:                "web_search",
@@ -145,6 +149,10 @@ func TestRequestWithToolsJSONRoundTrip(t *testing.T) {
 	}
 	if got, want := roundTripped.Tools[0].Name, "weather"; got != want {
 		t.Fatalf("tool name changed after round trip: got %q want %q", got, want)
+	}
+	if grammar := roundTripped.Tools[0].OpenAIGrammar; grammar == nil ||
+		grammar.Syntax != sigma.OpenAIGrammarRegex || grammar.Definition != "[A-Za-z ]+" {
+		t.Fatalf("tool grammar changed after round trip: %#v", grammar)
 	}
 	if got, want := roundTripped.Tools[1].ProviderDefinedType, "web_search"; got != want {
 		t.Fatalf("provider-defined tool type changed after round trip: got %q want %q", got, want)

@@ -174,7 +174,12 @@ func (p *AzureResponsesProvider) run(ctx context.Context, writer sigma.StreamWri
 		return
 	}
 
-	final, err = parseResponsesStream(ctx, body, writer, model, responsesStreamOptions{})
+	streamOptions, err := responsesStreamOptionsForRequest(model, req, opts, responsesStreamOptions{})
+	if err != nil {
+		_ = writer.Error(ctx, err, final)
+		return
+	}
+	final, err = parseResponsesStream(ctx, body, writer, model, streamOptions)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted

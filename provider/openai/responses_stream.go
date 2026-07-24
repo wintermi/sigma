@@ -29,6 +29,7 @@ type responsesEvent struct {
 	SummaryIndex int                  `json:"summary_index"`
 	Delta        string               `json:"delta"`
 	Text         string               `json:"text"`
+	Input        string               `json:"input"`
 	Arguments    string               `json:"arguments"`
 	B64JSON      string               `json:"b64_json"`
 	PartialImage string               `json:"partial_image_b64"`
@@ -60,6 +61,7 @@ type responsesOutputItem struct {
 	Summary          []responsesSummaryPart `json:"summary"`
 	CallID           string                 `json:"call_id"`
 	Name             string                 `json:"name"`
+	Input            string                 `json:"input"`
 	Arguments        string                 `json:"arguments"`
 	Result           string                 `json:"result"`
 	B64JSON          string                 `json:"b64_json"`
@@ -121,6 +123,7 @@ type responsesStreamParser struct {
 	thinking            map[int]*responsesThinkingState
 	images              map[int]*responsesImageState
 	toolCalls           map[int]*streamblocks.ToolCall
+	customToolCalls     map[int]*responsesCustomToolCall
 	toolItemIDs         map[int]string
 	responseID          string
 	providerModel       string
@@ -134,6 +137,14 @@ type responsesStreamOptions struct {
 	requestServiceTier          string
 	applyServiceTierCosts       bool
 	useCodexServiceTierFallback bool
+	grammarToolInputProperties  map[string]string
+}
+
+type responsesCustomToolCall struct {
+	property string
+	input    string
+	started  bool
+	closed   bool
 }
 
 type responsesTextState struct {
@@ -182,14 +193,15 @@ func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamW
 
 func newResponsesStreamParser(writer sigma.StreamWriter, model sigma.Model, opts responsesStreamOptions) *responsesStreamParser {
 	return &responsesStreamParser{
-		writer:      writer,
-		model:       model,
-		options:     opts,
-		text:        make(map[int]*responsesTextState),
-		thinking:    make(map[int]*responsesThinkingState),
-		images:      make(map[int]*responsesImageState),
-		toolCalls:   make(map[int]*streamblocks.ToolCall),
-		toolItemIDs: make(map[int]string),
+		writer:          writer,
+		model:           model,
+		options:         opts,
+		text:            make(map[int]*responsesTextState),
+		thinking:        make(map[int]*responsesThinkingState),
+		images:          make(map[int]*responsesImageState),
+		toolCalls:       make(map[int]*streamblocks.ToolCall),
+		customToolCalls: make(map[int]*responsesCustomToolCall),
+		toolItemIDs:     make(map[int]string),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -307,6 +319,19 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 			state.SetArguments(parsed.Arguments)
 		}
 		return false, nil
+	case "response.custom_tool_call_input.delta":
+		if err := p.emitStart(ctx); err != nil {
+			return false, err
+		}
+		return false, p.emitCustomToolCallInput(ctx, parsed.OutputIndex, parsed.Delta, false, false)
+	case "response.custom_tool_call_input.done":
+		input := parsed.Input
+		if input == "" {
+			if custom := p.customToolCalls[parsed.OutputIndex]; custom != nil {
+				input = custom.input
+			}
+		}
+		return false, p.emitCustomToolCallInput(ctx, parsed.OutputIndex, input, true, true)
 	case "response.image_generation_call.partial_image":
 		if err := p.emitStart(ctx); err != nil {
 			return false, err
@@ -433,12 +458,26 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 		if item.Arguments != "" {
 			state.SetArguments(item.Arguments)
 		}
+	case "custom_tool_call":
+		if !p.configureCustomToolCall(outputIndex, item) {
+			return
+		}
+		custom := p.customToolCalls[outputIndex]
+		state := p.toolCallState(outputIndex)
+		if item.Input != "" || state.ArgumentsText() == "" {
+			custom.input = item.Input
+			custom.started = true
+			state.SetArguments(responsesCustomToolArguments(custom.property, item.Input))
+		}
 	case "image_generation_call":
 		p.finishImage(outputIndex, item.ID, item.Status, firstNonEmpty(item.Result, item.B64JSON, item.ImageURL))
 	}
 }
 
 func (p *responsesStreamParser) finishOutputItem(ctx context.Context, outputIndex int, item responsesOutputItem) error {
+	if item.Type == "custom_tool_call" {
+		return p.finishCustomToolCall(ctx, outputIndex, item)
+	}
 	p.captureOutputItem(outputIndex, item)
 	return p.emitEndEvents(ctx, &outputIndex)
 }
@@ -449,6 +488,12 @@ func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event
 		return p.emitImage(ctx, event.OutputIndex, event.Item.ID, firstNonEmpty(event.Item.Result, event.Item.B64JSON, event.Item.ImageURL), true)
 	}
 	if event.Item.Type != "function_call" {
+		if event.Item.Type == "custom_tool_call" {
+			if !p.configureCustomToolCall(event.OutputIndex, event.Item) {
+				return nil
+			}
+			return p.emitCustomToolCallInput(ctx, event.OutputIndex, event.Item.Input, false, true)
+		}
 		p.captureOutputItem(event.OutputIndex, event.Item)
 		return nil
 	}
@@ -466,6 +511,92 @@ func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event
 		delta.ID = event.Item.ID
 	}
 	return p.emitToolCall(ctx, event.OutputIndex, delta)
+}
+
+func (p *responsesStreamParser) configureCustomToolCall(outputIndex int, item responsesOutputItem) bool {
+	property, ok := p.options.grammarToolInputProperties[item.Name]
+	if !ok {
+		return false
+	}
+	custom := p.customToolCalls[outputIndex]
+	if custom == nil {
+		custom = &responsesCustomToolCall{property: property}
+		p.customToolCalls[outputIndex] = custom
+	}
+	if item.ID != "" {
+		p.toolItemIDs[outputIndex] = item.ID
+	}
+	state := p.toolCallState(outputIndex)
+	state.SetID(firstNonEmpty(state.ID(), item.CallID, item.ID))
+	state.SetName(firstNonEmpty(state.Name(), item.Name))
+	return true
+}
+
+func (p *responsesStreamParser) emitCustomToolCallInput(ctx context.Context, outputIndex int, input string, complete bool, inputIsFull bool) error {
+	custom := p.customToolCalls[outputIndex]
+	if custom == nil {
+		return nil
+	}
+	if !inputIsFull {
+		input = custom.input + input
+	}
+	if custom.closed {
+		if input != custom.input {
+			return fmt.Errorf("openai responses: custom tool input changed after completion")
+		}
+		return nil
+	}
+	if !strings.HasPrefix(input, custom.input) {
+		return fmt.Errorf("openai responses: custom tool input is not monotonic")
+	}
+	delta := input[len(custom.input):]
+	argumentsDelta := ""
+	if !custom.started {
+		property, err := json.Marshal(custom.property)
+		if err != nil {
+			return fmt.Errorf("openai responses: encode custom tool property: %w", err)
+		}
+		argumentsDelta = "{" + string(property) + ":\""
+		custom.started = true
+	}
+	if delta != "" {
+		encoded, err := json.Marshal(delta)
+		if err != nil {
+			return fmt.Errorf("openai responses: encode custom tool input: %w", err)
+		}
+		argumentsDelta += string(encoded[1 : len(encoded)-1])
+	}
+	if complete {
+		argumentsDelta += "\"}"
+		custom.closed = true
+	}
+	custom.input = input
+	if argumentsDelta == "" {
+		return nil
+	}
+	return p.emitToolCall(ctx, outputIndex, streamToolCallDelta{
+		Function: streamFunctionDelta{Arguments: argumentsDelta},
+	})
+}
+
+func (p *responsesStreamParser) finishCustomToolCall(ctx context.Context, outputIndex int, item responsesOutputItem) error {
+	if !p.configureCustomToolCall(outputIndex, item) {
+		return p.emitEndEvents(ctx, &outputIndex)
+	}
+	custom := p.customToolCalls[outputIndex]
+	input := custom.input
+	if item.Input != "" || input == "" {
+		input = item.Input
+	}
+	if err := p.emitCustomToolCallInput(ctx, outputIndex, input, true, true); err != nil {
+		return err
+	}
+	return p.emitEndEvents(ctx, &outputIndex)
+}
+
+func responsesCustomToolArguments(property string, input string) string {
+	arguments, _ := json.Marshal(map[string]string{property: input})
+	return string(arguments)
 }
 
 func (p *responsesStreamParser) emitStart(ctx context.Context) error {
@@ -907,19 +1038,28 @@ func responseMetadata(responseID string, providerModel string, modelID sigma.Mod
 	return metadata
 }
 
-func openAIResponsesStreamOptions(opts sigma.Options) responsesStreamOptions {
-	return responsesStreamOptions{
+func openAIResponsesStreamOptions(model sigma.Model, req sigma.Request, opts sigma.Options) (responsesStreamOptions, error) {
+	return responsesStreamOptionsForRequest(model, req, opts, responsesStreamOptions{
 		requestServiceTier:    openAIRequestServiceTier(opts),
 		applyServiceTierCosts: true,
-	}
+	})
 }
 
-func codexResponsesStreamOptions(opts sigma.Options) responsesStreamOptions {
-	return responsesStreamOptions{
+func codexResponsesStreamOptions(model sigma.Model, req sigma.Request, opts sigma.Options) (responsesStreamOptions, error) {
+	return responsesStreamOptionsForRequest(model, req, opts, responsesStreamOptions{
 		requestServiceTier:          openAIRequestServiceTier(opts),
 		applyServiceTierCosts:       true,
 		useCodexServiceTierFallback: true,
+	})
+}
+
+func responsesStreamOptionsForRequest(model sigma.Model, req sigma.Request, opts sigma.Options, options responsesStreamOptions) (responsesStreamOptions, error) {
+	properties, err := responsesGrammarToolInputProperties(model, req, opts)
+	if err != nil {
+		return responsesStreamOptions{}, err
 	}
+	options.grammarToolInputProperties = properties
+	return options, nil
 }
 
 func openAIRequestServiceTier(opts sigma.Options) string {

@@ -345,6 +345,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if gpt54.API != APIOpenAIResponses || !gpt54.SupportsTools || !gpt54.SupportsImages() || !gpt54.SupportsReasoning() {
 		t.Fatalf("GPT-5.4 metadata = %+v, want Responses with tools, images, and reasoning", gpt54)
 	}
+	if gpt54.OpenAIResponsesCompat == nil || !gpt54.OpenAIResponsesCompat.SupportsGrammarTools {
+		t.Fatalf("GPT-5.4 Responses compat = %#v, want grammar tools", gpt54.OpenAIResponsesCompat)
+	}
 	if got, ok := gpt54.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
 		t.Fatalf("GPT-5.4 xhigh level = %q, %v; want xhigh, true", got, ok)
 	}

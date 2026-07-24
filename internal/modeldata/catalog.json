@@ -16519,7 +16519,8 @@
         "xhigh": "xhigh"
       },
       "openAIResponsesCompat": {
-        "supportsToolSearch": true
+        "supportsToolSearch": true,
+        "supportsGrammarTools": true
       }
     },
     {

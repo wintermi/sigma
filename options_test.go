@@ -578,14 +578,18 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	t.Parallel()
 
 	parallelToolCalls := true
+	enableGrammarTools := true
 	connectTimeout := 50 * time.Millisecond
 	client, provider, model := newOptionsTestClient(t,
 		sigma.WithDefaultOptions(sigma.WithOpenAIOptions(sigma.OpenAIOptions{
 			ParallelToolCalls:            &parallelToolCalls,
+			EnableGrammarTools:           &enableGrammarTools,
 			CodexWebSocketConnectTimeout: &connectTimeout,
 		})),
 	)
+	model.API = sigma.APIOpenAIResponses
 	parallelToolCalls = false
+	enableGrammarTools = false
 	connectTimeout = time.Second
 
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
@@ -598,11 +602,15 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	if got.ParallelToolCalls == nil || !*got.ParallelToolCalls {
 		t.Fatalf("openai parallel tool calls = %v, want true", got.ParallelToolCalls)
 	}
+	if got.EnableGrammarTools == nil || !*got.EnableGrammarTools {
+		t.Fatalf("openai grammar tools = %v, want true", got.EnableGrammarTools)
+	}
 	if gotTimeout, want := valueOf(got.CodexWebSocketConnectTimeout), 50*time.Millisecond; gotTimeout != want {
 		t.Fatalf("openai codex websocket connect timeout = %s, want %s", gotTimeout, want)
 	}
 
 	*provider.opts.OpenAIOptions.ParallelToolCalls = false
+	*provider.opts.OpenAIOptions.EnableGrammarTools = false
 	*provider.opts.OpenAIOptions.CodexWebSocketConnectTimeout = 2 * time.Second
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
@@ -610,6 +618,9 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	got = provider.opts.OpenAIOptions
 	if got.ParallelToolCalls == nil || !*got.ParallelToolCalls {
 		t.Fatalf("openai parallel tool calls after mutation = %v, want true", got.ParallelToolCalls)
+	}
+	if got.EnableGrammarTools == nil || !*got.EnableGrammarTools {
+		t.Fatalf("openai grammar tools after mutation = %v, want true", got.EnableGrammarTools)
 	}
 	if gotTimeout, want := valueOf(got.CodexWebSocketConnectTimeout), 50*time.Millisecond; gotTimeout != want {
 		t.Fatalf("openai codex websocket connect timeout after mutation = %s, want %s", gotTimeout, want)
@@ -956,6 +967,13 @@ func TestOpenAIOptionsValidateAPICompatibility(t *testing.T) {
 			},
 		},
 		{
+			name: "grammar tools reject non responses api",
+			api:  sigma.APIOpenAICompletions,
+			options: sigma.OpenAIOptions{
+				EnableGrammarTools: testBoolPtr(true),
+			},
+		},
+		{
 			name: "logprobs rejects responses api",
 			api:  sigma.APIOpenAIResponses,
 			options: sigma.OpenAIOptions{
@@ -1054,6 +1072,10 @@ func valueOf[T comparable](value *T) T {
 }
 
 func testDurationPtr(value time.Duration) *time.Duration {
+	return &value
+}
+
+func testBoolPtr(value bool) *bool {
 	return &value
 }
 

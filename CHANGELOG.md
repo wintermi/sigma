@@ -31,6 +31,11 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Qwen Token Plan now has first-class OpenAI-compatible Chat Completions
   provider registration helpers for international and China regions, with
   focused Qwen3.7 Max and Qwen3.8 Max Preview metadata.
+- OpenAI Responses now supports grammar-constrained custom tools with typed
+  Lark or regex definitions. Direct GPT-5.4 metadata enables the native custom
+  tool payload, while callers can explicitly opt compatible Responses endpoints
+  in or out; replay, deferred loading, tool results, and streamed tool input
+  retain Sigma's existing tool-call surface.
 
 ### Changed
 

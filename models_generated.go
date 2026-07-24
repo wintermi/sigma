@@ -12050,7 +12050,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsToolSearch: true,
+			SupportsToolSearch:   true,
+			SupportsGrammarTools: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
