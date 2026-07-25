@@ -388,7 +388,7 @@ func TestTypedMistralToolChoicePayloads(t *testing.T) {
 	}
 }
 
-func TestTypedMistralNamedToolChoiceRejected(t *testing.T) {
+func TestTypedMistralNamedToolChoicePayload(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
@@ -398,11 +398,11 @@ func TestTypedMistralNamedToolChoiceRejected(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	providerID := sigma.ProviderID("mistral-named-tool-choice-rejected")
+	providerID := sigma.ProviderID("mistral-named-tool-choice")
 	model := mistralTestModel(providerID)
 	client := mistralTestClient(t, providerID, model, server.URL)
 
-	_, err := client.Complete(
+	if _, err := client.Complete(
 		context.Background(),
 		model,
 		sigma.Request{
@@ -412,17 +412,24 @@ func TestTypedMistralNamedToolChoiceRejected(t *testing.T) {
 		sigma.WithMistralOptions(sigma.MistralOptions{
 			ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"},
 		}),
-	)
-	if err == nil {
-		t.Fatal("Complete returned nil error")
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "mistral tool choice must be auto, none, any, or required") {
-		t.Fatalf("error = %v, want Mistral tool choice validation", err)
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	completionArgs := payload["completion_args"].(map[string]any)
+	choice, ok := completionArgs["tool_choice"].(map[string]any)
+	if !ok {
+		t.Fatalf("tool choice = %#v, want function object", completionArgs["tool_choice"])
 	}
-	select {
-	case request := <-requests:
-		t.Fatalf("unexpected provider request: %#v", request)
-	default:
+	if got, want := choice["type"], "function"; got != want {
+		t.Fatalf("tool choice type = %#v, want %#v", got, want)
+	}
+	function, ok := choice["function"].(map[string]any)
+	if !ok {
+		t.Fatalf("tool choice function = %#v, want object", choice["function"])
+	}
+	if got, want := function["name"], "lookup"; got != want {
+		t.Fatalf("tool choice function name = %#v, want %#v", got, want)
 	}
 }
 
@@ -449,7 +456,7 @@ func TestTypedMistralToolChoiceOverridesRawProviderOption(t *testing.T) {
 		},
 		sigma.WithProviderOption(providerID, "tool_choice", "none"),
 		sigma.WithMistralOptions(sigma.MistralOptions{
-			ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceRequired},
+			ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"},
 		}),
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -457,8 +464,10 @@ func TestTypedMistralToolChoiceOverridesRawProviderOption(t *testing.T) {
 
 	payload := decodePayload(t, receiveRequest(t, requests).Body)
 	completionArgs := payload["completion_args"].(map[string]any)
-	if got, want := completionArgs["tool_choice"], "required"; got != want {
-		t.Fatalf("tool choice = %#v, want %#v", got, want)
+	choice := completionArgs["tool_choice"].(map[string]any)
+	function := choice["function"].(map[string]any)
+	if got, want := function["name"], "lookup"; got != want {
+		t.Fatalf("tool choice function name = %#v, want %#v", got, want)
 	}
 }
 

@@ -12,6 +12,7 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Added
 
+- Mistral Conversations now supports typed named-function tool selection.
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
 - xAI now supports caller-configured device-code OAuth login, token refresh,
   in-memory credential resolution, and opt-in provider-auth registration while

@@ -24,6 +24,8 @@ storage for the existing text and image routes.
 
 ## Changed
 
+- Mistral Conversations now supports typed named function selection with native
+  tool-choice objects.
 - Codex request-affinity headers now limit session IDs to 64 characters while
   preserving local session resource management. Sessionless WebSocket
   handshakes now use monotonic UUIDv7 request IDs, and GPT-5.6 Codex models use
@@ -84,6 +86,9 @@ storage for the existing text and image routes.
 
 ## Compatibility
 
+- Mistral Conversations now accepts the existing `MistralToolChoiceTool` with a
+  non-empty name. Provider IDs, routes, and serialized message shapes are
+  unchanged.
 - `provider/xai` adds Responses registration helpers. Built-in `xai/grok-4.5`
   now dispatches through OpenAI Responses rather than Chat Completions; no
   provider ID or serialized-message shape changes.

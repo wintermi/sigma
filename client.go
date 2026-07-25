@@ -610,7 +610,7 @@ func validateOptions(model Model, options Options) error {
 	if options.MistralOptions != nil &&
 		options.MistralOptions.ToolChoice != nil &&
 		!validMistralToolChoice(*options.MistralOptions.ToolChoice) {
-		return invalidOptionsError(model, "mistral tool choice must be auto, none, any, or required")
+		return invalidOptionsError(model, "mistral tool choice must be auto, none, any, required, or a named function")
 	}
 	if options.BedrockOptions != nil {
 		if options.BedrockOptions.TopP != nil && *options.BedrockOptions.TopP < 0 {
@@ -739,6 +739,8 @@ func validMistralToolChoice(choice MistralToolChoice) bool {
 	switch choice.Type {
 	case MistralToolChoiceAuto, MistralToolChoiceAny, MistralToolChoiceNone, MistralToolChoiceRequired:
 		return choice.Name == ""
+	case MistralToolChoiceTool:
+		return choice.Name != ""
 	default:
 		return false
 	}

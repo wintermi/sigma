@@ -661,8 +661,8 @@ should still come through the catalog refresh workflow.
       with deterministic user-input and tool-result payload fixtures.
 - [x] Harden Mistral Conversations payloads against Chat Completions-only field
       shapes: image chunks use `image_url`, tool results stay string-valued,
-      native Magistral `prompt_mode` is top-level, and named tool choice is
-      rejected locally.
+      native Magistral `prompt_mode` is top-level, and typed named function
+      choices use native tool-choice objects.
 - [ ] Add Mistral file image references only after Sigma defines an explicit
       chat-level file-loading policy.
 - [ ] Add Mistral built-in connector tools such as web search, code interpreter,

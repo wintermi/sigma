@@ -101,8 +101,7 @@ const (
 	MistralToolChoiceNone MistralToolChoiceType = "none"
 	// MistralToolChoiceRequired requires Mistral to call one of the supplied tools.
 	MistralToolChoiceRequired MistralToolChoiceType = "required"
-	// MistralToolChoiceTool is retained for source compatibility, but Mistral
-	// Conversations currently accepts only auto, none, any, or required.
+	// MistralToolChoiceTool requires Mistral to call the named function.
 	MistralToolChoiceTool MistralToolChoiceType = "function"
 )
 

@@ -380,6 +380,14 @@ func mistralToolChoice(opts sigma.Options) (any, bool) {
 		return nil, false
 	}
 	choice := opts.MistralOptions.ToolChoice
+	if choice.Type == sigma.MistralToolChoiceTool {
+		return map[string]any{
+			"type": "function",
+			"function": map[string]any{
+				"name": choice.Name,
+			},
+		}, true
+	}
 	return string(choice.Type), true
 }
 

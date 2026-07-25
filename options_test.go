@@ -718,12 +718,12 @@ func TestMistralOptionsAreCopied(t *testing.T) {
 	t.Parallel()
 
 	options := sigma.MistralOptions{
-		ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceRequired},
+		ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"},
 	}
 	client, provider, model := newOptionsTestClient(t,
 		sigma.WithDefaultOptions(sigma.WithMistralOptions(options)),
 	)
-	options.ToolChoice.Type = sigma.MistralToolChoiceNone
+	options.ToolChoice.Name = "changed"
 
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -732,17 +732,17 @@ func TestMistralOptionsAreCopied(t *testing.T) {
 	if got == nil {
 		t.Fatal("mistral options = nil")
 	}
-	if got.ToolChoice == nil || got.ToolChoice.Type != sigma.MistralToolChoiceRequired {
-		t.Fatalf("mistral tool choice = %+v, want required", got.ToolChoice)
+	if got.ToolChoice == nil || got.ToolChoice.Type != sigma.MistralToolChoiceTool || got.ToolChoice.Name != "lookup" {
+		t.Fatalf("mistral tool choice = %+v, want named lookup", got.ToolChoice)
 	}
 
-	got.ToolChoice.Type = sigma.MistralToolChoiceNone
+	got.ToolChoice.Name = "provider-mutated"
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
 	}
 	got = provider.opts.MistralOptions
-	if got.ToolChoice == nil || got.ToolChoice.Type != sigma.MistralToolChoiceRequired {
-		t.Fatalf("mistral tool choice after mutation = %+v, want required", got.ToolChoice)
+	if got.ToolChoice == nil || got.ToolChoice.Type != sigma.MistralToolChoiceTool || got.ToolChoice.Name != "lookup" {
+		t.Fatalf("mistral tool choice after mutation = %+v, want named lookup", got.ToolChoice)
 	}
 }
 
@@ -764,7 +764,6 @@ func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 		{name: "openai codex websocket connect timeout", opt: sigma.WithOpenAIOptions(sigma.OpenAIOptions{CodexWebSocketConnectTimeout: testDurationPtr(-time.Second)})},
 		{name: "mistral simple tool choice with name", opt: sigma.WithMistralOptions(sigma.MistralOptions{ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceAuto, Name: "lookup"}})},
 		{name: "mistral named tool without name", opt: sigma.WithMistralOptions(sigma.MistralOptions{ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool}})},
-		{name: "mistral named tool with name", opt: sigma.WithMistralOptions(sigma.MistralOptions{ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"}})},
 		{name: "bedrock top p", opt: sigma.WithBedrockOptions(sigma.BedrockOptions{TopP: testFloat64Ptr(-0.1)})},
 		{name: "bedrock tool choice", opt: sigma.WithBedrockOptions(sigma.BedrockOptions{ToolChoice: &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool}})},
 	}
