@@ -387,8 +387,11 @@ metadata-only and backed by compatibility checks.
 - [x] Radius gateway — add an API-key-authenticated dynamic text provider with
       gateway catalog refresh, native streaming, replay, typed errors, and
       cancellation fixtures while keeping the default registry catalog-free.
-- [ ] Radius gateway — keep OAuth and durable model-catalog persistence
-      deferred until they have separate public contracts.
+- [x] Radius gateway — add caller-configured browser PKCE and device-code OAuth
+      login, refresh, stored-provider auth, and authenticated runtime catalog
+      refresh while keeping token persistence caller-owned.
+- [ ] Radius gateway — keep durable model-catalog persistence deferred until it
+      has a separate public contract.
 - [ ] For each promoted provider, add streaming, tools, usage, typed error
       classification, redaction, and cancellation coverage.
 

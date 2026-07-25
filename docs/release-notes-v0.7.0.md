@@ -12,13 +12,13 @@ caller-directed stream recovery, including reliable sessionless Codex WebSocket
 request IDs and corrected Codex GPT-5.6 context limits. It refreshes the Kimi
 Coding, Fireworks, and selected OpenCode Go catalogs, adds focused xAI OpenAI
 Responses registration and caller-configured device-code OAuth surfaces, and
-adds Kimi Coding subscription device-code OAuth alongside a dynamic API-key
-Radius gateway text provider plus NVIDIA Nemotron 3 Ultra to the existing
-Fireworks text routes. It also adds direct Qwen Token Plan registrations for
-international and China regional endpoints with a focused Qwen3.7 Max and
-Qwen3.8 Max Preview catalog. OpenAI Responses also gains grammar-constrained
-custom tools with direct GPT-5.4 capability metadata and explicit
-compatible-endpoint opt-in or opt-out.
+adds Kimi Coding subscription device-code OAuth alongside a dynamic Radius
+gateway text provider with caller-configured browser and device-code OAuth plus
+NVIDIA Nemotron 3 Ultra to the existing Fireworks text routes. It also adds
+direct Qwen Token Plan registrations for international and China regional
+endpoints with a focused Qwen3.7 Max and Qwen3.8 Max Preview catalog. OpenAI
+Responses also gains grammar-constrained custom tools with direct GPT-5.4
+capability metadata and explicit compatible-endpoint opt-in or opt-out.
 
 ## Changed
 
@@ -61,6 +61,10 @@ compatible-endpoint opt-in or opt-out.
 - Radius gateway models now refresh explicitly from the gateway at runtime and
   use its native text streaming protocol with image, thinking, function-tool,
   usage, and response-ID handling. There is no static Radius catalog.
+- Radius gateway now supports opt-in browser PKCE and device-code OAuth login,
+  refresh, in-memory or stored credential resolution, and OAuth-authenticated
+  catalog refresh. Applications provide the OAuth client and retain token
+  persistence ownership.
 - Qwen Token Plan now has international and China regional Chat Completions
   registrations with the matching environment API-key fallbacks. The focused
   catalog includes text-only Qwen3.7 Max plus text/image Qwen3.8 Max Preview,
@@ -93,8 +97,9 @@ compatible-endpoint opt-in or opt-out.
   remains on Chat Completions.
 - `ProviderRadius` is a new opt-in registration. Its models are empty until an
   explicit refresh succeeds; requests use standard API-key resolver precedence
-  with `RADIUS_API_KEY` as the environment fallback. OAuth and persisted
-  gateway catalogs remain deferred.
+  with `RADIUS_API_KEY` as the environment fallback. OAuth uses a caller-owned
+  client configuration and can authenticate catalog refreshes through
+  `WithCatalogAuthResolver`; persisted gateway catalogs remain deferred.
 - `provider/qwen` adds additive opt-in registrations for
   `ProviderQwenTokenPlan` and `ProviderQwenTokenPlanCN`. Requests retain the
   existing shared Chat Completions payload shape; API-key discovery uses

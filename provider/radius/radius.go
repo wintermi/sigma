@@ -43,10 +43,11 @@ type ModelSource struct {
 }
 
 type config struct {
-	gatewayURL    string
-	httpClient    *http.Client
-	headers       map[string]string
-	catalogAPIKey string
+	gatewayURL          string
+	httpClient          *http.Client
+	headers             map[string]string
+	catalogAPIKey       string
+	catalogAuthResolver sigma.AuthResolver
 }
 
 // ProviderOption configures a Radius provider and its model source.
@@ -104,6 +105,15 @@ func WithCatalogAPIKey(apiKey string) ProviderOption {
 	}
 }
 
+// WithCatalogAuthResolver configures the credential resolver used to refresh
+// the Radius gateway catalog. It is consulted after an explicit catalog API key
+// and before the RADIUS_API_KEY environment fallback.
+func WithCatalogAuthResolver(resolver sigma.AuthResolver) ProviderOption {
+	return func(config *config) {
+		config.catalogAuthResolver = resolver
+	}
+}
+
 // Register adds the Radius text provider and runtime model source to registry.
 func Register(registry *sigma.Registry, opts ...ProviderOption) error {
 	if registry == nil {
@@ -151,7 +161,11 @@ func (source *ModelSource) TextModels(ctx context.Context) ([]sigma.Model, error
 		return nil, fmt.Errorf("radius: create catalog request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	if apiKey := source.config.catalogKey(); apiKey != "" {
+	apiKey, err := source.config.catalogKey(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("radius: resolve catalog credentials: %w", err)
+	}
+	if apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
 	for key, value := range source.config.headers {
@@ -338,11 +352,23 @@ func (config *config) requestHTTPClient(opts sigma.Options) *http.Client {
 	return config.httpClientOrDefault()
 }
 
-func (config *config) catalogKey() string {
+func (config *config) catalogKey(ctx context.Context) (string, error) {
 	if config != nil && config.catalogAPIKey != "" {
-		return config.catalogAPIKey
+		return config.catalogAPIKey, nil
 	}
-	return os.Getenv("RADIUS_API_KEY")
+	if config != nil && config.catalogAuthResolver != nil {
+		credential, err := config.catalogAuthResolver.Resolve(ctx, sigma.Model{
+			Provider: sigma.ProviderRadius,
+			API:      sigma.APIRadiusMessages,
+		}, sigma.Options{})
+		if err != nil {
+			return "", err
+		}
+		if credential.Value != "" {
+			return credential.Value, nil
+		}
+	}
+	return os.Getenv("RADIUS_API_KEY"), nil
 }
 
 func endpoint(baseURL, suffix string) (string, error) {

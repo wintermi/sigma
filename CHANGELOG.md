@@ -28,6 +28,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Radius gateway now has a first-class API-key-authenticated text provider that
   refreshes gateway-owned model metadata at runtime and supports native
   streaming, replay, usage, and response IDs without adding a static catalog.
+- Radius gateway now supports opt-in caller-configured browser and device-code
+  OAuth login, token refresh, stored-provider auth, and OAuth-authenticated
+  runtime catalog refresh while applications retain client registration and
+  token persistence ownership.
 - Qwen Token Plan now has first-class OpenAI-compatible Chat Completions
   provider registration helpers for international and China regions, with
   focused Qwen3.7 Max and Qwen3.8 Max Preview metadata.
