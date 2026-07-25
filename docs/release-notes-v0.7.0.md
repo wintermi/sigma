@@ -18,7 +18,9 @@ NVIDIA Nemotron 3 Ultra to the existing Fireworks text routes. It also adds
 direct Qwen Token Plan registrations for international and China regional
 endpoints with a focused Qwen3.7 Max and Qwen3.8 Max Preview catalog. OpenAI
 Responses also gains grammar-constrained custom tools with direct GPT-5.4
-capability metadata and explicit compatible-endpoint opt-in or opt-out.
+capability metadata and explicit compatible-endpoint opt-in or opt-out. It
+also adds opt-in OpenRouter browser PKCE login with caller-owned permanent-key
+storage for the existing text and image routes.
 
 ## Changed
 
@@ -44,6 +46,10 @@ capability metadata and explicit compatible-endpoint opt-in or opt-out.
   refresh, in-memory credential resolution, and provider-auth registration.
   Tokens use the existing Messages bearer-auth path while applications retain
   persistence ownership.
+- OpenRouter now supports opt-in browser PKCE login that returns a permanent
+  API key. Applications can place that key in a caller-supplied CredentialStore
+  for existing text and image requests; Sigma does not add a persistence
+  backend or refresh lifecycle.
 - OpenCode Go routes Grok 4.5 through OpenAI Responses and Kimi K3 through
   Chat Completions, with reviewed text/image, tool, reasoning, context,
   output, and pricing metadata.
@@ -92,6 +98,10 @@ capability metadata and explicit compatible-endpoint opt-in or opt-out.
   registration or an in-memory token provider. It does not change the existing
   API-key fallback, provider ID, request route, or serialized-message shape;
   applications continue to own token persistence.
+- OpenRouter browser OAuth is opt-in through `provider/openrouter` and returns
+  a permanent API key. It does not change the existing API-key fallback,
+  provider ID, request routes, or serialized-message shapes; applications
+  continue to own credential persistence.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.

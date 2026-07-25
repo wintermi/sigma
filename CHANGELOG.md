@@ -22,6 +22,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Kimi Coding now supports opt-in subscription device-code OAuth login, token
   refresh, in-memory credential resolution, and provider-auth registration
   while applications retain token persistence ownership.
+- OpenRouter now supports opt-in browser PKCE login that returns a permanent
+  API key and can store it through a caller-supplied CredentialStore for the
+  existing text and image routes.
 - Generated OpenCode Go metadata now routes Grok 4.5 through OpenAI Responses
   and Kimi K3 through Chat Completions, with reviewed text/image, tool,
   reasoning, limit, and pricing metadata.
