@@ -158,8 +158,10 @@ Release scope values:
 - Radius gateway begins with no static models; applications explicitly refresh
   its runtime source before selecting a model. API keys remain supported, while
   caller-configured browser/device OAuth can authenticate requests and catalog
-  refreshes through provider auth or `WithCatalogAuthResolver`. Durable gateway
-  catalog persistence remains deferred.
+  refreshes through provider auth or `WithCatalogAuthResolver`. Applications
+  can opt into caller-owned catalog snapshots with `WithCatalogStore` and
+  restore them through `Client.RestoreTextModels`; automatic stale-cache
+  fallback remains deferred.
 - Anthropic Messages supports Claude Pro/Max OAuth: browser callback login with
   a manual code-paste fallback, refresh helpers, an in-memory OAuth token
   provider, and automatic Claude Code identity (beta headers, identity system

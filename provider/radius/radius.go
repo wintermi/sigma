@@ -42,12 +42,23 @@ type ModelSource struct {
 	config *config
 }
 
+// CatalogStore persists validated Radius model snapshots for later restoration.
+//
+// Implementations own durable storage and must not store credentials. Callers
+// should treat model snapshots passed to and returned from this interface as
+// immutable.
+type CatalogStore interface {
+	ReadCatalog(context.Context) ([]sigma.Model, bool, error)
+	WriteCatalog(context.Context, []sigma.Model) error
+}
+
 type config struct {
 	gatewayURL          string
 	httpClient          *http.Client
 	headers             map[string]string
 	catalogAPIKey       string
 	catalogAuthResolver sigma.AuthResolver
+	catalogStore        CatalogStore
 }
 
 // ProviderOption configures a Radius provider and its model source.
@@ -111,6 +122,14 @@ func WithCatalogAPIKey(apiKey string) ProviderOption {
 func WithCatalogAuthResolver(resolver sigma.AuthResolver) ProviderOption {
 	return func(config *config) {
 		config.catalogAuthResolver = resolver
+	}
+}
+
+// WithCatalogStore configures caller-owned storage for validated Radius model
+// snapshots. Catalog persistence is opt-in and does not store credentials.
+func WithCatalogStore(store CatalogStore) ProviderOption {
+	return func(config *config) {
+		config.catalogStore = store
 	}
 }
 
@@ -203,18 +222,30 @@ func (source *ModelSource) TextModels(ctx context.Context) ([]sigma.Model, error
 		return nil, fmt.Errorf("radius: invalid catalog: %w", err)
 	}
 
-	models := make([]sigma.Model, 0, len(catalog.Models))
-	seen := make(map[sigma.ModelID]struct{}, len(catalog.Models))
-	for _, entry := range catalog.Models {
-		model, ok := entry.model(baseURL)
-		if !ok {
-			continue
+	models := modelsFromCatalog(catalog, baseURL)
+	if source.config.catalogStore != nil {
+		if err := source.config.catalogStore.WriteCatalog(ctx, models); err != nil {
+			return nil, fmt.Errorf("radius: write catalog cache: %w", err)
 		}
-		if _, exists := seen[model.ID]; exists {
-			continue
-		}
-		seen[model.ID] = struct{}{}
-		models = append(models, model)
+	}
+	return models, nil
+}
+
+// CachedTextModels restores the last caller-owned Radius catalog snapshot
+// without contacting the gateway.
+func (source *ModelSource) CachedTextModels(ctx context.Context) ([]sigma.Model, error) {
+	if source == nil || source.config == nil {
+		return nil, errors.New("radius: model source is required")
+	}
+	if source.config.catalogStore == nil {
+		return nil, errors.New("radius: catalog store is not configured")
+	}
+	models, ok, err := source.config.catalogStore.ReadCatalog(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("radius: read catalog cache: %w", err)
+	}
+	if !ok {
+		return nil, errors.New("radius: cached catalog is not available")
 	}
 	return models, nil
 }
@@ -428,6 +459,23 @@ type gatewayCost struct {
 	Output     float64 `json:"output"`
 	CacheRead  float64 `json:"cacheRead"`
 	CacheWrite float64 `json:"cacheWrite"`
+}
+
+func modelsFromCatalog(catalog gatewayConfig, baseURL string) []sigma.Model {
+	models := make([]sigma.Model, 0, len(catalog.Models))
+	seen := make(map[sigma.ModelID]struct{}, len(catalog.Models))
+	for _, entry := range catalog.Models {
+		model, ok := entry.model(baseURL)
+		if !ok {
+			continue
+		}
+		if _, exists := seen[model.ID]; exists {
+			continue
+		}
+		seen[model.ID] = struct{}{}
+		models = append(models, model)
+	}
+	return models
 }
 
 func (entry gatewayModel) model(baseURL string) (sigma.Model, bool) {

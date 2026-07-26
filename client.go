@@ -156,6 +156,17 @@ func (c *Client) RefreshTextModels(ctx context.Context, providers ...ProviderID)
 	return c.registry.RefreshTextModels(ctx, providers...)
 }
 
+// RestoreTextModels restores cached runtime text models on the client's registry.
+func (c *Client) RestoreTextModels(ctx context.Context, providers ...ProviderID) error {
+	if c == nil {
+		c = NewClient()
+	}
+	if c.registry == nil {
+		return registryError("registry is required")
+	}
+	return c.registry.RestoreTextModels(ctx, providers...)
+}
+
 // Stream starts a provider stream for model.
 func (c *Client) Stream(ctx context.Context, model Model, req Request, opts ...Option) *Stream {
 	if ctx == nil {

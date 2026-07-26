@@ -20,7 +20,9 @@ endpoints with a focused Qwen3.7 Max and Qwen3.8 Max Preview catalog. OpenAI
 Responses also gains grammar-constrained custom tools with direct GPT-5.4
 capability metadata and explicit compatible-endpoint opt-in or opt-out. It
 also adds opt-in OpenRouter browser PKCE login with caller-owned permanent-key
-storage for the existing text and image routes.
+storage for the existing text and image routes. Radius gateway catalogs can
+also be stored through caller-owned snapshots and restored explicitly without a
+gateway request.
 
 ## Changed
 
@@ -69,6 +71,9 @@ storage for the existing text and image routes.
 - Radius gateway models now refresh explicitly from the gateway at runtime and
   use its native text streaming protocol with image, thinking, function-tool,
   usage, and response-ID handling. There is no static Radius catalog.
+- Radius gateway can now write validated model snapshots to caller-owned
+  storage and restore them explicitly without contacting the gateway. Normal
+  catalog refreshes remain network-backed.
 - Radius gateway now supports opt-in browser PKCE and device-code OAuth login,
   refresh, in-memory or stored credential resolution, and OAuth-authenticated
   catalog refresh. Applications provide the OAuth client and retain token
@@ -114,7 +119,9 @@ storage for the existing text and image routes.
   explicit refresh succeeds; requests use standard API-key resolver precedence
   with `RADIUS_API_KEY` as the environment fallback. OAuth uses a caller-owned
   client configuration and can authenticate catalog refreshes through
-  `WithCatalogAuthResolver`; persisted gateway catalogs remain deferred.
+  `WithCatalogAuthResolver`. `radius.WithCatalogStore` adds caller-owned model
+  snapshots, and `Client.RestoreTextModels` restores one without a gateway
+  request; registrations without a catalog store retain the existing behavior.
 - `provider/qwen` adds additive opt-in registrations for
   `ProviderQwenTokenPlan` and `ProviderQwenTokenPlanCN`. Requests retain the
   existing shared Chat Completions payload shape; API-key discovery uses

@@ -27,6 +27,16 @@ type TextModelSource interface {
 	TextModels(context.Context) ([]Model, error)
 }
 
+// CachedTextModelSource restores text models that a source previously stored
+// outside the registry.
+//
+// Cached models are applied through the same validation and source-ownership
+// rules as refreshed models.
+type CachedTextModelSource interface {
+	TextModelSource
+	CachedTextModels(context.Context) ([]Model, error)
+}
+
 // ImageModelSource lists image models for a provider-owned runtime source.
 type ImageModelSource interface {
 	ImageModels(context.Context) ([]ImageModel, error)
@@ -600,6 +610,42 @@ func (r *Registry) RefreshTextModels(ctx context.Context, providers ...ProviderI
 		}
 		if err := r.applyTextModelRefresh(source.provider, source.registration, models); err != nil {
 			errs = append(errs, fmt.Errorf("refresh text models for %s: %w", source.provider, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// RestoreTextModels restores cached text models from registered runtime sources.
+//
+// When providers are omitted, sources without cached-model support are skipped.
+// An explicitly requested source must implement CachedTextModelSource.
+func (r *Registry) RestoreTextModels(ctx context.Context, providers ...ProviderID) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	r.ensure()
+
+	sources, err := r.textSourcesForRefresh(providers)
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, source := range sources {
+		cachedSource, ok := source.registration.source.(CachedTextModelSource)
+		if !ok {
+			if len(providers) > 0 {
+				errs = append(errs, fmt.Errorf("restore text models for %s: %w", source.provider, registryError("text model source does not support cached restore")))
+			}
+			continue
+		}
+		models, err := cachedSource.CachedTextModels(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("restore text models for %s: %w", source.provider, err))
+			continue
+		}
+		if err := r.applyTextModelRefresh(source.provider, source.registration, models); err != nil {
+			errs = append(errs, fmt.Errorf("restore text models for %s: %w", source.provider, err))
 		}
 	}
 	return errors.Join(errs...)

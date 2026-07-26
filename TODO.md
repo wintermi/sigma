@@ -393,8 +393,9 @@ metadata-only and backed by compatibility checks.
 - [x] Radius gateway — add caller-configured browser PKCE and device-code OAuth
       login, refresh, stored-provider auth, and authenticated runtime catalog
       refresh while keeping token persistence caller-owned.
-- [ ] Radius gateway — keep durable model-catalog persistence deferred until it
-      has a separate public contract.
+- [x] Radius gateway — add opt-in caller-owned runtime catalog snapshots and
+      explicit offline model restoration while preserving network-backed
+      refreshes, source ownership, and caller-owned credential persistence.
 - [ ] For each promoted provider, add streaming, tools, usage, typed error
       classification, redaction, and cancellation coverage.
 

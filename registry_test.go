@@ -65,6 +65,12 @@ type testTextModelSource struct {
 	err    error
 }
 
+type testCachedTextModelSource struct {
+	testTextModelSource
+	cachedModels []sigma.Model
+	cachedErr    error
+}
+
 type testImageModelSource struct {
 	mu     sync.Mutex
 	models []sigma.ImageModel
@@ -94,6 +100,32 @@ func (s *testTextModelSource) Set(models ...sigma.Model) {
 	defer s.mu.Unlock()
 
 	s.models = append([]sigma.Model(nil), models...)
+}
+
+func (s *testCachedTextModelSource) CachedTextModels(context.Context) ([]sigma.Model, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.cachedErr != nil {
+		return nil, s.cachedErr
+	}
+	models := make([]sigma.Model, len(s.cachedModels))
+	copy(models, s.cachedModels)
+	return models, nil
+}
+
+func (s *testCachedTextModelSource) SetCached(models ...sigma.Model) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cachedModels = append([]sigma.Model(nil), models...)
+}
+
+func (s *testCachedTextModelSource) SetCachedError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cachedErr = err
 }
 
 func (s *testImageModelSource) ImageModels(context.Context) ([]sigma.ImageModel, error) {
@@ -412,6 +444,95 @@ func TestRegistryRefreshTextModelsRejectsDuplicateAndWrongProviderModels(t *test
 				t.Fatalf("model count = %d, want 0", got)
 			}
 		})
+	}
+}
+
+func TestRegistryRestoreTextModelsSkipsUnsupportedSourcesUnlessRequested(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	cachedProvider := sigma.ProviderID("cached")
+	plainProvider := sigma.ProviderID("plain")
+	for _, provider := range []sigma.ProviderID{cachedProvider, plainProvider} {
+		if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+			t.Fatalf("RegisterTextProvider(%s) returned error: %v", provider, err)
+		}
+	}
+	cached := &testCachedTextModelSource{}
+	cached.SetCached(sigma.Model{ID: "restored", Provider: cachedProvider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(cachedProvider, cached); err != nil {
+		t.Fatalf("RegisterTextModelSource(cached) returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(plainProvider, &testTextModelSource{}); err != nil {
+		t.Fatalf("RegisterTextModelSource(plain) returned error: %v", err)
+	}
+
+	if err := registry.RestoreTextModels(context.Background()); err != nil {
+		t.Fatalf("RestoreTextModels(all) returned error: %v", err)
+	}
+	if _, ok := registry.Model(cachedProvider, "restored"); !ok {
+		t.Fatal("cached source model was not restored")
+	}
+	if err := registry.RestoreTextModels(context.Background(), plainProvider); err == nil {
+		t.Fatal("RestoreTextModels(explicit unsupported source) returned nil")
+	}
+}
+
+func TestRegistryRestoreTextModelsValidatesAndPreservesExistingModels(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("cached")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	source := &testCachedTextModelSource{}
+	source.SetCached(sigma.Model{ID: "good", Provider: provider, API: sigma.APIOpenAICompletions})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RestoreTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RestoreTextModels returned error: %v", err)
+	}
+
+	source.SetCached(
+		sigma.Model{ID: "bad-api", Provider: provider, API: sigma.API("wrong-api")},
+		sigma.Model{ID: "new", Provider: provider, API: sigma.APIOpenAICompletions},
+	)
+	if err := registry.RestoreTextModels(context.Background(), provider); err == nil {
+		t.Fatal("RestoreTextModels with invalid cached model returned nil")
+	}
+	if _, ok := registry.Model(provider, "good"); !ok {
+		t.Fatal("existing source model was removed after invalid cached restore")
+	}
+	if _, ok := registry.Model(provider, "new"); ok {
+		t.Fatal("new model from invalid cached restore was registered")
+	}
+}
+
+func TestRegistryRestoreTextModelsPreservesCallerOwnedConflicts(t *testing.T) {
+	t.Parallel()
+
+	registry := sigma.NewRegistry()
+	provider := sigma.ProviderID("cached")
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(sigma.Model{ID: "manual", Provider: provider, API: sigma.APIOpenAICompletions, Name: "manual"}); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	source := &testCachedTextModelSource{}
+	source.SetCached(sigma.Model{ID: "manual", Provider: provider, API: sigma.APIOpenAICompletions, Name: "cached"})
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	if err := registry.RestoreTextModels(context.Background(), provider); err == nil {
+		t.Fatal("RestoreTextModels with caller-owned conflict returned nil")
+	}
+	model, ok := registry.Model(provider, "manual")
+	if !ok || model.Name != "manual" {
+		t.Fatalf("caller-owned model after cached restore conflict = %#v, want manual model", model)
 	}
 }
 

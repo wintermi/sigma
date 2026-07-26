@@ -36,6 +36,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   OAuth login, token refresh, stored-provider auth, and OAuth-authenticated
   runtime catalog refresh while applications retain client registration and
   token persistence ownership.
+- Radius gateway now supports opt-in caller-owned runtime catalog snapshots and
+  explicit offline model restoration while normal catalog refreshes remain
+  network-backed.
 - Qwen Token Plan now has first-class OpenAI-compatible Chat Completions
   provider registration helpers for international and China regions, with
   focused Qwen3.7 Max and Qwen3.8 Max Preview metadata.

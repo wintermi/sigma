@@ -28,6 +28,171 @@ type radiusRequest struct {
 	Body    string
 }
 
+type radiusCatalogStore struct {
+	models   []sigma.Model
+	ok       bool
+	readErr  error
+	writeErr error
+	reads    int
+	writes   int
+}
+
+func (s *radiusCatalogStore) ReadCatalog(context.Context) ([]sigma.Model, bool, error) {
+	s.reads++
+	if s.readErr != nil {
+		return nil, false, s.readErr
+	}
+	return append([]sigma.Model(nil), s.models...), s.ok, nil
+}
+
+func (s *radiusCatalogStore) WriteCatalog(_ context.Context, models []sigma.Model) error {
+	s.writes++
+	if s.writeErr != nil {
+		return s.writeErr
+	}
+	s.models = append([]sigma.Model(nil), models...)
+	s.ok = true
+	return nil
+}
+
+func TestRadiusCatalogStoreWritesAndRestoresOffline(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if got, want := r.URL.Path, "/v1/config"; got != want {
+			t.Errorf("catalog path = %q, want %q", got, want)
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = io.WriteString(w, radiusCatalog(server.URL))
+	}))
+	t.Cleanup(server.Close)
+
+	store := &radiusCatalogStore{}
+	onlineRegistry := sigma.NewRegistry()
+	if err := radius.Register(onlineRegistry, radius.WithGatewayURL(server.URL), radius.WithCatalogAPIKey("catalog-key"), radius.WithCatalogStore(store)); err != nil {
+		t.Fatalf("Register(online) returned error: %v", err)
+	}
+	onlineClient := sigma.NewClient(sigma.WithRegistry(onlineRegistry))
+	if err := onlineClient.RefreshTextModels(context.Background(), sigma.ProviderRadius); err != nil {
+		t.Fatalf("RefreshTextModels returned error: %v", err)
+	}
+	if got, want := store.writes, 1; got != want {
+		t.Fatalf("catalog write count = %d, want %d", got, want)
+	}
+	if !store.ok || len(store.models) != 1 {
+		t.Fatalf("stored catalog = %#v, want one model", store.models)
+	}
+	stored, err := json.Marshal(store.models)
+	if err != nil {
+		t.Fatalf("Marshal(stored catalog) returned error: %v", err)
+	}
+	if strings.Contains(string(stored), "catalog-key") {
+		t.Fatalf("stored catalog leaked credential: %s", stored)
+	}
+	if got, want := requests.Load(), int32(1); got != want {
+		t.Fatalf("gateway requests after refresh = %d, want %d", got, want)
+	}
+
+	offlineRegistry := sigma.NewRegistry()
+	if err := radius.Register(offlineRegistry, radius.WithGatewayURL("https://offline.invalid"), radius.WithCatalogStore(store)); err != nil {
+		t.Fatalf("Register(offline) returned error: %v", err)
+	}
+	offlineClient := sigma.NewClient(sigma.WithRegistry(offlineRegistry))
+	if err := offlineClient.RestoreTextModels(context.Background(), sigma.ProviderRadius); err != nil {
+		t.Fatalf("RestoreTextModels returned error: %v", err)
+	}
+	if _, ok := offlineClient.GetModel(sigma.ProviderRadius, "radius-test"); !ok {
+		t.Fatal("offline restore did not register the cached Radius model")
+	}
+	if got, want := requests.Load(), int32(1); got != want {
+		t.Fatalf("offline restore contacted gateway %d times, want %d", got, want)
+	}
+}
+
+func TestRadiusCatalogStoreRestoreFailuresAndInvalidSnapshots(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name  string
+		store *radiusCatalogStore
+	}{
+		{name: "missing", store: &radiusCatalogStore{}},
+		{name: "read error", store: &radiusCatalogStore{readErr: errors.New("store unavailable")}},
+		{
+			name: "wrong provider",
+			store: &radiusCatalogStore{
+				ok:     true,
+				models: []sigma.Model{{ID: "wrong", Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAICompletions}},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			registry := sigma.NewRegistry()
+			if err := radius.Register(registry, radius.WithCatalogStore(tt.store)); err != nil {
+				t.Fatalf("Register returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			if err := client.RestoreTextModels(context.Background(), sigma.ProviderRadius); err == nil {
+				t.Fatal("RestoreTextModels returned nil")
+			}
+			if got := len(client.Models()); got != 0 {
+				t.Fatalf("models after failed restore = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestRadiusCatalogStoreWritesOnlyValidatedCatalogs(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"baseUrl":"not a URL","models":[]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	store := &radiusCatalogStore{}
+	registry := sigma.NewRegistry()
+	if err := radius.Register(registry, radius.WithGatewayURL(server.URL), radius.WithCatalogStore(store)); err != nil {
+		t.Fatalf("Register returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if err := client.RefreshTextModels(context.Background(), sigma.ProviderRadius); err == nil {
+		t.Fatal("RefreshTextModels returned nil for invalid catalog")
+	}
+	if got := store.writes; got != 0 {
+		t.Fatalf("catalog writes after invalid catalog = %d, want 0", got)
+	}
+}
+
+func TestRadiusCatalogStoreWriteFailurePreventsRefresh(t *testing.T) {
+	t.Parallel()
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, radiusCatalog(server.URL))
+	}))
+	t.Cleanup(server.Close)
+
+	store := &radiusCatalogStore{writeErr: errors.New("disk full")}
+	registry := sigma.NewRegistry()
+	if err := radius.Register(registry, radius.WithGatewayURL(server.URL), radius.WithCatalogStore(store)); err != nil {
+		t.Fatalf("Register returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+	if err := client.RefreshTextModels(context.Background(), sigma.ProviderRadius); err == nil {
+		t.Fatal("RefreshTextModels returned nil after catalog store write failure")
+	}
+	if _, ok := client.GetModel(sigma.ProviderRadius, "radius-test"); ok {
+		t.Fatal("model was registered despite catalog store write failure")
+	}
+}
+
 func TestRegisterRefreshesDynamicModelsAndRetainsPriorModelsOnFailure(t *testing.T) {
 	t.Parallel()
 
