@@ -735,6 +735,9 @@ should still come through the catalog refresh workflow.
 - [x] Implement Anthropic (Claude Pro/Max) browser callback OAuth login,
       refresh helpers, and an in-memory OAuth token provider with caller-owned
       credential persistence.
+- [x] Resolve Anthropic environment credentials as `ANTHROPIC_AUTH_TOKEN`
+      bearer authentication, followed by OAuth-token and API-key fallbacks,
+      without applying Claude Code identity to gateway tokens.
 - [x] Implement GitHub Copilot device-code OAuth login, Copilot token refresh,
       and an in-memory OAuth token provider with caller-owned credential
       persistence.

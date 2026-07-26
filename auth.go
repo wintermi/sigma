@@ -38,32 +38,34 @@ const (
 )
 
 const (
-	defaultOpenAIAPIKeyEnv       = "OPENAI_API_KEY"
-	defaultAzureOpenAIAPIKeyEnv  = "AZURE_OPENAI_API_KEY"
-	defaultAnthropicAPIKeyEnv    = "ANTHROPIC_API_KEY"
-	defaultGoogleAPIKeyEnv       = "GOOGLE_API_KEY"
-	defaultGoogleCloudAPIKeyEnv  = "GOOGLE_CLOUD_API_KEY"
-	defaultMistralAPIKeyEnv      = "MISTRAL_API_KEY"
-	defaultRadiusAPIKeyEnv       = "RADIUS_API_KEY"
-	defaultOpenRouterAPIKeyEnv   = "OPENROUTER_API_KEY"
-	defaultXAIAPIKeyEnv          = "XAI_API_KEY"
-	defaultCloudflareAPIKeyEnv   = "CLOUDFLARE_API_KEY"
-	defaultGroqAPIKeyEnv         = "GROQ_API_KEY"
-	defaultTogetherAPIKeyEnv     = "TOGETHER_API_KEY"
-	defaultHuggingFaceTokenEnv   = "HF_TOKEN"
-	defaultCopilotGitHubTokenEnv = "COPILOT_GITHUB_TOKEN"
-	defaultNVIDIAAPIKeyEnv       = "NVIDIA_API_KEY"
-	defaultMoonshotAPIKeyEnv     = "MOONSHOT_API_KEY"
-	defaultKimiAPIKeyEnv         = "KIMI_API_KEY"
-	defaultFireworksAPIKeyEnv    = "FIREWORKS_API_KEY"
-	defaultOpenCodeAPIKeyEnv     = "OPENCODE_API_KEY"
-	defaultVercelAIGatewayKeyEnv = "AI_GATEWAY_API_KEY"
+	defaultOpenAIAPIKeyEnv        = "OPENAI_API_KEY"
+	defaultAzureOpenAIAPIKeyEnv   = "AZURE_OPENAI_API_KEY"
+	defaultAnthropicAuthTokenEnv  = "ANTHROPIC_AUTH_TOKEN"
+	defaultAnthropicOAuthTokenEnv = "ANTHROPIC_OAUTH_TOKEN"
+	defaultAnthropicAPIKeyEnv     = "ANTHROPIC_API_KEY"
+	defaultGoogleAPIKeyEnv        = "GOOGLE_API_KEY"
+	defaultGoogleCloudAPIKeyEnv   = "GOOGLE_CLOUD_API_KEY"
+	defaultMistralAPIKeyEnv       = "MISTRAL_API_KEY"
+	defaultRadiusAPIKeyEnv        = "RADIUS_API_KEY"
+	defaultOpenRouterAPIKeyEnv    = "OPENROUTER_API_KEY"
+	defaultXAIAPIKeyEnv           = "XAI_API_KEY"
+	defaultCloudflareAPIKeyEnv    = "CLOUDFLARE_API_KEY"
+	defaultGroqAPIKeyEnv          = "GROQ_API_KEY"
+	defaultTogetherAPIKeyEnv      = "TOGETHER_API_KEY"
+	defaultHuggingFaceTokenEnv    = "HF_TOKEN"
+	defaultCopilotGitHubTokenEnv  = "COPILOT_GITHUB_TOKEN"
+	defaultNVIDIAAPIKeyEnv        = "NVIDIA_API_KEY"
+	defaultMoonshotAPIKeyEnv      = "MOONSHOT_API_KEY"
+	defaultKimiAPIKeyEnv          = "KIMI_API_KEY"
+	defaultFireworksAPIKeyEnv     = "FIREWORKS_API_KEY"
+	defaultOpenCodeAPIKeyEnv      = "OPENCODE_API_KEY"
+	defaultVercelAIGatewayKeyEnv  = "AI_GATEWAY_API_KEY"
 )
 
 var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderOpenAI:                {defaultOpenAIAPIKeyEnv},
 	ProviderAzureOpenAIResponses:  {defaultAzureOpenAIAPIKeyEnv},
-	ProviderAnthropic:             {defaultAnthropicAPIKeyEnv},
+	ProviderAnthropic:             {defaultAnthropicAuthTokenEnv, defaultAnthropicOAuthTokenEnv, defaultAnthropicAPIKeyEnv},
 	ProviderGoogle:                {defaultGoogleAPIKeyEnv, defaultGoogleCloudAPIKeyEnv},
 	ProviderGoogleVertex:          {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderGoogleVertexOpenAI:    {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},

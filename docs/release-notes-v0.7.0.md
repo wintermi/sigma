@@ -22,10 +22,15 @@ capability metadata and explicit compatible-endpoint opt-in or opt-out. It
 also adds opt-in OpenRouter browser PKCE login with caller-owned permanent-key
 storage for the existing text and image routes. Radius gateway catalogs can
 also be stored through caller-owned snapshots and restored explicitly without a
-gateway request.
+gateway request. Anthropic Messages environment credential discovery now
+supports bearer gateway tokens alongside OAuth-token and API-key fallbacks.
 
 ## Changed
 
+- Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` as bearer
+  authentication, followed by `ANTHROPIC_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`.
+  Gateway tokens use `Authorization` without an `X-Api-Key` or Claude Code
+  identity headers.
 - Mistral Conversations now supports typed named function selection with native
   tool-choice objects.
 - Codex request-affinity headers now limit session IDs to 64 characters while
@@ -91,6 +96,9 @@ gateway request.
 
 ## Compatibility
 
+- Anthropic environment credential discovery is additive: explicit request and
+  client credentials keep precedence, and provider IDs, routes, and serialized
+  message shapes are unchanged.
 - Mistral Conversations now accepts the existing `MistralToolChoiceTool` with a
   non-empty name. Provider IDs, routes, and serialized message shapes are
   unchanged.

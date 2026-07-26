@@ -281,6 +281,10 @@ func applyAuthHeader(req *http.Request, provider sigma.ProviderID, credential si
 		req.Header.Set("Authorization", "Bearer "+credential.Value)
 		return
 	}
+	if provider == sigma.ProviderAnthropic && (credential.Source == anthropicAuthTokenSource || credential.Source == anthropicOAuthTokenSource) {
+		req.Header.Set("Authorization", "Bearer "+credential.Value)
+		return
+	}
 	if credential.Type == sigma.CredentialTypeOAuthToken || strings.Contains(credential.Value, anthropicOAuthTokenMark) {
 		req.Header.Set("Authorization", "Bearer "+credential.Value)
 		return

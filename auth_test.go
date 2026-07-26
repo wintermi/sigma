@@ -181,6 +181,37 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAuthResolverAnthropicCredentialOrder(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{ID: "claude-test", Provider: sigma.ProviderAnthropic}
+	resolver := sigma.EnvironmentAuthResolver{
+		LookupEnv: func(name string) (string, bool) {
+			values := map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":  "gateway-token",
+				"ANTHROPIC_OAUTH_TOKEN": "sk-ant-oat01-token",
+				"ANTHROPIC_API_KEY":     "api-key",
+			}
+			value, ok := values[name]
+			return value, ok
+		},
+	}
+
+	if got, want := resolver.EnvVars(model), []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("EnvVars() = %#v, want %#v", got, want)
+	}
+	credential, err := resolver.Resolve(context.Background(), model, sigma.Options{})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, "gateway-token"; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+	if got, want := credential.Source, "env:ANTHROPIC_AUTH_TOKEN"; got != want {
+		t.Fatalf("credential source = %q, want %q", got, want)
+	}
+}
+
 func TestEnvironmentAuthResolverCopilotIgnoresGenericGitHubTokens(t *testing.T) {
 	t.Parallel()
 
@@ -339,6 +370,8 @@ func clearCredentialEnv(t *testing.T) {
 
 	for _, name := range []string{
 		"OPENAI_API_KEY",
+		"ANTHROPIC_AUTH_TOKEN",
+		"ANTHROPIC_OAUTH_TOKEN",
 		"ANTHROPIC_API_KEY",
 		"GOOGLE_API_KEY",
 		"GOOGLE_CLOUD_API_KEY",

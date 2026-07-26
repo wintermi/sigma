@@ -913,6 +913,102 @@ func TestAPIKeyCredentialDoesNotUseClaudeCodeIdentity(t *testing.T) {
 	}
 }
 
+func TestAnthropicEnvironmentCredentialsUseExpectedRequestAuth(t *testing.T) {
+	tests := []struct {
+		name              string
+		environment       map[string]string
+		options           []sigma.Option
+		wantAuthorization string
+		wantAPIKey        string
+		wantOAuthIdentity bool
+	}{
+		{
+			name: "bearer token takes precedence without OAuth identity",
+			environment: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":  "sk-ant-oat01-gateway-token",
+				"ANTHROPIC_OAUTH_TOKEN": "sk-ant-oat01-oauth-token",
+				"ANTHROPIC_API_KEY":     "api-key",
+			},
+			wantAuthorization: "Bearer sk-ant-oat01-gateway-token",
+		},
+		{
+			name: "OAuth token falls back before API key",
+			environment: map[string]string{
+				"ANTHROPIC_OAUTH_TOKEN": "oauth-token",
+				"ANTHROPIC_API_KEY":     "api-key",
+			},
+			wantAuthorization: "Bearer oauth-token",
+			wantOAuthIdentity: true,
+		},
+		{
+			name: "API key is the final fallback",
+			environment: map[string]string{
+				"ANTHROPIC_API_KEY": "api-key",
+			},
+			wantAPIKey: "api-key",
+		},
+		{
+			name: "request API key overrides environment bearer token",
+			environment: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": "gateway-token",
+			},
+			options:    []sigma.Option{sigma.WithAPIKey("request-api-key")},
+			wantAPIKey: "request-api-key",
+		},
+		{
+			name: "request authorization header overrides environment bearer token",
+			environment: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": "gateway-token",
+			},
+			options:           []sigma.Option{sigma.WithHeader("Authorization", "Bearer request-token")},
+			wantAuthorization: "Bearer request-token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, name := range []string{"ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"} {
+				t.Setenv(name, tt.environment[name])
+			}
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			model := anthropicTestModel(sigma.ProviderAnthropic)
+			registry := sigma.NewRegistry()
+			if err := registry.RegisterTextProvider(sigma.ProviderAnthropic, anthropic.NewProvider(anthropic.WithBaseURL(server.URL))); err != nil {
+				t.Fatalf("RegisterTextProvider returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(
+				sigma.WithRegistry(registry),
+			)
+			if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hello")}}, tt.options...); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			if got := request.Headers.Get("Authorization"); got != tt.wantAuthorization {
+				t.Fatalf("Authorization = %q, want %q", got, tt.wantAuthorization)
+			}
+			if got := request.Headers.Get("X-Api-Key"); got != tt.wantAPIKey {
+				t.Fatalf("X-Api-Key = %q, want %q", got, tt.wantAPIKey)
+			}
+			beta := request.Headers.Get("Anthropic-Beta")
+			gotOAuthIdentity := strings.Contains(beta, "claude-code-20250219") && strings.Contains(beta, "oauth-2025-04-20")
+			if gotOAuthIdentity != tt.wantOAuthIdentity {
+				t.Fatalf("Anthropic-Beta = %q, OAuth identity = %v, want %v", beta, gotOAuthIdentity, tt.wantOAuthIdentity)
+			}
+		})
+	}
+}
+
 const claudeCodeToolUseEvent = `data: {"type":"message_start","message":{"id":"msg_cc","type":"message","role":"assistant","model":"claude-test","content":[]}}
 
 data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_cc","name":"Read","input":{}}}

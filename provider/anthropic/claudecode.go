@@ -16,12 +16,14 @@ import (
 // system prompt with the Claude Code identity block, and use Claude Code's
 // canonical tool-name casing.
 const (
-	claudeCodeIdentityPrompt = "You are Claude Code, Anthropic's official CLI for Claude."
-	claudeCodeBetaHeader     = "claude-code-20250219"
-	claudeCodeOAuthBeta      = "oauth-2025-04-20"
-	claudeCodeVersion        = "2.1.75"
-	claudeCodeUserAgent      = "claude-cli/" + claudeCodeVersion
-	anthropicOAuthTokenMark  = "sk-ant-oat"
+	claudeCodeIdentityPrompt  = "You are Claude Code, Anthropic's official CLI for Claude."
+	claudeCodeBetaHeader      = "claude-code-20250219"
+	claudeCodeOAuthBeta       = "oauth-2025-04-20"
+	claudeCodeVersion         = "2.1.75"
+	claudeCodeUserAgent       = "claude-cli/" + claudeCodeVersion
+	anthropicOAuthTokenMark   = "sk-ant-oat"
+	anthropicAuthTokenSource  = "env:ANTHROPIC_AUTH_TOKEN"
+	anthropicOAuthTokenSource = "env:ANTHROPIC_OAUTH_TOKEN"
 )
 
 // claudeCodeToolNames lists Claude Code's canonical tool-name casing so caller
@@ -60,6 +62,12 @@ var claudeCodeToolLookup = func() map[string]string {
 func isAnthropicOAuthCredential(credential sigma.Credential) bool {
 	if credential.Value == "" {
 		return false
+	}
+	if credential.Source == anthropicAuthTokenSource {
+		return false
+	}
+	if credential.Source == anthropicOAuthTokenSource {
+		return true
 	}
 	if credential.Type == sigma.CredentialTypeOAuthToken {
 		return true

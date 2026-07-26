@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Added
 
+- Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,
+  then `ANTHROPIC_OAUTH_TOKEN`, then `ANTHROPIC_API_KEY` through the existing
+  environment credential resolver.
 - Mistral Conversations now supports typed named-function tool selection.
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
 - xAI now supports caller-configured device-code OAuth login, token refresh,
