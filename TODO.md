@@ -666,9 +666,12 @@ should still come through the catalog refresh workflow.
       choices use native tool-choice objects.
 - [ ] Add Mistral file image references only after Sigma defines an explicit
       chat-level file-loading policy.
-- [ ] Add Mistral built-in connector tools such as web search, code interpreter,
-      image generation, and document libraries after deciding how they map to
-      Sigma provider-defined tools.
+- [x] Add Mistral Conversations server-executed web search, premium web search,
+      and document-library tools through Sigma provider-defined tools, preserving
+      source references and citations without a local execution loop.
+- [ ] Add remaining Mistral server-side code interpreter, image generation, and
+      external connector tools after their result payloads have deterministic
+      provider-defined-tool and stream fixtures.
 - [ ] Add Mistral Conversations append and restart support only if Sigma exposes
       provider conversation lifecycle operations beyond single-turn streaming.
 - [ ] Expand broad Mistral generated metadata only through the catalog refresh

@@ -38,10 +38,12 @@ tools := []sigma.Tool{
 
 Provider-defined tools are declaration-only in Sigma. Sigma serializes them to
 native provider payloads, but it does not auto-execute or replay them through
-the local tool loop below. OpenAI Responses, Anthropic Messages, and Google
-Generative AI support provider-defined tool declarations. OpenAI Chat
-Completions, Mistral Conversations, and Bedrock Converse return a `*sigma.Error`
-with the `sigma.ErrorUnsupported` code if a provider-defined tool is supplied.
+the local tool loop below. OpenAI Responses, Anthropic Messages, Google
+Generative AI, and Mistral Conversations support provider-defined tool
+declarations. Mistral supports server-executed web search, premium web search,
+and document-library tools. OpenAI Chat Completions and Bedrock Converse return
+a `*sigma.Error` with the `sigma.ErrorUnsupported` code if a provider-defined
+tool is supplied.
 
 ## Tool Loop
 

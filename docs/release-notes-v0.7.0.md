@@ -24,6 +24,8 @@ storage for the existing text and image routes. Radius gateway catalogs can
 also be stored through caller-owned snapshots and restored explicitly without a
 gateway request. Anthropic Messages environment credential discovery now
 supports bearer gateway tokens alongside OAuth-token and API-key fallbacks.
+Mistral Conversations also adds server-executed retrieval tools with normalized
+source and citation results.
 
 ## Changed
 
@@ -33,6 +35,10 @@ supports bearer gateway tokens alongside OAuth-token and API-key fallbacks.
   identity headers.
 - Mistral Conversations now supports typed named function selection with native
   tool-choice objects.
+- Mistral Conversations now supports opt-in server-executed web search, premium
+  web search, and document-library tools. Returned tool execution diagnostics,
+  source references, and citations remain available through existing Sigma
+  provider metadata and result accessors.
 - Codex request-affinity headers now limit session IDs to 64 characters while
   preserving local session resource management. Sessionless WebSocket
   handshakes now use monotonic UUIDv7 request IDs, and GPT-5.6 Codex models use
@@ -102,6 +108,9 @@ supports bearer gateway tokens alongside OAuth-token and API-key fallbacks.
 - Mistral Conversations now accepts the existing `MistralToolChoiceTool` with a
   non-empty name. Provider IDs, routes, and serialized message shapes are
   unchanged.
+- Mistral retrieval tools are opt-in through `provider/mistral.Tools`; their
+  execution remains server-side. Sigma does not add a client tool loop,
+  connector registration, conversation persistence, or lifecycle APIs.
 - `provider/xai` adds Responses registration helpers. Built-in `xai/grok-4.5`
   now dispatches through OpenAI Responses rather than Chat Completions; no
   provider ID or serialized-message shape changes.

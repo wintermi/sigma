@@ -152,9 +152,11 @@ Release scope values:
   tokens are accounted as cache reads. Duration-specific retention choices are
   still limited by the provider's Conversations API.
 - Mistral Conversations supports base64 and URL image input for image-capable
-  models, and replays image-bearing tool results as string image references.
-  File image references, built-in
-  connector tools, append, and restart remain deferred.
+  models, replays image-bearing tool results as string image references, and
+  exposes server-executed web search, premium web search, and document-library
+  tools. Returned retrieval references populate existing source and citation
+  results. File image references, code interpreter, image generation, external
+  connectors, append, and restart remain deferred.
 - Radius gateway begins with no static models; applications explicitly refresh
   its runtime source before selecting a model. API keys remain supported, while
   caller-configured browser/device OAuth can authenticate requests and catalog

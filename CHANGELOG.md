@@ -16,6 +16,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   then `ANTHROPIC_OAUTH_TOKEN`, then `ANTHROPIC_API_KEY` through the existing
   environment credential resolver.
 - Mistral Conversations now supports typed named-function tool selection.
+- Mistral Conversations now supports server-executed web search, premium web
+  search, and document-library tools, preserving returned source references
+  and citations.
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
 - xAI now supports caller-configured device-code OAuth login, token refresh,
   in-memory credential resolution, and opt-in provider-auth registration while

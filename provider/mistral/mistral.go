@@ -32,7 +32,8 @@ type ResponseHook func(context.Context, sigma.Model, sigma.Options, *http.Respon
 // Provider adapts the Mistral Conversations API to sigma.
 //
 // This provider currently implements model-backed text conversations with
-// function tools, thinking chunks, and session affinity. Image inputs, built-in
+// function and server-side retrieval tools, thinking chunks, session affinity,
+// and base64 or URL image inputs. Code interpreter, image generation, external
 // connectors, append, and restart are intentionally unsupported by this adapter.
 type Provider struct {
 	baseURL       string

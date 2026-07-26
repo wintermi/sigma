@@ -31,6 +31,8 @@ type conversationEvent struct {
 	Name           string                 `json:"name"`
 	ToolCallID     string                 `json:"tool_call_id"`
 	Arguments      string                 `json:"arguments"`
+	CreatedAt      string                 `json:"created_at"`
+	CompletedAt    string                 `json:"completed_at"`
 	Usage          *conversationUsage     `json:"usage"`
 	StopReason     string                 `json:"stop_reason"`
 	Error          *conversationAPIError  `json:"error"`
@@ -47,8 +49,12 @@ type conversationContent struct {
 }
 
 type conversationContentChunk struct {
-	Type string
-	Text string
+	Type   string
+	Text   string
+	Tool   string
+	Title  string
+	URL    string
+	Source any
 }
 
 func (c *conversationContent) UnmarshalJSON(data []byte) error {
@@ -89,11 +95,22 @@ func parseConversationContentChunk(data []byte) (conversationContentChunk, error
 		Type     string          `json:"type"`
 		Text     string          `json:"text"`
 		Thinking json.RawMessage `json:"thinking"`
+		Tool     string          `json:"tool"`
+		Title    string          `json:"title"`
+		URL      string          `json:"url"`
+		Source   any             `json:"source"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return conversationContentChunk{}, err
 	}
-	chunk := conversationContentChunk{Type: raw.Type, Text: raw.Text}
+	chunk := conversationContentChunk{
+		Type:   raw.Type,
+		Text:   raw.Text,
+		Tool:   raw.Tool,
+		Title:  raw.Title,
+		URL:    raw.URL,
+		Source: raw.Source,
+	}
 	if raw.Type == "thinking" && len(raw.Thinking) > 0 {
 		chunk.Text = thinkingText(raw.Thinking)
 	}
@@ -161,6 +178,9 @@ type conversationStreamParser struct {
 	providerModel  string
 	agentID        string
 	responseID     string
+	sources        []map[string]any
+	toolExecutions []map[string]any
+	pendingSources map[string][]map[string]any
 }
 
 func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
@@ -170,6 +190,7 @@ func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.Stre
 		textBlocks:     make(map[string]*streamblocks.Text),
 		thinkingBlocks: make(map[string]*streamblocks.Thinking),
 		toolCalls:      make(map[string]*streamblocks.ToolCall),
+		pendingSources: make(map[string][]map[string]any),
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -189,8 +210,12 @@ func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.Stre
 
 func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	var parsed conversationEvent
-	if err := json.Unmarshal([]byte(event.Data), &parsed); err != nil {
+	data := []byte(event.Data)
+	if err := json.Unmarshal(data, &parsed); err != nil {
 		return fmt.Errorf("mistral conversations: decode stream event: %w", err)
+	}
+	if err := json.Unmarshal(data, &parsed.Raw); err != nil {
+		return fmt.Errorf("mistral conversations: decode stream event metadata: %w", err)
 	}
 	if parsed.Type == "" {
 		parsed.Type = event.Event
@@ -212,7 +237,7 @@ func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Ev
 			p.stopReason = mistralStopReason(parsed.StopReason)
 		}
 		return p.emitStart(ctx)
-	case "tool.execution.started", "tool.execution.done", "agent.handoff.started", "agent.handoff.done":
+	case "tool.execution", "tool.execution.started", "tool.execution.done", "agent.handoff.started", "agent.handoff.done":
 		return p.emitStart(ctx)
 	default:
 		return nil
@@ -229,13 +254,42 @@ func (p *conversationStreamParser) capture(event conversationEvent) {
 	if event.AgentID != "" {
 		p.agentID = event.AgentID
 	}
-	if event.ID != "" && p.responseID == "" {
+	if event.ID != "" && p.responseID == "" && !strings.HasPrefix(event.Type, "tool.execution") {
 		p.responseID = event.ID
+	}
+	if execution := mistralToolExecution(event); execution != nil {
+		p.toolExecutions = append(p.toolExecutions, execution)
 	}
 	if event.Usage != nil {
 		usage := event.Usage.sigmaUsage()
 		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*event.Usage))
 		p.usage = &usage
+	}
+}
+
+func mistralToolExecution(event conversationEvent) map[string]any {
+	if !strings.HasPrefix(event.Type, "tool.execution") {
+		return nil
+	}
+	if len(event.Raw) > 0 {
+		metadata := copyAnyMap(event.Raw)
+		metadata["type"] = event.Type
+		return metadata
+	}
+	metadata := map[string]any{"type": event.Type}
+	addMistralMetadataString(metadata, "id", event.ID)
+	addMistralMetadataString(metadata, "name", event.Name)
+	addMistralMetadataString(metadata, "created_at", event.CreatedAt)
+	addMistralMetadataString(metadata, "completed_at", event.CompletedAt)
+	if len(event.Metadata) > 0 {
+		metadata["metadata"] = copyAnyMap(event.Metadata)
+	}
+	return metadata
+}
+
+func addMistralMetadataString(metadata map[string]any, key string, value string) {
+	if value != "" {
+		metadata[key] = value
 	}
 }
 
@@ -260,6 +314,8 @@ func (p *conversationStreamParser) emitContent(ctx context.Context, event conver
 			if err := p.emitThinking(ctx, outputContentKey(event, sigma.ContentBlockThinking), chunk.Text); err != nil {
 				return err
 			}
+		case "tool_reference":
+			p.addSource(outputContentKey(event, sigma.ContentBlockText), mistralSource(chunk))
 		default:
 			if err := p.emitText(ctx, outputContentKey(event, sigma.ContentBlockText), chunk.Text); err != nil {
 				return err
@@ -276,6 +332,10 @@ func (p *conversationStreamParser) emitText(ctx context.Context, key string, del
 	state := p.textBlocks[key]
 	if state == nil {
 		state = &streamblocks.Text{ContentIndex: p.nextContentIndex()}
+		if sources := p.pendingSources[key]; len(sources) > 0 {
+			state.ProviderMetadata = map[string]any{"citations": sources}
+			delete(p.pendingSources, key)
+		}
 		p.textBlocks[key] = state
 	}
 	if !state.Started {
@@ -297,6 +357,45 @@ func (p *conversationStreamParser) emitText(ctx context.Context, key string, del
 		DeltaText:    delta,
 		Text:         text,
 	})
+}
+
+func (p *conversationStreamParser) addSource(key string, source map[string]any) {
+	if len(source) == 0 {
+		return
+	}
+	p.sources = append(p.sources, copyAnyMap(source))
+	state := p.textBlocks[key]
+	if state == nil {
+		p.pendingSources[key] = append(p.pendingSources[key], source)
+		return
+	}
+	state.ProviderMetadata = appendCitation(state.ProviderMetadata, source)
+}
+
+func mistralSource(chunk conversationContentChunk) map[string]any {
+	source := map[string]any{"type": "tool_reference"}
+	if chunk.Tool != "" {
+		source["tool"] = chunk.Tool
+	}
+	if chunk.Title != "" {
+		source["title"] = chunk.Title
+	}
+	if chunk.URL != "" {
+		source["url"] = chunk.URL
+	}
+	if chunk.Source != nil {
+		source["source"] = chunk.Source
+	}
+	return source
+}
+
+func appendCitation(metadata map[string]any, citation map[string]any) map[string]any {
+	if metadata == nil {
+		metadata = make(map[string]any)
+	}
+	citations, _ := metadata["citations"].([]map[string]any)
+	metadata["citations"] = append(citations, copyAnyMap(citation))
+	return metadata
 }
 
 func (p *conversationStreamParser) emitThinking(ctx context.Context, key string, delta string) error {
@@ -389,9 +488,11 @@ func (p *conversationStreamParser) finalize(ctx context.Context) sigma.Assistant
 	items := make([]finalContentItem, 0, len(p.textBlocks)+len(p.thinkingBlocks)+len(p.toolCalls))
 	for _, state := range p.sortedTextBlocks() {
 		state := state
+		block := sigma.Text(state.String())
+		block.ProviderMetadata = copyAnyMap(state.ProviderMetadata)
 		items = append(items, finalContentItem{
 			index: state.ContentIndex,
-			block: sigma.Text(state.String()),
+			block: block,
 			close: func() {
 				if !state.Closed && state.Started {
 					_ = p.writer.Emit(ctx, sigma.Event{
@@ -486,6 +587,12 @@ func (p *conversationStreamParser) responseMetadata() map[string]any {
 	}
 	if p.agentID != "" {
 		metadata["agent_id"] = p.agentID
+	}
+	if len(p.sources) > 0 {
+		metadata["sources"] = p.sources
+	}
+	if len(p.toolExecutions) > 0 {
+		metadata["tool_executions"] = p.toolExecutions
 	}
 	if len(metadata) == 0 {
 		return nil

@@ -512,6 +512,94 @@ func TestConversationsRejectsProviderDefinedTools(t *testing.T) {
 	}
 }
 
+func TestConversationsSendsMistralProviderDefinedTools(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-retrieval-tools-test")
+	model := mistralTestModel(providerID)
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Find the relevant documentation.")},
+		Tools: []sigma.Tool{
+			mistral.Tools.WebSearch(),
+			mistral.Tools.WebSearchPremium(),
+			mistral.Tools.DocumentLibrary("lib_one", "lib_two"),
+			{Name: "lookup", Description: "Lookup a local record", InputSchema: sigma.Schema{"type": "object"}},
+		},
+	}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	tools := payload["tools"].([]any)
+	if got, want := len(tools), 4; got != want {
+		t.Fatalf("tool count = %d, want %d", got, want)
+	}
+	if got, want := tools[0].(map[string]any)["type"], "web_search"; got != want {
+		t.Fatalf("web search type = %v, want %q", got, want)
+	}
+	if got, want := tools[1].(map[string]any)["type"], "web_search_premium"; got != want {
+		t.Fatalf("premium web search type = %v, want %q", got, want)
+	}
+	documentLibrary := tools[2].(map[string]any)
+	if got, want := documentLibrary["type"], "document_library"; got != want {
+		t.Fatalf("document library type = %v, want %q", got, want)
+	}
+	if got, want := documentLibrary["library_ids"], []any{"lib_one", "lib_two"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("document library IDs = %#v, want %#v", got, want)
+	}
+	function := tools[3].(map[string]any)
+	if got, want := function["type"], "function"; got != want {
+		t.Fatalf("function tool type = %v, want %q", got, want)
+	}
+}
+
+func TestConversationsRejectsInvalidMistralDocumentLibrary(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-invalid-document-library-test")
+	model := mistralTestModel(providerID)
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Search the library.")},
+		Tools:    []sigma.Tool{mistral.Tools.DocumentLibrary()},
+	})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) {
+		t.Fatalf("error type = %T, want *sigma.Error", err)
+	}
+	if got, want := sigmaErr.Code, sigma.ErrorUnsupported; got != want {
+		t.Fatalf("error code = %q, want %q", got, want)
+	}
+	if !strings.Contains(err.Error(), "requires at least one library ID") {
+		t.Fatalf("error = %v, want library ID validation", err)
+	}
+	select {
+	case request := <-requests:
+		t.Fatalf("unexpected provider request: %#v", request)
+	default:
+	}
+}
+
 func TestConversationGoldenPayloads(t *testing.T) {
 	t.Parallel()
 
@@ -1198,6 +1286,86 @@ data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completi
 	}
 	if got, want := final.Content[1].Text, "The answer is 42."; got != want {
 		t.Fatalf("text = %q, want %q", got, want)
+	}
+}
+
+func TestStreamingPreservesMistralRetrievalSources(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMistralSSE(t, w, `event: conversation.response.started
+data: {"type":"conversation.response.started","conversation_id":"conv_retrieval"}
+
+event: tool.execution.done
+data: {"type":"tool.execution.done","id":"tool_exec_1","name":"web_search","created_at":"2026-07-26T00:00:00Z","completed_at":"2026-07-26T00:00:01Z","metadata":{"query":"sigma"},"result":{"retrieved":1}}
+
+event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"id":"msg_retrieval","content_index":0,"content":[{"type":"text","text":"Sigma is a Go package"},{"type":"tool_reference","tool":"web_search","title":"Sigma docs","url":"https://example.test/sigma","source":"search"},{"type":"text","text":" for provider adapters."}]}
+
+event: conversation.response.done
+data: {"type":"conversation.response.done","usage":{"prompt_tokens":10,"completion_tokens":8,"connector_tokens":4,"total_tokens":22}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("mistral-retrieval-stream-test")
+	model := mistralTestModel(providerID)
+	client := mistralTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("Find Sigma.")}})
+	collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := final.ResponseID(), "msg_retrieval"; got != want {
+		t.Fatalf("response ID = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Text, "Sigma is a Go package for provider adapters."; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	citations := final.Content[0].Citations()
+	if got, want := len(citations), 1; got != want {
+		t.Fatalf("citation count = %d, want %d", got, want)
+	}
+	if got, want := citations[0].Type, "tool_reference"; got != want {
+		t.Fatalf("citation type = %q, want %q", got, want)
+	}
+	if got, want := citations[0].URL, "https://example.test/sigma"; got != want {
+		t.Fatalf("citation URL = %q, want %q", got, want)
+	}
+	if got, want := citations[0].ProviderMetadata["tool"], "web_search"; got != want {
+		t.Fatalf("citation tool = %v, want %q", got, want)
+	}
+	sources := final.Sources()
+	if got, want := len(sources), 1; got != want {
+		t.Fatalf("source count = %d, want %d", got, want)
+	}
+	if got, want := sources[0].Title, "Sigma docs"; got != want {
+		t.Fatalf("source title = %q, want %q", got, want)
+	}
+	if got, want := sources[0].ProviderMetadata["source"], "search"; got != want {
+		t.Fatalf("source metadata = %v, want %q", got, want)
+	}
+	executions, ok := final.ProviderMetadata["tool_executions"].([]map[string]any)
+	if !ok || len(executions) != 1 {
+		t.Fatalf("tool executions = %#v, want one entry", final.ProviderMetadata["tool_executions"])
+	}
+	if got, want := executions[0]["name"], "web_search"; got != want {
+		t.Fatalf("tool execution name = %v, want %q", got, want)
+	}
+	if got, want := executions[0]["metadata"].(map[string]any)["query"], "sigma"; got != want {
+		t.Fatalf("tool execution query = %v, want %q", got, want)
+	}
+	if got, want := executions[0]["result"].(map[string]any)["retrieved"], float64(1); got != want {
+		t.Fatalf("tool execution result = %v, want %v", got, want)
+	}
+	if final.Usage == nil || final.Usage.ToolUseInputTokens != 4 {
+		t.Fatalf("usage = %#v, want connector token accounting", final.Usage)
 	}
 }
 

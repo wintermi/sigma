@@ -299,7 +299,12 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 	converted := make([]map[string]any, 0, len(tools))
 	for _, tool := range tools {
 		if tool.ProviderDefinedType != "" {
-			return nil, unsupportedError(model, fmt.Sprintf("provider-defined tool %q is not supported by mistral conversations", tool.ProviderDefinedType))
+			providerTool, err := mistralProviderTool(model, tool)
+			if err != nil {
+				return nil, err
+			}
+			converted = append(converted, providerTool)
+			continue
 		}
 		parameters, err := jsonValue(tool.InputSchema)
 		if err != nil {
@@ -318,6 +323,64 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 		})
 	}
 	return converted, nil
+}
+
+func mistralProviderTool(model sigma.Model, tool sigma.Tool) (map[string]any, error) {
+	switch tool.ProviderDefinedType {
+	case mistralProviderToolWebSearch:
+		if len(tool.ProviderDefinedOptions) != 0 {
+			return nil, invalidMistralProviderToolError(model, tool, "does not accept options")
+		}
+		return map[string]any{payloadKeyType: "web_search"}, nil
+	case mistralProviderToolWebSearchPremium:
+		if len(tool.ProviderDefinedOptions) != 0 {
+			return nil, invalidMistralProviderToolError(model, tool, "does not accept options")
+		}
+		return map[string]any{payloadKeyType: "web_search_premium"}, nil
+	case mistralProviderToolDocumentLibrary:
+		libraryIDs, ok := stringSlice(tool.ProviderDefinedOptions["library_ids"])
+		if !ok || len(libraryIDs) == 0 {
+			return nil, invalidMistralProviderToolError(model, tool, "requires at least one library ID")
+		}
+		if len(tool.ProviderDefinedOptions) != 1 {
+			return nil, invalidMistralProviderToolError(model, tool, "only accepts library_ids")
+		}
+		return map[string]any{
+			payloadKeyType: "document_library",
+			"library_ids":  libraryIDs,
+		}, nil
+	default:
+		return nil, unsupportedError(model, fmt.Sprintf("provider-defined tool %q is not supported by mistral conversations", tool.ProviderDefinedType))
+	}
+}
+
+func invalidMistralProviderToolError(model sigma.Model, tool sigma.Tool, message string) error {
+	return unsupportedError(model, fmt.Sprintf("mistral provider-defined tool %q %s", tool.ProviderDefinedType, message))
+}
+
+func stringSlice(value any) ([]string, bool) {
+	switch typed := value.(type) {
+	case []string:
+		out := append([]string(nil), typed...)
+		for _, item := range out {
+			if strings.TrimSpace(item) == "" {
+				return nil, false
+			}
+		}
+		return out, true
+	case []any:
+		out := make([]string, len(typed))
+		for index, item := range typed {
+			text, ok := item.(string)
+			if !ok || strings.TrimSpace(text) == "" {
+				return nil, false
+			}
+			out[index] = text
+		}
+		return out, true
+	default:
+		return nil, false
+	}
 }
 
 func completionArgs(model sigma.Model, opts sigma.Options) map[string]any {
