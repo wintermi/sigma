@@ -19,6 +19,8 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Mistral Conversations now supports server-executed web search, premium web
   search, and document-library tools, preserving returned source references
   and citations.
+- Mistral Conversations now preserves existing boolean per-tool strict JSON
+  Schema settings when serializing function tools.
 - xAI now exposes first-class OpenAI Responses provider registration helpers.
 - xAI now supports caller-configured device-code OAuth login, token refresh,
   in-memory credential resolution, and opt-in provider-auth registration while

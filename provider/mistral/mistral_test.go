@@ -562,6 +562,64 @@ func TestConversationsSendsMistralProviderDefinedTools(t *testing.T) {
 	}
 }
 
+func TestConversationsSerializesStrictFunctionToolMetadata(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		metadata   map[string]any
+		hasStrict  bool
+		wantStrict bool
+	}{
+		{name: "absent"},
+		{name: "non boolean", metadata: map[string]any{"strict": "true"}},
+		{name: "enabled", metadata: map[string]any{"strict": true}, hasStrict: true, wantStrict: true},
+		{name: "disabled", metadata: map[string]any{"strict": false}, hasStrict: true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMistralSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-strict-function-tools-test")
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+			if _, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("Use the lookup tool.")},
+				Tools: []sigma.Tool{{
+					Name:             "lookup",
+					Description:      "Lookup a record",
+					InputSchema:      sigma.Schema{"type": "object", "additionalProperties": false},
+					ProviderMetadata: tt.metadata,
+				}},
+			}); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodePayload(t, receiveRequest(t, requests).Body)
+			function := payload["tools"].([]any)[0].(map[string]any)["function"].(map[string]any)
+			if got, want := function["parameters"], map[string]any{"type": "object", "additionalProperties": false}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("function parameters = %#v, want %#v", got, want)
+			}
+			strict, ok := function["strict"]
+			if ok != tt.hasStrict {
+				t.Fatalf("function strict present = %v, want %v", ok, tt.hasStrict)
+			}
+			if tt.hasStrict && strict != tt.wantStrict {
+				t.Fatalf("function strict = %#v, want %v", strict, tt.wantStrict)
+			}
+		})
+	}
+}
+
 func TestConversationsRejectsInvalidMistralDocumentLibrary(t *testing.T) {
 	t.Parallel()
 

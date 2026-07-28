@@ -665,6 +665,9 @@ should still come through the catalog refresh workflow.
       shapes: image chunks use `image_url`, tool results stay string-valued,
       native Magistral `prompt_mode` is top-level, and typed named function
       choices use native tool-choice objects.
+- [x] Preserve existing boolean `Tool.ProviderMetadata["strict"]` values in
+      Mistral Conversations function-tool definitions with deterministic payload
+      fixtures.
 - [ ] Add Mistral file image references only after Sigma defines an explicit
       chat-level file-loading policy.
 - [x] Add Mistral Conversations server-executed web search, premium web search,

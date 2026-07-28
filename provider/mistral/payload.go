@@ -313,13 +313,17 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 		if parameters == nil {
 			parameters = map[string]any{"type": "object"}
 		}
+		function := map[string]any{
+			"name":        tool.Name,
+			"description": tool.Description,
+			"parameters":  parameters,
+		}
+		if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
+			function["strict"] = strict
+		}
 		converted = append(converted, map[string]any{
 			payloadKeyType: "function",
-			"function": map[string]any{
-				"name":        tool.Name,
-				"description": tool.Description,
-				"parameters":  parameters,
-			},
+			"function":     function,
 		})
 	}
 	return converted, nil

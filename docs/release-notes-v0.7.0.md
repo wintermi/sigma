@@ -25,7 +25,8 @@ routes. Radius gateway catalogs can also be stored through caller-owned
 snapshots and restored explicitly without a gateway request. Anthropic Messages
 environment credential discovery now supports bearer gateway tokens alongside
 OAuth-token and API-key fallbacks. Mistral Conversations also adds
-server-executed retrieval tools with normalized source and citation results.
+server-executed retrieval tools with normalized source and citation results,
+and preserves per-tool strict JSON Schema settings in function definitions.
 
 ## Changed
 
@@ -35,6 +36,8 @@ server-executed retrieval tools with normalized source and citation results.
   identity headers.
 - Mistral Conversations now supports typed named function selection with native
   tool-choice objects.
+- Mistral Conversations now preserves existing boolean per-tool strict JSON
+  Schema settings when serializing function definitions.
 - Mistral Conversations now supports opt-in server-executed web search, premium
   web search, and document-library tools. Returned tool execution diagnostics,
   source references, and citations remain available through existing Sigma
@@ -110,6 +113,9 @@ server-executed retrieval tools with normalized source and citation results.
 - Mistral Conversations now accepts the existing `MistralToolChoiceTool` with a
   non-empty name. Provider IDs, routes, and serialized message shapes are
   unchanged.
+- Mistral Conversations now serializes existing boolean
+  `Tool.ProviderMetadata["strict"]` values on function definitions. Provider
+  IDs, routes, and public types remain unchanged.
 - Mistral retrieval tools are opt-in through `provider/mistral.Tools`; their
   execution remains server-side. Sigma does not add a client tool loop,
   connector registration, conversation persistence, or lifecycle APIs.
