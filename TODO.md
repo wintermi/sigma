@@ -176,6 +176,9 @@ integrations remain future work until they have the same local evidence bar.
       session cleanup helpers, and SSE fallback.
 - [x] Retry a pre-output Codex WebSocket connection-limit response exactly once
       before retaining the existing SSE fallback for repeated or other failures.
+- [x] Retry a pre-output Codex WebSocket cached continuation that the backend
+      no longer recognises once with the full request context before retaining
+      the existing SSE fallback for repeated rejections.
 - [x] Add provider-neutral session resource cleanup so callers can release
       cached Codex WebSocket sessions through root `sigma` helpers while keeping
       provider-specific cleanup helpers available.

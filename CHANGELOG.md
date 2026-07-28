@@ -85,6 +85,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Sessionless Codex WebSocket handshakes now use monotonic UUIDv7 request IDs,
   and built-in GPT-5.6 Codex metadata reports its 272K context limit so
   impossible long-context budgets and price tiers are not selected.
+- Cached Codex WebSocket continuations rejected before output now retry once
+  with the full request context. Repeated rejections retain the existing SSE
+  fallback behavior.
 
 ## [0.6.0] - 2026-07-15
 

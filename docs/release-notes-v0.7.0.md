@@ -28,6 +28,8 @@ environment credential discovery now supports bearer gateway tokens alongside
 OAuth-token and API-key fallbacks. Mistral Conversations also adds
 server-executed retrieval tools with normalized source and citation results,
 and preserves per-tool strict JSON Schema settings in function definitions.
+Cached Codex WebSocket continuations that are no longer recognised now retry
+once with the full request context before existing fallback behavior applies.
 
 ## Changed
 
@@ -50,6 +52,9 @@ and preserves per-tool strict JSON Schema settings in function definitions.
   are not selected. OpenRouter uses its native cache-affinity header, and
   Bedrock terminal responses with unrecognised stop reasons now surface typed
   provider errors.
+- Cached Codex WebSocket continuations rejected before output now retry once
+  with the full request context. Repeated rejections preserve the existing SSE
+  fallback behavior.
 - Grok 4.5 now uses the xAI OpenAI Responses route with low, medium, and high
   reasoning levels. Long-lived prompt-cache retention is omitted for that route
   while cache keys and session affinity remain available.
@@ -139,6 +144,9 @@ and preserves per-tool strict JSON Schema settings in function definitions.
   URL or authorization code for remote browsers. It does not change the
   existing API-key fallback, provider ID, request routes, or serialized-message
   shapes; applications continue to own credential persistence.
+- Cached Codex WebSocket continuation recovery is internal. It does not change
+  provider IDs, request APIs, serialized message shapes, or normal session
+  behavior.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.

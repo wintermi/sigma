@@ -921,6 +921,126 @@ func TestCodexResponsesWebSocketRetriesConnectionLimitBeforeFallback(t *testing.
 	}
 }
 
+func TestCodexResponsesWebSocketRetriesMissingContinuationBeforeFallback(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	requests := make(chan map[string]any, 3)
+	var webSocketCalls atomic.Int32
+	server := newCodexMixedTransportTestServer(t, func(_ *http.Request, ws *codexWebSocketTestConn) {
+		connection := webSocketCalls.Add(1)
+		switch connection {
+		case 1:
+			requests <- ws.readJSON(t)
+			writeCodexWebSocketTextResponse(t, ws, "resp_1", "msg_1", "txt_1", "First")
+			requests <- ws.readJSON(t)
+			ws.writeJSON(t, map[string]any{
+				"type":  "error",
+				"error": map[string]any{"code": "previous_response_not_found"},
+			})
+		case 2:
+			requests <- ws.readJSON(t)
+			writeCodexWebSocketTextResponse(t, ws, "resp_2", "msg_2", "txt_2", "Recovered")
+		default:
+			t.Errorf("unexpected websocket connection %d", connection)
+		}
+	})
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-ws-missing-continuation-retry-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := "missing-continuation-retry-session"
+
+	first, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("first Complete returned error: %v", err)
+	}
+	assistant := sigma.Message{
+		Role:       sigma.RoleAssistant,
+		Content:    first.Content,
+		Provider:   first.Provider,
+		Model:      first.Model,
+		StopReason: first.StopReason,
+	}
+
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("first"),
+			assistant,
+			sigma.UserText("second"),
+		}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("second Complete returned error: %v", err)
+	}
+	if got, want := final.Content[0].Text, "Recovered"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+
+	_ = receiveMap(t, requests)
+	failed := receiveMap(t, requests)
+	if got, want := failed["previous_response_id"], "resp_1"; got != want {
+		t.Fatalf("failed previous response id = %v, want %v", got, want)
+	}
+	if got, want := len(failed["input"].([]any)), 1; got != want {
+		t.Fatalf("failed input count = %d, want delta of %d", got, want)
+	}
+	recovered := receiveMap(t, requests)
+	if _, ok := recovered["previous_response_id"]; ok {
+		t.Fatalf("recovery request retained previous response id: %#v", recovered)
+	}
+	if got, want := len(recovered["input"].([]any)), 3; got != want {
+		t.Fatalf("recovery input count = %d, want full context of %d", got, want)
+	}
+	if got, want := webSocketCalls.Load(), int32(2); got != want {
+		t.Fatalf("websocket calls = %d, want %d", got, want)
+	}
+	if got := server.postCalls.Load(); got != 0 {
+		t.Fatalf("fallback POST calls = %d, want 0", got)
+	}
+	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.Requests, 3; got != want {
+		t.Fatalf("stats requests = %d, want %d", got, want)
+	}
+	if got, want := stats.ConnectionsCreated, 2; got != want {
+		t.Fatalf("stats connections created = %d, want %d", got, want)
+	}
+	if got, want := stats.ConnectionsReused, 1; got != want {
+		t.Fatalf("stats connections reused = %d, want %d", got, want)
+	}
+	if got, want := stats.FullContextRequests, 2; got != want {
+		t.Fatalf("stats full-context requests = %d, want %d", got, want)
+	}
+	if got, want := stats.DeltaContextRequests, 1; got != want {
+		t.Fatalf("stats delta requests = %d, want %d", got, want)
+	}
+	if got, want := stats.WebSocketFailures, 0; got != want {
+		t.Fatalf("stats websocket failures = %d, want %d", got, want)
+	}
+	if got, want := stats.SSEFallbacks, 0; got != want {
+		t.Fatalf("stats sse fallbacks = %d, want %d", got, want)
+	}
+	if stats.WebSocketFallbackActive {
+		t.Fatal("stats websocket fallback active = true, want false")
+	}
+}
+
 func TestCodexResponsesWebSocketFallsBackAfterRepeatedConnectionLimit(t *testing.T) {
 	openai.CloseCodexResponsesWebSocketSessions()
 	openai.ResetCodexResponsesWebSocketStatsAll()
@@ -971,6 +1091,104 @@ func TestCodexResponsesWebSocketFallsBackAfterRepeatedConnectionLimit(t *testing
 	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
 	if !ok {
 		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.WebSocketFailures, 1; got != want {
+		t.Fatalf("stats websocket failures = %d, want %d", got, want)
+	}
+	if got, want := stats.SSEFallbacks, 1; got != want {
+		t.Fatalf("stats sse fallbacks = %d, want %d", got, want)
+	}
+	if !stats.WebSocketFallbackActive {
+		t.Fatal("stats websocket fallback active = false, want true")
+	}
+}
+
+func TestCodexResponsesWebSocketFallsBackAfterRepeatedMissingContinuation(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	requests := make(chan map[string]any, 3)
+	var webSocketCalls atomic.Int32
+	server := newCodexMixedTransportTestServer(t, func(_ *http.Request, ws *codexWebSocketTestConn) {
+		connection := webSocketCalls.Add(1)
+		switch connection {
+		case 1:
+			requests <- ws.readJSON(t)
+			writeCodexWebSocketTextResponse(t, ws, "resp_1", "msg_1", "txt_1", "First")
+			requests <- ws.readJSON(t)
+		case 2:
+			requests <- ws.readJSON(t)
+		default:
+			t.Errorf("unexpected websocket connection %d", connection)
+		}
+		ws.writeJSON(t, map[string]any{
+			"type":  "error",
+			"error": map[string]any{"code": "previous_response_not_found"},
+		})
+	})
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-ws-missing-continuation-fallback-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := "missing-continuation-fallback-session"
+
+	first, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("first Complete returned error: %v", err)
+	}
+	assistant := sigma.Message{
+		Role:       sigma.RoleAssistant,
+		Content:    first.Content,
+		Provider:   first.Provider,
+		Model:      first.Model,
+		StopReason: first.StopReason,
+	}
+
+	_, err = client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("first"),
+			assistant,
+			sigma.UserText("second"),
+		}},
+		sigma.WithTransport(sigma.TransportWebSocket),
+		sigma.WithSessionID(sessionID),
+	)
+	if err != nil {
+		t.Fatalf("second Complete returned error after fallback: %v", err)
+	}
+
+	_ = receiveMap(t, requests)
+	failed := receiveMap(t, requests)
+	if got, want := failed["previous_response_id"], "resp_1"; got != want {
+		t.Fatalf("failed previous response id = %v, want %v", got, want)
+	}
+	retry := receiveMap(t, requests)
+	if _, ok := retry["previous_response_id"]; ok {
+		t.Fatalf("retry request retained previous response id: %#v", retry)
+	}
+	if got, want := webSocketCalls.Load(), int32(2); got != want {
+		t.Fatalf("websocket calls = %d, want %d", got, want)
+	}
+	if got, want := server.postCalls.Load(), int32(1); got != want {
+		t.Fatalf("fallback POST calls = %d, want %d", got, want)
+	}
+	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.Requests, 3; got != want {
+		t.Fatalf("stats requests = %d, want %d", got, want)
 	}
 	if got, want := stats.WebSocketFailures, 1; got != want {
 		t.Fatalf("stats websocket failures = %d, want %d", got, want)
@@ -1391,6 +1609,12 @@ type codexWebSocketTestServer struct {
 	ln  net.Listener
 }
 
+type codexMixedTransportTestServer struct {
+	URL       string
+	ln        net.Listener
+	postCalls atomic.Int32
+}
+
 type codexWebSocketTestConn struct {
 	conn   net.Conn
 	reader *bufio.Reader
@@ -1421,6 +1645,58 @@ func newCodexWebSocketTestServer(t *testing.T, handler func(*http.Request, *code
 
 func (s *codexWebSocketTestServer) Close() {
 	_ = s.ln.Close()
+}
+
+func newCodexMixedTransportTestServer(t *testing.T, handler func(*http.Request, *codexWebSocketTestConn)) *codexMixedTransportTestServer {
+	t.Helper()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen returned error: %v", err)
+	}
+	server := &codexMixedTransportTestServer{
+		URL: "http://" + ln.Addr().String(),
+		ln:  ln,
+	}
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go server.handleConnection(t, conn, handler)
+		}
+	}()
+	return server
+}
+
+func (s *codexMixedTransportTestServer) Close() {
+	_ = s.ln.Close()
+}
+
+func (s *codexMixedTransportTestServer) handleConnection(t *testing.T, conn net.Conn, handler func(*http.Request, *codexWebSocketTestConn)) {
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	req, err := http.ReadRequest(reader)
+	if err != nil {
+		t.Errorf("ReadRequest returned error: %v", err)
+		return
+	}
+	defer req.Body.Close()
+	if !strings.EqualFold(req.Header.Get("Upgrade"), "websocket") {
+		s.postCalls.Add(1)
+		_, _ = fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: %d\r\n\r\n%s", len(responsesCompletedEvent), responsesCompletedEvent)
+		return
+	}
+
+	key := req.Header.Get("Sec-WebSocket-Key")
+	if key == "" {
+		t.Errorf("missing Sec-WebSocket-Key")
+		return
+	}
+	_, _ = fmt.Fprintf(conn, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", codexWebSocketTestAccept(key))
+	handler(req, &codexWebSocketTestConn{conn: conn, reader: reader})
 }
 
 func handleCodexWebSocketTestConn(t *testing.T, conn net.Conn, handler func(*http.Request, *codexWebSocketTestConn)) {

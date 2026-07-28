@@ -37,6 +37,7 @@ const (
 	codexWebSocketMaxFrameBytes         = 16 << 20
 	codexWebSocketMaxMessageBytes       = 16 << 20
 	codexWebSocketConnectionLimitCode   = "websocket_connection_limit_reached"
+	codexWebSocketPreviousResponseCode  = "previous_response_not_found"
 	webSocketGUID                       = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 	webSocketOpcodeContinuation = 0x0
@@ -184,7 +185,9 @@ func (p *CodexResponsesProvider) runWebSocket(ctx context.Context, writer sigma.
 		return
 	}
 
-	for attempt := 0; ; attempt++ {
+	retriedConnectionLimit := false
+	retriedMissingContinuation := false
+	for {
 		parser, err := p.processWebSocket(ctx, writer, model, req, opts)
 		if err == nil {
 			_ = writer.Done(ctx, parser.finalize(ctx))
@@ -195,7 +198,13 @@ func (p *CodexResponsesProvider) runWebSocket(ctx context.Context, writer sigma.
 			_ = writer.Error(ctx, contextError(ctx, err), final)
 			return
 		}
-		if attempt == 0 && (parser == nil || !parser.started) && codexWebSocketConnectionLimitReached(err) {
+		if (parser == nil || !parser.started) &&
+			codexWebSocketPreviousResponseNotFound(err) && !retriedMissingContinuation {
+			retriedMissingContinuation = true
+			continue
+		}
+		if (parser == nil || !parser.started) && codexWebSocketConnectionLimitReached(err) && !retriedConnectionLimit {
+			retriedConnectionLimit = true
 			continue
 		}
 		recordCodexWebSocketFailure(opts.SessionID, err)
@@ -214,6 +223,11 @@ func (p *CodexResponsesProvider) runWebSocket(ctx context.Context, writer sigma.
 func codexWebSocketConnectionLimitReached(err error) bool {
 	var providerErr *sigma.ProviderError
 	return errors.As(err, &providerErr) && providerErr.ProviderCode == codexWebSocketConnectionLimitCode
+}
+
+func codexWebSocketPreviousResponseNotFound(err error) bool {
+	var providerErr *sigma.ProviderError
+	return errors.As(err, &providerErr) && providerErr.ProviderCode == codexWebSocketPreviousResponseCode
 }
 
 func (p *CodexResponsesProvider) runSSE(ctx context.Context, writer sigma.StreamWriter, model sigma.Model, req sigma.Request, opts sigma.Options, final sigma.AssistantMessage) {
