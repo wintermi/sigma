@@ -966,8 +966,8 @@ func TestOpenAIOptionsValidateAPICompatibility(t *testing.T) {
 			},
 		},
 		{
-			name: "grammar tools reject non responses api",
-			api:  sigma.APIOpenAICompletions,
+			name: "grammar tools reject non compatible api",
+			api:  sigma.APIAnthropicMessages,
 			options: sigma.OpenAIOptions{
 				EnableGrammarTools: testBoolPtr(true),
 			},

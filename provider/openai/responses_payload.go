@@ -87,7 +87,11 @@ func responsesGrammarToolsEnabled(model sigma.Model, opts sigma.Options) bool {
 }
 
 func responsesGrammarToolInputProperties(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]string, error) {
-	if !responsesGrammarToolsEnabled(model, opts) {
+	return grammarToolInputProperties("openai responses", req, responsesGrammarToolsEnabled(model, opts))
+}
+
+func grammarToolInputProperties(api string, req sigma.Request, enabled bool) (map[string]string, error) {
+	if !enabled {
 		return nil, nil
 	}
 	properties := make(map[string]string)
@@ -95,7 +99,7 @@ func responsesGrammarToolInputProperties(model sigma.Model, req sigma.Request, o
 		if tool.OpenAIGrammar == nil {
 			continue
 		}
-		property, err := responsesGrammarToolInputProperty(tool)
+		property, err := grammarToolInputProperty(api, tool)
 		if err != nil {
 			return nil, err
 		}
@@ -104,40 +108,40 @@ func responsesGrammarToolInputProperties(model sigma.Model, req sigma.Request, o
 	return properties, nil
 }
 
-func responsesGrammarToolInputProperty(tool sigma.Tool) (string, error) {
+func grammarToolInputProperty(api string, tool sigma.Tool) (string, error) {
 	if tool.ProviderDefinedType != "" {
-		return "", fmt.Errorf("openai responses: grammar tool %q cannot combine a grammar with a provider-defined type", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q cannot combine a grammar with a provider-defined type", api, tool.Name)
 	}
 	grammar := tool.OpenAIGrammar
 	if grammar == nil {
-		return "", fmt.Errorf("openai responses: grammar tool %q grammar is required", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q grammar is required", api, tool.Name)
 	}
 	if grammar.Syntax != sigma.OpenAIGrammarLark && grammar.Syntax != sigma.OpenAIGrammarRegex {
-		return "", fmt.Errorf("openai responses: grammar tool %q syntax must be lark or regex", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q syntax must be lark or regex", api, tool.Name)
 	}
 	if strings.TrimSpace(grammar.Definition) == "" {
-		return "", fmt.Errorf("openai responses: grammar tool %q definition is required", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q definition is required", api, tool.Name)
 	}
 	value, err := jsonValue(tool.InputSchema)
 	if err != nil {
-		return "", fmt.Errorf("openai responses: grammar tool %q schema: %w", tool.Name, err)
+		return "", fmt.Errorf("%s: grammar tool %q schema: %w", api, tool.Name, err)
 	}
 	schema := anyMap(value)
 	if schema == nil || schema[providerToolOptionTypeKey] != "object" {
-		return "", fmt.Errorf("openai responses: grammar tool %q schema must be an object", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q schema must be an object", api, tool.Name)
 	}
 	required, ok := schema["required"].([]any)
 	if !ok || len(required) != 1 {
-		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q schema must require exactly one string property", api, tool.Name)
 	}
 	property, ok := required[0].(string)
 	if !ok || property == "" {
-		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q schema must require exactly one string property", api, tool.Name)
 	}
 	properties := anyMap(schema["properties"])
 	propertySchema := anyMap(properties[property])
 	if propertySchema == nil || propertySchema[providerToolOptionTypeKey] != "string" {
-		return "", fmt.Errorf("openai responses: grammar tool %q schema must require exactly one string property", tool.Name)
+		return "", fmt.Errorf("%s: grammar tool %q schema must require exactly one string property", api, tool.Name)
 	}
 	return property, nil
 }
@@ -346,7 +350,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 		case sigma.ContentBlockToolCall:
 			flushMessage()
 			if property, ok := grammarToolInputProperties[block.ToolName]; ok {
-				input, err := responsesGrammarToolCallInput(block.ToolName, block.ToolArguments, property)
+				input, err := grammarToolCallInput("openai responses", block.ToolName, block.ToolArguments, property)
 				if err != nil {
 					return nil, err
 				}
@@ -792,18 +796,18 @@ func responsesCustomToolCallIDs(block sigma.ContentBlock, fallbackItemID string)
 	return callID, itemID
 }
 
-func responsesGrammarToolCallInput(toolName string, arguments any, property string) (string, error) {
+func grammarToolCallInput(api string, toolName string, arguments any, property string) (string, error) {
 	argumentsText, err := toolArgumentsString(arguments)
 	if err != nil {
-		return "", fmt.Errorf("openai responses: grammar tool %q arguments: %w", toolName, err)
+		return "", fmt.Errorf("%s: grammar tool %q arguments: %w", api, toolName, err)
 	}
 	var values map[string]any
 	if err := json.Unmarshal([]byte(argumentsText), &values); err != nil {
-		return "", fmt.Errorf("openai responses: grammar tool %q arguments must be a JSON object: %w", toolName, err)
+		return "", fmt.Errorf("%s: grammar tool %q arguments must be a JSON object: %w", api, toolName, err)
 	}
 	input, ok := values[property].(string)
 	if !ok {
-		return "", fmt.Errorf("openai responses: grammar tool %q arguments must contain string property %q", toolName, property)
+		return "", fmt.Errorf("%s: grammar tool %q arguments must contain string property %q", api, toolName, property)
 	}
 	return input, nil
 }

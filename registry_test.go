@@ -1537,24 +1537,29 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	model := sigma.Model{
 		ID:             "gpt-custom",
 		Provider:       sigma.ProviderOpenAI,
-		API:            sigma.APIOpenAIResponses,
+		API:            sigma.APIOpenAICompletions,
 		ThinkingLevels: []sigma.ThinkingLevel{sigma.ThinkingLevelLow},
 		UnsupportedThinkingLevels: []sigma.ThinkingLevel{
 			sigma.ThinkingLevelOff,
 		},
 		CostTiers:        []sigma.ModelCostTier{{InputTokensAbove: 272_000, InputCostPerMillion: 2}},
 		ProviderMetadata: nestedProviderMetadata(),
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			SupportsGrammarTools: sigma.OpenAICompatSupported,
+		},
 	}
 	if err := registry.RegisterModel(model, sigma.WithMetadataOnly()); err != nil {
 		t.Fatalf("RegisterModel returned error: %v", err)
 	}
 	mutateNestedProviderMetadata(model.ProviderMetadata)
 	model.CostTiers[0].InputCostPerMillion = 20
+	model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 
 	listed := registry.ListModels()
 	listed[0].ThinkingLevels[0] = sigma.ThinkingLevelHigh
 	listed[0].UnsupportedThinkingLevels[0] = sigma.ThinkingLevelMedium
 	listed[0].CostTiers[0].InputCostPerMillion = 20
+	listed[0].OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 	listed[0].ProviderMetadata["family"] = "mutated"
 	mutateNestedProviderMetadata(listed[0].ProviderMetadata)
 
@@ -1567,6 +1572,9 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	if got.UnsupportedThinkingLevels[0] != sigma.ThinkingLevelOff {
 		t.Fatalf("unsupported thinking level = %q, want %q", got.UnsupportedThinkingLevels[0], sigma.ThinkingLevelOff)
+	}
+	if got.OpenAICompletionsCompat == nil || got.OpenAICompletionsCompat.SupportsGrammarTools != sigma.OpenAICompatSupported {
+		t.Fatalf("grammar tool compatibility = %#v, want supported", got.OpenAICompletionsCompat)
 	}
 	if got.CostTiers[0].InputCostPerMillion != 2 {
 		t.Fatalf("cost tier input rate = %v, want 2", got.CostTiers[0].InputCostPerMillion)
@@ -1602,6 +1610,7 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	cloned.ProviderMetadata["family"] = "mutated"
 	cloned.CostTiers[0].InputCostPerMillion = 20
+	cloned.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 	mutateNestedProviderMetadata(cloned.ProviderMetadata)
 	got, ok = registry.Model(sigma.ProviderOpenAI, "gpt-custom")
 	if !ok {
@@ -1609,6 +1618,9 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	if got.CostTiers[0].InputCostPerMillion != 2 {
 		t.Fatalf("cloned cost tier input rate leaked into original: %v", got.CostTiers[0].InputCostPerMillion)
+	}
+	if got.OpenAICompletionsCompat.SupportsGrammarTools != sigma.OpenAICompatSupported {
+		t.Fatalf("cloned grammar compatibility leaked into original: %#v", got.OpenAICompletionsCompat)
 	}
 	assertNestedProviderMetadata(t, got.ProviderMetadata)
 	cloned, ok = clone.Model(sigma.ProviderOpenAI, "gpt-custom")

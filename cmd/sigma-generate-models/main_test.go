@@ -64,6 +64,24 @@ func TestRenderGeneratedFilesIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestRenderTextModelsIncludesGrammarToolCompatibility(t *testing.T) {
+	t.Parallel()
+
+	catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{{
+		ID:       "grammar-compatible",
+		Provider: "custom",
+		API:      "openai-completions",
+		OpenAICompletionsCompat: &modeldata.OpenAICompletionsCompat{
+			SupportsGrammarTools: "supported",
+		},
+	}}}
+
+	rendered := string(renderTextModels(catalog))
+	if !strings.Contains(rendered, "SupportsGrammarTools: OpenAICompatSupport(\"supported\")") {
+		t.Fatalf("generated text models omitted grammar compatibility: %s", rendered)
+	}
+}
+
 func TestRenderCatalogReportSummarizesProviderAPIBuckets(t *testing.T) {
 	t.Parallel()
 

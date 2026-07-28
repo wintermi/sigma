@@ -54,11 +54,17 @@ type streamToolCallDelta struct {
 	ID       string              `json:"id"`
 	Type     string              `json:"type"`
 	Function streamFunctionDelta `json:"function"`
+	Custom   streamCustomDelta   `json:"custom"`
 }
 
 type streamFunctionDelta struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
+}
+
+type streamCustomDelta struct {
+	Name  string `json:"name"`
+	Input string `json:"input"`
 }
 
 type streamError struct {
@@ -110,6 +116,8 @@ type completionStreamParser struct {
 	thinking         *streamblocks.Thinking
 	toolCalls        map[string]*streamblocks.ToolCall
 	toolCallOrdinals map[string]int
+	customToolCalls  map[*streamblocks.ToolCall]*completionCustomToolCall
+	grammarTools     map[string]string
 	lastToolCallKey  string
 	nextBlock        int
 	usage            *sigma.Usage
@@ -122,12 +130,18 @@ type completionStreamParser struct {
 	sawFinishReason  bool
 }
 
-func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
+type completionCustomToolCall struct {
+	closed bool
+}
+
+func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, grammarTools map[string]string) (sigma.AssistantMessage, error) {
 	parser := completionStreamParser{
 		writer:           writer,
 		model:            model,
 		toolCalls:        make(map[string]*streamblocks.ToolCall),
 		toolCallOrdinals: make(map[string]int),
+		customToolCalls:  make(map[*streamblocks.ToolCall]*completionCustomToolCall),
+		grammarTools:     grammarTools,
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -348,16 +362,19 @@ func (p *completionStreamParser) toolCallKey(order int, delta streamToolCallDelt
 	if delta.ID != "" {
 		return "id:" + delta.ID
 	}
-	// An index-less, id-less delta with no function name is an argument
+	// An index-less, id-less delta with no tool name is an argument
 	// continuation of the most recent tool call (providers that send the id
 	// only on the first delta).
-	if delta.Function.Name == "" && p.lastToolCallKey != "" {
+	if delta.Function.Name == "" && delta.Custom.Name == "" && p.lastToolCallKey != "" {
 		return p.lastToolCallKey
 	}
 	return fmt.Sprintf("order:%d", order)
 }
 
 func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, delta streamToolCallDelta) error {
+	if delta.Type == "custom" || delta.Custom.Name != "" || delta.Custom.Input != "" {
+		return p.emitCustomToolCall(ctx, key, delta)
+	}
 	state := p.toolCalls[key]
 	if state == nil {
 		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
@@ -397,6 +414,72 @@ func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, d
 	})
 }
 
+func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key string, delta streamToolCallDelta) error {
+	state := p.toolCalls[key]
+	name := delta.Custom.Name
+	if state != nil {
+		name = firstNonEmpty(name, state.Name())
+	}
+	property, ok := p.grammarTools[name]
+	if !ok {
+		return fmt.Errorf("openai completions: custom tool %q was not requested as a grammar tool", name)
+	}
+	argumentsDelta := ""
+	if state == nil {
+		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
+		p.toolCallOrdinals[key] = len(p.toolCalls)
+		p.toolCalls[key] = state
+		p.customToolCalls[state] = &completionCustomToolCall{}
+		propertyJSON, err := json.Marshal(property)
+		if err != nil {
+			return fmt.Errorf("openai completions: encode grammar tool property: %w", err)
+		}
+		argumentsDelta = "{" + string(propertyJSON) + ":\""
+		state.AppendArguments(argumentsDelta)
+	}
+	p.lastToolCallKey = key
+	if state.ID() == "" && delta.ID == "" && delta.Custom.Name != "" {
+		fallback := p.toolCallOrdinals[key]
+		if delta.Index != nil {
+			fallback = *delta.Index
+		}
+		state.SetID(fmt.Sprintf("call_%d", fallback))
+	}
+	state.SetID(delta.ID)
+	state.SetName(name)
+	input, err := grammarToolInputDelta(delta.Custom.Input)
+	if err != nil {
+		return err
+	}
+	state.AppendArguments(input)
+	argumentsDelta += input
+
+	partial := state.Partial(argumentsDelta, streamblocks.ToolPartialArgumentsText)
+	if !state.Started {
+		if err := p.writer.Emit(ctx, sigma.Event{
+			Kind:            sigma.EventKindToolCallStart,
+			ContentIndex:    intPtr(state.ContentIndex),
+			PartialToolCall: partial,
+		}); err != nil {
+			return err
+		}
+		state.Started = true
+	}
+	return p.writer.Emit(ctx, sigma.Event{
+		Kind:            sigma.EventKindToolCallDelta,
+		ContentIndex:    intPtr(state.ContentIndex),
+		PartialToolCall: partial,
+	})
+}
+
+func grammarToolInputDelta(input string) (string, error) {
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		return "", fmt.Errorf("openai completions: encode grammar tool input: %w", err)
+	}
+	return string(encoded[1 : len(encoded)-1]), nil
+}
+
 func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	contentByIndex := make(map[int]sigma.ContentBlock)
 	if p.text != nil {
@@ -423,6 +506,16 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 	}
 	idlessDetails, detailsByID := partitionReasoningDetails(p.reasoningDetails)
 	for position, state := range p.sortedToolCalls() {
+		if custom := p.customToolCalls[state]; custom != nil && !custom.closed {
+			state.AppendArguments("\"}")
+			partial := state.Partial("\"}", streamblocks.ToolPartialArgumentsText)
+			_ = p.writer.Emit(ctx, sigma.Event{
+				Kind:            sigma.EventKindToolCallDelta,
+				ContentIndex:    intPtr(state.ContentIndex),
+				PartialToolCall: partial,
+			})
+			custom.closed = true
+		}
 		details := detailsByID[state.ID()]
 		// Details without an id cannot be correlated to a specific call;
 		// attach them once, to the first tool call, so replay does not send

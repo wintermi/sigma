@@ -1313,6 +1313,345 @@ func TestChatCompletionsRejectsProviderDefinedTools(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsGrammarToolsFollowMetadataAndExplicitOverrides(t *testing.T) {
+	t.Parallel()
+
+	enabled := true
+	disabled := false
+	tests := []struct {
+		name       string
+		syntax     sigma.OpenAIGrammarSyntax
+		definition string
+		compat     bool
+		enabled    *bool
+		wantCustom bool
+	}{
+		{
+			name:       "catalog capability enables lark",
+			syntax:     sigma.OpenAIGrammarLark,
+			definition: "start: WORD\nWORD: /[a-z]+/",
+			compat:     true,
+			wantCustom: true,
+		},
+		{
+			name:       "explicit enablement enables regex",
+			syntax:     sigma.OpenAIGrammarRegex,
+			definition: "[a-z]+",
+			enabled:    &enabled,
+			wantCustom: true,
+		},
+		{
+			name:       "explicit disablement keeps function tool",
+			syntax:     sigma.OpenAIGrammarLark,
+			definition: "start: WORD\nWORD: /[a-z]+/",
+			compat:     true,
+			enabled:    &disabled,
+			wantCustom: false,
+		},
+		{
+			name:       "unsupported metadata keeps function tool",
+			syntax:     sigma.OpenAIGrammarRegex,
+			definition: "[a-z]+",
+			wantCustom: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-grammar-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			if tt.compat {
+				model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatSupported
+			}
+			client := openAITestClient(t, providerID, model, server.URL)
+			options := []sigma.Option{}
+			if tt.enabled != nil {
+				options = append(options, sigma.WithOpenAIOptions(sigma.OpenAIOptions{EnableGrammarTools: tt.enabled}))
+			}
+
+			_, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("parse this")},
+				Tools:    []sigma.Tool{chatGrammarTool("parse", tt.syntax, tt.definition)},
+			}, options...)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			tool := payload["tools"].([]any)[0].(map[string]any)
+			if !tt.wantCustom {
+				if got, want := tool["type"], "function"; got != want {
+					t.Fatalf("tool type = %v, want %q", got, want)
+				}
+				if _, ok := tool["custom"]; ok {
+					t.Fatalf("fallback function tool included custom payload: %#v", tool)
+				}
+				return
+			}
+			if got, want := tool["type"], "custom"; got != want {
+				t.Fatalf("tool type = %v, want %q", got, want)
+			}
+			custom := tool["custom"].(map[string]any)
+			format := custom["format"].(map[string]any)
+			grammar := format["grammar"].(map[string]any)
+			if got, want := format["type"], "grammar"; got != want {
+				t.Fatalf("format type = %v, want %q", got, want)
+			}
+			if got, want := grammar["syntax"], string(tt.syntax); got != want {
+				t.Fatalf("grammar syntax = %v, want %q", got, want)
+			}
+			if got, want := grammar["definition"], tt.definition; got != want {
+				t.Fatalf("grammar definition = %v, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsGrammarToolsValidateConfiguration(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		tool sigma.Tool
+		want string
+	}{
+		{
+			name: "syntax",
+			tool: chatGrammarTool("parse", "ebnf", "start: WORD"),
+			want: "syntax must be lark or regex",
+		},
+		{
+			name: "definition",
+			tool: chatGrammarTool("parse", sigma.OpenAIGrammarLark, " "),
+			want: "definition is required",
+		},
+		{
+			name: "required schema",
+			tool: sigma.Tool{
+				Name:        "parse",
+				InputSchema: sigma.Schema{"type": "object", "properties": map[string]any{"command": map[string]any{"type": "string"}}},
+				OpenAIGrammar: &sigma.OpenAIGrammar{
+					Syntax:     sigma.OpenAIGrammarRegex,
+					Definition: ".+",
+				},
+			},
+			want: "must require exactly one string property",
+		},
+		{
+			name: "provider defined type",
+			tool: sigma.Tool{
+				Name:                "parse",
+				ProviderDefinedType: "web_search",
+				InputSchema:         sigma.Schema{"type": "object", "properties": map[string]any{"command": map[string]any{"type": "string"}}, "required": []any{"command"}},
+				OpenAIGrammar: &sigma.OpenAIGrammar{
+					Syntax:     sigma.OpenAIGrammarRegex,
+					Definition: ".+",
+				},
+			},
+			want: "cannot combine a grammar with a provider-defined type",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			providerID := sigma.ProviderID("openai-grammar-validation-" + tt.name)
+			model := openAITestModel(providerID)
+			model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatSupported
+			client := openAITestClient(t, providerID, model, "https://example.test")
+			_, err := client.Complete(context.Background(), model, sigma.Request{Tools: []sigma.Tool{tt.tool}})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Complete error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsGrammarToolsReplayCustomCalls(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-grammar-replay")
+	model := openAITestModel(providerID)
+	model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatSupported
+	client := openAITestClient(t, providerID, model, server.URL)
+	request := sigma.Request{
+		Tools: []sigma.Tool{
+			chatGrammarTool("parse", sigma.OpenAIGrammarRegex, ".+"),
+			{Name: "read", InputSchema: sigma.Schema{"type": "object"}},
+		},
+		Messages: []sigma.Message{
+			sigma.UserText("start"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("call_parse", "parse", map[string]any{"command": "go test"}),
+					sigma.ToolCallBlock("call_read", "read", map[string]any{"path": "README.md"}),
+				},
+			},
+			{Role: sigma.RoleTool, ToolCallID: "call_parse", ToolName: "parse", Content: []sigma.ContentBlock{sigma.Text("ok")}},
+			{Role: sigma.RoleTool, ToolCallID: "call_read", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("contents")}},
+			sigma.UserText("continue"),
+		},
+	}
+
+	if _, err := client.Complete(context.Background(), model, request); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	var assistant map[string]any
+	toolResults := 0
+	for _, message := range payload.Messages {
+		if message["role"] == "assistant" {
+			assistant = message
+		}
+		if message["role"] == "tool" {
+			toolResults++
+		}
+	}
+	if assistant == nil {
+		t.Fatal("replay payload did not include assistant message")
+	}
+	toolCalls, ok := assistant["tool_calls"].([]any)
+	if !ok || len(toolCalls) != 2 {
+		t.Fatalf("assistant tool_calls = %#v, want custom and function calls", assistant["tool_calls"])
+	}
+	custom := toolCalls[0].(map[string]any)
+	if got, want := custom["type"], "custom"; got != want {
+		t.Fatalf("custom replay type = %v, want %q", got, want)
+	}
+	if got, want := custom["custom"].(map[string]any)["input"], "go test"; got != want {
+		t.Fatalf("custom replay input = %v, want %q", got, want)
+	}
+	function := toolCalls[1].(map[string]any)
+	if got, want := function["type"], "function"; got != want {
+		t.Fatalf("function replay type = %v, want %q", got, want)
+	}
+	if got, want := toolResults, 2; got != want {
+		t.Fatalf("tool result count = %d, want %d", got, want)
+	}
+}
+
+func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_parse","type":"custom","custom":{"name":"parse","input":"go "}},{"index":1,"id":"call_read","type":"function","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"type":"custom","custom":{"input":"test"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-grammar-stream")
+	model := openAITestModel(providerID)
+	model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatSupported
+	client := openAITestClient(t, providerID, model, server.URL)
+	stream := client.Stream(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("run")},
+		Tools: []sigma.Tool{
+			chatGrammarTool("parse", sigma.OpenAIGrammarRegex, ".+"),
+			{Name: "read", InputSchema: sigma.Schema{"type": "object"}},
+		},
+	})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := len(final.Content), 2; got != want {
+		t.Fatalf("content blocks = %d, want %d: %#v", got, want, final.Content)
+	}
+	parseArguments, ok := final.Content[0].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("grammar tool arguments type = %T, want map", final.Content[0].ToolArguments)
+	}
+	if got, want := parseArguments["command"], "go test"; got != want {
+		t.Fatalf("grammar tool command = %v, want %q", got, want)
+	}
+	readArguments, ok := final.Content[1].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("function tool arguments type = %T, want map", final.Content[1].ToolArguments)
+	}
+	if got, want := readArguments["path"], "README.md"; got != want {
+		t.Fatalf("function tool path = %v, want %q", got, want)
+	}
+	var customArguments strings.Builder
+	for _, event := range events {
+		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil || event.PartialToolCall.ID != "call_parse" {
+			continue
+		}
+		customArguments.WriteString(event.PartialToolCall.ArgumentsDelta)
+	}
+	if got, want := customArguments.String(), `{"command":"go test"}`; got != want {
+		t.Fatalf("streamed custom arguments = %q, want %q", got, want)
+	}
+}
+
+func TestChatCompletionsGrammarToolStreamRejectsUnknownCustomCalls(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name   string
+		custom string
+		want   string
+	}{
+		{name: "unknown tool", custom: `{"name":"other","input":"go test"}`, want: `custom tool "other" was not requested`},
+		{name: "missing name", custom: `{"input":"go test"}`, want: `custom tool "" was not requested`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_bad","type":"custom","custom":`+tt.custom+`}]},"finish_reason":null}]}`+"\n\n")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-grammar-unknown-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatSupported
+			client := openAITestClient(t, providerID, model, server.URL)
+			_, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("run")},
+				Tools:    []sigma.Tool{chatGrammarTool("parse", sigma.OpenAIGrammarRegex, ".+")},
+			})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Complete error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestToolCallStreamingProducesFinalArguments(t *testing.T) {
 	t.Parallel()
 
@@ -2428,6 +2767,24 @@ func openAITestModel(providerID sigma.ProviderID) sigma.Model {
 		InputCostPerMillion:          1,
 		OutputCostPerMillion:         2,
 		CacheReadInputCostPerMillion: 0.5,
+	}
+}
+
+func chatGrammarTool(name string, syntax sigma.OpenAIGrammarSyntax, definition string) sigma.Tool {
+	return sigma.Tool{
+		Name:        name,
+		Description: "Parse a command",
+		InputSchema: sigma.Schema{
+			"type": "object",
+			"properties": map[string]any{
+				"command": map[string]any{"type": "string"},
+			},
+			"required": []any{"command"},
+		},
+		OpenAIGrammar: &sigma.OpenAIGrammar{
+			Syntax:     syntax,
+			Definition: definition,
+		},
 	}
 }
 

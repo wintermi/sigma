@@ -654,7 +654,7 @@ func validateOpenAIOptions(model Model, api API, options *OpenAIOptions) error {
 		return invalidOptionsError(model, "openai response format is only supported by OpenAI-compatible APIs")
 	}
 	if options.EnableGrammarTools != nil && *options.EnableGrammarTools && !supportsOpenAIGrammarTools(api) {
-		return invalidOptionsError(model, "openai grammar tools are only supported by OpenAI Responses APIs")
+		return invalidOptionsError(model, "openai grammar tools are only supported by OpenAI-compatible APIs")
 	}
 	return nil
 }
@@ -787,7 +787,7 @@ func supportsOpenAIResponseFormat(api API) bool {
 
 func supportsOpenAIGrammarTools(api API) bool {
 	switch api {
-	case APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
+	case APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
 		return true
 	default:
 		return false

@@ -23,6 +23,7 @@ type completionsCompat struct {
 	supportsStrictTools                         bool
 	supportsRequiredToolChoice                  bool
 	supportsToolStream                          bool
+	supportsGrammarTools                        bool
 	supportsJSONSchemaResponseFormat            bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
@@ -50,6 +51,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsStrictTools = supportOverride(compat.supportsStrictTools, override.SupportsStrictTools)
 	compat.supportsRequiredToolChoice = supportOverride(compat.supportsRequiredToolChoice, override.SupportsRequiredToolChoice)
 	compat.supportsToolStream = supportOverride(compat.supportsToolStream, override.SupportsToolStream)
+	compat.supportsGrammarTools = supportOverride(compat.supportsGrammarTools, override.SupportsGrammarTools)
 	compat.supportsJSONSchemaResponseFormat = supportOverride(
 		compat.supportsJSONSchemaResponseFormat,
 		override.SupportsJSONSchemaResponseFormat,

@@ -350,6 +350,7 @@ type OpenAICompletionsCompat struct {
 	SupportsStrictTools                         OpenAICompatSupport                 `json:"supportsStrictTools,omitempty"`
 	SupportsRequiredToolChoice                  OpenAICompatSupport                 `json:"supportsRequiredToolChoice,omitempty"`
 	SupportsToolStream                          OpenAICompatSupport                 `json:"supportsToolStream,omitempty"`
+	SupportsGrammarTools                        OpenAICompatSupport                 `json:"supportsGrammarTools,omitempty"`
 	SupportsJSONSchemaResponseFormat            OpenAICompatSupport                 `json:"supportsJSONSchemaResponseFormat,omitempty"`
 	MaxTokensField                              OpenAICompletionsMaxTokensField     `json:"maxTokensField,omitempty"`
 	CacheControlFormat                          OpenAICompletionsCacheControlFormat `json:"cacheControlFormat,omitempty"`

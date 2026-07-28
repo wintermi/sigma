@@ -17,8 +17,9 @@ gateway text provider with caller-configured browser and device-code OAuth plus
 NVIDIA Nemotron 3 Ultra to the existing Fireworks text routes. It also adds
 direct Qwen Token Plan registrations for international and China regional
 endpoints with a focused Qwen3.7 Max and Qwen3.8 Max Preview catalog. OpenAI
-Responses also gains grammar-constrained custom tools with direct GPT-5.4
-capability metadata and explicit compatible-endpoint opt-in or opt-out. It
+Responses and Chat Completions also gain grammar-constrained custom tools with
+reviewed capability metadata and explicit compatible-endpoint opt-in or
+opt-out. It
 also adds opt-in OpenRouter browser PKCE login with caller-owned permanent-key
 storage and a manual remote-browser fallback for the existing text and image
 routes. Radius gateway catalogs can also be stored through caller-owned
@@ -98,12 +99,12 @@ and preserves per-tool strict JSON Schema settings in function definitions.
   registrations with the matching environment API-key fallbacks. The focused
   catalog includes text-only Qwen3.7 Max plus text/image Qwen3.8 Max Preview,
   both with tool and Qwen thinking compatibility metadata.
-- OpenAI Responses grammar-constrained custom tools now accept typed Lark or
-  regex definitions when their JSON Schema has one required string input.
-  GPT-5.4 enables the native custom-tool payload from generated metadata;
-  callers may explicitly enable or disable it for compatible Responses
-  endpoints. Deferred tool loading, assistant and tool-result replay, and
-  streamed custom input continue to use Sigma's normal tool-call surface.
+- OpenAI Responses and Chat Completions grammar-constrained custom tools now
+  accept typed Lark or regex definitions when their JSON Schema has one
+  required string input. Reviewed compatibility metadata enables the native
+  custom-tool payload; callers may explicitly enable or disable it for
+  compatible endpoints. Assistant and tool-result replay plus streamed custom
+  input continue to use Sigma's normal tool-call surface.
 
 ## Compatibility
 
@@ -152,10 +153,11 @@ and preserves per-tool strict JSON Schema settings in function definitions.
   `ProviderQwenTokenPlan` and `ProviderQwenTokenPlanCN`. Requests retain the
   existing shared Chat Completions payload shape; API-key discovery uses
   `QWEN_TOKEN_PLAN_API_KEY` and `QWEN_TOKEN_PLAN_CN_API_KEY` respectively.
-- Grammar custom tools are opt-in by metadata or `OpenAIOptions`; setting
+- Grammar custom tools are opt-in by OpenAI Responses metadata,
+  `OpenAICompletionsCompat` metadata, or `OpenAIOptions`; setting
   `EnableGrammarTools` to `false` preserves function-tool serialization, and
-  explicit enablement is rejected on non-Responses APIs. This adds no new
-  provider or provider-neutral constrained-sampling surface.
+  explicit enablement is rejected on unrelated APIs. This adds no new provider
+  or provider-neutral constrained-sampling surface.
 
 ## Deferred work
 

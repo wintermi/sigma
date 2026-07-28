@@ -34,7 +34,11 @@ const (
 
 func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]any, error) {
 	cleaned := transform.DropUnansweredToolCalls(req)
-	messages, err := chatMessages(model, cleaned, opts.CacheRetention, compat)
+	grammarToolInputProperties, err := chatGrammarToolInputProperties(cleaned, opts, compat)
+	if err != nil {
+		return nil, err
+	}
+	messages, err := chatMessages(model, cleaned, opts.CacheRetention, compat, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	addReasoning(payload, model, opts, compat)
 	addChatOpenAIOptions(payload, opts, compat)
 	if len(cleaned.Tools) > 0 {
-		tools, err := chatTools(model, cleaned.Tools, compat)
+		tools, err := chatTools(model, cleaned.Tools, compat, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -91,6 +95,17 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addRouting(payload, opts, model.Provider, compat)
 	return payload, nil
+}
+
+func chatGrammarToolsEnabled(opts sigma.Options, compat completionsCompat) bool {
+	if opts.OpenAIOptions != nil && opts.OpenAIOptions.EnableGrammarTools != nil {
+		return *opts.OpenAIOptions.EnableGrammarTools
+	}
+	return compat.supportsGrammarTools
+}
+
+func chatGrammarToolInputProperties(req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]string, error) {
+	return grammarToolInputProperties("openai completions", req, chatGrammarToolsEnabled(opts, compat))
 }
 
 func validateChatToolChoice(model sigma.Model, opts sigma.Options, compat completionsCompat) error {
@@ -212,7 +227,7 @@ func chatResponseFormat(value any, compat completionsCompat) any {
 	return map[string]any{providerToolOptionTypeKey: "json_object"}
 }
 
-func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat) ([]map[string]any, error) {
+func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages)+1)
 	if req.SystemPrompt != "" {
 		message := map[string]any{
@@ -226,14 +241,14 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
-			nextIndex, err := appendToolRunMessages(&messages, req.Messages, index, model, retention, compat, toolNames)
+			nextIndex, err := appendToolRunMessages(&messages, req.Messages, index, model, retention, compat, toolNames, grammarToolInputProperties)
 			if err != nil {
 				return nil, err
 			}
 			index = nextIndex
 			continue
 		}
-		converted, err := chatMessage(model, message, retention, compat, toolNames)
+		converted, err := chatMessage(model, message, retention, compat, toolNames, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -248,12 +263,12 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 	return repairMessages(messages, compat), nil
 }
 
-func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (int, error) {
+func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string, grammarToolInputProperties map[string]string) (int, error) {
 	var mediaParts []map[string]any
 	index := start
 	for ; index < len(input) && input[index].Role == sigma.RoleTool; index++ {
 		toolMessage := input[index]
-		converted, err := chatMessage(model, toolMessage, retention, compat, toolNames)
+		converted, err := chatMessage(model, toolMessage, retention, compat, toolNames, grammarToolInputProperties)
 		if err != nil {
 			return start, err
 		}
@@ -283,7 +298,7 @@ func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, st
 	return index - 1, nil
 }
 
-func chatMessage(model sigma.Model, message sigma.Message, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string) (map[string]any, error) {
+func chatMessage(model sigma.Model, message sigma.Message, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string, grammarToolInputProperties map[string]string) (map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := inputContent(model, message)
@@ -302,7 +317,7 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		return converted, nil
 	case sigma.RoleAssistant:
 		converted := map[string]any{"role": "assistant"}
-		text, reasoningContent, reasoningDetails, toolCalls, err := assistantContent(message.Content, compat)
+		text, reasoningContent, reasoningDetails, toolCalls, err := assistantContent(message.Content, compat, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -505,7 +520,7 @@ func unsupportedDocumentInputError(model sigma.Model, provider string) error {
 	}
 }
 
-func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (string, string, []any, []map[string]any, error) {
+func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, grammarToolInputProperties map[string]string) (string, string, []any, []map[string]any, error) {
 	var text strings.Builder
 	var reasoningContent strings.Builder
 	var reasoningDetails []any
@@ -522,11 +537,26 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat) (st
 				appendContent(&reasoningContent, providerText(block.ThinkingText))
 			}
 		case sigma.ContentBlockToolCall:
+			reasoningDetails = appendReasoningDetails(reasoningDetails, block.ProviderMetadata)
+			if property, ok := grammarToolInputProperties[block.ToolName]; ok {
+				input, err := grammarToolCallInput("openai completions", block.ToolName, block.ToolArguments, property)
+				if err != nil {
+					return "", "", nil, nil, err
+				}
+				toolCalls = append(toolCalls, map[string]any{
+					"id":                      chatToolCallID(block.ToolCallID),
+					providerToolOptionTypeKey: "custom",
+					"custom": map[string]any{
+						"name":  block.ToolName,
+						"input": input,
+					},
+				})
+				continue
+			}
 			arguments, err := toolArgumentsString(block.ToolArguments)
 			if err != nil {
 				return "", "", nil, nil, err
 			}
-			reasoningDetails = appendReasoningDetails(reasoningDetails, block.ProviderMetadata)
 			toolCalls = append(toolCalls, map[string]any{
 				"id":                      chatToolCallID(block.ToolCallID),
 				providerToolOptionTypeKey: "function",
@@ -669,11 +699,28 @@ func toolResultMediaMessage(mediaParts []map[string]any) map[string]any {
 	}
 }
 
-func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat) ([]map[string]any, error) {
+func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	converted := make([]map[string]any, 0, len(tools))
 	for _, tool := range tools {
 		if tool.ProviderDefinedType != "" {
 			return nil, unsupportedProviderToolError(model, tool)
+		}
+		if _, ok := grammarToolInputProperties[tool.Name]; ok {
+			converted = append(converted, map[string]any{
+				providerToolOptionTypeKey: "custom",
+				"custom": map[string]any{
+					"name":        tool.Name,
+					"description": tool.Description,
+					"format": map[string]any{
+						providerToolOptionTypeKey: "grammar",
+						"grammar": map[string]any{
+							"syntax":     tool.OpenAIGrammar.Syntax,
+							"definition": tool.OpenAIGrammar.Definition,
+						},
+					},
+				},
+			})
+			continue
 		}
 		parameters, err := jsonValue(tool.InputSchema)
 		if err != nil {
