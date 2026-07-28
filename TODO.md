@@ -448,6 +448,9 @@ upstream.
 - [x] Refresh the focused OpenRouter image catalog with the missing routed MAI
       Image 2.5 and Riverflow 2.5 rows while keeping broad OpenRouter text
       expansion deferred.
+- [x] Add focused OpenRouter image metadata for Krea 2 Large, Medium, and
+      Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through the
+      existing image adapter.
 - [x] Add focused OpenRouter image metadata for current Gemini and GPT Image
       routes while keeping broad OpenRouter text expansion deferred.
 - [x] Add a curated OpenRouter text-model cohort for Claude Sonnet 5, GPT-5.2

@@ -23081,8 +23081,140 @@
       }
     },
     {
+      "id": "krea/krea-2-large",
+      "name": "Krea: Krea 2 Large",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "krea",
+        "routedProvider": "krea"
+      }
+    },
+    {
+      "id": "krea/krea-2-medium",
+      "name": "Krea: Krea 2 Medium",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "krea",
+        "routedProvider": "krea"
+      }
+    },
+    {
+      "id": "krea/krea-2-medium-turbo",
+      "name": "Krea: Krea 2 Medium Turbo",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "krea",
+        "routedProvider": "krea"
+      }
+    },
+    {
       "id": "microsoft/mai-image-2.5",
       "name": "Microsoft: MAI-Image-2.5",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "million tokens",
+        "currency": "USD",
+        "values": {
+          "input": 5
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "mai-image",
+        "routedProvider": "microsoft"
+      }
+    },
+    {
+      "id": "microsoft/mai-image-2.5-pro",
+      "name": "Microsoft: MAI-Image-2.5 Pro",
       "provider": "openrouter",
       "api": "openrouter-images",
       "baseURL": "https://openrouter.ai/api/v1",
@@ -23326,6 +23458,39 @@
     {
       "id": "openrouter/auto",
       "name": "Auto Router",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "openrouter",
+        "routedProvider": "openrouter"
+      }
+    },
+    {
+      "id": "openrouter/auto-beta",
+      "name": "Auto Router (Beta)",
       "provider": "openrouter",
       "api": "openrouter-images",
       "baseURL": "https://openrouter.ai/api/v1",

@@ -30,6 +30,9 @@ server-executed retrieval tools with normalized source and citation results,
 and preserves per-tool strict JSON Schema settings in function definitions.
 Cached Codex WebSocket continuations that are no longer recognised now retry
 once with the full request context before existing fallback behavior applies.
+The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
+and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
+model metadata.
 
 ## Changed
 
@@ -76,6 +79,9 @@ once with the full request context before existing fallback behavior applies.
   backend or refresh lifecycle. Applications can also provide a manual fallback
   that accepts a pasted final redirect URL or authorization code when the
   browser cannot reach Sigma's loopback callback.
+- Generated OpenRouter image metadata now includes Krea 2 Large, Medium, and
+  Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through the existing
+  image adapter.
 - OpenCode Go routes Grok 4.5 through OpenAI Responses and Kimi K3 through
   Chat Completions, with reviewed text/image, tool, reasoning, context,
   output, and pricing metadata.

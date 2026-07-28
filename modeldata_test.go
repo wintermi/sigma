@@ -1224,6 +1224,47 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		t.Fatalf("image cost metadata = %#v, want USD cost map", image.ProviderMetadata["cost"])
 	}
 
+	for _, tt := range []struct {
+		id             ModelID
+		modelFamily    string
+		routedProvider string
+		costUnit       string
+		costKey        string
+		costValue      float64
+	}{
+		{id: "krea/krea-2-large", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "krea/krea-2-medium", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "krea/krea-2-medium-turbo", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "microsoft/mai-image-2.5-pro", modelFamily: "mai-image", routedProvider: "microsoft", costUnit: "million tokens", costKey: "input", costValue: 5},
+		{id: "openrouter/auto-beta", modelFamily: "openrouter", routedProvider: "openrouter", costUnit: "image", costKey: "image", costValue: 0},
+	} {
+		t.Run(string(tt.id), func(t *testing.T) {
+			image, ok := registry.ImageModel(ProviderOpenRouter, tt.id)
+			if !ok {
+				t.Fatalf("fresh registry missing generated OpenRouter image model %q", tt.id)
+			}
+			if image.API != ImageAPIOpenRouterImages {
+				t.Fatalf("image API = %q, want %q", image.API, ImageAPIOpenRouterImages)
+			}
+			if image.MaxWidth != 1024 || image.MaxHeight != 1024 || len(image.SupportedSizes) != 1 || image.SupportedSizes[0] != "1024x1024" || len(image.SupportedFormats) != 1 || image.SupportedFormats[0] != "image/png" {
+				t.Fatalf("image capabilities = %+v, want 1024x1024 PNG", image)
+			}
+			assertMetadataString(t, image.ProviderMetadata, "baseURL", "https://openrouter.ai/api/v1")
+			assertMetadataStrings(t, image.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
+			assertMetadataString(t, image.ProviderMetadata, "modelFamily", tt.modelFamily)
+			assertMetadataString(t, image.ProviderMetadata, "routedProvider", tt.routedProvider)
+
+			cost, ok := image.ProviderMetadata["cost"].(map[string]any)
+			if !ok || cost["unit"] != tt.costUnit {
+				t.Fatalf("image cost metadata = %#v, want %s cost map", image.ProviderMetadata["cost"], tt.costUnit)
+			}
+			values, ok := cost["values"].(map[string]float64)
+			if !ok || values[tt.costKey] != tt.costValue {
+				t.Fatalf("image cost values = %#v, want %s=%v", cost["values"], tt.costKey, tt.costValue)
+			}
+		})
+	}
+
 	grokImage, ok := registry.ImageModel(ProviderOpenRouter, "x-ai/grok-imagine-image-quality")
 	if !ok {
 		t.Fatal("fresh registry missing generated OpenRouter Grok image model")

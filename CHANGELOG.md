@@ -36,6 +36,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   existing text and image routes.
 - OpenRouter browser PKCE login now supports a caller-managed pasted redirect
   URL or authorization-code fallback for browsers running on another machine.
+- Generated OpenRouter image metadata now includes Krea 2 Large, Medium, and
+  Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through the existing
+  image adapter.
 - Generated OpenCode Go metadata now routes Grok 4.5 through OpenAI Responses
   and Kimi K3 through Chat Completions, with reviewed text/image, tool,
   reasoning, limit, and pricing metadata.
