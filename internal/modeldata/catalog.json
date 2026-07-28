@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-24",
+  "snapshotDate": "2026-07-28",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -29,6 +29,10 @@
     {
       "name": "Fireworks Fire Pass setup",
       "url": "https://docs.fireworks.ai/firepass"
+    },
+    {
+      "name": "Fireworks Kimi K3 model catalog",
+      "url": "https://fireworks.ai/models/fireworks/kimi-k3"
     },
     {
       "name": "Fireworks Anthropic-compatible Messages API",
@@ -8709,6 +8713,48 @@
       },
       "contextWindow": 262144,
       "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "kimi"
+      }
+    },
+    {
+      "id": "accounts/fireworks/models/kimi-k3",
+      "name": "Kimi K3 (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 1040000,
+      "maxOutputTokens": 131072,
       "headers": {},
       "authEnvNames": [
         "FIREWORKS_API_KEY"

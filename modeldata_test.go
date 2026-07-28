@@ -99,6 +99,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	for _, tt := range []struct {
 		id               ModelID
 		family           string
+		wantImages       bool
 		inputCost        float64
 		outputCost       float64
 		cacheReadCost    float64
@@ -107,6 +108,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		thinkingLevelMap map[ThinkingLevel]string
 	}{
 		{id: "accounts/fireworks/models/glm-5p2", family: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.14},
+		{id: "accounts/fireworks/models/kimi-k3", family: "kimi", wantImages: true, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, contextWindow: 1040000, maxOutputTokens: 131072},
 		{id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4", family: "nemotron", inputCost: 0.6, outputCost: 2.4, cacheReadCost: 0.12, contextWindow: 262144, maxOutputTokens: 32768, thinkingLevelMap: map[ThinkingLevel]string{ThinkingLevelLow: "none", ThinkingLevelMedium: "medium", ThinkingLevelHigh: "high"}},
 		{id: "accounts/fireworks/routers/glm-5p2-fast", family: "glm", inputCost: 2.1, outputCost: 6.6, cacheReadCost: 0.21},
 	} {
@@ -117,8 +119,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		if fireworksOpenAI.API != APIOpenAICompletions {
 			t.Fatalf("Fireworks OpenAI-compatible %s API = %q, want %q", tt.id, fireworksOpenAI.API, APIOpenAICompletions)
 		}
-		if !fireworksOpenAI.SupportsTools || fireworksOpenAI.SupportsImages() {
-			t.Fatalf("Fireworks OpenAI-compatible %s capabilities = %+v, want tools without image input", tt.id, fireworksOpenAI)
+		if !fireworksOpenAI.SupportsTools || fireworksOpenAI.SupportsImages() != tt.wantImages {
+			t.Fatalf("Fireworks OpenAI-compatible %s capabilities = %+v, want tools and images %v", tt.id, fireworksOpenAI, tt.wantImages)
 		}
 		if !fireworksOpenAI.SupportsReasoning() || !fireworksOpenAI.SupportsThinkingLevel(ThinkingLevelMedium) {
 			t.Fatalf("Fireworks OpenAI-compatible %s reasoning metadata was not generated: %+v", tt.id, fireworksOpenAI)

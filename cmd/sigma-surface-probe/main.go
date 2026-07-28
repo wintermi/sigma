@@ -566,6 +566,10 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			emit(annotateStructuredOutputResult(cfg, result))
 			continue
 		}
+		if result.Outcome == "upstream_availability" {
+			emit(result)
+			continue
+		}
 		if !cfg.repair && !cfg.structuredOutput {
 			emit(result)
 			continue
@@ -1572,6 +1576,8 @@ func skipOpenAICompatibleProbeCase(route routeSpec, model sigma.Model, name stri
 		}
 	case isOpenCodeGoReasoningEffortKimi(model):
 		switch name {
+		case "logprobs":
+			return model.ID == "kimi-k3"
 		case "thinking_string_none", "thinking_object_disabled", "thinking_bool_false", "enable_thinking_false":
 			return true
 		case "tool_required_file_read", "strict_tool_required_write":
@@ -1724,7 +1730,12 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 		)
 	case "logprobs":
 		variants = append(variants,
-			singleTurnCase("no_logprobs_more_tokens", "omit logprobs and larger cap", basicRequest("Reply with exactly: yes."), []sigma.Option{sigma.WithMaxTokens(512)}),
+			singleTurnCase("logprobs_more_tokens", "logprobs with a larger cap", basicRequest("Reply with exactly: yes."), []sigma.Option{
+				sigma.WithProviderOption(route.Provider, "extra_body", map[string]any{"logprobs": true, "top_logprobs": 2}),
+				sigma.WithMaxTokens(512),
+			}),
+			singleTurnCase("no_logprobs", "omit logprobs", basicRequest("Reply with exactly: yes."), []sigma.Option{sigma.WithMaxTokens(16)}),
+			singleTurnCase("no_logprobs_more_tokens", "omit logprobs and use a larger cap", basicRequest("Reply with exactly: yes."), []sigma.Option{sigma.WithMaxTokens(512)}),
 		)
 	case "tool_auto_file_read", "tool_required_file_read", "strict_tool_required_write", "three_turn_file_update":
 		variants = append(variants,
@@ -1830,6 +1841,8 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		strings.Contains(message, "model_not_found"),
 		strings.Contains(message, "path not found"),
 		strings.Contains(message, "no provider available"),
+		strings.Contains(message, "status=429"),
+		strings.Contains(message, "rate limit"),
 		strings.Contains(message, "not supported when using codex with a chatgpt account"):
 		return "upstream_availability"
 	case strings.Contains(message, "unknown parameter"),
@@ -1911,8 +1924,12 @@ func repairHint(caseName string, attempt string) string {
 		return "structured_output_rejected_prompt_json_ok"
 	case caseName == "json_schema" && attempt == "json_schema_more_tokens":
 		return "json_schema_needs_larger_output_budget"
-	case caseName == "logprobs" && attempt == "no_logprobs_more_tokens":
+	case caseName == "logprobs" && attempt == "logprobs_more_tokens":
+		return "logprobs_needs_larger_output_budget"
+	case caseName == "logprobs" && attempt == "no_logprobs":
 		return "logprobs_rejected"
+	case caseName == "logprobs" && attempt == "no_logprobs_more_tokens":
+		return "logprobs_output_budget_interaction"
 	case strings.HasPrefix(caseName, "tool_") && attempt == "tool_auto_more_turns":
 		return "auto_tool_choice_with_larger_budget_ok"
 	case caseName == "strict_tool_required_write" && attempt == "tool_auto_more_turns":

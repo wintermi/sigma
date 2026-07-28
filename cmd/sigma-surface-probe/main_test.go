@@ -352,6 +352,9 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 	if !hasRepairVariant(codeCases, "reasoning_effort_high") {
 		t.Fatal("OpenCode Go Kimi K2.7 Code should probe reasoning_effort")
 	}
+	if !hasRepairVariant(codeCases, "logprobs") {
+		t.Fatal("OpenCode Go Kimi K2.7 Code should retain the logprobs probe")
+	}
 	if hasRepairVariant(codeCases, "tool_required_file_read") {
 		t.Fatal("OpenCode Go Kimi K2.7 Code should not probe unsupported required tool choice")
 	}
@@ -369,6 +372,9 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 	if !hasRepairVariant(kimi26Cases, "reasoning_effort_high") {
 		t.Fatal("OpenCode Go Kimi K2.6 should probe reasoning_effort")
 	}
+	if !hasRepairVariant(kimi26Cases, "logprobs") {
+		t.Fatal("OpenCode Go Kimi K2.6 should retain the logprobs probe")
+	}
 
 	kimiK3 := discoveredOpenCodeModel(route, "kimi-k3")
 	k3Cases := openAICompatibleProbeCases(route, kimiK3)
@@ -379,6 +385,9 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 	}
 	if !hasRepairVariant(k3Cases, "reasoning_effort_high") {
 		t.Fatal("OpenCode Go Kimi K3 should probe reasoning_effort")
+	}
+	if hasRepairVariant(k3Cases, "logprobs") {
+		t.Fatal("OpenCode Go Kimi K3 should skip unsupported logprobs")
 	}
 }
 
@@ -1196,6 +1205,27 @@ func TestProbeModelReportsAvailabilityCheckSeparately(t *testing.T) {
 	})
 }
 
+func TestProbeModelDoesNotRepairUpstreamAvailability(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("basic_text", "plain text", basicRequest("Reply with exactly: ok."), nil),
+	}, sigmatest.Script{Err: errors.New("status=429 provider_rate_limit_exceeded: provider rate limit exceeded")})
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{repair: true})
+	if len(results) != 1 {
+		t.Fatalf("results length = %d, want 1", len(results))
+	}
+	if got, want := results[0].Outcome, "upstream_availability"; got != want {
+		t.Fatalf("outcome = %q, want %q", got, want)
+	}
+	if got, want := results[0].Attempt, "basic_text"; got != want {
+		t.Fatalf("attempt = %q, want %q", got, want)
+	}
+	if results[0].Hint != "" || len(results[0].FailedAttempts) != 0 {
+		t.Fatalf("upstream availability result unexpectedly repaired: %+v", results[0])
+	}
+}
+
 func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 	t.Parallel()
 
@@ -1209,7 +1239,7 @@ func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 		{name: "thinking_string_none", want: "thinking_object_disabled_repair"},
 		{name: "reasoning_effort_high", want: "typed_reasoning_effort_high"},
 		{name: "json_schema", want: "json_object_fallback"},
-		{name: "logprobs", want: "no_logprobs_more_tokens"},
+		{name: "logprobs", want: "logprobs_more_tokens"},
 		{name: "tool_required_file_read", want: "tool_auto_more_turns"},
 	}
 
@@ -1221,6 +1251,118 @@ func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 			if !hasRepairVariant(repairVariants(routes["zen"], probeCase{Name: tt.name}), tt.want) {
 				t.Fatalf("repairVariants(%q) missing %q", tt.name, tt.want)
 			}
+		})
+	}
+}
+
+func TestLogprobsRepairVariantsIsolateFieldsAndOutputCap(t *testing.T) {
+	t.Parallel()
+
+	route := routes["go"]
+	variants := repairVariants(route, probeCase{Name: "logprobs"})
+	tests := []struct {
+		name            string
+		maxTokens       int
+		wantLogprobs    bool
+		wantTopLogprobs int
+	}{
+		{name: "logprobs_more_tokens", maxTokens: 512, wantLogprobs: true, wantTopLogprobs: 2},
+		{name: "no_logprobs", maxTokens: 16},
+		{name: "no_logprobs_more_tokens", maxTokens: 512},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			variant := findProbeCase(t, variants, tt.name)
+			options := applyProbeOptions(variant.Options)
+			if options.MaxTokens == nil || *options.MaxTokens != tt.maxTokens {
+				t.Fatalf("max tokens = %v, want %d", options.MaxTokens, tt.maxTokens)
+			}
+
+			extraBody, hasExtraBody := options.ProviderOptions[route.Provider]["extra_body"].(map[string]any)
+			if hasExtraBody != tt.wantLogprobs {
+				t.Fatalf("has logprobs extra body = %v, want %v", hasExtraBody, tt.wantLogprobs)
+			}
+			if !tt.wantLogprobs {
+				return
+			}
+			if got, want := extraBody["logprobs"], true; got != want {
+				t.Fatalf("logprobs = %#v, want %#v", got, want)
+			}
+			if got, want := extraBody["top_logprobs"], tt.wantTopLogprobs; got != want {
+				t.Fatalf("top_logprobs = %#v, want %#v", got, want)
+			}
+		})
+	}
+}
+
+func TestProbeModelDiagnosesLogprobsWithIndependentRepairs(t *testing.T) {
+	t.Parallel()
+
+	logprobs := findProbeCase(t, openAICompatibleProbeCases(routes["go"], sigma.Model{}), "logprobs")
+	tests := []struct {
+		name         string
+		scripts      []sigmatest.Script
+		wantAttempt  string
+		wantHint     string
+		wantFailures []failedAttempt
+	}{
+		{
+			name:         "larger cap preserves logprobs",
+			scripts:      []sigmatest.Script{{Err: errors.New("request failed")}, {}, {}},
+			wantAttempt:  "logprobs_more_tokens",
+			wantHint:     "logprobs_needs_larger_output_budget",
+			wantFailures: []failedAttempt{{Attempt: "logprobs", Error: "request failed"}},
+		},
+		{
+			name:        "omitting logprobs preserves original cap",
+			scripts:     []sigmatest.Script{{Err: errors.New("request failed")}, {}, {Err: errors.New("larger logprobs request failed")}, {}},
+			wantAttempt: "no_logprobs",
+			wantHint:    "logprobs_rejected",
+			wantFailures: []failedAttempt{
+				{Attempt: "logprobs", Error: "request failed"},
+				{Attempt: "logprobs_more_tokens", Error: "larger logprobs request failed"},
+			},
+		},
+		{
+			name: "both changes are required",
+			scripts: []sigmatest.Script{
+				{Err: errors.New("request failed")},
+				{},
+				{Err: errors.New("larger logprobs request failed")},
+				{Err: errors.New("no logprobs request failed")},
+				{},
+			},
+			wantAttempt: "no_logprobs_more_tokens",
+			wantHint:    "logprobs_output_budget_interaction",
+			wantFailures: []failedAttempt{
+				{Attempt: "logprobs", Error: "request failed"},
+				{Attempt: "logprobs_more_tokens", Error: "larger logprobs request failed"},
+				{Attempt: "no_logprobs", Error: "no logprobs request failed"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			route := openAICompatibleSigmatestProbeRoute(t, []probeCase{logprobs}, tt.scripts...)
+			results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{repair: true})
+			if len(results) != 1 {
+				t.Fatalf("results length = %d, want 1", len(results))
+			}
+			if got, want := results[0].Attempt, tt.wantAttempt; got != want {
+				t.Fatalf("attempt = %q, want %q", got, want)
+			}
+			if got, want := results[0].Hint, tt.wantHint; got != want {
+				t.Fatalf("hint = %q, want %q", got, want)
+			}
+			assertFailedAttempts(t, results[0].FailedAttempts, tt.wantFailures)
 		})
 	}
 }
@@ -1268,6 +1410,9 @@ func TestClassifyFailure(t *testing.T) {
 	}
 	if got := classifyFailure(route, model, errors.New("model does not support image input")); got != "provider_capability_limit" {
 		t.Fatalf("image classification = %q", got)
+	}
+	if got := classifyFailure(route, model, errors.New("status=429 provider_rate_limit_exceeded: provider rate limit exceeded")); got != "upstream_availability" {
+		t.Fatalf("rate-limit classification = %q", got)
 	}
 	model.ID = "claude-opus-4-6"
 	if got := classifyFailure(route, model, errors.New("No provider available")); got != "upstream_availability" {
