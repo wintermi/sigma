@@ -32,6 +32,8 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - OpenRouter now supports opt-in browser PKCE login that returns a permanent
   API key and can store it through a caller-supplied CredentialStore for the
   existing text and image routes.
+- OpenRouter browser PKCE login now supports a caller-managed pasted redirect
+  URL or authorization-code fallback for browsers running on another machine.
 - Generated OpenCode Go metadata now routes Grok 4.5 through OpenAI Responses
   and Kimi K3 through Chat Completions, with reviewed text/image, tool,
   reasoning, limit, and pricing metadata.

@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,10 +52,18 @@ type OpenRouterBrowserAuthInfo struct {
 	Instructions string
 }
 
-// OpenRouterBrowserLoginOptions configures OpenRouter browser callback login.
+// OpenRouterBrowserManualPrompt describes the optional fallback for browser
+// logins completed on another machine.
+type OpenRouterBrowserManualPrompt struct {
+	Message string
+}
+
+// OpenRouterBrowserLoginOptions configures OpenRouter browser login and its
+// optional manual fallback for browsers running on another machine.
 type OpenRouterBrowserLoginOptions struct {
-	HTTPClient *http.Client
-	OnAuth     func(OpenRouterBrowserAuthInfo)
+	HTTPClient   *http.Client
+	OnAuth       func(OpenRouterBrowserAuthInfo)
+	OnManualCode func(context.Context, OpenRouterBrowserManualPrompt) (string, error)
 }
 
 type openRouterBrowserCallbackServer struct {
@@ -67,12 +76,12 @@ type openRouterBrowserCallbackServer struct {
 }
 
 type openRouterBrowserCallbackResult struct {
-	credentials OpenRouterOAuthCredentials
-	err         error
+	code string
+	err  error
 }
 
-// LoginOpenRouterBrowser runs the OpenRouter PKCE browser callback flow and
-// returns a permanent API key for caller-managed persistence.
+// LoginOpenRouterBrowser runs the OpenRouter PKCE browser flow and returns a
+// permanent API key for caller-managed persistence.
 func LoginOpenRouterBrowser(ctx context.Context, opts OpenRouterBrowserLoginOptions) (OpenRouterOAuthCredentials, error) {
 	loginCtx, cancel := context.WithTimeout(ctx, openRouterOAuthLoginTimeout)
 	defer cancel()
@@ -81,7 +90,7 @@ func LoginOpenRouterBrowser(ctx context.Context, opts OpenRouterBrowserLoginOpti
 	if err != nil {
 		return OpenRouterOAuthCredentials{}, err
 	}
-	server, err := startOpenRouterBrowserCallbackServer(loginCtx, verifier, opts.HTTPClient)
+	server, err := startOpenRouterBrowserCallbackServer(loginCtx)
 	if err != nil {
 		return OpenRouterOAuthCredentials{}, err
 	}
@@ -94,11 +103,15 @@ func LoginOpenRouterBrowser(ctx context.Context, opts OpenRouterBrowserLoginOpti
 	if opts.OnAuth != nil {
 		opts.OnAuth(OpenRouterBrowserAuthInfo{
 			URL:          authURL,
-			Instructions: "Open the URL in a browser on this machine and complete login.",
+			Instructions: "Open the URL in a browser and complete login. If the browser is on another machine, paste the final redirect URL or authorization code.",
 		})
 	}
 
-	return waitOpenRouterBrowserLogin(loginCtx, server)
+	code, err := waitOpenRouterBrowserAuthorizationCode(loginCtx, server, opts.OnManualCode)
+	if err != nil {
+		return OpenRouterOAuthCredentials{}, err
+	}
+	return exchangeOpenRouterAuthorizationCode(loginCtx, opts.HTTPClient, code, verifier)
 }
 
 // StoreOpenRouterOAuthCredentials stores an OpenRouter browser-login API key
@@ -122,7 +135,7 @@ func StoreOpenRouterOAuthCredentials(ctx context.Context, store sigma.Credential
 	return stored, nil
 }
 
-func startOpenRouterBrowserCallbackServer(ctx context.Context, verifier string, client *http.Client) (*openRouterBrowserCallbackServer, error) {
+func startOpenRouterBrowserCallbackServer(ctx context.Context) (*openRouterBrowserCallbackServer, error) {
 	path, err := newOpenRouterCallbackPath()
 	if err != nil {
 		return nil, err
@@ -156,14 +169,8 @@ func startOpenRouterBrowserCallbackServer(ctx context.Context, verifier string, 
 			serverInfo.finish(openRouterBrowserCallbackResult{err: errors.New("openrouter oauth: missing authorization code")})
 			return
 		}
-		credentials, err := exchangeOpenRouterAuthorizationCode(ctx, client, code, verifier)
-		if err != nil {
-			writeOpenRouterOAuthHTML(w, http.StatusBadGateway, "Authentication failed", "OpenRouter key exchange failed.")
-			serverInfo.finish(openRouterBrowserCallbackResult{err: err})
-			return
-		}
-		writeOpenRouterOAuthHTML(w, http.StatusOK, "Authentication successful", "OpenRouter authentication completed. You can close this window.")
-		serverInfo.finish(openRouterBrowserCallbackResult{credentials: credentials})
+		writeOpenRouterOAuthHTML(w, http.StatusOK, "Authentication received", "OpenRouter authentication is completing. You can return to the application.")
+		serverInfo.finish(openRouterBrowserCallbackResult{code: code})
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		writeOpenRouterOAuthHTML(w, http.StatusNotFound, "Authentication failed", "Callback route not found.")
@@ -202,13 +209,59 @@ func (s *openRouterBrowserCallbackServer) close() {
 	_ = s.server.Close()
 }
 
-func waitOpenRouterBrowserLogin(ctx context.Context, server *openRouterBrowserCallbackServer) (OpenRouterOAuthCredentials, error) {
+func waitOpenRouterBrowserAuthorizationCode(
+	ctx context.Context,
+	server *openRouterBrowserCallbackServer,
+	manual func(context.Context, OpenRouterBrowserManualPrompt) (string, error),
+) (string, error) {
+	manualCtx, cancelManual := context.WithCancel(ctx)
+	defer cancelManual()
+
+	manualResult := make(chan openRouterBrowserCallbackResult, 1)
+	if manual != nil {
+		go func() {
+			input, err := manual(manualCtx, OpenRouterBrowserManualPrompt{
+				Message: "Paste the authorization code or full redirect URL:",
+			})
+			if err != nil {
+				manualResult <- openRouterBrowserCallbackResult{err: err}
+				return
+			}
+			code := parseOpenRouterAuthorizationInput(input)
+			if code == "" {
+				manualResult <- openRouterBrowserCallbackResult{err: errors.New("openrouter oauth: missing authorization code")}
+				return
+			}
+			manualResult <- openRouterBrowserCallbackResult{code: code}
+		}()
+	}
+
 	select {
 	case result := <-server.done:
-		return result.credentials, result.err
+		return result.code, result.err
+	case result := <-manualResult:
+		return result.code, result.err
 	case <-ctx.Done():
-		return OpenRouterOAuthCredentials{}, ctx.Err()
+		return "", ctx.Err()
 	}
+}
+
+func parseOpenRouterAuthorizationInput(input string) string {
+	value := strings.TrimSpace(input)
+	if value == "" {
+		return ""
+	}
+	if parsed, err := url.Parse(value); err == nil && parsed.Scheme != "" {
+		return parsed.Query().Get("code")
+	}
+	if strings.Contains(value, "code=") {
+		values, err := url.ParseQuery(value)
+		if err != nil {
+			return ""
+		}
+		return values.Get("code")
+	}
+	return value
 }
 
 func openRouterAuthorizationURL(challenge string, redirectURI string) (string, error) {

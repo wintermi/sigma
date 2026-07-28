@@ -14,9 +14,10 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add opt-in Kimi Coding subscription device-code OAuth login, token
       refresh, and provider-auth registration while applications retain token
       persistence ownership.
-- [x] Add opt-in OpenRouter browser PKCE login that returns a permanent API
-      key and can write it to a caller-supplied CredentialStore without adding
-      a persistence backend or refresh lifecycle.
+- [x] Add opt-in OpenRouter browser PKCE login with a remote-browser manual
+      fallback that returns a permanent API key and can write it to a
+      caller-supplied CredentialStore without adding a persistence backend or
+      refresh lifecycle.
 - [x] Add provider-specific request configuration helpers for Cloudflare AI
       Gateway account/gateway placeholders and Bedrock request region/static
       credential values without adding a generic environment override surface.

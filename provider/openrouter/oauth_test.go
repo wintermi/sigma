@@ -130,8 +130,8 @@ func TestLoginOpenRouterBrowserCallbackSuccess(t *testing.T) {
 	if got, want := credentials.APIKey, "sk-or-permanent-key"; got != want {
 		t.Fatalf("API key = %q, want %q", got, want)
 	}
-	if html := receiveOpenRouterOAuthString(t, callbackHTML); !strings.Contains(html, "Authentication successful") {
-		t.Fatalf("callback HTML = %q, want success page", html)
+	if html := receiveOpenRouterOAuthString(t, callbackHTML); !strings.Contains(html, "Authentication received") {
+		t.Fatalf("callback HTML = %q, want received page", html)
 	}
 }
 
@@ -222,18 +222,206 @@ func TestLoginOpenRouterBrowserRejectsInvalidAndRepeatedCallbacks(t *testing.T) 
 func TestLoginOpenRouterBrowserCancellationClosesCallbackServer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	callbackURL := make(chan string, 1)
+	manualCanceled := make(chan struct{}, 1)
 	_, err := LoginOpenRouterBrowser(ctx, OpenRouterBrowserLoginOptions{
 		OnAuth: func(info OpenRouterBrowserAuthInfo) {
 			callbackURL <- openRouterCallbackURL(t, info.URL)
 			cancel()
 		},
+		OnManualCode: func(ctx context.Context, _ OpenRouterBrowserManualPrompt) (string, error) {
+			<-ctx.Done()
+			manualCanceled <- struct{}{}
+			return "", ctx.Err()
+		},
 	})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("LoginOpenRouterBrowser error = %v, want context cancellation", err)
 	}
+	receiveOpenRouterOAuthSignal(t, manualCanceled)
 	url := receiveOpenRouterOAuthString(t, callbackURL)
 	if result := getOpenRouterOAuthCallback(url + "?code=late"); result.err == nil {
 		t.Fatalf("callback after cancellation succeeded: %#v", result)
+	}
+}
+
+func TestLoginOpenRouterBrowserManualFallback(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		input func(string) string
+		code  string
+	}{
+		{
+			name: "redirect URL",
+			input: func(callbackURL string) string {
+				return callbackURL + "?code=redirect-code"
+			},
+			code: "redirect-code",
+		},
+		{
+			name: "query input",
+			input: func(string) string {
+				return "state=unused&code=query-code"
+			},
+			code: "query-code",
+		},
+		{
+			name: "raw code",
+			input: func(string) string {
+				return "  raw-code  "
+			},
+			code: "raw-code",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var challenge string
+			var callbackURL string
+			exchanges := 0
+			client := openRouterOAuthTestClient(t, func(req *http.Request) *http.Response {
+				exchanges++
+				var body map[string]string
+				if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+					t.Fatalf("decode key exchange body: %v", err)
+				}
+				if got, want := body["code"], tt.code; got != want {
+					t.Fatalf("code = %q, want %q", got, want)
+				}
+				if got, want := body["code_challenge_method"], "S256"; got != want {
+					t.Fatalf("code challenge method = %q, want %q", got, want)
+				}
+				verifier := body["code_verifier"]
+				if verifier == "" {
+					t.Fatal("code verifier is empty")
+				}
+				hash := sha256.Sum256([]byte(verifier))
+				if got, want := challenge, base64.RawURLEncoding.EncodeToString(hash[:]); got != want {
+					t.Fatalf("authorization challenge = %q, want challenge for exchange verifier %q", got, want)
+				}
+				return openRouterOAuthJSONResponse(http.StatusOK, map[string]any{"key": "sk-or-manual"})
+			})
+
+			credentials, err := LoginOpenRouterBrowser(context.Background(), OpenRouterBrowserLoginOptions{
+				HTTPClient: client,
+				OnAuth: func(info OpenRouterBrowserAuthInfo) {
+					authURL, parseErr := url.Parse(info.URL)
+					if parseErr != nil {
+						t.Fatalf("parse authorization URL: %v", parseErr)
+					}
+					challenge = authURL.Query().Get("code_challenge")
+					callbackURL = authURL.Query().Get("callback_url")
+				},
+				OnManualCode: func(_ context.Context, prompt OpenRouterBrowserManualPrompt) (string, error) {
+					if !strings.Contains(prompt.Message, "authorization code") {
+						return "", errors.New("manual prompt did not mention authorization code")
+					}
+					return tt.input(callbackURL), nil
+				},
+			})
+			if err != nil {
+				t.Fatalf("LoginOpenRouterBrowser returned error: %v", err)
+			}
+			if got, want := credentials.APIKey, "sk-or-manual"; got != want {
+				t.Fatalf("API key = %q, want %q", got, want)
+			}
+			if exchanges != 1 {
+				t.Fatalf("key exchanges = %d, want 1", exchanges)
+			}
+			if result := getOpenRouterOAuthCallback(callbackURL + "?code=late"); result.err == nil {
+				t.Fatalf("callback after manual login succeeded: %#v", result)
+			}
+		})
+	}
+}
+
+func TestLoginOpenRouterBrowserManualFallbackRejectsInvalidInput(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		manual func(context.Context, OpenRouterBrowserManualPrompt) (string, error)
+		want   string
+	}{
+		{
+			name: "blank code",
+			manual: func(context.Context, OpenRouterBrowserManualPrompt) (string, error) {
+				return "  ", nil
+			},
+			want: "missing authorization code",
+		},
+		{
+			name: "redirect without code",
+			manual: func(context.Context, OpenRouterBrowserManualPrompt) (string, error) {
+				return "https://example.test/callback?error=access_denied", nil
+			},
+			want: "missing authorization code",
+		},
+		{
+			name: "manual cancellation",
+			manual: func(context.Context, OpenRouterBrowserManualPrompt) (string, error) {
+				return "", errors.New("manual login cancelled")
+			},
+			want: "manual login cancelled",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			exchanges := 0
+			client := openRouterOAuthTestClient(t, func(*http.Request) *http.Response {
+				exchanges++
+				return openRouterOAuthJSONResponse(http.StatusOK, map[string]any{"key": "unexpected"})
+			})
+			_, err := LoginOpenRouterBrowser(context.Background(), OpenRouterBrowserLoginOptions{
+				HTTPClient:   client,
+				OnManualCode: tt.manual,
+			})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("LoginOpenRouterBrowser error = %v, want %q", err, tt.want)
+			}
+			if exchanges != 0 {
+				t.Fatalf("key exchanges = %d, want 0", exchanges)
+			}
+		})
+	}
+}
+
+func TestLoginOpenRouterBrowserCallbackWinsOverManualFallback(t *testing.T) {
+	callbackURL := make(chan string, 1)
+	manualCanceled := make(chan struct{}, 1)
+	exchanges := 0
+	client := openRouterOAuthTestClient(t, func(req *http.Request) *http.Response {
+		exchanges++
+		var body map[string]string
+		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+			t.Fatalf("decode key exchange body: %v", err)
+		}
+		if got, want := body["code"], "callback-code"; got != want {
+			t.Fatalf("code = %q, want %q", got, want)
+		}
+		return openRouterOAuthJSONResponse(http.StatusOK, map[string]any{"key": "sk-or-callback"})
+	})
+
+	credentials, err := LoginOpenRouterBrowser(context.Background(), OpenRouterBrowserLoginOptions{
+		HTTPClient: client,
+		OnAuth: func(info OpenRouterBrowserAuthInfo) {
+			url := openRouterCallbackURL(t, info.URL)
+			callbackURL <- url
+			go func() { _ = getOpenRouterOAuthCallback(url + "?code=callback-code") }()
+		},
+		OnManualCode: func(ctx context.Context, _ OpenRouterBrowserManualPrompt) (string, error) {
+			<-ctx.Done()
+			manualCanceled <- struct{}{}
+			return "", ctx.Err()
+		},
+	})
+	if err != nil {
+		t.Fatalf("LoginOpenRouterBrowser returned error: %v", err)
+	}
+	if got, want := credentials.APIKey, "sk-or-callback"; got != want {
+		t.Fatalf("API key = %q, want %q", got, want)
+	}
+	if exchanges != 1 {
+		t.Fatalf("key exchanges = %d, want 1", exchanges)
+	}
+	receiveOpenRouterOAuthSignal(t, manualCanceled)
+	url := receiveOpenRouterOAuthString(t, callbackURL)
+	if result := getOpenRouterOAuthCallback(url + "?code=late"); result.err == nil {
+		t.Fatalf("callback after successful login succeeded: %#v", result)
 	}
 }
 
