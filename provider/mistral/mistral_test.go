@@ -29,6 +29,12 @@ type capturedRequest struct {
 	Body    string
 }
 
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return fn(request)
+}
+
 func TestRegisterReportsConversationsAPI(t *testing.T) {
 	t.Parallel()
 
@@ -44,6 +50,58 @@ func TestRegisterReportsConversationsAPI(t *testing.T) {
 	providers := registry.ListProviders()
 	if got, want := providers[0].TextAPI, sigma.APIMistralConversations; got != want {
 		t.Fatalf("provider API = %q, want %q", got, want)
+	}
+}
+
+func TestRequestHTTPClientOverridesMistralFallbacks(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMistralSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	requestCalls := make(chan struct{}, 1)
+	requestClient := &http.Client{Transport: roundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		requestCalls <- struct{}{}
+		return http.DefaultTransport.RoundTrip(request)
+	})}
+	fallbackClient := &http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("fallback HTTP client was used")
+	})}
+
+	providerID := sigma.ProviderID("mistral-request-http-client-test")
+	model := mistralTestModel(providerID)
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(providerID, mistral.NewProvider(
+		mistral.WithBaseURL(server.URL),
+		mistral.WithHTTPClient(fallbackClient),
+	)); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(
+		sigma.WithRegistry(registry),
+		sigma.WithHTTPClient(fallbackClient),
+		sigma.WithAuthResolver(sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+			return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
+		})),
+	)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hello")}},
+		sigma.WithRequestHTTPClient(requestClient),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	select {
+	case <-requestCalls:
+	default:
+		t.Fatal("request HTTP client was not used")
 	}
 }
 

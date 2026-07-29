@@ -12,6 +12,8 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Added
 
+- Text streams and completions now accept `WithRequestHTTPClient` for an
+  opt-in HTTP/SSE client override on an individual call.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,
   then `ANTHROPIC_OAUTH_TOKEN`, then `ANTHROPIC_API_KEY` through the existing
   environment credential resolver.

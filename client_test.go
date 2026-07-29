@@ -33,13 +33,14 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 		t.Fatalf("RegisterModel returned error: %v", err)
 	}
 
-	httpClient := &http.Client{}
+	clientHTTPClient := &http.Client{}
+	requestHTTPClient := &http.Client{}
 	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
 		return sigma.Credential{Value: "token"}, nil
 	})
 	client := sigma.NewClient(
 		sigma.WithRegistry(registry),
-		sigma.WithHTTPClient(httpClient),
+		sigma.WithHTTPClient(clientHTTPClient),
 		sigma.WithAuthResolver(resolver),
 		sigma.WithDefaultHeaders(map[string]string{
 			"x-default":  "client",
@@ -58,6 +59,7 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 		req,
 		sigma.WithHeader("x-request", "request"),
 		sigma.WithHeader("x-override", "request"),
+		sigma.WithRequestHTTPClient(requestHTTPClient),
 	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -75,8 +77,8 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 	if got, want := capture.Request.Messages[0].Content[0].Text, "hi"; got != want {
 		t.Fatalf("provider request text = %q, want %q", got, want)
 	}
-	if capture.Options.HTTPClient != httpClient {
-		t.Fatal("provider options did not include configured HTTP client")
+	if capture.Options.HTTPClient != requestHTTPClient {
+		t.Fatal("provider options did not include request HTTP client")
 	}
 	credential, err := capture.Options.AuthResolver.Resolve(context.Background(), model, capture.Options)
 	if err != nil {

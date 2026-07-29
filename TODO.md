@@ -809,6 +809,9 @@ should still come through the catalog refresh workflow.
 
 ## Request controls
 
+- [x] Add request-scoped HTTP client selection for text `Stream` and `Complete`
+      calls, preserving HTTP/SSE fallback precedence without changing WebSocket,
+      image, or embedding dispatch.
 - [x] Add provider-neutral structured-output and top-logprob request controls
       that map onto existing OpenAI-compatible, Anthropic Messages, and Bedrock
       Converse structured-output paths with local validation for unsupported

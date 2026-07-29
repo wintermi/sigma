@@ -253,6 +253,18 @@ func WithAPIKey(apiKey string) Option {
 	}
 }
 
+// WithRequestHTTPClient configures an HTTP client for a text request.
+//
+// A non-nil request client takes precedence over configured client and provider
+// fallback clients. A nil client retains the existing fallback behavior. This
+// option applies to HTTP and SSE dispatch; WebSocket transports keep their
+// existing dialing behavior.
+func WithRequestHTTPClient(httpClient *http.Client) Option {
+	return func(options *Options) {
+		options.HTTPClient = httpClient
+	}
+}
+
 // WithTransport configures the provider transport for a request.
 func WithTransport(transport Transport) Option {
 	return func(options *Options) {

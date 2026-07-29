@@ -32,10 +32,13 @@ Cached Codex WebSocket continuations that are no longer recognised now retry
 once with the full request context before existing fallback behavior applies.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
 and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
-model metadata.
+model metadata. Text callers can now also select an HTTP client for an
+individual HTTP/SSE request.
 
 ## Changed
 
+- Text `Stream` and `Complete` calls now accept `WithRequestHTTPClient` for a
+  caller-selected HTTP/SSE transport client.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` as bearer
   authentication, followed by `ANTHROPIC_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`.
   Gateway tokens use `Authorization` without an `X-Api-Key` or Claude Code
@@ -119,6 +122,10 @@ model metadata.
 
 ## Compatibility
 
+- `WithRequestHTTPClient` is additive. A call-scoped client overrides client
+  and provider fallback clients for HTTP/SSE dispatch without changing default
+  clients, provider request shapes, image or embedding calls, or WebSocket
+  dialing.
 - Anthropic environment credential discovery is additive: explicit request and
   client credentials keep precedence, and provider IDs, routes, and serialized
   message shapes are unchanged.
