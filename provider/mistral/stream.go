@@ -174,6 +174,7 @@ type conversationStreamParser struct {
 	nextBlock      int
 	usage          *sigma.Usage
 	stopReason     sigma.StopReason
+	rawStopReason  string
 	conversationID string
 	providerModel  string
 	agentID        string
@@ -235,6 +236,9 @@ func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Ev
 	case "conversation.response.done":
 		if parsed.StopReason != "" {
 			p.stopReason = mistralStopReason(parsed.StopReason)
+			if p.stopReason == sigma.StopReasonUnknown {
+				return p.unhandledStopReasonError(parsed)
+			}
 		}
 		return p.emitStart(ctx)
 	case "tool.execution", "tool.execution.started", "tool.execution.done", "agent.handoff.started", "agent.handoff.done":
@@ -245,6 +249,9 @@ func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Ev
 }
 
 func (p *conversationStreamParser) capture(event conversationEvent) {
+	if event.StopReason != "" {
+		p.rawStopReason = event.StopReason
+	}
 	if event.ConversationID != "" {
 		p.conversationID = event.ConversationID
 	}
@@ -484,6 +491,20 @@ func (p *conversationStreamParser) eventError(event conversationEvent) error {
 	)
 }
 
+func (p *conversationStreamParser) unhandledStopReasonError(event conversationEvent) error {
+	body, _ := json.Marshal(event)
+	return sigma.NewProviderError(
+		p.model.Provider,
+		sigma.APIMistralConversations,
+		p.model.ID,
+		0,
+		"",
+		0,
+		body,
+		fmt.Errorf("mistral conversations: unhandled stop reason %q", event.StopReason),
+	)
+}
+
 func (p *conversationStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 	items := make([]finalContentItem, 0, len(p.textBlocks)+len(p.thinkingBlocks)+len(p.toolCalls))
 	for _, state := range p.sortedTextBlocks() {
@@ -587,6 +608,9 @@ func (p *conversationStreamParser) responseMetadata() map[string]any {
 	}
 	if p.agentID != "" {
 		metadata["agent_id"] = p.agentID
+	}
+	if p.rawStopReason != "" {
+		metadata["stop_reason"] = p.rawStopReason
 	}
 	if len(p.sources) > 0 {
 		metadata["sources"] = p.sources

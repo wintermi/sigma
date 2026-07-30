@@ -90,6 +90,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Fixed
 
+- Mistral Conversations now fails safely when an explicit error or unrecognized
+  terminal stop reason is returned, while retaining the raw terminal value in
+  assistant provider metadata and sanitized diagnostics.
 - Sessionless Codex WebSocket handshakes now use monotonic UUIDv7 request IDs,
   and built-in GPT-5.6 Codex metadata reports its 272K context limit so
   impossible long-context budgets and price tiers are not selected.

@@ -680,6 +680,9 @@ should still come through the catalog refresh workflow.
 - [x] Preserve existing boolean `Tool.ProviderMetadata["strict"]` values in
       Mistral Conversations function-tool definitions with deterministic payload
       fixtures.
+- [x] Treat explicit error and unrecognized Mistral Conversations terminal stop
+      reasons as typed provider failures while retaining their raw values in
+      assistant provider metadata and sanitized diagnostics.
 - [ ] Add Mistral file image references only after Sigma defines an explicit
       chat-level file-loading policy.
 - [x] Add Mistral Conversations server-executed web search, premium web search,

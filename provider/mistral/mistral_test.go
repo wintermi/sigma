@@ -1608,6 +1608,77 @@ data: {"type":"conversation.response.error","error":{"message":"bad key sk-secre
 	}
 }
 
+func TestTerminalStopReasonsPreserveRawValueAndRejectErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		stopReason string
+		wantStop   sigma.StopReason
+		wantError  bool
+	}{
+		{
+			name:       "successful stop",
+			stopReason: "stop",
+			wantStop:   sigma.StopReasonEndTurn,
+		},
+		{
+			name:       "explicit error",
+			stopReason: "error",
+			wantStop:   sigma.StopReasonError,
+			wantError:  true,
+		},
+		{
+			name:       "unrecognized reason",
+			stopReason: "provider_failure",
+			wantStop:   sigma.StopReasonError,
+			wantError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeMistralSSE(t, w, `event: conversation.response.done
+data: {"type":"conversation.response.done","stop_reason":"`+tt.stopReason+`","metadata":{"api_key":"terminal-diagnostic-secret"}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-terminal-stop-reason-test")
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if tt.wantError {
+				if !errors.Is(err, sigma.ErrProviderResponse) {
+					t.Fatalf("Complete() error = %v, want ErrProviderResponse", err)
+				}
+				if len(final.Diagnostics) != 1 {
+					t.Fatalf("diagnostics = %d, want 1", len(final.Diagnostics))
+				}
+				if diagnostic := final.Diagnostics[0]; diagnostic.API != sigma.APIMistralConversations || !strings.Contains(diagnostic.BodyPreview, tt.stopReason) {
+					t.Fatalf("diagnostic = %#v, want sanitized Mistral terminal event containing %q", diagnostic, tt.stopReason)
+				}
+				if strings.Contains(err.Error(), "terminal-diagnostic-secret") || strings.Contains(final.Diagnostics[0].BodyPreview, "terminal-diagnostic-secret") {
+					t.Fatalf("terminal diagnostic leaked secret: err=%v diagnostic=%+v", err, final.Diagnostics[0])
+				}
+			} else if err != nil {
+				t.Fatalf("Complete() error = %v", err)
+			}
+
+			if got := final.StopReason; got != tt.wantStop {
+				t.Errorf("StopReason = %q, want %q", got, tt.wantStop)
+			}
+			if got := final.ProviderMetadata["stop_reason"]; got != tt.stopReason {
+				t.Errorf("ProviderMetadata[stop_reason] = %#v, want %q", got, tt.stopReason)
+			}
+		})
+	}
+}
+
 func TestRetryResendsRequestAfterRetryableStatus(t *testing.T) {
 	t.Parallel()
 

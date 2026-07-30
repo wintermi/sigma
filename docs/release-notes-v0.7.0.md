@@ -27,7 +27,8 @@ snapshots and restored explicitly without a gateway request. Anthropic Messages
 environment credential discovery now supports bearer gateway tokens alongside
 OAuth-token and API-key fallbacks. Mistral Conversations also adds
 server-executed retrieval tools with normalized source and citation results,
-and preserves per-tool strict JSON Schema settings in function definitions.
+preserves per-tool strict JSON Schema settings in function definitions, and
+fails safely for explicit error or unknown terminal stop reasons.
 Generated Claude Opus 5 metadata now covers direct Anthropic, the global Amazon
 Bedrock inference-profile route, and GitHub Copilot's Anthropic Messages route
 with adaptive thinking, current limits, and pricing metadata.
@@ -54,6 +55,9 @@ individual HTTP/SSE request.
   tool-choice objects.
 - Mistral Conversations now preserves existing boolean per-tool strict JSON
   Schema settings when serializing function definitions.
+- Mistral Conversations retains each non-empty terminal `stop_reason` in
+  assistant provider metadata; explicit error and unrecognized terminal values
+  now return typed provider failures with sanitized diagnostics.
 - Mistral Conversations now supports opt-in server-executed web search, premium
   web search, and document-library tools. Returned tool execution diagnostics,
   source references, and citations remain available through existing Sigma
@@ -146,6 +150,10 @@ individual HTTP/SSE request.
 - Mistral Conversations now serializes existing boolean
   `Tool.ProviderMetadata["strict"]` values on function definitions. Provider
   IDs, routes, and public types remain unchanged.
+- Mistral request shapes, APIs, and recognized terminal reasons are unchanged.
+  Explicit error and unknown terminal `stop_reason` values now end with a typed
+  provider failure, with their raw values retained in existing provider metadata
+  and diagnostics.
 - Mistral retrieval tools are opt-in through `provider/mistral.Tools`; their
   execution remains server-side. Sigma does not add a client tool loop,
   connector registration, conversation persistence, or lifecycle APIs.
