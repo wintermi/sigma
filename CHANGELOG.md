@@ -17,6 +17,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,
   then `ANTHROPIC_OAUTH_TOKEN`, then `ANTHROPIC_API_KEY` through the existing
   environment credential resolver.
+- Generated Claude Opus 5 metadata now covers direct Anthropic, the global
+  Amazon Bedrock inference-profile route, and GitHub Copilot's Anthropic
+  Messages route with reviewed adaptive-thinking, limit, and pricing metadata.
 - Mistral Conversations now supports typed named-function tool selection.
 - Mistral Conversations now supports server-executed web search, premium web
   search, and document-library tools, preserving returned source references

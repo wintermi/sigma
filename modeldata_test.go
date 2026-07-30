@@ -299,6 +299,29 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if opus.ContextWindow != 1000000 || opus.MaxOutputTokens != 128000 {
 		t.Fatalf("Claude Opus 4.8 limits = context %d max %d, want 1000000/128000", opus.ContextWindow, opus.MaxOutputTokens)
 	}
+	opus5, ok := registry.Model(ProviderAnthropic, "claude-opus-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated Claude Opus 5 model")
+	}
+	if opus5.API != APIAnthropicMessages || !opus5.SupportsTools || !opus5.SupportsImages() || !opus5.SupportsReasoning() {
+		t.Fatalf("Claude Opus 5 metadata = %+v, want Anthropic Messages with tools, images, and reasoning", opus5)
+	}
+	if opus5.AnthropicMessagesCompat == nil ||
+		opus5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
+		opus5.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
+		t.Fatalf("Claude Opus 5 compat = %#v, want adaptive thinking without temperature", opus5.AnthropicMessagesCompat)
+	}
+	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
+		if got, ok := opus5.ProviderThinkingLevel(level); !ok || got != want {
+			t.Fatalf("Claude Opus 5 %s thinking level = %q, %v; want %q, true", level, got, ok, want)
+		}
+	}
+	if opus5.ContextWindow != 1000000 || opus5.MaxOutputTokens != 128000 ||
+		opus5.InputCostPerMillion != 5 || opus5.OutputCostPerMillion != 25 ||
+		opus5.CacheReadInputCostPerMillion != 0.5 || opus5.CacheWriteInputCostPerMillion != 6.25 {
+		t.Fatalf("Claude Opus 5 metadata = %+v, want reviewed limits and costs", opus5)
+	}
+	assertMetadataStrings(t, opus5.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"ANTHROPIC_API_KEY"})
 	sonnet, ok := registry.Model(ProviderAnthropic, "claude-sonnet-4-6")
 	if !ok {
 		t.Fatal("fresh registry missing generated Claude Sonnet 4.6 model")
@@ -1326,7 +1349,7 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 		contextWindow, maxOutputTokens               int
 		inputCost, outputCost, cacheRead, cacheWrite float64
 		thinkingFormat                               AnthropicThinkingFormat
-		xhigh                                        string
+		xhigh, max                                   string
 		disabledThinkingUnsupported                  bool
 	}{
 		{id: "au.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
@@ -1343,6 +1366,7 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 		{id: "global.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
 		{id: "global.anthropic.claude-opus-4-7", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
 		{id: "global.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
+		{id: "global.anthropic.claude-opus-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh", max: "max"},
 		{id: "global.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
 		{id: "global.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
 		{id: "global.anthropic.claude-sonnet-5", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 2, outputCost: 10, cacheRead: 0.2, cacheWrite: 2.5, thinkingFormat: AnthropicThinkingBudget},
@@ -1389,6 +1413,11 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 		if tt.xhigh != "" {
 			if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != tt.xhigh {
 				t.Fatalf("Bedrock profile %s xhigh level = %q, %v; want %q, true", tt.id, got, ok, tt.xhigh)
+			}
+		}
+		if tt.max != "" {
+			if got, ok := model.ProviderThinkingLevel(ThinkingLevel("max")); !ok || got != tt.max {
+				t.Fatalf("Bedrock profile %s max level = %q, %v; want %q, true", tt.id, got, ok, tt.max)
 			}
 		}
 		assertMetadataString(t, model.ProviderMetadata, "baseURL", baseURL)
@@ -1938,6 +1967,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		{provider: ProviderGitHubCopilot, id: "gpt-5.2-codex", baseURL: "https://api.individual.githubcopilot.com", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-4.6", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-5", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
+		{provider: ProviderGitHubCopilot, id: "claude-opus-5", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderZAI, id: "glm-5.1", baseURL: "https://api.z.ai/api/coding/paas/v4", envVars: []string{"ZAI_API_KEY"}},
 		{provider: ProviderZAICodingCN, id: "glm-5.2", baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVars: []string{"ZAI_CODING_CN_API_KEY"}},
 	} {
@@ -2065,6 +2095,32 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	if copilotSonnet5.ContextWindow != 1000000 || copilotSonnet5.MaxOutputTokens != 128000 {
 		t.Fatalf("GitHub Copilot Claude Sonnet 5 limits = %d/%d, want 1000000/128000", copilotSonnet5.ContextWindow, copilotSonnet5.MaxOutputTokens)
+	}
+	copilotOpus5, ok := registry.Model(ProviderGitHubCopilot, "claude-opus-5")
+	if !ok {
+		t.Fatal("fresh registry missing generated GitHub Copilot Claude Opus 5 model")
+	}
+	if copilotOpus5.API != APIAnthropicMessages || !copilotOpus5.SupportsTools || !copilotOpus5.SupportsImages() || !copilotOpus5.SupportsReasoning() {
+		t.Fatalf("GitHub Copilot Claude Opus 5 metadata = %+v, want Messages tools, images, and reasoning", copilotOpus5)
+	}
+	if copilotOpus5.AnthropicMessagesCompat == nil ||
+		copilotOpus5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
+		copilotOpus5.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
+		t.Fatalf("GitHub Copilot Claude Opus 5 compat = %#v, want adaptive thinking without temperature", copilotOpus5.AnthropicMessagesCompat)
+	}
+	for level, want := range map[ThinkingLevel]string{
+		ThinkingLevelMinimal: "low",
+		ThinkingLevelXHigh:   "xhigh",
+		ThinkingLevel("max"): "max",
+	} {
+		if got, ok := copilotOpus5.ProviderThinkingLevel(level); !ok || got != want {
+			t.Fatalf("GitHub Copilot Claude Opus 5 %s thinking level = %q, %v; want %q, true", level, got, ok, want)
+		}
+	}
+	if copilotOpus5.ContextWindow != 1000000 || copilotOpus5.MaxOutputTokens != 128000 ||
+		copilotOpus5.InputCostPerMillion != 5 || copilotOpus5.OutputCostPerMillion != 25 ||
+		copilotOpus5.CacheReadInputCostPerMillion != 0.5 || copilotOpus5.CacheWriteInputCostPerMillion != 6.25 {
+		t.Fatalf("GitHub Copilot Claude Opus 5 metadata = %+v, want reviewed limits and costs", copilotOpus5)
 	}
 	copilotFable, ok := registry.Model(ProviderGitHubCopilot, "claude-fable-5")
 	if !ok {
@@ -2208,7 +2264,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 
 	for _, id := range []ModelID{
 		"claude-fable-5", "claude-opus-4-5", "claude-opus-4-5-20251101",
-		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
+		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-opus-5",
 		"claude-sonnet-4-5", "claude-sonnet-4-5-20250929", "claude-sonnet-4-6", "claude-sonnet-5",
 	} {
 		directAnthropic, ok := registry.Model(ProviderAnthropic, id)
@@ -2226,6 +2282,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}{
 		{provider: ProviderAnthropic, id: "claude-haiku-4-5"},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-5"},
+		{provider: ProviderGitHubCopilot, id: "claude-opus-5"},
 	} {
 		model, ok := registry.Model(tt.provider, tt.id)
 		if !ok {
@@ -2235,6 +2292,9 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			model.AnthropicMessagesCompat.SupportsToolReferences == AnthropicCompatSupported {
 			t.Fatalf("%s/%s compatibility = %#v, want tool references disabled", tt.provider, tt.id, model.AnthropicMessagesCompat)
 		}
+	}
+	if _, ok := registry.Model(ProviderAmazonBedrock, "anthropic.claude-opus-5"); ok {
+		t.Fatal("generated registry unexpectedly includes the non-profile Bedrock Claude Opus 5 ID")
 	}
 }
 

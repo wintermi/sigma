@@ -444,6 +444,20 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 			},
 		},
 		{
+			name: "adaptive Claude Opus 5 profile",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "global.anthropic.claude-opus-5"
+				model.Name = "Claude Opus 5 (Global)"
+				return model
+			}(),
+			opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelXHigh},
+			want: map[string]any{
+				"thinking":      map[string]any{"type": "adaptive", "display": "summarized"},
+				"output_config": map[string]any{"effort": "xhigh"},
+			},
+		},
+		{
 			name: "fixed budget claude",
 			model: func() sigma.Model {
 				model := bedrockTestModel(sigma.ProviderAmazonBedrock)

@@ -463,6 +463,11 @@ upstream.
 - [x] Add the missing direct Anthropic Claude Fable 5 row with adaptive
       thinking metadata, xhigh thinking-level mapping, image input support,
       current limits, and pricing.
+- [x] Add focused Claude Opus 5 metadata for direct Anthropic, the global
+      Amazon Bedrock inference-profile route, and GitHub Copilot's
+      Anthropic-compatible Messages route with deterministic registry and
+      request-shape coverage; keep non-profile Bedrock IDs and broader aliases
+      deferred.
 - [x] Add a deterministic local catalog summary report for the generator,
       covering source count, text/image/embedding totals, text tool/reasoning
       counts, and provider/API buckets without changing the checked-in catalog.

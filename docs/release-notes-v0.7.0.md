@@ -28,6 +28,9 @@ environment credential discovery now supports bearer gateway tokens alongside
 OAuth-token and API-key fallbacks. Mistral Conversations also adds
 server-executed retrieval tools with normalized source and citation results,
 and preserves per-tool strict JSON Schema settings in function definitions.
+Generated Claude Opus 5 metadata now covers direct Anthropic, the global Amazon
+Bedrock inference-profile route, and GitHub Copilot's Anthropic Messages route
+with adaptive thinking, current limits, and pricing metadata.
 Cached Codex WebSocket continuations that are no longer recognised now retry
 once with the full request context before existing fallback behavior applies.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
@@ -43,6 +46,10 @@ individual HTTP/SSE request.
   authentication, followed by `ANTHROPIC_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`.
   Gateway tokens use `Authorization` without an `X-Api-Key` or Claude Code
   identity headers.
+- Generated Claude Opus 5 metadata now covers direct Anthropic, the global
+  Amazon Bedrock inference-profile route, and GitHub Copilot's Anthropic
+  Messages route with text/image input, tools, adaptive thinking, 1M context,
+  128K output, and reviewed cache pricing.
 - Mistral Conversations now supports typed named function selection with native
   tool-choice objects.
 - Mistral Conversations now preserves existing boolean per-tool strict JSON
@@ -129,6 +136,10 @@ individual HTTP/SSE request.
 - Anthropic environment credential discovery is additive: explicit request and
   client credentials keep precedence, and provider IDs, routes, and serialized
   message shapes are unchanged.
+- Claude Opus 5 is a metadata-only catalog addition. Existing Anthropic,
+  Bedrock, and GitHub Copilot registration APIs and request shapes are
+  unchanged; the Bedrock entry is global inference-profile-only, so Sigma does
+  not register `anthropic.claude-opus-5` as an on-demand model ID.
 - Mistral Conversations now accepts the existing `MistralToolChoiceTool` with a
   non-empty name. Provider IDs, routes, and serialized message shapes are
   unchanged.

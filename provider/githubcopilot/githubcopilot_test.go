@@ -104,12 +104,14 @@ func TestAnthropicWrapperUsesBearerAuthAndCopilotHeaders(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	model := copilotAnthropicModel()
-	registry := sigma.NewRegistry()
+	registry := sigma.DefaultRegistry()
+	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5")
+	if !ok {
+		t.Fatal("default registry missing GitHub Copilot Claude Opus 5 model")
+	}
 	if err := githubcopilot.RegisterAnthropic(registry, githubcopilot.WithAnthropicBaseURL(server.URL+"/v1")); err != nil {
 		t.Fatalf("RegisterAnthropic returned error: %v", err)
 	}
-	registerModel(t, registry, model)
 
 	client := sigma.NewClient(sigma.WithRegistry(registry))
 	if _, err := client.Complete(
@@ -119,6 +121,7 @@ func TestAnthropicWrapperUsesBearerAuthAndCopilotHeaders(t *testing.T) {
 			sigma.UserContent(sigma.Text("inspect"), sigma.ImageBase64("image/png", "aGk=")),
 		}},
 		sigma.WithAPIKey("copilot-token"),
+		sigma.WithProviderOption(sigma.ProviderGitHubCopilot, "baseURL", server.URL+"/v1"),
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
@@ -139,15 +142,6 @@ func copilotResponsesModel() sigma.Model {
 		ID:              "gpt-test",
 		Provider:        sigma.ProviderGitHubCopilot,
 		API:             sigma.APIOpenAIResponses,
-		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-	}
-}
-
-func copilotAnthropicModel() sigma.Model {
-	return sigma.Model{
-		ID:              "claude-test",
-		Provider:        sigma.ProviderGitHubCopilot,
-		API:             sigma.APIAnthropicMessages,
 		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
 	}
 }
