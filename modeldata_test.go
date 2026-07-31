@@ -106,9 +106,10 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		contextWindow    int
 		maxOutputTokens  int
 		thinkingLevelMap map[ThinkingLevel]string
+		reasoningFormat  OpenAICompletionsReasoningFormat
 	}{
 		{id: "accounts/fireworks/models/glm-5p2", family: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.14},
-		{id: "accounts/fireworks/models/kimi-k3", family: "kimi", wantImages: true, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, contextWindow: 1040000, maxOutputTokens: 131072},
+		{id: "accounts/fireworks/models/kimi-k3", family: "kimi", wantImages: true, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, contextWindow: 1040000, maxOutputTokens: 131072, reasoningFormat: OpenAICompletionsReasoningEffort},
 		{id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4", family: "nemotron", inputCost: 0.6, outputCost: 2.4, cacheReadCost: 0.12, contextWindow: 262144, maxOutputTokens: 32768, thinkingLevelMap: map[ThinkingLevel]string{ThinkingLevelLow: "none", ThinkingLevelMedium: "medium", ThinkingLevelHigh: "high"}},
 		{id: "accounts/fireworks/routers/glm-5p2-fast", family: "glm", inputCost: 2.1, outputCost: 6.6, cacheReadCost: 0.21},
 	} {
@@ -125,8 +126,12 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		if !fireworksOpenAI.SupportsReasoning() || !fireworksOpenAI.SupportsThinkingLevel(ThinkingLevelMedium) {
 			t.Fatalf("Fireworks OpenAI-compatible %s reasoning metadata was not generated: %+v", tt.id, fireworksOpenAI)
 		}
+		wantReasoningFormat := tt.reasoningFormat
+		if wantReasoningFormat == OpenAICompletionsReasoningDefault {
+			wantReasoningFormat = OpenAICompletionsReasoningFireworks
+		}
 		if fireworksOpenAI.OpenAICompletionsCompat == nil ||
-			fireworksOpenAI.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningFireworks ||
+			fireworksOpenAI.OpenAICompletionsCompat.ReasoningFormat != wantReasoningFormat ||
 			fireworksOpenAI.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
 			fireworksOpenAI.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
 			fireworksOpenAI.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
@@ -155,6 +160,22 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			}
 		}
 	}
+
+	fireworksK3, ok := registry.Model(ProviderFireworks, "accounts/fireworks/models/kimi-k3")
+	if !ok {
+		t.Fatal("fresh registry missing generated Fireworks Kimi K3 model")
+	}
+	if !fireworksK3.SupportsThinkingLevel(ThinkingLevel("max")) {
+		t.Fatalf("Fireworks Kimi K3 max reasoning metadata was not generated: %+v", fireworksK3)
+	}
+	if fireworksK3.OpenAICompletionsCompat == nil ||
+		fireworksK3.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningEffort ||
+		fireworksK3.OpenAICompletionsCompat.SupportsSessionAffinity != OpenAICompatSupported ||
+		fireworksK3.OpenAICompletionsCompat.SupportsLongCacheRetention != OpenAICompatUnsupported ||
+		fireworksK3.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("Fireworks Kimi K3 compat = %#v, want K3 Chat Completions overrides", fireworksK3.OpenAICompletionsCompat)
+	}
+	assertMetadataString(t, fireworksK3.ProviderMetadata, "deferredToolsMode", "kimi")
 
 	fireworksAnthropicRows := []struct {
 		id               ModelID

@@ -8835,7 +8835,8 @@
       "thinkingLevels": [
         "low",
         "medium",
-        "high"
+        "high",
+        "max"
       ],
       "cost": {
         "inputPerMillion": 3,
@@ -8851,12 +8852,16 @@
       ],
       "defaultTransport": "sse",
       "openAICompletionsCompat": {
-        "reasoningFormat": "fireworks",
+        "reasoningFormat": "reasoning_effort",
         "supportsStreamingUsage": "supported",
         "supportsStrictTools": "supported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported",
+        "requiresReasoningContentOnAssistantMessages": "supported"
       },
       "providerMetadata": {
+        "deferredToolsMode": "kimi",
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
         "modelFamily": "kimi"

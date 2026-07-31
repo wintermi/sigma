@@ -766,6 +766,130 @@ func TestChatCompletionsSessionAffinityHeaders(t *testing.T) {
 	}
 }
 
+func TestFireworksKimiK3Compatibility(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	model := fireworksKimiK3TestModel()
+	client := openAITestClient(t, sigma.ProviderFireworks, model, server.URL)
+	request := sigma.Request{
+		Tools: []sigma.Tool{
+			{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "used", InputSchema: sigma.Schema{"type": "object"}},
+		},
+		Messages: []sigma.Message{
+			sigma.UserText("start"),
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_used", "used", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_used", Content: []sigma.ContentBlock{sigma.Text("used result")}},
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("base result")}, AddedToolNames: []string{"late", "unknown", "late", "used"}},
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base_second", "base", map[string]any{})}},
+			{Role: sigma.RoleTool, ToolCallID: "call_base_second", Content: []sigma.ContentBlock{sigma.Text("second base result")}, AddedToolNames: []string{"late"}},
+		},
+	}
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		request,
+		sigma.WithReasoningLevel(sigma.ThinkingLevel("max")),
+		sigma.WithSessionID("kimi-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionLong),
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{PromptCacheRetention: "24h"}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	captured := receiveRequest(t, requests)
+	assertHeader(t, captured.Headers, "session_id", "kimi-session")
+	assertHeader(t, captured.Headers, "x-client-request-id", "kimi-session")
+	assertHeader(t, captured.Headers, "x-session-affinity", "kimi-session")
+
+	var payload struct {
+		Messages        []map[string]any `json:"messages"`
+		Tools           []any            `json:"tools"`
+		ReasoningEffort string           `json:"reasoning_effort"`
+		PromptCacheKey  string           `json:"prompt_cache_key"`
+		CacheRetention  string           `json:"prompt_cache_retention"`
+		Thinking        any              `json:"thinking"`
+	}
+	if err := json.Unmarshal(captured.Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload.ReasoningEffort, "max"; got != want {
+		t.Fatalf("reasoning_effort = %q, want %q", got, want)
+	}
+	if payload.Thinking != nil {
+		t.Fatalf("thinking = %#v, want omitted", payload.Thinking)
+	}
+	if got, want := payload.PromptCacheKey, "kimi-session"; got != want {
+		t.Fatalf("prompt_cache_key = %q, want %q", got, want)
+	}
+	if payload.CacheRetention != "" {
+		t.Fatalf("prompt_cache_retention = %q, want omitted", payload.CacheRetention)
+	}
+	if got, want := chatCompletionToolNames(t, payload.Tools), []string{"base", "used"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("root tool names = %#v, want %#v", got, want)
+	}
+
+	deferredToolMessages := 0
+	for index, message := range payload.Messages {
+		if message["cache_control"] != nil {
+			t.Fatalf("message[%d] cache_control = %#v, want omitted", index, message["cache_control"])
+		}
+		if message["role"] == "assistant" && index > 0 {
+			if got, ok := message["reasoning_content"].(string); !ok || got != "" {
+				t.Fatalf("assistant replay[%d] reasoning_content = %#v, want empty string", index, message["reasoning_content"])
+			}
+		}
+		if message["role"] != "system" || message["tools"] == nil {
+			continue
+		}
+		deferredToolMessages++
+		if _, exists := message["content"]; exists {
+			t.Fatalf("deferred tool message content = %#v, want omitted", message["content"])
+		}
+		tools, ok := message["tools"].([]any)
+		if !ok {
+			t.Fatalf("deferred tool message tools = %#v, want array", message["tools"])
+		}
+		if got, want := chatCompletionToolNames(t, tools), []string{"late"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("deferred tool names = %#v, want %#v", got, want)
+		}
+		if index == 0 || messageRole(payload.Messages[index-1]) != "tool" {
+			t.Fatalf("deferred tool message[%d] does not follow its tool-result run: %#v", index, payload.Messages)
+		}
+	}
+	if got, want := deferredToolMessages, 1; got != want {
+		t.Fatalf("deferred tool message count = %d, want %d", got, want)
+	}
+
+	_, err = client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("raw cache retention")}},
+		sigma.WithProviderOption(sigma.ProviderFireworks, "extra_body", map[string]any{"prompt_cache_retention": "24h"}),
+	)
+	if err != nil {
+		t.Fatalf("Complete with raw body override returned error: %v", err)
+	}
+	var overridePayload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &overridePayload); err != nil {
+		t.Fatalf("Unmarshal raw override request returned error: %v", err)
+	}
+	if got, want := overridePayload["prompt_cache_retention"], "24h"; got != want {
+		t.Fatalf("raw prompt_cache_retention = %#v, want %q", got, want)
+	}
+}
+
 func TestOpenRouterSessionAffinityHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -2768,6 +2892,59 @@ func openAITestModel(providerID sigma.ProviderID) sigma.Model {
 		OutputCostPerMillion:         2,
 		CacheReadInputCostPerMillion: 0.5,
 	}
+}
+
+func fireworksKimiK3TestModel() sigma.Model {
+	return sigma.Model{
+		ID:              "accounts/fireworks/models/kimi-k3",
+		Provider:        sigma.ProviderFireworks,
+		API:             sigma.APIOpenAICompletions,
+		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		SupportsTools:   true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
+			sigma.ThinkingLevelLow:     "low",
+			sigma.ThinkingLevelMedium:  "medium",
+			sigma.ThinkingLevelHigh:    "high",
+			sigma.ThinkingLevel("max"): "max",
+		},
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			ReasoningFormat:                             sigma.OpenAICompletionsReasoningEffort,
+			SupportsStreamingUsage:                      sigma.OpenAICompatSupported,
+			SupportsStrictTools:                         sigma.OpenAICompatSupported,
+			MaxTokensField:                              sigma.OpenAICompletionsMaxTokens,
+			SupportsSessionAffinity:                     sigma.OpenAICompatSupported,
+			SupportsLongCacheRetention:                  sigma.OpenAICompatUnsupported,
+			RequiresReasoningContentOnAssistantMessages: sigma.OpenAICompatSupported,
+		},
+		ProviderMetadata: map[string]any{"deferredToolsMode": "kimi"},
+	}
+}
+
+func chatCompletionToolNames(t *testing.T, tools []any) []string {
+	t.Helper()
+
+	names := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		value, ok := tool.(map[string]any)
+		if !ok {
+			t.Fatalf("tool = %#v, want object", tool)
+		}
+		function, ok := value["function"].(map[string]any)
+		if !ok {
+			t.Fatalf("tool function = %#v, want object", value["function"])
+		}
+		name, ok := function["name"].(string)
+		if !ok {
+			t.Fatalf("tool name = %#v, want string", function["name"])
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
+func messageRole(message map[string]any) string {
+	role, _ := message["role"].(string)
+	return role
 }
 
 func chatGrammarTool(name string, syntax sigma.OpenAIGrammarSyntax, definition string) sigma.Tool {

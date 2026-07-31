@@ -1236,6 +1236,58 @@ func TestOpenAICompletionsCompatReplaysReasoningContent(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/replays_reasoning_content.json")
 }
 
+func TestOpenAICompletionsCompatKeepsToolsEagerWithoutKimiMarker(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		ID:            "accounts/fireworks/models/kimi-k3",
+		Provider:      sigma.ProviderFireworks,
+		API:           sigma.APIOpenAICompletions,
+		SupportsTools: true,
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{
+			Tools: []sigma.Tool{
+				{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+				{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+			},
+			Messages: []sigma.Message{
+				{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+				{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("result")}, AddedToolNames: []string{"late", "unknown", "late"}},
+			},
+		},
+		sigma.Options{},
+		openAICompletionsCompat(model, "https://api.fireworks.ai/inference/v1"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+
+	tools, ok := payload["tools"].([]map[string]any)
+	if !ok {
+		t.Fatalf("root tools = %#v, want tool array", payload["tools"])
+	}
+	if got, want := len(tools), 2; got != want {
+		t.Fatalf("root tool count = %d, want %d", got, want)
+	}
+	for index, want := range []string{"base", "late"} {
+		function, ok := tools[index]["function"].(map[string]any)
+		if !ok || function["name"] != want {
+			t.Fatalf("root tool[%d] = %#v, want function %q", index, tools[index], want)
+		}
+	}
+	messages, ok := payload["messages"].([]map[string]any)
+	if !ok {
+		t.Fatalf("messages = %#v, want message array", payload["messages"])
+	}
+	for _, message := range messages {
+		if message["role"] == "system" && message["tools"] != nil {
+			t.Fatalf("unexpected deferred tool message: %#v", message)
+		}
+	}
+}
+
 func TestOpenAICompletionsCompatOmitsEmptyAssistantReplay(t *testing.T) {
 	t.Parallel()
 

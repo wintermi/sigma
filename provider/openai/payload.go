@@ -34,11 +34,12 @@ const (
 
 func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]any, error) {
 	cleaned := transform.DropUnansweredToolCalls(req)
+	deferredTools := transform.PlanDeferredTools(cleaned, compat.deferredToolsMode == deferredToolsModeKimi, nil)
 	grammarToolInputProperties, err := chatGrammarToolInputProperties(cleaned, opts, compat)
 	if err != nil {
 		return nil, err
 	}
-	messages, err := chatMessages(model, cleaned, opts.CacheRetention, compat, grammarToolInputProperties)
+	messages, err := chatMessages(model, cleaned, opts.CacheRetention, compat, deferredTools.Deferred, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +72,8 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	addChatPromptCache(payload, opts, compat)
 	addReasoning(payload, model, opts, compat)
 	addChatOpenAIOptions(payload, opts, compat)
-	if len(cleaned.Tools) > 0 {
-		tools, err := chatTools(model, cleaned.Tools, compat, grammarToolInputProperties)
+	if len(deferredTools.Immediate) > 0 {
+		tools, err := chatTools(model, deferredTools.Immediate, compat, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -156,18 +157,19 @@ func validateReasoningLevel(model sigma.Model, opts sigma.Options, compat comple
 }
 
 func addChatPromptCache(payload map[string]any, opts sigma.Options, compat completionsCompat) {
+	// Some compatible routes support cache keys but not explicit long retention.
 	if compat.cacheControlFormat == sigma.OpenAICompletionsCacheControlAnthropic ||
-		compat.cacheControlFormat == sigma.OpenAICompletionsCacheControlUnsupported {
+		(compat.cacheControlFormat == sigma.OpenAICompletionsCacheControlUnsupported && compat.supportsLongCacheRetention) {
 		return
 	}
-	addOpenAIPromptCache(payload, opts)
+	addOpenAIPromptCache(payload, opts, compat)
 }
 
-func addOpenAIPromptCache(payload map[string]any, opts sigma.Options) {
+func addOpenAIPromptCache(payload map[string]any, opts sigma.Options, compat completionsCompat) {
 	if key := openAIPromptCacheKey(opts); key != "" {
 		payload["prompt_cache_key"] = key
 	}
-	if opts.CacheRetention.CacheLongLived() && (opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") {
+	if compat.supportsLongCacheRetention && opts.CacheRetention.CacheLongLived() && (opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") {
 		payload["prompt_cache_retention"] = "24h"
 	}
 }
@@ -208,7 +210,8 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
 	if opts.OpenAIOptions.PromptCacheRetention != "" &&
-		compat.cacheControlFormat != sigma.OpenAICompletionsCacheControlUnsupported {
+		compat.cacheControlFormat != sigma.OpenAICompletionsCacheControlUnsupported &&
+		compat.supportsLongCacheRetention {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
 	}
 }
@@ -227,7 +230,7 @@ func chatResponseFormat(value any, compat completionsCompat) any {
 	return map[string]any{providerToolOptionTypeKey: "json_object"}
 }
 
-func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages)+1)
 	if req.SystemPrompt != "" {
 		message := map[string]any{
@@ -238,10 +241,11 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 		messages = append(messages, message)
 	}
 	toolNames := make(map[string]string)
+	loadedDeferredToolNames := make(map[string]struct{})
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
-			nextIndex, err := appendToolRunMessages(&messages, req.Messages, index, model, retention, compat, toolNames, grammarToolInputProperties)
+			nextIndex, err := appendToolRunMessages(&messages, req.Messages, index, model, retention, compat, toolNames, deferredTools, loadedDeferredToolNames, grammarToolInputProperties)
 			if err != nil {
 				return nil, err
 			}
@@ -263,11 +267,23 @@ func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRet
 	return repairMessages(messages, compat), nil
 }
 
-func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string, grammarToolInputProperties map[string]string) (int, error) {
+func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, start int, model sigma.Model, retention sigma.CacheRetention, compat completionsCompat, toolNames map[string]string, deferredTools map[string]sigma.Tool, loadedDeferredToolNames map[string]struct{}, grammarToolInputProperties map[string]string) (int, error) {
 	var mediaParts []map[string]any
+	var tools []sigma.Tool
 	index := start
 	for ; index < len(input) && input[index].Role == sigma.RoleTool; index++ {
 		toolMessage := input[index]
+		for _, name := range toolMessage.AddedToolNames {
+			tool, ok := deferredTools[name]
+			if !ok {
+				continue
+			}
+			if _, loaded := loadedDeferredToolNames[name]; loaded {
+				continue
+			}
+			loadedDeferredToolNames[name] = struct{}{}
+			tools = append(tools, tool)
+		}
 		converted, err := chatMessage(model, toolMessage, retention, compat, toolNames, grammarToolInputProperties)
 		if err != nil {
 			return start, err
@@ -294,6 +310,13 @@ func appendToolRunMessages(messages *[]map[string]any, input []sigma.Message, st
 	}
 	if len(mediaParts) > 0 {
 		*messages = append(*messages, toolResultMediaMessage(mediaParts))
+	}
+	if len(tools) > 0 {
+		converted, err := chatTools(model, tools, compat, grammarToolInputProperties)
+		if err != nil {
+			return start, err
+		}
+		*messages = append(*messages, map[string]any{"role": "system", "tools": converted})
 	}
 	return index - 1, nil
 }

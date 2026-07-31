@@ -29,17 +29,26 @@ type completionsCompat struct {
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
 	supportsMessageCacheControl                 bool
 	supportsSessionAffinity                     bool
+	supportsLongCacheRetention                  bool
 	requiresToolResultName                      bool
 	requiresAssistantAfterToolResult            bool
 	requiresToolsForToolHistory                 bool
 	requiresReasoningContentOnAssistantMessages bool
 	openRouterRouting                           *sigma.OpenRouterRoutingPreference
 	vercelAIGatewayRouting                      *sigma.VercelAIGatewayRoutingPreference
+	deferredToolsMode                           deferredToolsMode
 }
+
+type deferredToolsMode string
+
+const deferredToolsModeKimi deferredToolsMode = "kimi"
 
 func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompat {
 	compat := detectedCompletionsCompat(model, baseURL)
 	if model.OpenAICompletionsCompat == nil {
+		if model.Provider == sigma.ProviderFireworks && model.ProviderMetadata["deferredToolsMode"] == string(deferredToolsModeKimi) {
+			compat.deferredToolsMode = deferredToolsModeKimi
+		}
 		return compat
 	}
 
@@ -57,6 +66,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 		override.SupportsJSONSchemaResponseFormat,
 	)
 	compat.supportsSessionAffinity = supportOverride(compat.supportsSessionAffinity, override.SupportsSessionAffinity)
+	compat.supportsLongCacheRetention = supportOverride(compat.supportsLongCacheRetention, override.SupportsLongCacheRetention)
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
 	compat.requiresToolsForToolHistory = supportOverride(compat.requiresToolsForToolHistory, override.RequiresToolsForToolHistory)
@@ -79,6 +89,9 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	}
 	if override.VercelAIGatewayRouting != nil {
 		compat.vercelAIGatewayRouting = override.VercelAIGatewayRouting
+	}
+	if model.Provider == sigma.ProviderFireworks && model.ProviderMetadata["deferredToolsMode"] == string(deferredToolsModeKimi) {
+		compat.deferredToolsMode = deferredToolsModeKimi
 	}
 	return compat
 }
@@ -103,6 +116,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 			cacheControlFormat:               sigma.OpenAICompletionsCacheControlMessage,
 			supportsMessageCacheControl:      false,
+			supportsLongCacheRetention:       true,
 		}
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
@@ -172,6 +186,7 @@ func conservativeCompletionsCompat() completionsCompat {
 		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 		cacheControlFormat:               sigma.OpenAICompletionsCacheControlUnsupported,
 		supportsMessageCacheControl:      true,
+		supportsLongCacheRetention:       true,
 	}
 }
 

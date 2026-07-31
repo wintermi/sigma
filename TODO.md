@@ -614,6 +614,9 @@ evidence bar.
       coverage for Messages cache affinity and tool compatibility.
 - [x] Add current serverless NVIDIA Nemotron 3 Ultra metadata to the existing
       Fireworks Chat Completions and Anthropic-compatible Messages routes.
+- [x] Harden Fireworks Kimi K3 Chat Completions behavior with native reasoning
+      effort, cache affinity, replay, long-cache compatibility, and
+      metadata-gated deferred client-tool loading.
 - [ ] Keep broader Fireworks catalog discovery, unrequested payload/error
       behavior, and live-provider coverage deferred until specific routes need
       evidence beyond the shared adapters.

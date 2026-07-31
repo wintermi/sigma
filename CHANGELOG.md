@@ -84,6 +84,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - Generated Fireworks metadata now includes NVIDIA Nemotron 3 Ultra NVFP4 on
   the existing Chat Completions and Anthropic-compatible Messages routes with
   its serverless limits, tool and reasoning support, and standard pricing.
+- Fireworks Kimi K3 now uses its native Chat Completions reasoning effort,
+  required reasoning replay, cache-affinity headers, long-cache suppression,
+  and metadata-gated deferred client-tool loading.
 - Premature OpenAI Responses and Anthropic Messages stream endings now classify
   as transient, retryable failures while preserving partial final messages;
   applications continue to own post-body request retries.

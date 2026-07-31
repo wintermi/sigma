@@ -15,6 +15,8 @@ Responses registration and caller-configured device-code OAuth surfaces, and
 adds Kimi Coding subscription device-code OAuth alongside a dynamic Radius
 gateway text provider with caller-configured browser and device-code OAuth plus
 NVIDIA Nemotron 3 Ultra to the existing Fireworks text routes. It also adds
+Kimi K3 Chat Completions compatibility for native reasoning effort, replay,
+cache affinity, and deferred client tools on its existing Fireworks route, and
 direct Qwen Token Plan registrations for international and China regional
 endpoints with a focused Qwen3.7 Max and Qwen3.8 Max Preview catalog. OpenAI
 Responses and Chat Completions also gain grammar-constrained custom tools with
@@ -103,6 +105,10 @@ individual HTTP/SSE request.
   standard-serverless input, cached-input, and output pricing. Deterministic
   Messages coverage also protects cache-affinity headers and omitted unsupported
   tool fields.
+- Fireworks Kimi K3 now uses native Chat Completions reasoning effort including
+  `max`, preserves required empty reasoning replay, sends cache-affinity
+  headers while omitting unsupported long-lived cache retention, and loads
+  client tools from existing `AddedToolNames` markers when needed.
 - NVIDIA Nemotron 3 Ultra NVFP4 is now available on the existing Fireworks Chat
   Completions and Anthropic-compatible Messages routes with text-only input,
   tool and reasoning support, current limits, and standard serverless pricing.
@@ -182,6 +188,11 @@ individual HTTP/SSE request.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.
+- The existing Fireworks Kimi K3 model ID and registration are unchanged. Its
+  Chat Completions compatibility now recognizes `max` reasoning, required
+  replay, cache-affinity headers, and deferred client-tool definitions through
+  existing `AddedToolNames`; no provider, route, or new request option is
+  added.
 - `ProviderRadius` is a new opt-in registration. Its models are empty until an
   explicit refresh succeeds; requests use standard API-key resolver precedence
   with `RADIUS_API_KEY` as the environment fallback. OAuth uses a caller-owned

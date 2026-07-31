@@ -138,6 +138,7 @@ type OpenAICompletionsCompat struct {
 	MaxTokensField                              string                            `json:"maxTokensField,omitempty"`
 	CacheControlFormat                          string                            `json:"cacheControlFormat,omitempty"`
 	SupportsSessionAffinity                     string                            `json:"supportsSessionAffinity,omitempty"`
+	SupportsLongCacheRetention                  string                            `json:"supportsLongCacheRetention,omitempty"`
 	RequiresToolResultName                      string                            `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            string                            `json:"requiresAssistantAfterToolResult,omitempty"`
 	RequiresToolsForToolHistory                 string                            `json:"requiresToolsForToolHistory,omitempty"`
