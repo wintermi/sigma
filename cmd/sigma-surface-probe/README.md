@@ -27,7 +27,12 @@ Common flags:
 -structured-output      run focused OpenAI-compatible structured-output probes
 -images                 run focused OpenAI image-generation probes
 -timeout                overall probe timeout, default 10m
+-case-timeout           maximum duration per case or repair attempt, default 1m
 ```
+
+Each primary case and repair attempt receives its own `-case-timeout`, bounded
+by the overall `-timeout`. Set `-case-timeout=0` to use only the overall
+deadline.
 
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/provider/openai"
@@ -93,6 +94,19 @@ func TestFireworksRoutesBuildExpectedModels(t *testing.T) {
 	}
 	assertMetadataString(t, openAI.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
 	assertMetadataStrings(t, openAI.ProviderMetadata, "apiKeyEnvVars", []string{"FIREWORKS_API_KEY"})
+
+	k3 := routes["fireworks-openai"].Model(routes["fireworks-openai"], "accounts/fireworks/models/kimi-k3")
+	if !k3.SupportsThinkingLevel(sigma.ThinkingLevel("max")) {
+		t.Fatalf("fireworks-openai K3 max reasoning metadata = %+v, want max support", k3)
+	}
+	if k3.OpenAICompletionsCompat == nil ||
+		k3.OpenAICompletionsCompat.ReasoningFormat != sigma.OpenAICompletionsReasoningEffort ||
+		k3.OpenAICompletionsCompat.SupportsSessionAffinity != sigma.OpenAICompatSupported ||
+		k3.OpenAICompletionsCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported ||
+		k3.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != sigma.OpenAICompatSupported {
+		t.Fatalf("fireworks-openai K3 compat = %#v, want generated K3 compat", k3.OpenAICompletionsCompat)
+	}
+	assertMetadataString(t, k3.ProviderMetadata, "deferredToolsMode", "kimi")
 
 	anthropic := routes["fireworks-anthropic"].Model(routes["fireworks-anthropic"], "accounts/fireworks/models/kimi-k2p6")
 	if anthropic.Provider != sigma.ProviderFireworksAnthropic || anthropic.API != sigma.APIAnthropicMessages {
@@ -542,6 +556,22 @@ func TestParseConfigEnablesStructuredOutput(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg.routes, []string{"zen"}) {
 		t.Fatalf("routes = %v, want zen", cfg.routes)
+	}
+}
+
+func TestParseConfigSetsCaseTimeout(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	oldArgs := os.Args
+	flag.CommandLine = flag.NewFlagSet("sigma-surface-probe-test", flag.ContinueOnError)
+	os.Args = []string{"sigma-surface-probe", "-case-timeout=15s"}
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		os.Args = oldArgs
+	})
+
+	cfg := parseConfig()
+	if got, want := cfg.caseTimeout, 15*time.Second; got != want {
+		t.Fatalf("caseTimeout = %s, want %s", got, want)
 	}
 }
 
@@ -1223,6 +1253,31 @@ func TestProbeModelDoesNotRepairUpstreamAvailability(t *testing.T) {
 	}
 	if results[0].Hint != "" || len(results[0].FailedAttempts) != 0 {
 		t.Fatalf("upstream availability result unexpectedly repaired: %+v", results[0])
+	}
+}
+
+func TestProbeModelUsesIndependentCaseTimeouts(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
+		singleTurnCase("basic_text", "plain text", basicRequest("ok"), nil),
+	},
+		sigmatest.Script{WaitForCancel: true},
+		sigmatest.Script{},
+	)
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{
+		repair:      true,
+		caseTimeout: 10 * time.Millisecond,
+	})
+	if len(results) != 2 {
+		t.Fatalf("results length = %d, want 2", len(results))
+	}
+	if got, want := results[0].Outcome, "upstream_availability"; got != want {
+		t.Fatalf("timed-out case outcome = %q, want %q", got, want)
+	}
+	if got, want := results[1].Outcome, "ok"; got != want {
+		t.Fatalf("following case outcome = %q, want %q", got, want)
 	}
 }
 

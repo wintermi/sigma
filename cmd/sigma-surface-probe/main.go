@@ -124,6 +124,7 @@ type config struct {
 	repair             bool
 	includeUnavailable bool
 	timeout            time.Duration
+	caseTimeout        time.Duration
 	codexOAuth         bool
 	codexOAuthBrowser  bool
 	handoff            bool
@@ -257,6 +258,7 @@ const (
 	defaultOpenAIImageProbeModel         = "gpt-image-1"
 	defaultOpenAIImageVariationModel     = "dall-e-2"
 	defaultOpenAIResponsesToolProbeModel = "gpt-5.5"
+	defaultCaseTimeout                   = time.Minute
 )
 
 func main() {
@@ -334,6 +336,7 @@ func parseConfig() config {
 	var routeList string
 	var modelList string
 	var timeout time.Duration
+	var caseTimeout time.Duration
 	var repair bool
 	var includeUnavailable bool
 	var codexOAuth bool
@@ -351,6 +354,7 @@ func parseConfig() config {
 	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
 	flag.BoolVar(&images, "images", false, "run focused OpenAI image-generation surface probes")
 	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
+	flag.DurationVar(&caseTimeout, "case-timeout", defaultCaseTimeout, "maximum duration for one probe case or repair attempt; 0 uses only the overall timeout")
 	flag.Parse()
 	if images && routeList == defaultRouteList {
 		routeList = "openai"
@@ -362,6 +366,7 @@ func parseConfig() config {
 		repair:             repair,
 		includeUnavailable: includeUnavailable,
 		timeout:            timeout,
+		caseTimeout:        caseTimeout,
 		codexOAuth:         codexOAuth,
 		codexOAuthBrowser:  codexOAuthBrowser,
 		handoff:            handoff,
@@ -561,7 +566,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		cases = structuredOutputProbeCases(cases)
 	}
 	for _, testCase := range cases {
-		result := runCase(ctx, route, client, model, testCase, credential, testCase.Name)
+		result := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, testCase, credential, testCase.Name)
 		if result.Outcome == "ok" {
 			emit(annotateStructuredOutputResult(cfg, result))
 			continue
@@ -579,7 +584,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		availability := probeResult{}
 		failedAttempts := []failedAttempt{{Attempt: result.Attempt, Error: result.Error}}
 		for _, variant := range repairVariants(route, testCase) {
-			attempt := runCase(ctx, route, client, model, variant, credential, variant.Name)
+			attempt := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, variant, credential, variant.Name)
 			if attempt.Outcome == "ok" {
 				attempt.Case = testCase.Name
 				attempt.OriginalError = result.Error
@@ -1278,6 +1283,11 @@ func discoveredNVIDIAModel(route routeSpec, id string) sigma.Model {
 }
 
 func discoveredFireworksOpenAIModel(route routeSpec, id string) sigma.Model {
+	if id == "accounts/fireworks/models/kimi-k3" {
+		if model, ok := sigma.DefaultRegistry().Model(route.Provider, sigma.ModelID(id)); ok {
+			return model
+		}
+	}
 	return sigma.Model{
 		ID:               sigma.ModelID(id),
 		Provider:         route.Provider,
@@ -1334,6 +1344,16 @@ func discoveredFireworksAnthropicModel(route routeSpec, id string) sigma.Model {
 			"fireworksSurface": "anthropic",
 		},
 	}
+}
+
+func runCaseWithTimeout(ctx context.Context, timeout time.Duration, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
+	if timeout <= 0 {
+		return runCase(ctx, route, client, model, testCase, credential, attempt)
+	}
+
+	attemptCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return runCase(attemptCtx, route, client, model, testCase, credential, attempt)
 }
 
 func runCase(ctx context.Context, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
@@ -1831,6 +1851,9 @@ func knownUnavailable(route string, id string) bool {
 
 func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	if knownUnavailable(route.Name, string(model.ID)) {
+		return "upstream_availability"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
 		return "upstream_availability"
 	}
 	message := strings.ToLower(err.Error())
