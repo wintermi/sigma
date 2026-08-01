@@ -1713,6 +1713,49 @@ func TestRetryResendsRequestAfterRetryableStatus(t *testing.T) {
 	}
 }
 
+func TestPrematureConversationStreamReturnsPartialFinal(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name string
+		done bool
+	}{
+		{name: "eof"},
+		{name: "done marker", done: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				body := `event: message.output.delta
+data: {"type":"message.output.delta","output_index":0,"content_index":0,"content":"partial"}
+
+`
+				if tt.done {
+					body += "data: [DONE]\n\n"
+				}
+				writeMistralSSE(t, w, body)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-premature-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if err == nil || !strings.Contains(err.Error(), "stream ended before conversation.response.done") {
+				t.Fatalf("Complete error = %v, want premature done-event error", err)
+			}
+			if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+				t.Fatalf("partial final content = %#v, want partial text", final.Content)
+			}
+			classification := sigma.ClassifyError(err)
+			if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+				t.Fatalf("classification = %#v, want retryable transient", classification)
+			}
+		})
+	}
+}
+
 func TestUnsupportedCapabilitiesFailBeforeNetworkCall(t *testing.T) {
 	t.Parallel()
 

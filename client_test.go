@@ -315,6 +315,17 @@ func TestPackageLevelHelpersUseDefaultClient(t *testing.T) {
 	}
 }
 
+func TestPackageGetModelDoesNotCloneDefaultRegistry(t *testing.T) {
+	allocations := testing.AllocsPerRun(10, func() {
+		if _, ok := sigma.GetModel(sigma.ProviderOpenAI, "gpt-4o-mini"); !ok {
+			panic("default model not found")
+		}
+	})
+	if allocations >= 500 {
+		t.Fatalf("GetModel allocations = %.0f, want fewer than 500 catalog-independent allocations", allocations)
+	}
+}
+
 func assertHeader(t *testing.T, headers map[string]string, key, value string) {
 	t.Helper()
 

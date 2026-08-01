@@ -1340,6 +1340,46 @@ func TestMalformedFunctionCallFinishReasonMapsToErrorWithoutToolCalls(t *testing
 	}
 }
 
+func TestPrematureGenerativeStreamReturnsPartialFinal(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name string
+		done bool
+	}{
+		{name: "eof"},
+		{name: "done marker", done: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				body := `data: {"candidates":[{"content":{"role":"model","parts":[{"text":"partial"}]}}]}` + "\n\n"
+				if tt.done {
+					body += "data: [DONE]\n\n"
+				}
+				writeGoogleSSE(t, w, body)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("google-premature-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := googleTestModel(providerID)
+			client := googleTestClient(t, providerID, model, server.URL)
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if err == nil || !strings.Contains(err.Error(), "stream ended before finish reason") {
+				t.Fatalf("Complete error = %v, want premature finish-reason error", err)
+			}
+			if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+				t.Fatalf("partial final content = %#v, want partial text", final.Content)
+			}
+			classification := sigma.ClassifyError(err)
+			if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+				t.Fatalf("classification = %#v, want retryable transient", classification)
+			}
+		})
+	}
+}
+
 func TestRetryResendsRequestAfterRetryableStatus(t *testing.T) {
 	t.Parallel()
 

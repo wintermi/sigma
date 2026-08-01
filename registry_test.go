@@ -1778,6 +1778,41 @@ func TestDefaultRegistryHasBuiltInMetadata(t *testing.T) {
 	}
 }
 
+func TestZeroValueRegistryReadsAndClone(t *testing.T) {
+	t.Parallel()
+
+	registry := new(sigma.Registry)
+	if _, ok := registry.TextProvider(sigma.ProviderCustom); ok {
+		t.Fatal("zero-value registry unexpectedly returned a text provider")
+	}
+	if _, ok := registry.ProviderAuth(sigma.ProviderCustom); ok {
+		t.Fatal("zero-value registry unexpectedly returned provider auth")
+	}
+	if _, ok := registry.Model(sigma.ProviderCustom, "missing"); ok {
+		t.Fatal("zero-value registry unexpectedly returned a text model")
+	}
+	if _, ok := registry.ImageModel(sigma.ProviderCustom, "missing"); ok {
+		t.Fatal("zero-value registry unexpectedly returned an image model")
+	}
+	if _, ok := registry.EmbeddingModel(sigma.ProviderCustom, "missing"); ok {
+		t.Fatal("zero-value registry unexpectedly returned an embedding model")
+	}
+	if got := registry.Snapshot(); len(got.Providers)+len(got.Models)+len(got.ImageModels)+len(got.EmbeddingModels) != 0 {
+		t.Fatalf("zero-value registry snapshot = %#v, want empty", got)
+	}
+	clone := registry.Clone()
+	if clone == nil || len(clone.ListModels()) != 0 {
+		t.Fatalf("zero-value registry clone = %#v, want initialized empty registry", clone)
+	}
+	if err := registry.RegisterModel(sigma.Model{
+		ID:       "zero-value-model",
+		Provider: sigma.ProviderCustom,
+		API:      sigma.APIOpenAICompletions,
+	}, sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("zero-value registry RegisterModel returned error: %v", err)
+	}
+}
+
 func TestRegistryConcurrentReads(t *testing.T) {
 	t.Parallel()
 

@@ -330,7 +330,7 @@ func newRouteConfig(opts ...RouteOption) routeConfig {
 		boundaryComplexReasoning: defaultRouteBoundaryComplexReasoning,
 		exclusions:               make(map[ModelRef]struct{}),
 		lookup: func(ref ModelRef) (Model, bool) {
-			return DefaultRegistry().Model(ref.Provider, ref.ID)
+			return defaultRegistry.Model(ref.Provider, ref.ID)
 		},
 	}
 	for _, opt := range opts {

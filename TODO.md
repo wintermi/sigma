@@ -59,6 +59,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Classify premature OpenAI Responses and Anthropic Messages terminal-event
       gaps as transient and retryable while preserving partial finals and
       keeping post-body retry execution caller-owned.
+- [x] Require Google Generative AI finish reasons, Mistral Conversations done
+      events, and Bedrock Converse Stream message-stop events before accepting a
+      clean stream ending, preserving partial finals and retry classification.
 
 ## Image generation
 
@@ -88,6 +91,9 @@ workflows remain future work.
 - [x] Add resilient embedding batch helpers for duplicate input reuse,
       retry-aware batch splitting, optional oversized-input splitting, progress
       callbacks, and aggregate usage/cost summaries.
+- [x] Bound configured-limit and retry-split batch workers by
+      `MaxParallelBatches`, cancel sibling work on fatal errors, and preserve
+      input-ordered results without unbounded recursive goroutine fan-out.
 - [x] Add typed embedding attempt telemetry with request IDs, status codes,
       provider/API/model identity, retry attempts, and per-attempt latency.
 - [x] Add generic batch telemetry for total request attempts, status buckets,
@@ -187,6 +193,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add provider-neutral session resource cleanup so callers can release
       cached Codex WebSocket sessions through root `sigma` helpers while keeping
       provider-specific cleanup helpers available.
+- [x] Make Codex session cleanup clear connections, continuation state,
+      fallback markers, debug stats, and timers, with five-minute expiry for
+      abandoned per-session diagnostic and fallback state.
 - [x] Add OpenAI Codex device-code OAuth login and refresh helpers while keeping
       token persistence caller-owned.
 - [x] Add OpenAI Codex browser callback OAuth login while keeping token
@@ -445,6 +454,9 @@ That keeps release output reviewable, but refreshes are manual and the default
 catalog is intentionally smaller than the provider/source metadata available
 upstream.
 
+- [x] Route package-level helpers and default routing through the live shared
+      registry without cloning the generated catalog per call, while preserving
+      public registry/client isolation and concurrent read behavior.
 - [x] Refresh the curated v0.3 generated catalog with current rows for
       supported provider IDs while preserving Sigma runtime contracts and
       metadata-only default registration.

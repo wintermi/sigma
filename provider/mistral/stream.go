@@ -182,6 +182,7 @@ type conversationStreamParser struct {
 	sources        []map[string]any
 	toolExecutions []map[string]any
 	pendingSources map[string][]map[string]any
+	responseDone   bool
 }
 
 func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model) (sigma.AssistantMessage, error) {
@@ -205,6 +206,9 @@ func parseConversationStream(ctx context.Context, r io.Reader, writer sigma.Stre
 	})
 	if err != nil {
 		return parser.finalize(ctx), err
+	}
+	if !parser.responseDone {
+		return parser.finalize(ctx), fmt.Errorf("mistral conversations: stream ended before conversation.response.done")
 	}
 	return parser.finalize(ctx), nil
 }
@@ -234,6 +238,7 @@ func (p *conversationStreamParser) handleEvent(ctx context.Context, event sse.Ev
 	case "function.call.delta":
 		return p.emitToolCall(ctx, parsed)
 	case "conversation.response.done":
+		p.responseDone = true
 		if parsed.StopReason != "" {
 			p.stopReason = mistralStopReason(parsed.StopReason)
 			if p.stopReason == sigma.StopReasonUnknown {

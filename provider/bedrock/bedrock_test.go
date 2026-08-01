@@ -901,6 +901,49 @@ func TestCompleteUsesFakeCredentialDetectorAndClient(t *testing.T) {
 	}
 }
 
+func TestPrematureConverseStreamReturnsPartialFinal(t *testing.T) {
+	t.Parallel()
+
+	fakeClient := &fakeConverseClient{
+		stream: fakeStream(
+			ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+			ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, TextDelta: "partial"},
+		),
+	}
+	providerID := sigma.ProviderID("bedrock-premature-stream-test")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil || !strings.Contains(err.Error(), "stream ended before message_stop") {
+		t.Fatalf("Complete error = %v, want premature message-stop error", err)
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("partial final content = %#v, want partial text", final.Content)
+	}
+	classification := sigma.ClassifyError(err)
+	if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+		t.Fatalf("classification = %#v, want retryable transient", classification)
+	}
+}
+
+func TestConverseStreamPreservesUnderlyingCloseError(t *testing.T) {
+	t.Parallel()
+
+	streamErr := errors.New("bedrock transport failed")
+	stream := fakeStream(ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"})
+	stream.err = streamErr
+	fakeClient := &fakeConverseClient{stream: stream}
+	providerID := sigma.ProviderID("bedrock-close-error-test")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if !errors.Is(err, streamErr) {
+		t.Fatalf("Complete error = %v, want underlying stream error", err)
+	}
+}
+
 func TestUnknownBedrockStopReasonReturnsProviderError(t *testing.T) {
 	t.Parallel()
 

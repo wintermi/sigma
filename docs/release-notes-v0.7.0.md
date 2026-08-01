@@ -48,10 +48,25 @@ gated explicit cache mode.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
 and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
 model metadata. Text callers can now also select an HTTP client for an
-individual HTTP/SSE request.
+individual HTTP/SSE request. Package-level dispatch and routing now avoid
+full-catalog clones, registry reads no longer take initialization write locks,
+and embedding batches use bounded parallel workers for both configured limits
+and retry splits. Google Generative AI, Mistral Conversations, and Bedrock
+Converse Stream also reject missing terminal markers with retryable transient
+errors and partial finals. Codex session cleanup now clears all session state,
+while abandoned debug and fallback state expires after five idle minutes.
 
 ## Changed
 
+- Package-level model lookup, routing, generation, image, and embedding helpers
+  now use the live shared default registry without cloning the generated catalog
+  on every call. Public registry clones and explicitly constructed clients
+  remain isolated, and registry read methods no longer acquire initialization
+  write locks.
+- `Client.EmbedBatch` now runs both configured-limit groups and retry-generated
+  splits through workers bounded by `MaxParallelBatches`. Fatal branch errors
+  cancel siblings without masking the original failure, and returned vectors
+  remain ordered by the original inputs.
 - Reviewed direct OpenAI GPT-5.6 Responses models now send explicit
   prompt-cache mode for explicit `CacheRetentionNone` requests, preventing
   implicit prompt-cache writes without changing unset retention or unmarked
@@ -138,6 +153,15 @@ individual HTTP/SSE request.
   surface as transient, retryable failures while preserving partial finals.
   Sigma does not re-dispatch a stream after its body begins; applications own
   retry and fallback decisions.
+- Google Generative AI, Mistral Conversations, and Bedrock Converse Stream now
+  likewise require their finish-reason, response-done, and message-stop markers
+  before accepting a clean transport ending. Premature endings retain partial
+  finals and are classified as transient and retryable without automatic
+  post-body redispatch.
+- Codex WebSocket cleanup now removes every account-scoped connection plus
+  continuation, SSE fallback, debug-stat, and timer state for the requested
+  session. State without a cached connection expires after the existing
+  five-minute idle window, and activity refreshes that expiry.
 - Radius gateway models now refresh explicitly from the gateway at runtime and
   use its native text streaming protocol with image, thinking, function-tool,
   usage, and response-ID handling. There is no static Radius catalog.
@@ -222,8 +246,16 @@ individual HTTP/SSE request.
   provider IDs, request APIs, serialized message shapes, or normal session
   behavior.
 - Codex WebSocket account isolation is internal. Existing cleanup helpers close
-  every account-scoped connection for the requested session, while debug stats
-  and SSE fallback state remain aggregated by caller session ID.
+  every account-scoped connection and reset all state for the requested caller
+  session ID. Reusing an explicitly cleaned session starts fresh debug counters;
+  inactive diagnostic and SSE fallback state expires after five minutes.
+- Shared default dispatch, read-only registry locking, and bounded embedding
+  workers are internal execution changes. Provider and model IDs, request and
+  serialized-message shapes, public registry clone isolation, and embedding
+  configuration/result types are unchanged.
+- Additional provider terminal-marker checks change only truncated-stream
+  handling. Normal request payloads and successful response normalization are
+  unchanged, and applications still own stream retry and fallback execution.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.

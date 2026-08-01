@@ -82,6 +82,7 @@ type streamParser struct {
 	sources         []map[string]any
 	toolCallIDs     map[string]struct{}
 	toolCallCounter int
+	finished        bool
 }
 
 type googleBlockState struct {
@@ -113,6 +114,9 @@ func parseGenerativeStream(ctx context.Context, r io.Reader, writer sigma.Stream
 	if err != nil {
 		return parser.finalize(ctx), err
 	}
+	if !parser.finished {
+		return parser.finalize(ctx), fmt.Errorf("google generative ai: stream ended before finish reason")
+	}
 	return parser.finalize(ctx), nil
 }
 
@@ -134,6 +138,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	for _, candidate := range response.Candidates {
 		p.captureCandidate(candidate)
 		if candidate.FinishReason != "" {
+			p.finished = true
 			p.stopReason = googleStopReason(candidate.FinishReason)
 		}
 		for _, part := range candidate.Content.Parts {

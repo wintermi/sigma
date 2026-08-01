@@ -140,6 +140,8 @@ type embeddingBatchJob struct {
 	indexes []int
 }
 
+type embeddingBatchWork func() ([]Embedding, error)
+
 type embeddingBatcher struct {
 	ctx    context.Context
 	client *Client
@@ -151,6 +153,11 @@ type embeddingBatcher struct {
 	cache   map[EmbeddingCacheKey]Embedding
 	cacheMu sync.Mutex
 	sem     chan struct{}
+	workers chan struct{}
+	cancel  context.CancelFunc
+
+	errMu    sync.Mutex
+	firstErr error
 
 	mu      sync.Mutex
 	summary EmbeddingBatchSummary
@@ -352,7 +359,10 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 		batcher.cache = make(map[EmbeddingCacheKey]Embedding)
 	}
 	if config.MaxParallelBatches > 0 {
+		batcher.ctx, batcher.cancel = context.WithCancel(ctx)
+		defer batcher.cancel()
 		batcher.sem = make(chan struct{}, config.MaxParallelBatches)
+		batcher.workers = make(chan struct{}, config.MaxParallelBatches-1)
 	}
 
 	jobs, reused, err := batcher.jobs(req.Inputs)
@@ -596,38 +606,112 @@ func (b *embeddingBatcher) embedSplitBatches(jobs []embeddingBatchJob, attempt i
 	mid := len(jobs) / 2
 	left := jobs[:mid]
 	right := jobs[mid:]
-	if b.sem == nil {
-		leftVectors, err := b.embedJobs(left, attempt)
-		if err != nil {
-			return nil, err
+	return b.runEmbeddingWork([]embeddingBatchWork{
+		func() ([]Embedding, error) { return b.embedJobs(left, attempt) },
+		func() ([]Embedding, error) { return b.embedJobs(right, attempt) },
+	})
+}
+
+func (b *embeddingBatcher) runEmbeddingWork(work []embeddingBatchWork) ([]Embedding, error) {
+	if len(work) == 0 {
+		return nil, nil
+	}
+	if b.cancel == nil {
+		var out []Embedding
+		for _, run := range work {
+			vectors, err := run()
+			if err != nil {
+				return nil, err
+			}
+			out = appendEmbeddingSlices(out, vectors)
 		}
-		rightVectors, err := b.embedJobs(right, attempt)
-		if err != nil {
-			return nil, err
-		}
-		return appendEmbeddingSlices(leftVectors, rightVectors), nil
+		return out, nil
 	}
 
-	var leftVectors, rightVectors []Embedding
-	var leftErr, rightErr error
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		leftVectors, leftErr = b.embedJobs(left, attempt)
-	}()
-	go func() {
-		defer wg.Done()
-		rightVectors, rightErr = b.embedJobs(right, attempt)
-	}()
-	wg.Wait()
-	if leftErr != nil {
-		return nil, leftErr
+	results := make([][]Embedding, len(work))
+	errs := make([]error, len(work))
+	next := 0
+	var nextMu sync.Mutex
+	nextWork := func() (int, bool) {
+		nextMu.Lock()
+		defer nextMu.Unlock()
+		if next >= len(work) || b.ctx.Err() != nil {
+			return 0, false
+		}
+		index := next
+		next++
+		return index, true
 	}
-	if rightErr != nil {
-		return nil, rightErr
+	runWorker := func() {
+		for {
+			index, ok := nextWork()
+			if !ok {
+				return
+			}
+			results[index], errs[index] = work[index]()
+			if errs[index] != nil {
+				b.cancelWithError(errs[index])
+				return
+			}
+		}
 	}
-	return appendEmbeddingSlices(leftVectors, rightVectors), nil
+
+	var workers sync.WaitGroup
+spawnWorkers:
+	for range len(work) - 1 {
+		select {
+		case b.workers <- struct{}{}:
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				defer func() { <-b.workers }()
+				runWorker()
+			}()
+		default:
+			break spawnWorkers
+		}
+	}
+	runWorker()
+	workers.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			return nil, b.recordedEmbeddingBatchError(err)
+		}
+	}
+	if err := b.ctx.Err(); err != nil {
+		return nil, b.recordedEmbeddingBatchError(embeddingAbortedError(err))
+	}
+	var out []Embedding
+	for _, vectors := range results {
+		out = appendEmbeddingSlices(out, vectors)
+	}
+	return out, nil
+}
+
+func (b *embeddingBatcher) cancelWithError(err error) {
+	if err == nil {
+		return
+	}
+	b.errMu.Lock()
+	if b.firstErr == nil || (embeddingBatchCancellationError(b.firstErr) && !embeddingBatchCancellationError(err)) {
+		b.firstErr = err
+	}
+	b.errMu.Unlock()
+	b.cancel()
+}
+
+func (b *embeddingBatcher) recordedEmbeddingBatchError(fallback error) error {
+	b.errMu.Lock()
+	defer b.errMu.Unlock()
+	if b.firstErr != nil {
+		return b.firstErr
+	}
+	return fallback
+}
+
+func embeddingBatchCancellationError(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
 func (b *embeddingBatcher) embedOversizedSingleton(job embeddingBatchJob, attempt int, reason string) ([]Embedding, error) {
@@ -737,27 +821,27 @@ func (b *embeddingBatcher) splitJobsByLimits(jobs []embeddingBatchJob) ([][]embe
 }
 
 func (b *embeddingBatcher) embedLimitSplitBatches(groups [][]embeddingBatchJob, attempt int) ([]Embedding, error) {
-	var out []Embedding
+	work := make([]embeddingBatchWork, 0, len(groups))
 	for i, group := range groups {
-		b.addTrace(EmbeddingBatchTraceEvent{
-			Phase:          EmbeddingBatchPhaseLimitSplit,
-			Attempt:        attempt,
-			BatchSize:      len(group),
-			BatchBytes:     batchBytes(group),
-			InputIndexes:   indexesForJobs(group),
-			MaxBatchInputs: b.maxBatchInputs(),
-			MaxBatchBytes:  b.maxBatchBytes(),
-			SplitPart:      i + 1,
-			SplitTotal:     len(groups),
-			SplitReason:    "batch_limits",
+		i := i
+		group := group
+		work = append(work, func() ([]Embedding, error) {
+			b.addTrace(EmbeddingBatchTraceEvent{
+				Phase:          EmbeddingBatchPhaseLimitSplit,
+				Attempt:        attempt,
+				BatchSize:      len(group),
+				BatchBytes:     batchBytes(group),
+				InputIndexes:   indexesForJobs(group),
+				MaxBatchInputs: b.maxBatchInputs(),
+				MaxBatchBytes:  b.maxBatchBytes(),
+				SplitPart:      i + 1,
+				SplitTotal:     len(groups),
+				SplitReason:    "batch_limits",
+			})
+			return b.embedJobs(group, attempt)
 		})
-		vectors, err := b.embedJobs(group, attempt)
-		if err != nil {
-			return nil, err
-		}
-		out = appendEmbeddingSlices(out, vectors)
 	}
-	return out, nil
+	return b.runEmbeddingWork(work)
 }
 
 func (b *embeddingBatcher) jobExceedsMaxBatchBytes(job embeddingBatchJob) bool {

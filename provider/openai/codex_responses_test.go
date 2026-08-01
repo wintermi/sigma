@@ -778,6 +778,9 @@ func TestCodexResponsesWebSocketSessionCacheIsolatesAccounts(t *testing.T) {
 	if err := sigma.CleanupSessionResources(sessionID); err != nil {
 		t.Fatalf("CleanupSessionResources returned error: %v", err)
 	}
+	if _, ok := openai.CodexResponsesWebSocketStats(sessionID); ok {
+		t.Fatal("CodexResponsesWebSocketStats after cleanup returned ok=true")
+	}
 	completeCodexWebSocket(t, accountA, model, sessionID, "account A after cleanup")
 	completeCodexWebSocket(t, accountB, model, sessionID, "account B after cleanup")
 	assertHeader(t, receiveHeader(t, connections), "chatgpt-account-id", "account-a")
@@ -787,10 +790,10 @@ func TestCodexResponsesWebSocketSessionCacheIsolatesAccounts(t *testing.T) {
 	if !ok {
 		t.Fatal("CodexResponsesWebSocketStats after cleanup returned ok=false")
 	}
-	if got, want := stats.ConnectionsCreated, 4; got != want {
+	if got, want := stats.ConnectionsCreated, 2; got != want {
 		t.Fatalf("connections created after cleanup = %d, want %d", got, want)
 	}
-	if got, want := stats.ConnectionsReused, 1; got != want {
+	if got, want := stats.ConnectionsReused, 0; got != want {
 		t.Fatalf("connections reused after cleanup = %d, want %d", got, want)
 	}
 }
@@ -830,9 +833,12 @@ func TestCodexResponsesWebSocketSessionResourcesCleanup(t *testing.T) {
 	if err := sigma.CleanupSessionResources("session-1"); err != nil {
 		t.Fatalf("CleanupSessionResources returned error: %v", err)
 	}
+	if _, ok := openai.CodexResponsesWebSocketStats("session-1"); ok {
+		t.Fatal("session-1 stats survived cleanup")
+	}
 	completeCodexWebSocket(t, client, model, "session-1", "third")
 	_ = receiveMap(t, requests)
-	assertCodexWebSocketConnectionsCreated(t, "session-1", 2)
+	assertCodexWebSocketConnectionsCreated(t, "session-1", 1)
 
 	completeCodexWebSocket(t, client, model, "session-2", "fourth")
 	_ = receiveMap(t, requests)
@@ -841,14 +847,20 @@ func TestCodexResponsesWebSocketSessionResourcesCleanup(t *testing.T) {
 	if err := sigma.CleanupSessionResources(""); err != nil {
 		t.Fatalf("CleanupSessionResources all returned error: %v", err)
 	}
+	if _, ok := openai.CodexResponsesWebSocketStats("session-2"); ok {
+		t.Fatal("session-2 stats survived all-session cleanup")
+	}
 	completeCodexWebSocket(t, client, model, "session-2", "fifth")
 	_ = receiveMap(t, requests)
-	assertCodexWebSocketConnectionsCreated(t, "session-2", 2)
+	assertCodexWebSocketConnectionsCreated(t, "session-2", 1)
 
 	openai.CloseCodexResponsesWebSocketSession("session-2")
+	if _, ok := openai.CodexResponsesWebSocketStats("session-2"); ok {
+		t.Fatal("session-2 stats survived provider-specific cleanup")
+	}
 	completeCodexWebSocket(t, client, model, "session-2", "sixth")
 	_ = receiveMap(t, requests)
-	assertCodexWebSocketConnectionsCreated(t, "session-2", 3)
+	assertCodexWebSocketConnectionsCreated(t, "session-2", 1)
 }
 
 func completeCodexWebSocket(t *testing.T, client *sigma.Client, model sigma.Model, sessionID string, text string) {

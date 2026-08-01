@@ -68,6 +68,13 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Changed
 
+- Package-level model lookup, routing, generation, image, and embedding helpers
+  now share the live default registry without cloning the full catalog per call;
+  public `DefaultRegistry` and `NewClient` isolation remain unchanged. Registry
+  reads also avoid write-locking lazy initialization.
+- `Client.EmbedBatch` now applies `MaxParallelBatches` to configured limit
+  groups and retry-generated splits through bounded workers, canceling sibling
+  work on fatal errors while preserving input-ordered vectors.
 - Reviewed direct OpenAI GPT-5.6 Responses models now translate explicit
   `CacheRetentionNone` requests into explicit prompt-cache mode, preventing
   implicit cache writes while leaving default and unsupported-model payloads
@@ -103,6 +110,13 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Fixed
 
+- Google Generative AI, Mistral Conversations, and Amazon Bedrock Converse
+  Stream now reject clean transport endings that omit their required terminal
+  marker, preserving partial finals and classifying the failure as transient
+  and retryable.
+- Codex WebSocket session cleanup now removes connections, continuation state,
+  SSE fallback markers, debug stats, and expiry timers. Orphaned diagnostic and
+  fallback state expires after the existing five-minute idle window.
 - Mistral Conversations now fails safely when an explicit error or unrecognized
   terminal stop reason is returned, while retaining the raw terminal value in
   assistant provider metadata and sanitized diagnostics.

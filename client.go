@@ -281,8 +281,10 @@ func (c *Client) clientAuthResolver() AuthResolver {
 }
 
 func defaultClient() *Client {
-	return NewClient()
+	return packageDefaultClient
 }
+
+var packageDefaultClient = &Client{registry: defaultRegistry}
 
 // GetModel returns a text model from the default registry.
 func GetModel(provider ProviderID, id ModelID) (Model, bool) {

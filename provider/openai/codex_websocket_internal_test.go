@@ -19,6 +19,81 @@ import (
 	"time"
 )
 
+func TestCodexWebSocketOrphanedStateExpiry(t *testing.T) {
+	CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(CloseCodexResponsesWebSocketSessions)
+
+	const sessionID = "orphaned-state"
+	codexWebSocketSessions.Lock()
+	codexWebSocketSessions.stats[sessionID] = &CodexResponsesWebSocketStatsSnapshot{Requests: 1}
+	codexWebSocketSessions.fallbackState[sessionID] = true
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
+	generation := codexWebSocketSessions.stateExpiry[sessionID].generation
+	codexWebSocketSessions.Unlock()
+
+	expireCodexWebSocketSessionState(sessionID, generation)
+	if _, ok := CodexResponsesWebSocketStats(sessionID); ok {
+		t.Fatal("orphaned stats survived expiry")
+	}
+	codexWebSocketSessions.Lock()
+	defer codexWebSocketSessions.Unlock()
+	if codexWebSocketSessions.fallbackState[sessionID] {
+		t.Fatal("orphaned fallback state survived expiry")
+	}
+	if codexWebSocketSessions.stateExpiry[sessionID] != nil {
+		t.Fatal("orphaned expiry timer survived expiry")
+	}
+}
+
+func TestCodexWebSocketStateExpiryRefreshRejectsStaleTimer(t *testing.T) {
+	CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(CloseCodexResponsesWebSocketSessions)
+
+	const sessionID = "refreshed-state"
+	codexWebSocketSessions.Lock()
+	codexWebSocketSessions.stats[sessionID] = &CodexResponsesWebSocketStatsSnapshot{Requests: 1}
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
+	staleGeneration := codexWebSocketSessions.stateExpiry[sessionID].generation
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
+	currentGeneration := codexWebSocketSessions.stateExpiry[sessionID].generation
+	codexWebSocketSessions.Unlock()
+	if staleGeneration == currentGeneration {
+		t.Fatal("state expiry generation did not advance")
+	}
+
+	expireCodexWebSocketSessionState(sessionID, staleGeneration)
+	if _, ok := CodexResponsesWebSocketStats(sessionID); !ok {
+		t.Fatal("stale expiry removed refreshed session state")
+	}
+	expireCodexWebSocketSessionState(sessionID, currentGeneration)
+	if _, ok := CodexResponsesWebSocketStats(sessionID); ok {
+		t.Fatal("current expiry did not remove session state")
+	}
+}
+
+func TestCodexWebSocketStateExpiryRetainsActiveSession(t *testing.T) {
+	CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(CloseCodexResponsesWebSocketSessions)
+
+	const sessionID = "active-state"
+	codexWebSocketSessions.Lock()
+	codexWebSocketSessions.stats[sessionID] = &CodexResponsesWebSocketStatsSnapshot{Requests: 1}
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
+	generation := codexWebSocketSessions.stateExpiry[sessionID].generation
+	codexWebSocketSessions.entries[sessionID] = map[string]*codexWebSocketSessionEntry{
+		"account": {},
+	}
+	codexWebSocketSessions.Unlock()
+
+	expireCodexWebSocketSessionState(sessionID, generation)
+	if _, ok := CodexResponsesWebSocketStats(sessionID); !ok {
+		t.Fatal("expiry removed active session state")
+	}
+	codexWebSocketSessions.Lock()
+	delete(codexWebSocketSessions.entries, sessionID)
+	codexWebSocketSessions.Unlock()
+}
+
 func TestCodexWebSocketRequestIDsAreOrderedUUIDv7(t *testing.T) {
 	t.Parallel()
 

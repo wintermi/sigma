@@ -73,6 +73,7 @@ type converseStreamParser struct {
 	responseFormatTools map[int]struct{}
 	usage               *sigma.Usage
 	stop                sigma.StopReason
+	messageStopped      bool
 }
 
 func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigma.StreamWriter, model sigma.Model, responseFormat bool) (sigma.AssistantMessage, error) {
@@ -99,6 +100,9 @@ func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigm
 			if !ok {
 				if err := stream.Err(); err != nil {
 					return parser.finalize(ctx), err
+				}
+				if !parser.messageStopped {
+					return parser.finalize(ctx), fmt.Errorf("bedrock converse stream: stream ended before message_stop")
 				}
 				return parser.finalize(ctx), nil
 			}
@@ -144,6 +148,7 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 	case ConverseEventContentBlockStop:
 		return nil
 	case ConverseEventMessageStop:
+		p.messageStopped = true
 		p.stop = bedrockStopReason(event.StopReason)
 		if p.stop == sigma.StopReasonUnknown {
 			return providerError(p.model, fmt.Errorf("bedrock converse stream: unhandled stop reason %q", event.StopReason))

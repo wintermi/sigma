@@ -253,6 +253,24 @@ func TestClassifyError(t *testing.T) {
 			retryable: true,
 		},
 		{
+			name:      "google premature stream",
+			err:       &Error{Code: ErrorStream, Message: "google generative ai: stream ended before finish reason"},
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "mistral premature stream",
+			err:       &Error{Code: ErrorStream, Message: "mistral conversations: stream ended before conversation.response.done"},
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "bedrock premature stream",
+			err:       &Error{Code: ErrorStream, Message: "bedrock converse stream: stream ended before message_stop"},
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
 			name:  "invalid request",
 			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 422, "", 0, []byte(`{"error":{"message":"bad request"}}`), ErrProviderResponse),
 			class: ErrorClassInvalidRequest,

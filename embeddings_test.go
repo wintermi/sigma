@@ -13,6 +13,7 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -577,6 +578,75 @@ func TestEmbedBatchSplitsByConfiguredInputLimit(t *testing.T) {
 	}
 	if !containsEmbeddingTracePhase(got.Summary.Trace, sigma.EmbeddingBatchPhaseLimitSplit) {
 		t.Fatalf("trace = %#v, want limit split event", got.Summary.Trace)
+	}
+}
+
+func TestEmbedBatchRunsLimitGroupsWithinParallelBound(t *testing.T) {
+	t.Parallel()
+
+	provider := newBoundedEmbeddingProvider()
+	model, client := boundedEmbeddingTestClient(t, provider)
+	resultCh := make(chan sigma.EmbeddingBatchResult, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		result, err := client.EmbedBatch(
+			context.Background(),
+			model,
+			sigma.EmbeddingRequest{Inputs: []string{"a", "bb", "ccc", "dddd"}},
+			sigma.EmbeddingBatchConfig{MaxBatchInputs: 1, MaxParallelBatches: 2},
+		)
+		resultCh <- result
+		errCh <- err
+	}()
+
+	for range 2 {
+		select {
+		case <-provider.started:
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for parallel embedding calls")
+		}
+	}
+	close(provider.release)
+	result := <-resultCh
+	if err := <-errCh; err != nil {
+		t.Fatalf("EmbedBatch returned error: %v", err)
+	}
+	if got, want := provider.peakConcurrency(), 2; got != want {
+		t.Fatalf("peak provider concurrency = %d, want %d", got, want)
+	}
+	if got, want := len(result.Embeddings.Vectors), 4; got != want {
+		t.Fatalf("vectors = %d, want %d", got, want)
+	}
+	for index, vector := range result.Embeddings.Vectors {
+		if vector.Index != index || !reflect.DeepEqual(vector.Vector, []float32{float32(index + 1)}) {
+			t.Fatalf("vector %d = %#v, want ordered input-derived vector", index, vector)
+		}
+	}
+}
+
+func TestEmbedBatchFatalBranchCancelsSibling(t *testing.T) {
+	t.Parallel()
+
+	fatalErr := errors.New("fatal embedding branch")
+	provider := &cancelingEmbeddingProvider{
+		fatalErr:     fatalErr,
+		blockedStart: make(chan struct{}),
+		canceled:     make(chan struct{}),
+	}
+	model, client := boundedEmbeddingTestClient(t, provider)
+	_, err := client.EmbedBatch(
+		context.Background(),
+		model,
+		sigma.EmbeddingRequest{Inputs: []string{"fail", "block"}},
+		sigma.EmbeddingBatchConfig{MaxBatchInputs: 1, MaxParallelBatches: 2},
+	)
+	if !errors.Is(err, fatalErr) {
+		t.Fatalf("EmbedBatch error = %v, want fatal branch error", err)
+	}
+	select {
+	case <-provider.canceled:
+	case <-time.After(time.Second):
+		t.Fatal("blocked sibling was not canceled")
 	}
 }
 
@@ -1241,4 +1311,102 @@ func (c *testEmbeddingCache) Set(key sigma.EmbeddingCacheKey, embedding sigma.Em
 	embedding.Vector = append([]float32(nil), embedding.Vector...)
 	c.values[key] = embedding
 	return nil
+}
+
+const boundedEmbeddingAPI sigma.EmbeddingAPI = "bounded-embedding-test"
+
+type boundedEmbeddingProvider struct {
+	mu      sync.Mutex
+	active  int
+	peak    int
+	started chan struct{}
+	release chan struct{}
+}
+
+func newBoundedEmbeddingProvider() *boundedEmbeddingProvider {
+	return &boundedEmbeddingProvider{
+		started: make(chan struct{}, 16),
+		release: make(chan struct{}),
+	}
+}
+
+func (p *boundedEmbeddingProvider) API() sigma.EmbeddingAPI {
+	return boundedEmbeddingAPI
+}
+
+func (p *boundedEmbeddingProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, _ sigma.Options) (sigma.Embeddings, error) {
+	p.mu.Lock()
+	p.active++
+	if p.active > p.peak {
+		p.peak = p.active
+	}
+	p.mu.Unlock()
+	p.started <- struct{}{}
+	defer func() {
+		p.mu.Lock()
+		p.active--
+		p.mu.Unlock()
+	}()
+
+	select {
+	case <-p.release:
+	case <-ctx.Done():
+		return sigma.Embeddings{}, ctx.Err()
+	}
+	vectors := make([]sigma.Embedding, len(req.Inputs))
+	for index, input := range req.Inputs {
+		vectors[index] = sigma.Embedding{Index: index, Vector: []float32{float32(len(input))}}
+	}
+	return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Vectors: vectors}, nil
+}
+
+func (p *boundedEmbeddingProvider) peakConcurrency() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.peak
+}
+
+type cancelingEmbeddingProvider struct {
+	fatalErr     error
+	blockedStart chan struct{}
+	canceled     chan struct{}
+	blockedOnce  sync.Once
+	canceledOnce sync.Once
+}
+
+func (p *cancelingEmbeddingProvider) API() sigma.EmbeddingAPI {
+	return boundedEmbeddingAPI
+}
+
+func (p *cancelingEmbeddingProvider) Embed(ctx context.Context, _ sigma.EmbeddingModel, req sigma.EmbeddingRequest, _ sigma.Options) (sigma.Embeddings, error) {
+	if len(req.Inputs) != 1 {
+		return sigma.Embeddings{}, fmt.Errorf("expected one input, got %d", len(req.Inputs))
+	}
+	if req.Inputs[0] == "block" {
+		p.blockedOnce.Do(func() { close(p.blockedStart) })
+		<-ctx.Done()
+		p.canceledOnce.Do(func() { close(p.canceled) })
+		return sigma.Embeddings{}, ctx.Err()
+	}
+	<-p.blockedStart
+	return sigma.Embeddings{}, p.fatalErr
+}
+
+func boundedEmbeddingTestClient(t *testing.T, provider sigma.EmbeddingProvider) (sigma.EmbeddingModel, *sigma.Client) {
+	t.Helper()
+
+	providerID := sigma.ProviderID("bounded-embedding-provider")
+	model := sigma.EmbeddingModel{
+		ID:       "bounded-embedding-model",
+		Provider: providerID,
+		API:      boundedEmbeddingAPI,
+	}
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterEmbeddingProvider(providerID, provider); err != nil {
+		t.Fatalf("RegisterEmbeddingProvider returned error: %v", err)
+	}
+	if err := registry.RegisterEmbeddingModel(model); err != nil {
+		t.Fatalf("RegisterEmbeddingModel returned error: %v", err)
+	}
+	return model, sigma.NewClient(sigma.WithRegistry(registry))
 }

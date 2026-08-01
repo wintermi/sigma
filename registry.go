@@ -705,8 +705,6 @@ func (r *Registry) RefreshEmbeddingModels(ctx context.Context, providers ...Prov
 
 // TextProvider returns the registered text provider for id.
 func (r *Registry) TextProvider(id ProviderID) (TextProvider, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -716,8 +714,6 @@ func (r *Registry) TextProvider(id ProviderID) (TextProvider, bool) {
 
 // ImageProvider returns the registered image provider for id.
 func (r *Registry) ImageProvider(id ProviderID) (ImageProvider, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -727,8 +723,6 @@ func (r *Registry) ImageProvider(id ProviderID) (ImageProvider, bool) {
 
 // EmbeddingProvider returns the registered embedding provider for id.
 func (r *Registry) EmbeddingProvider(id ProviderID) (EmbeddingProvider, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -738,8 +732,6 @@ func (r *Registry) EmbeddingProvider(id ProviderID) (EmbeddingProvider, bool) {
 
 // ProviderAuth returns registered auth metadata for provider.
 func (r *Registry) ProviderAuth(provider ProviderID) (ProviderAuth, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -749,8 +741,6 @@ func (r *Registry) ProviderAuth(provider ProviderID) (ProviderAuth, bool) {
 
 // ListProviders returns providers in first-registration order.
 func (r *Registry) ListProviders() []ProviderInfo {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -769,8 +759,6 @@ func (r *Registry) ListProviders() []ProviderInfo {
 
 // ListProviderAuths returns registered provider auth metadata in registration order.
 func (r *Registry) ListProviderAuths() []ProviderAuthInfo {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -788,8 +776,6 @@ func (r *Registry) ListProviderAuths() []ProviderAuthInfo {
 
 // ListModels returns text models in registration order.
 func (r *Registry) ListModels() []Model {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -802,8 +788,6 @@ func (r *Registry) ListModels() []Model {
 
 // ListImageModels returns image models in registration order.
 func (r *Registry) ListImageModels() []ImageModel {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -816,8 +800,6 @@ func (r *Registry) ListImageModels() []ImageModel {
 
 // ListEmbeddingModels returns embedding models in registration order.
 func (r *Registry) ListEmbeddingModels() []EmbeddingModel {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -830,8 +812,6 @@ func (r *Registry) ListEmbeddingModels() []EmbeddingModel {
 
 // Model returns a text model by provider and model id.
 func (r *Registry) Model(provider ProviderID, id ModelID) (Model, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -844,8 +824,6 @@ func (r *Registry) Model(provider ProviderID, id ModelID) (Model, bool) {
 
 // ImageModel returns an image model by provider and model id.
 func (r *Registry) ImageModel(provider ProviderID, id ModelID) (ImageModel, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -858,8 +836,6 @@ func (r *Registry) ImageModel(provider ProviderID, id ModelID) (ImageModel, bool
 
 // EmbeddingModel returns an embedding model by provider and model id.
 func (r *Registry) EmbeddingModel(provider ProviderID, id ModelID) (EmbeddingModel, bool) {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -872,8 +848,6 @@ func (r *Registry) EmbeddingModel(provider ProviderID, id ModelID) (EmbeddingMod
 
 // Clone returns an isolated copy of the registry.
 func (r *Registry) Clone() *Registry {
-	r.ensure()
-
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

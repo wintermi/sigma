@@ -93,15 +93,23 @@ type CodexResponsesWebSocketStatsSnapshot struct {
 	LastWebSocketError      string
 }
 
+type codexWebSocketSessionStateExpiry struct {
+	generation uint64
+	timer      *time.Timer
+}
+
 var codexWebSocketSessions = struct {
 	sync.Mutex
 	entries       map[string]map[string]*codexWebSocketSessionEntry
 	fallbackState map[string]bool
 	stats         map[string]*CodexResponsesWebSocketStatsSnapshot
+	stateExpiry   map[string]*codexWebSocketSessionStateExpiry
+	nextExpiry    uint64
 }{
 	entries:       make(map[string]map[string]*codexWebSocketSessionEntry),
 	fallbackState: make(map[string]bool),
 	stats:         make(map[string]*CodexResponsesWebSocketStatsSnapshot),
+	stateExpiry:   make(map[string]*codexWebSocketSessionStateExpiry),
 }
 
 func init() {
@@ -116,12 +124,12 @@ func init() {
 }
 
 // CloseCodexResponsesWebSocketSession closes and forgets all cached Codex
-// WebSocket connections for a session and clears its SSE fallback marker.
+// WebSocket connections and recorded state for a session.
 func CloseCodexResponsesWebSocketSession(sessionID string) {
 	codexWebSocketSessions.Lock()
 	accountEntries := codexWebSocketSessions.entries[sessionID]
 	delete(codexWebSocketSessions.entries, sessionID)
-	delete(codexWebSocketSessions.fallbackState, sessionID)
+	clearCodexWebSocketSessionStateLocked(sessionID)
 	codexWebSocketSessions.Unlock()
 	for _, entry := range accountEntries {
 		closeCodexWebSocketEntry(entry)
@@ -129,7 +137,7 @@ func CloseCodexResponsesWebSocketSession(sessionID string) {
 }
 
 // CloseCodexResponsesWebSocketSessions closes all cached Codex WebSocket
-// sessions and clears SSE fallback markers.
+// sessions and clears their recorded state.
 func CloseCodexResponsesWebSocketSessions() {
 	codexWebSocketSessions.Lock()
 	entries := make([]*codexWebSocketSessionEntry, 0, len(codexWebSocketSessions.entries))
@@ -140,6 +148,11 @@ func CloseCodexResponsesWebSocketSessions() {
 	}
 	codexWebSocketSessions.entries = make(map[string]map[string]*codexWebSocketSessionEntry)
 	codexWebSocketSessions.fallbackState = make(map[string]bool)
+	codexWebSocketSessions.stats = make(map[string]*CodexResponsesWebSocketStatsSnapshot)
+	for _, expiry := range codexWebSocketSessions.stateExpiry {
+		expiry.timer.Stop()
+	}
+	codexWebSocketSessions.stateExpiry = make(map[string]*codexWebSocketSessionStateExpiry)
 	codexWebSocketSessions.Unlock()
 	for _, entry := range entries {
 		closeCodexWebSocketEntry(entry)
@@ -392,6 +405,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 		}
 		if !entry.busy && entry.conn.IsOpen() {
 			entry.busy = true
+			cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
 			codexWebSocketSessions.Unlock()
 			return &acquiredCodexWebSocket{
 				conn:   entry.conn,
@@ -434,6 +448,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 		codexWebSocketSessions.entries[sessionID] = accountEntries
 	}
 	accountEntries[accountID] = entry
+	cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
 	codexWebSocketSessions.Unlock()
 	return &acquiredCodexWebSocket{
 		conn:  conn,
@@ -475,6 +490,7 @@ func deleteCodexWebSocketSessionEntryLocked(sessionID string, accountID string, 
 	delete(accountEntries, accountID)
 	if len(accountEntries) == 0 {
 		delete(codexWebSocketSessions.entries, sessionID)
+		scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
 	}
 }
 
@@ -502,6 +518,9 @@ func codexWebSocketFallbackActive(sessionID string) bool {
 	}
 	codexWebSocketSessions.Lock()
 	active := codexWebSocketSessions.fallbackState[sessionID]
+	if active {
+		scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
+	}
 	codexWebSocketSessions.Unlock()
 	return active
 }
@@ -515,6 +534,7 @@ func recordCodexWebSocketFallback(sessionID string) {
 	stats := getCodexWebSocketStatsLocked(sessionID)
 	stats.SSEFallbacks++
 	stats.WebSocketFallbackActive = true
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
 	codexWebSocketSessions.Unlock()
 }
 
@@ -527,6 +547,7 @@ func recordCodexWebSocketFailure(sessionID string, err error) {
 	stats.WebSocketFailures++
 	stats.LastWebSocketError = err.Error()
 	stats.WebSocketFallbackActive = codexWebSocketSessions.fallbackState[sessionID]
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
 	codexWebSocketSessions.Unlock()
 }
 
@@ -556,6 +577,7 @@ func recordCodexWebSocketRequest(sessionID string, reused bool, body map[string]
 		stats.LastPreviousResponseID = ""
 	}
 	stats.WebSocketFallbackActive = codexWebSocketSessions.fallbackState[sessionID]
+	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
 	codexWebSocketSessions.Unlock()
 }
 
@@ -566,6 +588,58 @@ func getCodexWebSocketStatsLocked(sessionID string) *CodexResponsesWebSocketStat
 		codexWebSocketSessions.stats[sessionID] = stats
 	}
 	return stats
+}
+
+func scheduleCodexWebSocketSessionStateExpiryLocked(sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	if len(codexWebSocketSessions.entries[sessionID]) > 0 {
+		cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
+		return
+	}
+	if codexWebSocketSessions.stats[sessionID] == nil && !codexWebSocketSessions.fallbackState[sessionID] {
+		cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
+		return
+	}
+	if expiry := codexWebSocketSessions.stateExpiry[sessionID]; expiry != nil {
+		expiry.timer.Stop()
+	}
+	codexWebSocketSessions.nextExpiry++
+	generation := codexWebSocketSessions.nextExpiry
+	expiry := &codexWebSocketSessionStateExpiry{generation: generation}
+	expiry.timer = time.AfterFunc(codexWebSocketIdleTTL, func() {
+		expireCodexWebSocketSessionState(sessionID, generation)
+	})
+	codexWebSocketSessions.stateExpiry[sessionID] = expiry
+}
+
+func cancelCodexWebSocketSessionStateExpiryLocked(sessionID string) {
+	expiry := codexWebSocketSessions.stateExpiry[sessionID]
+	if expiry == nil {
+		return
+	}
+	expiry.timer.Stop()
+	delete(codexWebSocketSessions.stateExpiry, sessionID)
+}
+
+func clearCodexWebSocketSessionStateLocked(sessionID string) {
+	cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
+	delete(codexWebSocketSessions.fallbackState, sessionID)
+	delete(codexWebSocketSessions.stats, sessionID)
+}
+
+func expireCodexWebSocketSessionState(sessionID string, generation uint64) {
+	codexWebSocketSessions.Lock()
+	defer codexWebSocketSessions.Unlock()
+
+	expiry := codexWebSocketSessions.stateExpiry[sessionID]
+	if expiry == nil || expiry.generation != generation || len(codexWebSocketSessions.entries[sessionID]) > 0 {
+		return
+	}
+	delete(codexWebSocketSessions.stateExpiry, sessionID)
+	delete(codexWebSocketSessions.fallbackState, sessionID)
+	delete(codexWebSocketSessions.stats, sessionID)
 }
 
 func cachedCodexWebSocketRequestBody(entry *codexWebSocketSessionEntry, body map[string]any) map[string]any {
