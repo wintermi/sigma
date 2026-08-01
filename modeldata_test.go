@@ -415,6 +415,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		if model.API != APIOpenAIResponses || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
 			t.Fatalf("%s metadata = %+v, want Responses with tools, images, and reasoning", tt.id, model)
 		}
+		if model.OpenAIResponsesCompat == nil || !model.OpenAIResponsesCompat.SupportsExplicitPromptCacheMode {
+			t.Fatalf("%s Responses compat = %#v, want explicit prompt-cache mode", tt.id, model.OpenAIResponsesCompat)
+		}
 		if model.ContextWindow != 272_000 || model.MaxOutputTokens != 128_000 {
 			t.Fatalf("%s limits = %d/%d, want 272000/128000", tt.id, model.ContextWindow, model.MaxOutputTokens)
 		}
@@ -432,6 +435,22 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			if got, ok := model.ThinkingLevelMap[level]; !ok || got != want {
 				t.Fatalf("%s %s thinking level = %q, %v; want %q, true", tt.id, level, got, ok, want)
 			}
+		}
+	}
+	for _, tt := range []struct {
+		provider ProviderID
+		id       ModelID
+	}{
+		{provider: ProviderOpenAI, id: "gpt-5.4"},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-luna"},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna"},
+	} {
+		model, ok := registry.Model(tt.provider, tt.id)
+		if !ok {
+			t.Fatalf("fresh registry missing %s/%s", tt.provider, tt.id)
+		}
+		if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsExplicitPromptCacheMode {
+			t.Fatalf("%s/%s unexpectedly supports explicit prompt-cache mode", tt.provider, tt.id)
 		}
 	}
 	for _, tt := range []struct {

@@ -235,6 +235,182 @@ func TestResponsesPreservesRawLongCacheRetentionOverride(t *testing.T) {
 	}
 }
 
+func TestResponsesExplicitNoCacheMode(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-explicit-no-cache-test")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsExplicitPromptCacheMode: true}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithSessionID("responses-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionNone),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	payload := decodeResponsesPayload(t, request.Body)
+	if got, want := payload["prompt_cache_options"], map[string]any{"mode": "explicit"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("prompt_cache_options = %#v, want %#v", got, want)
+	}
+	goldentest.AssertNoJSONPath(t, payload, "prompt_cache_key")
+	goldentest.AssertNoJSONPath(t, payload, "prompt_cache_retention")
+	assertHeaderAbsent(t, request.Headers, "session_id")
+	assertHeaderAbsent(t, request.Headers, "x-client-request-id")
+}
+
+func TestResponsesExplicitNoCacheModeRequiresExplicitNoneAndCompatibility(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		retention  sigma.CacheRetention
+		compatible bool
+		wantKey    bool
+		wantLong   bool
+	}{
+		{name: "unset", compatible: true},
+		{name: "short", retention: sigma.CacheRetentionShort, compatible: true, wantKey: true},
+		{name: "long", retention: sigma.CacheRetentionLong, compatible: true, wantKey: true, wantLong: true},
+		{name: "unmarked", retention: sigma.CacheRetentionNone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-explicit-no-cache-" + tt.name)
+			model := responsesTestModel(providerID)
+			if tt.compatible {
+				model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsExplicitPromptCacheMode: true}
+			}
+			client := responsesTestClient(t, providerID, model, server.URL)
+			options := []sigma.Option{sigma.WithSessionID("responses-session")}
+			if tt.retention != "" {
+				options = append(options, sigma.WithCacheRetention(tt.retention))
+			}
+
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				options...,
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			goldentest.AssertNoJSONPath(t, payload, "prompt_cache_options")
+			if got, ok := payload["prompt_cache_key"]; ok != tt.wantKey || (ok && got != "responses-session") {
+				t.Fatalf("prompt_cache_key = %#v, present %v; want session key present %v", got, ok, tt.wantKey)
+			}
+			if got, ok := payload["prompt_cache_retention"]; ok != tt.wantLong || (ok && got != "24h") {
+				t.Fatalf("prompt_cache_retention = %#v, present %v; want 24h present %v", got, ok, tt.wantLong)
+			}
+		})
+	}
+}
+
+func TestResponsesExplicitPromptCacheDirectivesOverrideAutomaticNoCacheMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name               string
+		options            func(sigma.ProviderID) []sigma.Option
+		wantCacheKey       string
+		wantCacheRetention string
+		wantCacheOptions   map[string]any
+	}{
+		{
+			name: "typed retention",
+			options: func(sigma.ProviderID) []sigma.Option {
+				return []sigma.Option{sigma.WithOpenAIOptions(sigma.OpenAIOptions{PromptCacheRetention: "24h"})}
+			},
+			wantCacheRetention: "24h",
+		},
+		{
+			name: "provider cache key",
+			options: func(providerID sigma.ProviderID) []sigma.Option {
+				return []sigma.Option{sigma.WithProviderOption(providerID, "prompt_cache_key", "provider-key")}
+			},
+			wantCacheKey: "provider-key",
+		},
+		{
+			name: "raw cache options",
+			options: func(providerID sigma.ProviderID) []sigma.Option {
+				return []sigma.Option{sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+					"prompt_cache_options": map[string]any{"mode": "caller"},
+				})}
+			},
+			wantCacheOptions: map[string]any{"mode": "caller"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-cache-directive-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := responsesTestModel(providerID)
+			model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsExplicitPromptCacheMode: true}
+			client := responsesTestClient(t, providerID, model, server.URL)
+			options := []sigma.Option{sigma.WithCacheRetention(sigma.CacheRetentionNone)}
+			options = append(options, tt.options(providerID)...)
+
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				options...,
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			if got := payload["prompt_cache_key"]; got != tt.wantCacheKey && (got != nil || tt.wantCacheKey != "") {
+				t.Fatalf("prompt_cache_key = %#v, want %q", got, tt.wantCacheKey)
+			}
+			if got := payload["prompt_cache_retention"]; got != tt.wantCacheRetention && (got != nil || tt.wantCacheRetention != "") {
+				t.Fatalf("prompt_cache_retention = %#v, want %q", got, tt.wantCacheRetention)
+			}
+			gotCacheOptions, ok := payload["prompt_cache_options"]
+			if tt.wantCacheOptions == nil {
+				if ok {
+					t.Fatalf("prompt_cache_options = %#v, want absent", gotCacheOptions)
+				}
+			} else if !ok || !reflect.DeepEqual(gotCacheOptions, tt.wantCacheOptions) {
+				t.Fatalf("prompt_cache_options = %#v, present %v; want %#v", gotCacheOptions, ok, tt.wantCacheOptions)
+			}
+		})
+	}
+}
+
 func TestResponsesDefersMarkedClientTools(t *testing.T) {
 	t.Parallel()
 

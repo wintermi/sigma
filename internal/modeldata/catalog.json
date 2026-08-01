@@ -16955,7 +16955,8 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
-        "supportsToolSearch": true
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
       }
     },
     {
@@ -17002,7 +17003,8 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
-        "supportsToolSearch": true
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
       }
     },
     {
@@ -17049,7 +17051,8 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
-        "supportsToolSearch": true
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
       }
     },
     {

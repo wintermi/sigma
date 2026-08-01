@@ -12391,7 +12391,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsToolSearch: true,
+			SupportsToolSearch:              true,
+			SupportsExplicitPromptCacheMode: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -12431,7 +12432,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsToolSearch: true,
+			SupportsToolSearch:              true,
+			SupportsExplicitPromptCacheMode: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -12471,7 +12473,8 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsToolSearch: true,
+			SupportsToolSearch:              true,
+			SupportsExplicitPromptCacheMode: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},

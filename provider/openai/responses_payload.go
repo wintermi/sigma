@@ -17,15 +17,17 @@ import (
 )
 
 const (
-	providerOptionStore          = "store"
-	providerOptionPreviousID     = "previous_response_id"
-	providerOptionPreviousIDGo   = "previousResponseID"
-	providerOptionInclude        = "include"
-	providerOptionText           = "text"
-	providerOptionToolChoice     = "tool_choice"
-	providerOptionToolChoiceGo   = "toolChoice"
-	providerOptionTruncation     = "truncation"
-	providerOptionPromptCacheKey = "prompt_cache_key"
+	providerOptionStore                = "store"
+	providerOptionPreviousID           = "previous_response_id"
+	providerOptionPreviousIDGo         = "previousResponseID"
+	providerOptionInclude              = "include"
+	providerOptionText                 = "text"
+	providerOptionToolChoice           = "tool_choice"
+	providerOptionToolChoiceGo         = "toolChoice"
+	providerOptionTruncation           = "truncation"
+	providerOptionPromptCacheKey       = "prompt_cache_key"
+	providerOptionPromptCacheRetention = "prompt_cache_retention"
+	providerOptionPromptCacheOptions   = "prompt_cache_options"
 )
 
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
@@ -154,6 +156,11 @@ func supportsResponsesToolSearch(model sigma.Model) bool {
 }
 
 func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, opts sigma.Options) {
+	if opts.CacheRetention == sigma.CacheRetentionNone &&
+		responsesSupportsExplicitPromptCacheMode(model) &&
+		!responsesHasExplicitPromptCacheDirective(model.Provider, opts) {
+		payload[providerOptionPromptCacheOptions] = map[string]any{"mode": "explicit"}
+	}
 	if key := openAIPromptCacheKey(opts); key != "" {
 		payload["prompt_cache_key"] = key
 	}
@@ -162,6 +169,31 @@ func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, op
 		responsesSupportsLongCacheRetention(model) {
 		payload["prompt_cache_retention"] = "24h"
 	}
+}
+
+func responsesSupportsExplicitPromptCacheMode(model sigma.Model) bool {
+	return model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsExplicitPromptCacheMode
+}
+
+func responsesHasExplicitPromptCacheDirective(provider sigma.ProviderID, opts sigma.Options) bool {
+	if opts.OpenAIOptions != nil && opts.OpenAIOptions.PromptCacheRetention != "" {
+		return true
+	}
+	options := providerOptions(opts, provider)
+	if _, ok := options[providerOptionPromptCacheKey]; ok {
+		return true
+	}
+	extra := extraBody(opts, provider)
+	for _, key := range []string{
+		providerOptionPromptCacheKey,
+		providerOptionPromptCacheRetention,
+		providerOptionPromptCacheOptions,
+	} {
+		if _, ok := extra[key]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func responsesSupportsLongCacheRetention(model sigma.Model) bool {

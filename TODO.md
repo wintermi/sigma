@@ -138,6 +138,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add cache-affinity headers for OpenAI-compatible Chat Completions and
       direct OpenAI Responses when prompt caching and `sigma.WithSessionID` are
       enabled.
+- [x] Add capability-gated explicit prompt-cache mode for reviewed OpenAI
+      Responses models so `CacheRetentionNone` disables implicit cache writes
+      without changing default or unsupported-model payloads.
 - [x] Clamp Codex request-affinity headers to the provider's 64-character
       session-ID limit while preserving Sigma's local session-cache keys.
 - [x] Use monotonic UUIDv7 handshake IDs for sessionless Codex WebSocket

@@ -42,6 +42,9 @@ OpenAI Responses routes now also retain non-empty raw terminal response status
 in assistant provider metadata for diagnostics.
 OpenAI-compatible Chat Completions routes likewise retain non-empty raw
 terminal `finish_reason` values in assistant provider metadata.
+Explicit `CacheRetentionNone` requests on reviewed direct OpenAI GPT-5.6
+Responses models now disable implicit prompt-cache writes through capability-
+gated explicit cache mode.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
 and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
 model metadata. Text callers can now also select an HTTP client for an
@@ -49,6 +52,10 @@ individual HTTP/SSE request.
 
 ## Changed
 
+- Reviewed direct OpenAI GPT-5.6 Responses models now send explicit
+  prompt-cache mode for explicit `CacheRetentionNone` requests, preventing
+  implicit prompt-cache writes without changing unset retention or unmarked
+  model payloads.
 - OpenAI Responses routes now retain non-empty `completed`, `incomplete`, or
   `failed` terminal status values in assistant provider metadata. Transient
   response statuses are not retained when the terminal event omits status.
@@ -154,6 +161,12 @@ individual HTTP/SSE request.
 
 ## Compatibility
 
+- `OpenAIResponsesCompat.SupportsExplicitPromptCacheMode` is additive and
+  opt-in. Only an explicit `CacheRetentionNone` request on a marked model gains
+  `prompt_cache_options`; unset retention, older or unmarked models, Azure
+  OpenAI, Codex, and existing provider-specific cache overrides retain their
+  prior behavior. Provider registration, authentication, transports,
+  serialized messages, and normalized responses are unchanged.
 - OpenAI Responses terminal-status metadata is additive and uses the existing
   opaque provider metadata map. Public APIs, request payloads, serialized
   message shapes, normalized stop reasons, and provider error behavior are

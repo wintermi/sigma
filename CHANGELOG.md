@@ -68,6 +68,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Changed
 
+- Reviewed direct OpenAI GPT-5.6 Responses models now translate explicit
+  `CacheRetentionNone` requests into explicit prompt-cache mode, preventing
+  implicit cache writes while leaving default and unsupported-model payloads
+  unchanged.
 - OpenAI Responses routes now retain non-empty raw terminal response status in
   assistant provider metadata without changing normalized stop reasons or
   provider error behavior.

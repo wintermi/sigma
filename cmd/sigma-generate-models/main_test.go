@@ -82,6 +82,24 @@ func TestRenderTextModelsIncludesGrammarToolCompatibility(t *testing.T) {
 	}
 }
 
+func TestRenderTextModelsIncludesExplicitPromptCacheCompatibility(t *testing.T) {
+	t.Parallel()
+
+	catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{{
+		ID:       "explicit-prompt-cache-compatible",
+		Provider: "openai",
+		API:      "openai-responses",
+		OpenAIResponsesCompat: &modeldata.OpenAIResponsesCompat{
+			SupportsExplicitPromptCacheMode: true,
+		},
+	}}}
+
+	rendered := string(renderTextModels(catalog))
+	if !strings.Contains(rendered, "SupportsExplicitPromptCacheMode: true") {
+		t.Fatalf("generated text models omitted explicit prompt-cache compatibility: %s", rendered)
+	}
+}
+
 func TestRenderCatalogReportSummarizesProviderAPIBuckets(t *testing.T) {
 	t.Parallel()
 
