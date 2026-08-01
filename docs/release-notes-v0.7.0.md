@@ -36,6 +36,8 @@ Bedrock inference-profile route, and GitHub Copilot's Anthropic Messages route
 with adaptive thinking, current limits, and pricing metadata.
 Cached Codex WebSocket continuations that are no longer recognised now retry
 once with the full request context before existing fallback behavior applies.
+Cached Codex WebSocket connections and continuation state are also isolated by
+authenticated account when callers reuse a session ID.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
 and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
 model metadata. Text callers can now also select an HTTP client for an
@@ -74,6 +76,9 @@ individual HTTP/SSE request.
 - Cached Codex WebSocket continuations rejected before output now retry once
   with the full request context. Repeated rejections preserve the existing SSE
   fallback behavior.
+- Cached Codex WebSocket connections and their continuation state are now
+  scoped by authenticated account as well as caller session ID, preventing an
+  account change from reusing another account's live connection.
 - Grok 4.5 now uses the xAI OpenAI Responses route with low, medium, and high
   reasoning levels. Long-lived prompt-cache retention is omitted for that route
   while cache keys and session affinity remain available.
@@ -185,6 +190,9 @@ individual HTTP/SSE request.
 - Cached Codex WebSocket continuation recovery is internal. It does not change
   provider IDs, request APIs, serialized message shapes, or normal session
   behavior.
+- Codex WebSocket account isolation is internal. Existing cleanup helpers close
+  every account-scoped connection for the requested session, while debug stats
+  and SSE fallback state remain aggregated by caller session ID.
 - `ProviderOpenCodeGo` retains its existing registration API. Its Grok 4.5
   catalog row now uses the existing Responses dispatch path, while Kimi K3
   remains on Chat Completions.

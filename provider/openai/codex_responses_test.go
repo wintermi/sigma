@@ -722,6 +722,79 @@ func TestCodexResponsesWebSocketSessionCacheSendsInputDelta(t *testing.T) {
 	}
 }
 
+func TestCodexResponsesWebSocketSessionCacheIsolatesAccounts(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	connections := make(chan http.Header, 4)
+	var responseIDs atomic.Int32
+	server := newCodexWebSocketTestServer(t, func(req *http.Request, ws *codexWebSocketTestConn) {
+		connections <- req.Header.Clone()
+		for {
+			if _, err := ws.readJSONError(); err != nil {
+				return
+			}
+			responseID := fmt.Sprintf("resp_%d", responseIDs.Add(1))
+			writeCodexWebSocketTextResponse(t, ws, responseID, "msg_"+responseID, "txt_"+responseID, responseID)
+		}
+	})
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-account-cache-test")
+	model := codexResponsesTestModel(providerID)
+	accountA := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProviderForAccount("token-account-a", "account-a"))
+	accountB := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProviderForAccount("token-account-b", "account-b"))
+	sessionID := "shared-account-session"
+
+	completeCodexWebSocket(t, accountA, model, sessionID, "first account A request")
+	completeCodexWebSocket(t, accountB, model, sessionID, "account B request")
+	completeCodexWebSocket(t, accountA, model, sessionID, "second account A request")
+
+	first := receiveHeader(t, connections)
+	second := receiveHeader(t, connections)
+	assertHeader(t, first, "chatgpt-account-id", "account-a")
+	assertHeader(t, first, "Authorization", "Bearer token-account-a")
+	assertHeader(t, second, "chatgpt-account-id", "account-b")
+	assertHeader(t, second, "Authorization", "Bearer token-account-b")
+	select {
+	case unexpected := <-connections:
+		t.Fatalf("unexpected third websocket connection for account %q", unexpected.Get("chatgpt-account-id"))
+	default:
+	}
+
+	stats, ok := openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats returned ok=false")
+	}
+	if got, want := stats.ConnectionsCreated, 2; got != want {
+		t.Fatalf("connections created = %d, want %d", got, want)
+	}
+	if got, want := stats.ConnectionsReused, 1; got != want {
+		t.Fatalf("connections reused = %d, want %d", got, want)
+	}
+
+	if err := sigma.CleanupSessionResources(sessionID); err != nil {
+		t.Fatalf("CleanupSessionResources returned error: %v", err)
+	}
+	completeCodexWebSocket(t, accountA, model, sessionID, "account A after cleanup")
+	completeCodexWebSocket(t, accountB, model, sessionID, "account B after cleanup")
+	assertHeader(t, receiveHeader(t, connections), "chatgpt-account-id", "account-a")
+	assertHeader(t, receiveHeader(t, connections), "chatgpt-account-id", "account-b")
+
+	stats, ok = openai.CodexResponsesWebSocketStats(sessionID)
+	if !ok {
+		t.Fatal("CodexResponsesWebSocketStats after cleanup returned ok=false")
+	}
+	if got, want := stats.ConnectionsCreated, 4; got != want {
+		t.Fatalf("connections created after cleanup = %d, want %d", got, want)
+	}
+	if got, want := stats.ConnectionsReused, 1; got != want {
+		t.Fatalf("connections reused after cleanup = %d, want %d", got, want)
+	}
+}
+
 func TestCodexResponsesWebSocketSessionResourcesCleanup(t *testing.T) {
 	openai.CloseCodexResponsesWebSocketSessions()
 	openai.ResetCodexResponsesWebSocketStatsAll()
@@ -1587,12 +1660,16 @@ func codexResponsesTestModel(providerID sigma.ProviderID) sigma.Model {
 }
 
 func codexTokenProvider(token string) sigma.OAuthTokenProvider {
+	return codexTokenProviderForAccount(token, "acct_codex")
+}
+
+func codexTokenProviderForAccount(token string, accountID string) sigma.OAuthTokenProvider {
 	return sigma.OAuthTokenProviderFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
 		return sigma.Credential{
 			Type:  sigma.CredentialTypeOAuthToken,
 			Value: token,
 			Metadata: map[string]any{
-				"accountID": "acct_codex",
+				"accountID": accountID,
 			},
 		}, nil
 	})
@@ -1971,6 +2048,18 @@ func receiveCodexWebSocketRequest(t *testing.T, requests <-chan codexWebSocketTe
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for websocket request")
 		return codexWebSocketTestRequest{}
+	}
+}
+
+func receiveHeader(t *testing.T, headers <-chan http.Header) http.Header {
+	t.Helper()
+
+	select {
+	case header := <-headers:
+		return header
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for websocket connection")
+		return nil
 	}
 }
 

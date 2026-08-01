@@ -95,11 +95,11 @@ type CodexResponsesWebSocketStatsSnapshot struct {
 
 var codexWebSocketSessions = struct {
 	sync.Mutex
-	entries       map[string]*codexWebSocketSessionEntry
+	entries       map[string]map[string]*codexWebSocketSessionEntry
 	fallbackState map[string]bool
 	stats         map[string]*CodexResponsesWebSocketStatsSnapshot
 }{
-	entries:       make(map[string]*codexWebSocketSessionEntry),
+	entries:       make(map[string]map[string]*codexWebSocketSessionEntry),
 	fallbackState: make(map[string]bool),
 	stats:         make(map[string]*CodexResponsesWebSocketStatsSnapshot),
 }
@@ -115,15 +115,17 @@ func init() {
 	})
 }
 
-// CloseCodexResponsesWebSocketSession closes and forgets a cached Codex
-// WebSocket session and clears its SSE fallback marker.
+// CloseCodexResponsesWebSocketSession closes and forgets all cached Codex
+// WebSocket connections for a session and clears its SSE fallback marker.
 func CloseCodexResponsesWebSocketSession(sessionID string) {
 	codexWebSocketSessions.Lock()
-	entry := codexWebSocketSessions.entries[sessionID]
+	accountEntries := codexWebSocketSessions.entries[sessionID]
 	delete(codexWebSocketSessions.entries, sessionID)
 	delete(codexWebSocketSessions.fallbackState, sessionID)
 	codexWebSocketSessions.Unlock()
-	closeCodexWebSocketEntry(entry)
+	for _, entry := range accountEntries {
+		closeCodexWebSocketEntry(entry)
+	}
 }
 
 // CloseCodexResponsesWebSocketSessions closes all cached Codex WebSocket
@@ -131,10 +133,12 @@ func CloseCodexResponsesWebSocketSession(sessionID string) {
 func CloseCodexResponsesWebSocketSessions() {
 	codexWebSocketSessions.Lock()
 	entries := make([]*codexWebSocketSessionEntry, 0, len(codexWebSocketSessions.entries))
-	for _, entry := range codexWebSocketSessions.entries {
-		entries = append(entries, entry)
+	for _, accountEntries := range codexWebSocketSessions.entries {
+		for _, entry := range accountEntries {
+			entries = append(entries, entry)
+		}
 	}
-	codexWebSocketSessions.entries = make(map[string]*codexWebSocketSessionEntry)
+	codexWebSocketSessions.entries = make(map[string]map[string]*codexWebSocketSessionEntry)
 	codexWebSocketSessions.fallbackState = make(map[string]bool)
 	codexWebSocketSessions.Unlock()
 	for _, entry := range entries {
@@ -295,11 +299,11 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 	if err != nil {
 		return nil, err
 	}
-	headers, err := p.codexWebSocketHeaders(ctx, model, opts, requestID)
+	headers, accountID, err := p.codexWebSocketHeaders(ctx, model, opts, requestID)
 	if err != nil {
 		return nil, err
 	}
-	acquired, err := acquireCodexWebSocket(ctx, wsURL, headers, opts.SessionID, codexWebSocketConnectTimeout(opts))
+	acquired, err := acquireCodexWebSocket(ctx, wsURL, headers, opts.SessionID, accountID, codexWebSocketConnectTimeout(opts))
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +369,7 @@ type acquiredCodexWebSocket struct {
 	release func(keep bool)
 }
 
-func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Header, sessionID string, connectTimeout time.Duration) (*acquiredCodexWebSocket, error) {
+func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Header, sessionID string, accountID string, connectTimeout time.Duration) (*acquiredCodexWebSocket, error) {
 	if sessionID == "" {
 		conn, err := dialCodexWebSocket(ctx, wsURL, headers, connectTimeout)
 		if err != nil {
@@ -380,7 +384,8 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 	}
 
 	codexWebSocketSessions.Lock()
-	if entry := codexWebSocketSessions.entries[sessionID]; entry != nil {
+	accountEntries := codexWebSocketSessions.entries[sessionID]
+	if entry := accountEntries[accountID]; entry != nil {
 		if entry.idleTimer != nil {
 			entry.idleTimer.Stop()
 			entry.idleTimer = nil
@@ -393,15 +398,15 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 				entry:  entry,
 				reused: true,
 				release: func(keep bool) {
-					releaseCodexWebSocketSession(sessionID, entry, keep)
+					releaseCodexWebSocketSession(sessionID, accountID, entry, keep)
 				},
 			}, nil
 		}
 		if !entry.busy {
-			delete(codexWebSocketSessions.entries, sessionID)
+			deleteCodexWebSocketSessionEntryLocked(sessionID, accountID, entry)
 			codexWebSocketSessions.Unlock()
 			closeCodexWebSocketEntry(entry)
-			return acquireCodexWebSocket(ctx, wsURL, headers, sessionID, connectTimeout)
+			return acquireCodexWebSocket(ctx, wsURL, headers, sessionID, accountID, connectTimeout)
 		}
 		codexWebSocketSessions.Unlock()
 		conn, err := dialCodexWebSocket(ctx, wsURL, headers, connectTimeout)
@@ -423,38 +428,54 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 	}
 	entry := &codexWebSocketSessionEntry{conn: conn, busy: true}
 	codexWebSocketSessions.Lock()
-	codexWebSocketSessions.entries[sessionID] = entry
+	accountEntries = codexWebSocketSessions.entries[sessionID]
+	if accountEntries == nil {
+		accountEntries = make(map[string]*codexWebSocketSessionEntry)
+		codexWebSocketSessions.entries[sessionID] = accountEntries
+	}
+	accountEntries[accountID] = entry
 	codexWebSocketSessions.Unlock()
 	return &acquiredCodexWebSocket{
 		conn:  conn,
 		entry: entry,
 		release: func(keep bool) {
-			releaseCodexWebSocketSession(sessionID, entry, keep)
+			releaseCodexWebSocketSession(sessionID, accountID, entry, keep)
 		},
 	}, nil
 }
 
-func releaseCodexWebSocketSession(sessionID string, entry *codexWebSocketSessionEntry, keep bool) {
+func releaseCodexWebSocketSession(sessionID string, accountID string, entry *codexWebSocketSessionEntry, keep bool) {
 	codexWebSocketSessions.Lock()
 	defer codexWebSocketSessions.Unlock()
-	current := codexWebSocketSessions.entries[sessionID]
+	current := codexWebSocketSessions.entries[sessionID][accountID]
 	if current != entry {
 		return
 	}
 	if !keep || !entry.conn.IsOpen() {
-		delete(codexWebSocketSessions.entries, sessionID)
+		deleteCodexWebSocketSessionEntryLocked(sessionID, accountID, entry)
 		closeCodexWebSocketEntryLocked(entry)
 		return
 	}
 	entry.busy = false
 	entry.idleTimer = time.AfterFunc(codexWebSocketIdleTTL, func() {
 		codexWebSocketSessions.Lock()
-		if codexWebSocketSessions.entries[sessionID] == entry && !entry.busy {
-			delete(codexWebSocketSessions.entries, sessionID)
+		if codexWebSocketSessions.entries[sessionID][accountID] == entry && !entry.busy {
+			deleteCodexWebSocketSessionEntryLocked(sessionID, accountID, entry)
 			closeCodexWebSocketEntryLocked(entry)
 		}
 		codexWebSocketSessions.Unlock()
 	})
+}
+
+func deleteCodexWebSocketSessionEntryLocked(sessionID string, accountID string, entry *codexWebSocketSessionEntry) {
+	accountEntries := codexWebSocketSessions.entries[sessionID]
+	if accountEntries[accountID] != entry {
+		return
+	}
+	delete(accountEntries, accountID)
+	if len(accountEntries) == 0 {
+		delete(codexWebSocketSessions.entries, sessionID)
+	}
 }
 
 func closeCodexWebSocketEntry(entry *codexWebSocketSessionEntry) {
@@ -614,25 +635,26 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 	return out
 }
 
-func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options, requestID string) (http.Header, error) {
+func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options, requestID string) (http.Header, string, error) {
 	opts, credential, hasCredential, err := p.resolveRequestAuth(ctx, model, opts)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	endpoint, err := p.endpoint(model, opts)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("OpenAI-Beta", codexResponsesWebSocketBeta)
 	req.Header.Set("originator", "sigma")
 	req.Header.Set("User-Agent", "sigma/openai-codex-responses")
 	if err := p.addAuthHeader(ctx, req, model, opts, credential, hasCredential); err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	accountID := req.Header.Get("chatgpt-account-id")
 	p.addProviderHeaders(req, model.Provider, opts)
 	req.Header.Set("session-id", requestID)
 	req.Header.Set("x-client-request-id", requestID)
@@ -644,7 +666,7 @@ func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, mode
 		req.Header.Set(key, value)
 	}
 	sigma.ApplySuppressedHeaders(req.Header, opts)
-	return req.Header, nil
+	return req.Header, accountID, nil
 }
 
 func codexWebSocketRequestID(sessionID string) (string, error) {

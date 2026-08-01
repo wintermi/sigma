@@ -168,6 +168,8 @@ integrations remain future work until they have the same local evidence bar.
       `reasoning_content`.
 - [x] Add Codex WebSocket transport, session caching, cleanup helpers, and SSE
       fallback while keeping the implementation stdlib-only.
+- [x] Scope cached Codex WebSocket connections and continuation state by
+      authenticated account so reused caller session IDs cannot cross accounts.
 - [x] Add proxy-aware Codex WebSocket dialing for standard HTTP(S) proxy
       environment variables and `NO_PROXY` exclusions while preserving SSE
       fallback.
