@@ -68,6 +68,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
 
 ### Changed
 
+- OpenAI Responses routes now retain non-empty raw terminal response status in
+  assistant provider metadata without changing normalized stop reasons or
+  provider error behavior.
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.

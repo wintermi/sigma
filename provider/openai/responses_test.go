@@ -1621,6 +1621,9 @@ data: {"type":"response.completed","response":{"id":"resp_stream","model":"gpt-t
 	if got, want := final.ProviderMetadata["model"], "gpt-test-2026"; got != want {
 		t.Fatalf("provider model = %v, want %v", got, want)
 	}
+	if got, want := final.ProviderMetadata["status"], "completed"; got != want {
+		t.Fatalf("response status = %v, want %v", got, want)
+	}
 	if final.Usage == nil {
 		t.Fatal("final usage was nil")
 	}
@@ -2191,6 +2194,9 @@ func TestResponsesStreamIncompleteFinalizesAsMaxTokens(t *testing.T) {
 	if got, want := final.ProviderMetadata["model"], "gpt-test-2026"; got != want {
 		t.Fatalf("provider model = %v, want %v", got, want)
 	}
+	if got, want := final.ProviderMetadata["status"], "incomplete"; got != want {
+		t.Fatalf("response status = %v, want %v", got, want)
+	}
 	if final.Usage == nil {
 		t.Fatal("usage was nil")
 	}
@@ -2228,11 +2234,38 @@ func TestResponsesStreamFailedTerminalIsTypedProviderError(t *testing.T) {
 	if got, want := final.StopReason, sigma.StopReasonError; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
+	if got, want := final.ProviderMetadata["status"], "failed"; got != want {
+		t.Fatalf("response status = %v, want %v", got, want)
+	}
 	if errorsContains(err, "sk-secret123") {
 		t.Fatalf("error leaked secret: %v", err)
 	}
 	if got, want := sigma.ClassifyError(err).ProviderCode, "invalid_api_key"; got != want {
 		t.Fatalf("provider code = %q, want %q", got, want)
+	}
+}
+
+func TestResponsesStreamDoesNotRetainTransientStatus(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.created","response":{"id":"resp_status","status":"in_progress"}}
+
+data: {"type":"response.completed","response":{"id":"resp_status","output":[{"type":"message","id":"msg_status","role":"assistant","content":[{"type":"output_text","id":"text_status","text":"done"}]}]}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-transient-status-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if _, ok := final.ProviderMetadata["status"]; ok {
+		t.Fatalf("response status = %v, want absent", final.ProviderMetadata["status"])
 	}
 }
 

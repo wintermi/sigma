@@ -128,6 +128,7 @@ type responsesStreamParser struct {
 	responseID          string
 	providerModel       string
 	responseServiceTier string
+	terminalStatus      string
 	usage               *sigma.Usage
 	stopReason          sigma.StopReason
 	terminalResponse    bool
@@ -236,10 +237,12 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		return false, p.emitStart(ctx)
 	case "response.completed":
 		p.terminalResponse = true
+		p.terminalStatus = parsed.Response.Status
 		p.captureResponse(parsed.Response)
 		return true, p.emitStart(ctx)
 	case "response.incomplete":
 		p.terminalResponse = true
+		p.terminalStatus = parsed.Response.Status
 		p.captureResponse(parsed.Response)
 		if parsed.Response.Error != nil {
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
@@ -250,6 +253,7 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		return true, p.emitStart(ctx)
 	case "response.failed":
 		p.terminalResponse = true
+		p.terminalStatus = parsed.Response.Status
 		p.captureResponse(parsed.Response)
 		if parsed.Response.Error != nil {
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
@@ -812,7 +816,7 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		p.final.Usage = &usage
 		p.final.Cost = &cost
 	}
-	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.model.ID)
+	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.model.ID)
 	return p.final
 }
 
@@ -1024,13 +1028,16 @@ func (p *responsesStreamParser) toolItemID(state *streamblocks.ToolCall) string 
 	return ""
 }
 
-func responseMetadata(responseID string, providerModel string, modelID sigma.ModelID) map[string]any {
+func responseMetadata(responseID string, providerModel string, terminalStatus string, modelID sigma.ModelID) map[string]any {
 	metadata := make(map[string]any)
 	if responseID != "" {
 		metadata["id"] = responseID
 	}
 	if providerModel != "" && providerModel != string(modelID) {
 		metadata["model"] = providerModel
+	}
+	if terminalStatus != "" {
+		metadata["status"] = terminalStatus
 	}
 	if len(metadata) == 0 {
 		return nil
