@@ -40,6 +40,8 @@ Cached Codex WebSocket connections and continuation state are also isolated by
 authenticated account when callers reuse a session ID.
 OpenAI Responses routes now also retain non-empty raw terminal response status
 in assistant provider metadata for diagnostics.
+OpenAI-compatible Chat Completions routes likewise retain non-empty raw
+terminal `finish_reason` values in assistant provider metadata.
 The existing OpenRouter image adapter now also exposes Krea 2 Large, Medium,
 and Medium Turbo, MAI-Image 2.5 Pro, and Auto Router Beta through generated
 model metadata. Text callers can now also select an HTTP client for an
@@ -50,6 +52,9 @@ individual HTTP/SSE request.
 - OpenAI Responses routes now retain non-empty `completed`, `incomplete`, or
   `failed` terminal status values in assistant provider metadata. Transient
   response statuses are not retained when the terminal event omits status.
+- OpenAI-compatible Chat Completions routes now retain each non-empty terminal
+  `finish_reason` in assistant provider metadata, including values that
+  normalize to provider errors or unknown stop reasons.
 - Text `Stream` and `Complete` calls now accept `WithRequestHTTPClient` for a
   caller-selected HTTP/SSE transport client.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` as bearer
@@ -153,6 +158,10 @@ individual HTTP/SSE request.
   opaque provider metadata map. Public APIs, request payloads, serialized
   message shapes, normalized stop reasons, and provider error behavior are
   unchanged.
+- OpenAI-compatible Chat Completions finish-reason metadata is additive and
+  uses the existing opaque provider metadata map. Public APIs, request
+  payloads, serialized message shapes, normalized stop reasons, and provider
+  error behavior are unchanged.
 - `WithRequestHTTPClient` is additive. A call-scoped client overrides client
   and provider fallback clients for HTTP/SSE dispatch without changing default
   clients, provider request shapes, image or embedding calls, or WebSocket

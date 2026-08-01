@@ -2361,6 +2361,34 @@ func TestStreamingMapsFinishReasonEndToEndTurn(t *testing.T) {
 	if got, want := final.StopReason, sigma.StopReasonEndTurn; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
+	if got, want := final.ProviderMetadata["finish_reason"], "end"; got != want {
+		t.Fatalf("finish reason = %v, want %v", got, want)
+	}
+}
+
+func TestStreamingPreservesUnknownFinishReason(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_unknown","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"provider_custom"}]}`+"\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-finish-unknown-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonUnknown; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["finish_reason"], "provider_custom"; got != want {
+		t.Fatalf("finish reason = %v, want %v", got, want)
+	}
 }
 
 func TestProviderErrorResponseEndsStreamWithProviderError(t *testing.T) {
@@ -2474,6 +2502,9 @@ func TestStreamFinishReasonErrorsAreProviderErrors(t *testing.T) {
 			}
 			if got, want := final.StopReason, sigma.StopReasonError; got != want {
 				t.Fatalf("stop reason = %q, want %q", got, want)
+			}
+			if got := final.ProviderMetadata["finish_reason"]; got != tt.reason {
+				t.Fatalf("finish reason = %v, want %v", got, tt.reason)
 			}
 			if got := sigma.ClassifyError(err).Class; got != tt.wantClass {
 				t.Fatalf("class = %q, want %q", got, tt.wantClass)

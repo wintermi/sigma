@@ -122,6 +122,7 @@ type completionStreamParser struct {
 	nextBlock        int
 	usage            *sigma.Usage
 	finishReason     sigma.StopReason
+	rawFinishReason  string
 	responseID       string
 	providerModel    string
 	metadata         map[string]any
@@ -204,6 +205,7 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 			p.captureCompletionTokenDetails(choice.Usage.CompletionTokensDetails)
 		}
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
+			p.rawFinishReason = *choice.FinishReason
 			if err := providerFinishReasonError(p.model, *choice.FinishReason); err != nil {
 				return err
 			}
@@ -689,6 +691,9 @@ func (p *completionStreamParser) responseMetadata() map[string]any {
 	if p.providerModel != "" && p.providerModel != string(p.model.ID) {
 		size++
 	}
+	if p.rawFinishReason != "" {
+		size++
+	}
 	if len(p.sources) > 0 {
 		size++
 	}
@@ -705,6 +710,9 @@ func (p *completionStreamParser) responseMetadata() map[string]any {
 	}
 	if p.providerModel != "" && p.providerModel != string(p.model.ID) {
 		metadata["model"] = p.providerModel
+	}
+	if p.rawFinishReason != "" {
+		metadata["finish_reason"] = p.rawFinishReason
 	}
 	if len(p.sources) > 0 {
 		sources := make([]map[string]any, len(p.sources))

@@ -248,6 +248,9 @@ work until their API boundaries are explicit.
 - [x] Preserve non-empty terminal OpenAI Responses status values in assistant
       provider metadata without changing normalized stop reasons or provider
       error behavior.
+- [x] Preserve non-empty terminal OpenAI-compatible Chat Completions
+      `finish_reason` values in assistant provider metadata without changing
+      normalized stop reasons or provider error behavior.
 - [x] Preserve Anthropic hosted server-tool metadata, citations,
       context-management metadata, container metadata, and thinking-token usage
       details through deterministic stream parsing.
