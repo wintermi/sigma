@@ -10949,7 +10949,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": true,
+      "supportsThinking": false,
       "cost": {
         "inputPerMillion": 1.5,
         "outputPerMillion": 9,
@@ -10983,7 +10983,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": true,
+      "supportsThinking": false,
       "cost": {
         "inputPerMillion": 0.25,
         "outputPerMillion": 1.5,

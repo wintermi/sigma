@@ -820,6 +820,14 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 			notWant: []string{"thinking_disabled"},
 		},
+		{
+			modelID: "gemini-flash-latest",
+			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
+		{
+			modelID: "gemini-flash-lite-latest",
+			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
@@ -1571,7 +1579,7 @@ func TestProbeModelReportsAvailabilityCheckSeparately(t *testing.T) {
 
 	route := sigmatestProbeRoute(
 		t,
-		sigmatest.Script{Err: errors.New("strict schema failed")},
+		sigmatest.Script{Err: errors.New("thinking_level is not supported by this model")},
 		sigmatest.Script{},
 		sigmatest.Script{Err: errors.New("larger schema failed")},
 		sigmatest.Script{Err: errors.New("json object failed")},
@@ -1584,20 +1592,23 @@ func TestProbeModelReportsAvailabilityCheckSeparately(t *testing.T) {
 	if got, want := results[0].Case, "json_schema"; got != want {
 		t.Fatalf("case = %q, want %q", got, want)
 	}
-	if got, want := results[0].Attempt, "minimal_basic_text"; got != want {
+	if got, want := results[0].Attempt, "json_schema"; got != want {
 		t.Fatalf("attempt = %q, want %q", got, want)
 	}
-	if got, want := results[0].Outcome, "availability_ok_after_failure"; got != want {
+	if got, want := results[0].Outcome, "sigma_request_shape"; got != want {
 		t.Fatalf("outcome = %q, want %q", got, want)
 	}
-	if got, want := results[0].OriginalError, "strict schema failed"; got != want {
-		t.Fatalf("original error = %q, want %q", got, want)
+	if got, want := results[0].Error, "thinking_level is not supported by this model"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+	if !results[0].AvailabilityOKAfterFailure {
+		t.Fatal("availability check = false, want true")
 	}
 	if got, want := results[0].Hint, "minimal_text_available_after_failure"; got != want {
 		t.Fatalf("hint = %q, want %q", got, want)
 	}
 	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
-		{Attempt: "json_schema", Error: "strict schema failed"},
+		{Attempt: "json_schema", Error: "thinking_level is not supported by this model"},
 		{Attempt: "json_schema_more_tokens", Error: "larger schema failed"},
 		{Attempt: "json_object_fallback", Error: "json object failed"},
 		{Attempt: "manual_json", Error: "manual json failed"},
@@ -1866,13 +1877,13 @@ func TestSummaryCounts(t *testing.T) {
 		"provider_capability_limit",
 		"upstream_availability",
 		"fixed_by_repair_variant",
-		"availability_ok_after_failure",
 		"other",
 	} {
 		totals.add(probeResult{Outcome: outcome})
 	}
+	totals.add(probeResult{Outcome: "sigma_request_shape", AvailabilityOKAfterFailure: true})
 	if totals.Total != 8 || totals.OK != 1 || totals.Skipped != 1 ||
-		totals.SigmaRequestShape != 1 || totals.ProviderCapabilityLimit != 1 ||
+		totals.SigmaRequestShape != 2 || totals.ProviderCapabilityLimit != 1 ||
 		totals.UpstreamAvailability != 1 || totals.FixedByRepairVariant != 1 ||
 		totals.AvailabilityOKAfterFailure != 1 ||
 		totals.NoWorkingAttempt != 1 {

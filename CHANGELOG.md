@@ -101,6 +101,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
   Gemini 3.5 Flash-Lite, removes retired or superseded Gemini 1.5, 2.0, dated
   2.5 Flash-Lite preview, and 3 Pro Preview rows, and enables medium thinking
   for both Gemini 3.1 Pro Preview endpoints.
+- Native Vertex Flash and Flash-Lite latest aliases no longer advertise named
+  thinking levels rejected by those endpoints. Surface-probe repairs now keep
+  the original failure classification when minimal text succeeds and report
+  that availability evidence separately.
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.

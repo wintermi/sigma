@@ -245,6 +245,51 @@ func TestVertexCurrentGeminiFlashModelsUseNamedThinkingLevels(t *testing.T) {
 	}
 }
 
+func TestVertexLatestAliasesRejectNamedThinkingLocally(t *testing.T) {
+	t.Parallel()
+
+	for _, modelID := range []sigma.ModelID{"gemini-flash-latest", "gemini-flash-lite-latest"} {
+		t.Run(string(modelID), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan struct{}, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				requests <- struct{}{}
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, vertexCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			model, ok := sigma.GetModel(sigma.ProviderGoogleVertex, modelID)
+			if !ok {
+				t.Fatalf("generated Vertex model %q is missing", modelID)
+			}
+			client := vertexTestClientWithModel(
+				t,
+				model,
+				vertexAPIKeyResolver("vertex-api-key"),
+				WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "global", APIVersion: "v1"}),
+				WithVertexBaseURL(server.URL+"/v1"),
+			)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithReasoningLevel(sigma.ThinkingLevelLow),
+			)
+			if !errors.Is(err, sigma.ErrInvalidOptions) {
+				t.Fatalf("Complete error = %v, want ErrInvalidOptions", err)
+			}
+			select {
+			case <-requests:
+				t.Fatal("unsupported named thinking request reached Vertex")
+			default:
+			}
+		})
+	}
+}
+
 func TestVertexOmitsFunctionCallIDs(t *testing.T) {
 	t.Parallel()
 

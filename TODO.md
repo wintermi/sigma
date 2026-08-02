@@ -692,6 +692,9 @@ should still come through the catalog refresh workflow.
       Google and native Vertex routes, remove stale Vertex Gemini 2.0 Flash Lite
       thinking support, and skip probe cases when disabled thinking is not a
       model capability.
+- [x] Stop advertising unsupported named thinking levels on native Vertex
+      Flash and Flash-Lite latest aliases, and preserve the original probe
+      failure classification when a minimal-text availability check succeeds.
 - [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
       use credential-gated probes only for manual compatibility investigation.
 - [ ] Keep ambient Vertex project/location environment fallback and built-in ADC

@@ -76,17 +76,18 @@ type imageProbeCase struct {
 }
 
 type probeResult struct {
-	Route          string          `json:"route"`
-	Model          string          `json:"model"`
-	Case           string          `json:"case"`
-	Attempt        string          `json:"attempt"`
-	SourceRoute    string          `json:"sourceRoute,omitempty"`
-	SourceModel    string          `json:"sourceModel,omitempty"`
-	Outcome        string          `json:"outcome"`
-	Error          string          `json:"error,omitempty"`
-	OriginalError  string          `json:"originalError,omitempty"`
-	FailedAttempts []failedAttempt `json:"failedAttempts,omitempty"`
-	Hint           string          `json:"hint,omitempty"`
+	Route                      string          `json:"route"`
+	Model                      string          `json:"model"`
+	Case                       string          `json:"case"`
+	Attempt                    string          `json:"attempt"`
+	SourceRoute                string          `json:"sourceRoute,omitempty"`
+	SourceModel                string          `json:"sourceModel,omitempty"`
+	Outcome                    string          `json:"outcome"`
+	Error                      string          `json:"error,omitempty"`
+	OriginalError              string          `json:"originalError,omitempty"`
+	FailedAttempts             []failedAttempt `json:"failedAttempts,omitempty"`
+	Hint                       string          `json:"hint,omitempty"`
+	AvailabilityOKAfterFailure bool            `json:"availabilityOKAfterFailure,omitempty"`
 }
 
 type failedAttempt struct {
@@ -660,7 +661,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 				attempt.FailedAttempts = append([]failedAttempt(nil), failedAttempts...)
 				attempt.Hint = repairHint(testCase.Name, attempt.Attempt)
 				if attempt.Attempt == "minimal_basic_text" {
-					attempt.Outcome = "availability_ok_after_failure"
+					attempt.AvailabilityOKAfterFailure = true
 					availability = attempt
 					continue
 				}
@@ -675,7 +676,9 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			}
 		}
 		if !repairedByVariant && availability.Outcome != "" {
-			repaired = availability
+			repaired.AvailabilityOKAfterFailure = true
+			repaired.FailedAttempts = append([]failedAttempt(nil), availability.FailedAttempts...)
+			repaired.Hint = availability.Hint
 		}
 		repaired = annotateStructuredOutputResult(cfg, repaired)
 		emit(repaired)
@@ -2141,7 +2144,9 @@ func recommendationFor(result probeResult) (probeRecommendation, bool) {
 		return probeRecommendation{}, false
 	}
 	evidence := fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt)
-	if result.Outcome == "ok" {
+	if result.AvailabilityOKAfterFailure {
+		evidence = fmt.Sprintf("%s failed; minimal text remained available", result.Case)
+	} else if result.Outcome == "ok" {
 		evidence = fmt.Sprintf("%s supported by %s", result.Case, result.Attempt)
 	}
 	return probeRecommendation{
@@ -2155,6 +2160,9 @@ func recommendationFor(result probeResult) (probeRecommendation, bool) {
 
 func (s *summary) add(result probeResult) {
 	s.Total++
+	if result.AvailabilityOKAfterFailure {
+		s.AvailabilityOKAfterFailure++
+	}
 	switch result.Outcome {
 	case "ok":
 		s.OK++
@@ -2168,8 +2176,6 @@ func (s *summary) add(result probeResult) {
 		s.UpstreamAvailability++
 	case "fixed_by_repair_variant":
 		s.FixedByRepairVariant++
-	case "availability_ok_after_failure":
-		s.AvailabilityOKAfterFailure++
 	default:
 		s.NoWorkingAttempt++
 	}

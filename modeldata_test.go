@@ -2537,11 +2537,12 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 	for _, tt := range []struct {
 		id                               ModelID
 		inputCost, outputCost, cacheRead float64
+		supportsReasoning                bool
 	}{
-		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
-		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
-		{id: "gemini-3.5-flash-lite", inputCost: 0.3, outputCost: 2.5, cacheRead: 0.03},
-		{id: "gemini-3.6-flash", inputCost: 1.5, outputCost: 7.5, cacheRead: 0.15},
+		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025, supportsReasoning: true},
+		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15, supportsReasoning: true},
+		{id: "gemini-3.5-flash-lite", inputCost: 0.3, outputCost: 2.5, cacheRead: 0.03, supportsReasoning: true},
+		{id: "gemini-3.6-flash", inputCost: 1.5, outputCost: 7.5, cacheRead: 0.15, supportsReasoning: true},
 		{id: "gemini-flash-latest", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
 		{id: "gemini-flash-lite-latest", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
 	} {
@@ -2549,8 +2550,11 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		if !ok {
 			t.Fatalf("fresh registry missing generated Vertex %s model", tt.id)
 		}
-		if model.API != APIGoogleVertex || model.DefaultTransport != TransportSSE || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
-			t.Fatalf("Vertex %s capabilities = %+v, want SSE tools, images, and reasoning", tt.id, model)
+		if model.API != APIGoogleVertex || model.DefaultTransport != TransportSSE || !model.SupportsTools || !model.SupportsImages() {
+			t.Fatalf("Vertex %s capabilities = %+v, want SSE, tools, and images", tt.id, model)
+		}
+		if got := model.SupportsReasoning(); got != tt.supportsReasoning {
+			t.Fatalf("Vertex %s supports reasoning = %t, want %t", tt.id, got, tt.supportsReasoning)
 		}
 		if model.ContextWindow != 1_048_576 || model.MaxOutputTokens != 65_536 {
 			t.Fatalf("Vertex %s limits = %d/%d, want 1048576/65536", tt.id, model.ContextWindow, model.MaxOutputTokens)
@@ -2560,6 +2564,13 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		}
 		if model.SupportsThinkingLevel(ThinkingLevelOff) {
 			t.Fatalf("Vertex %s unexpectedly supports disabled thinking", tt.id)
+		}
+		if !tt.supportsReasoning {
+			for _, level := range []ThinkingLevel{ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelHigh} {
+				if model.SupportsThinkingLevel(level) {
+					t.Fatalf("Vertex %s unexpectedly supports thinking level %q", tt.id, level)
+				}
+			}
 		}
 		assertMetadataString(t, model.ProviderMetadata, "vertexPublisher", "google")
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})

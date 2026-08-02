@@ -321,5 +321,9 @@ Outcome meanings:
 | `provider_capability_limit` | The provider does not appear to support the tested capability. |
 | `upstream_availability` | The upstream route or model is currently unavailable. |
 | `fixed_by_repair_variant` | The original case failed, but a targeted variant worked. |
-| `availability_ok_after_failure` | The original case failed, but minimal text still worked. |
 | `no_working_attempt` | The original case and repair variants did not produce a working request. |
+
+When a failed case still passes the minimal-text availability check, the
+result keeps its original outcome and includes
+`"availabilityOKAfterFailure":true`. The summary counts that evidence
+separately from the failure classification.

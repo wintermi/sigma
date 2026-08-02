@@ -66,7 +66,12 @@ native Vertex routes, while probe cases honor models that do not support
 disabled thinking. The native Vertex text catalog now adds Gemini 3.6 Flash and
 Gemini 3.5 Flash-Lite, removes retired or superseded Gemini 1.5, Gemini 2.0,
 Gemini 2.5 Flash-Lite Preview 09-2025, and Gemini 3 Pro Preview rows, and
-supports medium thinking on both Gemini 3.1 Pro Preview endpoints.
+supports medium thinking on both Gemini 3.1 Pro Preview endpoints. The Flash
+and Flash-Lite latest aliases remain available for text, image, and function
+tools without advertising named thinking levels rejected by those endpoints.
+When a surface-probe repair confirms minimal-text availability after another
+case fails, the original failure classification is now retained and the
+availability result is reported separately.
 
 ## Changed
 
@@ -218,6 +223,13 @@ supports medium thinking on both Gemini 3.1 Pro Preview endpoints.
   preview, and Gemini 3 Pro Preview are no longer included. The surface-probe
   documentation uses the global location so a complete catalog run includes
   global-only models.
+- Native Vertex `gemini-flash-latest` and `gemini-flash-lite-latest` metadata
+  no longer schedules or accepts named thinking levels that the endpoints
+  reject. Their existing text, image, function-tool, limits, pricing, and SSE
+  metadata remains available.
+- Surface-probe minimal-text repair checks now set additive
+  `availabilityOKAfterFailure` evidence while preserving the original
+  `sigma_request_shape`, capability, or other failure outcome and error.
 
 ## Compatibility
 
@@ -339,6 +351,14 @@ supports medium thinking on both Gemini 3.1 Pro Preview endpoints.
   `gemini-3-pro-preview` no longer resolve from the built-in Vertex registry.
   Catalog costs use standard global PayGo rates; region-specific and
   long-context pricing remain outside this refresh.
+- The Vertex latest-alias correction changes only capability validation:
+  ordinary requests keep their existing payloads, while explicit named
+  thinking requests fail locally instead of reaching Vertex with an
+  unsupported field. Provider registration, authentication, transports,
+  serialized messages, normalized responses, and public APIs are unchanged.
+- `availabilityOKAfterFailure` is additive probe JSONL and summary metadata.
+  Minimal-text success no longer replaces the original outcome, so consumers
+  should treat availability as independent supporting evidence.
 
 ## Deferred work
 
