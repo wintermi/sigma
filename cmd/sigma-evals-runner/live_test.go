@@ -58,6 +58,7 @@ func TestProviderFactualSmoke(t *testing.T) {
 		t.Run(smoke.name, func(t *testing.T) {
 			execution := evals.Run(t.Context(), liveRunner, t, smoke.evaluation)
 			validateSmokeExecution(t, suite.model, execution)
+			t.Log(formatSmokeResult(smoke.name, execution))
 		})
 	}
 }

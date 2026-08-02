@@ -20,9 +20,9 @@ surfaces, and native Vertex Gemini models. Each provider is registered
 explicitly by the suite. Its provider-neutral cases cover factual recall,
 arithmetic, exact formatting, JSON extraction, and multi-turn recall.
 
-The task runs the build-tagged Go test in that command package and forwards
-additional Go-test arguments, such as `-timeout`. Live evaluations are not part
-of `mise run go:test` or `mise run ci`.
+The task runs that command directly and forwards command arguments, including
+`-timeout`. Live evaluations are not part of `mise run go:test` or
+`mise run ci`.
 
 ## Write a Sigma harness
 

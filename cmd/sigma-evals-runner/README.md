@@ -9,7 +9,15 @@ Cases execute sequentially, receive independent pass/fail judgments, and write
 separate run records and transcripts. The command continues through independent
 case failures so one invocation reports the complete smoke result.
 
-Run the build-tagged Go-test suite from the repository root:
+Successful and failed cases print a compact result line with the judgment,
+score, input/output tokens, latency, estimated cost when available, and a
+bounded copy of the final output:
+
+```text
+PASS factual-recall score=1.00 tokens=18(in=12,out=6) latency=842ms cost=$0.000031 output="Paris"
+```
+
+Run the command from the repository root:
 
 ```sh
 mise run eval -- -provider openai -model gpt-5.6-sol
@@ -40,12 +48,14 @@ Native Vertex requires `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT`,
 mise run eval -- -provider google-vertex -model gemini-2.5-flash
 ```
 
-Additional arguments are forwarded to `go test`. The command implementation
-also remains directly runnable with:
+Additional arguments are forwarded to `sigma-evals-runner`. The same command
+can also be run through the generic Go task:
 
 ```sh
 mise run go:run -- ./cmd/sigma-evals-runner -provider openai -model gpt-5.6-sol
 ```
+
+Use `-timeout` to change the five-minute overall command deadline.
 
 The equivalent environment defaults are:
 

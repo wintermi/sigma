@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/evals"
@@ -306,4 +307,45 @@ func validateSmokeExecution(
 	if execution.Result.Usage.TotalTokens <= 0 {
 		test.Errorf("total token usage = %d, want positive", execution.Result.Usage.TotalTokens)
 	}
+}
+
+func formatSmokeResult(name string, execution evals.Execution[string]) string {
+	status := "PASS"
+	if execution.Err != nil || execution.AverageScore == nil || *execution.AverageScore < 1 {
+		status = "FAIL"
+	}
+	parts := []string{status, name}
+	if execution.AverageScore != nil {
+		parts = append(parts, fmt.Sprintf("score=%.2f", *execution.AverageScore))
+	} else {
+		parts = append(parts, "score=unavailable")
+	}
+	parts = append(parts,
+		fmt.Sprintf(
+			"tokens=%d(in=%d,out=%d)",
+			execution.Result.Usage.TotalTokens,
+			execution.Result.Usage.InputTokens,
+			execution.Result.Usage.OutputTokens,
+		),
+		"latency="+execution.Result.Timings.Total.Round(time.Millisecond).String(),
+	)
+	if execution.Result.Usage.EstimatedCostUSD != nil {
+		parts = append(parts, fmt.Sprintf("cost=$%.6f", *execution.Result.Usage.EstimatedCostUSD))
+	}
+	parts = append(parts, fmt.Sprintf("output=%q", boundedResultText(execution.Result.Output)))
+	if execution.Err != nil {
+		parts = append(parts, fmt.Sprintf("error=%q", boundedResultText(execution.Err.Error())))
+	}
+	return strings.Join(parts, " ")
+}
+
+func boundedResultText(value string) string {
+	const maxRunes = 160
+
+	value = strings.TrimSpace(value)
+	runes := []rune(value)
+	if len(runes) <= maxRunes {
+		return value
+	}
+	return string(runes[:maxRunes]) + "…"
 }

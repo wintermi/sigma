@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -256,6 +257,53 @@ func TestSmokeJudgesRejectMalformedOutput(t *testing.T) {
 				t.Fatalf("judgment = %#v, error = %v", judgment, err)
 			}
 		})
+	}
+}
+
+func TestFormatSmokeResultReportsOutcomeAndTelemetry(t *testing.T) {
+	t.Parallel()
+
+	cost := 0.000123
+	score := 1.0
+	formatted := formatSmokeResult("factual-recall", evals.Execution[string]{
+		Result: evals.RunResult[string]{
+			Output: "Paris",
+			Usage: evals.Usage{
+				InputTokens:      10,
+				OutputTokens:     2,
+				TotalTokens:      12,
+				EstimatedCostUSD: &cost,
+			},
+			Timings: evals.Timings{Total: 1500 * time.Millisecond},
+		},
+		AverageScore: &score,
+	})
+	for _, want := range []string{
+		"PASS factual-recall",
+		"score=1.00",
+		"tokens=12(in=10,out=2)",
+		"latency=1.5s",
+		"cost=$0.000123",
+		`output="Paris"`,
+	} {
+		if !strings.Contains(formatted, want) {
+			t.Fatalf("formatted result %q missing %q", formatted, want)
+		}
+	}
+}
+
+func TestFormatSmokeResultBoundsFailures(t *testing.T) {
+	t.Parallel()
+
+	formatted := formatSmokeResult("json-extraction", evals.Execution[string]{
+		Result: evals.RunResult[string]{Output: strings.Repeat("x", 200)},
+		Err:    errors.New(strings.Repeat("failure", 30)),
+	})
+	if !strings.HasPrefix(formatted, "FAIL json-extraction score=unavailable") ||
+		!strings.Contains(formatted, "output=\"") ||
+		!strings.Contains(formatted, "error=\"") ||
+		strings.Count(formatted, "…") != 2 {
+		t.Fatalf("formatted failure = %q", formatted)
 	}
 }
 

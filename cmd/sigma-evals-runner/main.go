@@ -94,6 +94,7 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 		test := &commandTest{name: "Provider smoke/" + smoke.name}
 		execution := evals.Run(ctx, runner, test, smoke.evaluation)
 		validateSmokeExecution(test, suite.model, execution)
+		printTof(stdout, "%s\n", formatSmokeResult(smoke.name, execution))
 		test.finish()
 		tests = append(tests, test)
 	}

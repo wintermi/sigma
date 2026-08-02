@@ -76,9 +76,8 @@ Run the provider-backed factual smoke suite from the repository root:
 mise run eval -- -provider openai -model gpt-5.6-sol
 ```
 
-The task runs the build-tagged suite under `cmd/sigma-evals-runner` and forwards
-additional Go-test arguments. It is not included in `mise run go:test` or
-`mise run ci`.
+The task runs `cmd/sigma-evals-runner` with `go run` and forwards command
+arguments. It is not included in `mise run go:test` or `mise run ci`.
 
 `SIGMA_EVAL_PROVIDER` and `SIGMA_EVAL_MODEL` are equivalent defaults. Provider
 registration remains explicit in each suite. The runner does not infer or
@@ -95,6 +94,10 @@ Each invocation sequentially checks factual recall, arithmetic, exact
 formatting, JSON extraction, and multi-turn recall. Every case has a local
 deterministic judge and its own run artifact, and independent failures do not
 prevent later cases from running.
+
+The command prints each case's pass/fail status, score, token counts, latency,
+estimated cost when available, and bounded final output. Full responses and
+transcripts remain in the private artifact directory.
 
 Evaluation artifacts are stored under an ignored `.eval/` invocation directory
 unless `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` selects an exact path. They

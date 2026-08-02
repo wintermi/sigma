@@ -18,7 +18,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   `cmd/sigma-evals-runner` for direct OpenAI Responses, OpenCode Go, Fireworks,
   and native Vertex Gemini models. The sequential suite covers factual recall,
   arithmetic, exact formatting, JSON extraction, and multi-turn recall without
-  adding a public API or live calls to deterministic CI.
+  adding a public API or live calls to deterministic CI, and prints compact
+  per-case score, usage, latency, cost, and output results through a direct
+  `go run` task.
 - Text streams and completions now accept `WithRequestHTTPClient` for an
   opt-in HTTP/SSE client override on an individual call.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,
