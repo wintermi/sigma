@@ -78,7 +78,9 @@ baseline/candidate reports, and private run artifacts. An opt-in smoke runner
 for direct OpenAI Responses, OpenCode Go, Fireworks, and native Vertex Gemini
 models is available outside deterministic CI, with separate factual,
 arithmetic, exact-formatting, JSON-extraction, and multi-turn checks plus compact
-per-case score, usage, latency, cost, and output reporting.
+per-run score, usage, latency, cost, and output reporting. Maintainers can
+filter cases and compare a baseline with multiple candidate models across
+repetitions, with observational pass-rate lift and paired telemetry deltas.
 
 ## Changed
 
@@ -87,8 +89,11 @@ per-case score, usage, latency, cost, and output reporting.
   supplies the opt-in provider-backed smoke suite; direct OpenAI Responses,
   OpenCode Go, both Fireworks text surfaces, and native Vertex Gemini use
   explicit suite-local registration. Five sequential cases receive independent
-  deterministic judgments, visible result lines, and artifacts, and
-  `mise run eval` launches the command directly with `go run` while
+  deterministic judgments, visible result lines, invocation totals, and
+  artifacts. Go-style case filtering and repeated baseline/candidate tables
+  produce paired correctness, token, latency, and estimated-cost reports;
+  candidate correctness stays observational while operational failures remain
+  fatal. `mise run eval` launches the command directly with `go run` while
   `mise run ci` makes no live model calls.
 - Package-level model lookup, routing, generation, image, and embedding helpers
   now use the live shared default registry without cloning the generated catalog
@@ -251,8 +256,10 @@ per-case score, usage, latency, cost, and output reporting.
 - The evaluation framework is internal tooling and does not add a root-package
   API or compatibility promise. Its Sigma harness performs sequential text
   turns but does not execute tools, manage workspaces, reload resources, or add
-  an agent runtime. Full-content artifacts are ignored by git and written with
-  private permissions, but may still contain sensitive prompts and responses.
+  an agent runtime. Existing single-model runner invocations remain valid;
+  comparison and filtering flags are additive. Full-content artifacts are
+  ignored by git and written with private permissions, but may still contain
+  sensitive prompts and responses.
 - `OpenAIResponsesCompat.SupportsExplicitPromptCacheMode` is additive and
   opt-in. Only an explicit `CacheRetentionNone` request on a marked model gains
   `prompt_cache_options`; unset retention, older or unmarked models, Azure
@@ -383,9 +390,10 @@ per-case score, usage, latency, cost, and output reporting.
 ## Deferred work
 
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
-- Broader provider-specific live evaluation suites and agent orchestration
-  remain separate future work; the live runner remains a focused factual check
-  for its explicitly registered routes.
+- Broader provider-specific live evaluation suites remain separate future work.
+  Agent-backed scenarios for isolated workspaces, tool execution, resource
+  reloads, and session snapshots remain dependent on a future agent runtime;
+  the live runner stays focused on its explicitly registered text routes.
 - Vertex partner MaaS probes, Vertex image and embedding probes, broader
   catalog expansion, location-aware probe filtering, regional pricing, and
   automatic ambient credential loading remain outside this native Gemini text

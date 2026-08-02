@@ -96,8 +96,27 @@ deterministic judge and its own run artifact, and independent failures do not
 prevent later cases from running.
 
 The command prints each case's pass/fail status, score, token counts, latency,
-estimated cost when available, and bounded final output. Full responses and
-transcripts remain in the private artifact directory.
+estimated cost when available, bounded final output, and an invocation summary.
+Use `-run` with a Go regular expression to select case names.
+
+The selected `-provider` and `-model` form the baseline. Repeat
+`-candidate provider/model` to compare one or more explicitly selected catalog
+models, and use `-repetitions` to set the positive paired sample count:
+
+```sh
+mise run eval -- \
+  -provider openai \
+  -model gpt-5.6-sol \
+  -candidate opencode-go/kimi-k3 \
+  -repetitions 3 \
+  -run 'factual-recall|multi-turn-recall'
+```
+
+Candidate scores are observational: an incorrect answer remains visible in the
+paired pass-rate report but does not alone fail a comparative invocation.
+Configuration, model execution, judging, telemetry validation, timeout, and
+artifact failures remain fatal. Full responses and transcripts remain in the
+private artifact directory.
 
 Evaluation artifacts are stored under an ignored `.eval/` invocation directory
 unless `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` selects an exact path. They

@@ -19,8 +19,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
   and native Vertex Gemini models. The sequential suite covers factual recall,
   arithmetic, exact formatting, JSON extraction, and multi-turn recall without
   adding a public API or live calls to deterministic CI, and prints compact
-  per-case score, usage, latency, cost, and output results through a direct
-  `go run` task.
+  per-run score, usage, latency, cost, and output results through a direct
+  `go run` task. The runner can filter cases and compare a baseline with one or
+  more candidate models across repeated paired runs, reporting pass-rate lift
+  and candidate-minus-baseline token, latency, and cost deltas.
 - Text streams and completions now accept `WithRequestHTTPClient` for an
   opt-in HTTP/SSE client override on an individual call.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,

@@ -20,6 +20,24 @@ surfaces, and native Vertex Gemini models. Each provider is registered
 explicitly by the suite. Its provider-neutral cases cover factual recall,
 arithmetic, exact formatting, JSON extraction, and multi-turn recall.
 
+The selected provider and model are the baseline. Repeat `-candidate` with a
+`provider/model` reference to compare explicit catalog models, add
+`-repetitions` for paired samples, and use a Go-style `-run` expression to
+filter stable case names:
+
+```sh
+mise run eval -- \
+  -provider openai \
+  -model gpt-5.6-sol \
+  -candidate opencode-go/kimi-k3 \
+  -repetitions 3 \
+  -run 'factual-recall|multi-turn-recall'
+```
+
+Single-model smoke scores are hard failures. Comparative scores are
+observational and feed the paired report; setup, execution, judge, telemetry,
+timeout, and persistence errors still fail the command.
+
 The task runs that command directly and forwards command arguments, including
 `-timeout`. Live evaluations are not part of `mise run go:test` or
 `mise run ci`.

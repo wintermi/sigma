@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,8 +22,33 @@ import (
 
 type runnerConfig struct {
 	selection   evals.ModelSelection
+	candidates  []evals.ModelSelection
+	repetitions int
+	runPattern  *regexp.Regexp
 	artifactDir string
 	timeout     time.Duration
+}
+
+type candidateSelections []evals.ModelSelection
+
+func (s *candidateSelections) String() string {
+	if s == nil {
+		return ""
+	}
+	refs := make([]string, len(*s))
+	for i, selection := range *s {
+		refs[i] = modelSelectionName(selection)
+	}
+	return strings.Join(refs, ",")
+}
+
+func (s *candidateSelections) Set(value string) error {
+	selection, err := parseModelSelectionRef(value)
+	if err != nil {
+		return err
+	}
+	*s = append(*s, selection)
+	return nil
 }
 
 type commandTest struct {
@@ -75,7 +101,12 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 		return 2
 	}
 
-	suite, err := newSmokeSuite(config.selection, lookup)
+	cases, err := filterSmokeCases(smokeCases(), config.runPattern)
+	if err != nil {
+		printTof(stderr, "sigma-evals-runner: %v\n", err)
+		return 2
+	}
+	baseline, candidates, err := newSmokeSuites(config.selection, config.candidates, lookup)
 	if err != nil {
 		printTof(stderr, "sigma-evals-runner: %v\n", err)
 		return 2
@@ -85,32 +116,34 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 		printTof(stderr, "sigma-evals-runner: create runner: %v\n", err)
 		return 2
 	}
-	printTof(stderr, "[eval] model=%s/%s\n", suite.model.Provider, suite.model.ID)
+	printTof(stderr, "[eval] baseline=%s\n", baseline.name())
+	for _, candidate := range candidates {
+		printTof(stderr, "[eval] candidate=%s\n", candidate.name())
+	}
 	printTof(stderr, "[eval] artifacts=%s\n", runner.ArtifactDir())
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.timeout)
-	var tests []*commandTest
-	for _, smoke := range smokeCases(suite.harness) {
-		test := &commandTest{name: "Provider smoke/" + smoke.name}
-		execution := evals.Run(ctx, runner, test, smoke.evaluation)
-		validateSmokeExecution(test, suite.model, execution)
-		printTof(stdout, "%s\n", formatSmokeResult(smoke.name, execution))
-		test.finish()
-		tests = append(tests, test)
-	}
+	summary, runErr := executeSmokeRuns(
+		ctx,
+		runner,
+		stdout,
+		stderr,
+		cases,
+		baseline,
+		candidates,
+		config.repetitions,
+	)
 	cancel()
+	if runErr != nil {
+		printTof(stderr, "sigma-evals-runner: plan smoke runs: %v\n", runErr)
+		return 2
+	}
+	printTof(stdout, "%s\n", summary.String())
 	if err := runner.Close(stdout); err != nil {
 		printTof(stderr, "[eval] error=close runner: %v\n", err)
 		return 1
 	}
-	failed := false
-	for _, test := range tests {
-		for _, message := range test.errors {
-			printTof(stderr, "[eval] test=%s error=%s\n", test.name, message)
-		}
-		failed = failed || test.Failed()
-	}
-	if failed {
+	if summary.Failed {
 		return 1
 	}
 	return 0
@@ -119,8 +152,12 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup) (runnerConfig, error) {
 	flags := flag.NewFlagSet("sigma-evals-runner", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	provider := flags.String("provider", "", "default provider id")
-	model := flags.String("model", "", "default model id")
+	provider := flags.String("provider", "", "baseline provider id")
+	model := flags.String("model", "", "baseline model id")
+	var candidates candidateSelections
+	flags.Var(&candidates, "candidate", "candidate provider/model reference; may be repeated")
+	repetitions := flags.Int("repetitions", 1, "comparison repetitions")
+	runPattern := flags.String("run", "", "regular expression selecting smoke case names")
 	artifactDirectory := flags.String("artifact-dir", "", "exact private artifact directory")
 	timeout := flags.Duration("timeout", 5*time.Minute, "overall evaluation timeout")
 	if err := flags.Parse(args); err != nil {
@@ -131,6 +168,16 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 	}
 	if *timeout <= 0 {
 		return runnerConfig{}, errors.New("timeout must be positive")
+	}
+	if *repetitions <= 0 {
+		return runnerConfig{}, errors.New("repetitions must be positive")
+	}
+	if len(candidates) == 0 && *repetitions != 1 {
+		return runnerConfig{}, errors.New("repetitions require at least one candidate")
+	}
+	compiledRunPattern, err := regexp.Compile(*runPattern)
+	if err != nil {
+		return runnerConfig{}, fmt.Errorf("compile -run expression: %w", err)
 	}
 
 	var explicit *evals.ModelSelection
@@ -146,11 +193,49 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 	if err != nil {
 		return runnerConfig{}, fmt.Errorf("resolve model selection: %w", err)
 	}
+	if err := validateCandidateSelections(selection, candidates); err != nil {
+		return runnerConfig{}, err
+	}
 	return runnerConfig{
 		selection:   selection,
+		candidates:  append([]evals.ModelSelection(nil), candidates...),
+		repetitions: *repetitions,
+		runPattern:  compiledRunPattern,
 		artifactDir: strings.TrimSpace(*artifactDirectory),
 		timeout:     *timeout,
 	}, nil
+}
+
+func parseModelSelectionRef(value string) (evals.ModelSelection, error) {
+	value = strings.TrimSpace(value)
+	provider, model, ok := strings.Cut(value, "/")
+	selection := evals.ModelSelection{
+		Provider: sigma.ProviderID(strings.TrimSpace(provider)),
+		Model:    sigma.ModelID(strings.TrimSpace(model)),
+	}
+	if !ok || selection.Provider == "" || selection.Model == "" {
+		return evals.ModelSelection{}, fmt.Errorf("candidate %q must be a provider/model reference", value)
+	}
+	if err := sigma.ValidateModelRef(sigma.ModelRef{Provider: selection.Provider, ID: selection.Model}); err != nil {
+		return evals.ModelSelection{}, fmt.Errorf("candidate %q: %w", value, err)
+	}
+	return selection, nil
+}
+
+func validateCandidateSelections(baseline evals.ModelSelection, candidates []evals.ModelSelection) error {
+	seen := map[string]struct{}{modelSelectionName(baseline): {}}
+	for _, candidate := range candidates {
+		name := modelSelectionName(candidate)
+		if _, ok := seen[name]; ok {
+			return fmt.Errorf("model selection %q is duplicated", name)
+		}
+		seen[name] = struct{}{}
+	}
+	return nil
+}
+
+func modelSelectionName(selection evals.ModelSelection) string {
+	return string(selection.Provider) + "/" + string(selection.Model)
 }
 
 func printTof(output io.Writer, format string, args ...any) {

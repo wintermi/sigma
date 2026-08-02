@@ -885,9 +885,14 @@ should still come through the catalog refresh workflow.
       private run artifacts, and an opt-in live smoke runner for explicitly
       registered OpenAI, OpenCode Go, Fireworks, and native Vertex routes while
       covering factual, arithmetic, formatting, JSON extraction, and multi-turn
-      behavior with visible per-case results outside deterministic CI.
+      behavior with visible per-run results outside deterministic CI. Support
+      Go-style case filtering plus repeated baseline/candidate model comparisons
+      with observational scores and paired correctness, token, latency, and cost
+      reports.
 - [ ] Add agent runtime integration on top of the provider-neutral primitives
-      `sigma` exposes (orchestration is deferred to later integration cards).
+      `sigma` exposes (orchestration is deferred to later integration cards),
+      then add agent-backed evaluation scenarios for isolated workspaces, tool
+      execution, resource reloads, and native session snapshots.
 - [x] Implement cross-provider context handoff beyond diagnostic surface probes.
       Expose public helpers to adapt conversation messages (assistant provenance,
       thinking, tool calls/results including images) for a target model. Reuse and
