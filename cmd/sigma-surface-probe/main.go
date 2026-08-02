@@ -22,6 +22,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/provider/fireworks"
+	"github.com/wintermi/sigma/provider/google"
 	"github.com/wintermi/sigma/provider/moonshot"
 	"github.com/wintermi/sigma/provider/nvidia"
 	"github.com/wintermi/sigma/provider/openai"
@@ -133,8 +134,11 @@ type config struct {
 }
 
 type routeCredential struct {
-	apiKey string
-	codex  *openai.CodexOAuthCredentials
+	apiKey      string
+	accessToken string
+	projectID   string
+	location    string
+	codex       *openai.CodexOAuthCredentials
 }
 
 type handoffSource struct {
@@ -180,6 +184,14 @@ var routes = map[string]routeSpec{
 		RegisterProvider: registerOpenCodeProvider,
 		Model:            discoveredOpenCodeModel,
 		Cases:            openAICompatibleProbeCases,
+	},
+	"google-vertex": {
+		Name:             "google-vertex",
+		Provider:         sigma.ProviderGoogleVertex,
+		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
+		RegisterProvider: registerGoogleVertexProvider,
+		Model:            googleVertexProbeModel,
+		Cases:            googleVertexProbeCases,
 	},
 	"fireworks-openai": {
 		Name:             "fireworks-openai",
@@ -344,7 +356,7 @@ func parseConfig() config {
 	var handoff bool
 	var structuredOutput bool
 	var images bool
-	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
+	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,google-vertex,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
 	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run known unavailable advertised models instead of skipping them")
@@ -379,11 +391,44 @@ func credentialForRoute(ctx context.Context, route routeSpec, cfg config) (route
 	if route.Name == "openai-codex" {
 		return openAICodexCredential(ctx, cfg)
 	}
+	if route.Name == "google-vertex" {
+		return googleVertexCredential()
+	}
 	apiKey := os.Getenv(route.APIKeyEnv)
 	if apiKey == "" {
 		return routeCredential{}, fmt.Errorf("%s is required for live %s probing", route.APIKeyEnv, route.Name)
 	}
 	return routeCredential{apiKey: apiKey}, nil
+}
+
+func googleVertexCredential() (routeCredential, error) {
+	projectID := firstEnvironmentValue("GOOGLE_CLOUD_PROJECT", "GCLOUD_PROJECT")
+	if projectID == "" {
+		return routeCredential{}, fmt.Errorf("GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT is required for live google-vertex probing")
+	}
+	location := firstEnvironmentValue("GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_REGION")
+	if location == "" {
+		return routeCredential{}, fmt.Errorf("GOOGLE_CLOUD_LOCATION or GOOGLE_CLOUD_REGION is required for live google-vertex probing")
+	}
+
+	credential := routeCredential{projectID: projectID, location: location}
+	if credential.accessToken = os.Getenv("GOOGLE_CLOUD_ACCESS_TOKEN"); credential.accessToken != "" {
+		return credential, nil
+	}
+	credential.apiKey = firstEnvironmentValue("GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY")
+	if credential.apiKey == "" {
+		return routeCredential{}, fmt.Errorf("GOOGLE_CLOUD_ACCESS_TOKEN, GOOGLE_CLOUD_API_KEY, or GOOGLE_API_KEY is required for live google-vertex probing")
+	}
+	return credential, nil
+}
+
+func firstEnvironmentValue(names ...string) string {
+	for _, name := range names {
+		if value := os.Getenv(name); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func openAICodexCredential(ctx context.Context, cfg config) (routeCredential, error) {
@@ -460,6 +505,12 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 	if len(selected) > 0 {
 		models := make([]string, 0, len(selected))
 		for modelID := range selected {
+			if route.Name == "google-vertex" {
+				model, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID))
+				if !ok || !isBuiltInGoogleVertexGeminiModel(model) {
+					return nil, fmt.Errorf("model %q is not a built-in google-vertex text model", modelID)
+				}
+			}
 			models = append(models, modelID)
 		}
 		sort.Strings(models)
@@ -471,7 +522,25 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 	if route.Name == "nvidia" {
 		return []string{defaultNVIDIAProbeModel}, nil
 	}
+	if route.Name == "google-vertex" {
+		models := make([]string, 0)
+		for _, model := range sigma.Models() {
+			if isBuiltInGoogleVertexGeminiModel(model) {
+				models = append(models, string(model.ID))
+			}
+		}
+		sort.Strings(models)
+		if len(models) == 0 {
+			return nil, fmt.Errorf("no built-in google-vertex text models are registered")
+		}
+		return models, nil
+	}
 	return discoverModels(ctx, route, credential.apiKey)
+}
+
+func isBuiltInGoogleVertexGeminiModel(model sigma.Model) bool {
+	family, _ := model.ProviderMetadata["modelFamily"].(string)
+	return model.Provider == sigma.ProviderGoogleVertex && model.API == sigma.APIGoogleVertex && family == "gemini"
 }
 
 func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]string, error) {
@@ -1050,6 +1119,17 @@ func registerOpenCodeProvider(registry *sigma.Registry, route routeSpec) error {
 	return nil
 }
 
+func registerGoogleVertexProvider(registry *sigma.Registry, route routeSpec) error {
+	options := make([]google.VertexProviderOption, 0, 1)
+	if route.BaseURL != "" {
+		options = append(options, google.WithVertexBaseURL(route.BaseURL))
+	}
+	if err := google.RegisterVertex(registry, route.Provider, options...); err != nil {
+		return fmt.Errorf("register google vertex provider: %w", err)
+	}
+	return nil
+}
+
 func registerFireworksOpenAIProvider(registry *sigma.Registry, route routeSpec) error {
 	if err := fireworks.Register(registry, fireworks.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register fireworks openai-compatible provider: %w", err)
@@ -1157,6 +1237,18 @@ func discoveredOpenAICodexModel(route routeSpec, id string) sigma.Model {
 			"probeSurface":    "openai-codex-responses",
 			"requiresOAuth":   true,
 		},
+	}
+}
+
+func googleVertexProbeModel(route routeSpec, id string) sigma.Model {
+	if model, ok := sigma.GetModel(route.Provider, sigma.ModelID(id)); ok && isBuiltInGoogleVertexGeminiModel(model) {
+		return model
+	}
+	return sigma.Model{
+		ID:              sigma.ModelID(id),
+		Provider:        route.Provider,
+		API:             sigma.APIGoogleVertex,
+		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
 	}
 }
 
@@ -1387,6 +1479,23 @@ func authOptions(route routeSpec, credential routeCredential) []sigma.Option {
 			),
 		}
 	}
+	if route.Name == "google-vertex" {
+		options := []sigma.Option{sigma.WithProviderOptions(route.Provider, map[string]any{
+			"projectID": credential.projectID,
+			"location":  credential.location,
+		})}
+		if credential.accessToken != "" {
+			resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+				return sigma.Credential{
+					Type:   sigma.CredentialTypeOAuthToken,
+					Value:  credential.accessToken,
+					Source: "env:GOOGLE_CLOUD_ACCESS_TOKEN",
+				}, nil
+			})
+			return append(options, sigma.WithProviderAuthResolver(route.Provider, resolver))
+		}
+		return append(options, sigma.WithAPIKey(credential.apiKey))
+	}
 	return []sigma.Option{sigma.WithAPIKey(credential.apiKey)}
 }
 
@@ -1534,6 +1643,41 @@ func openAICodexProbeCases(route routeSpec, model sigma.Model) []probeCase {
 			sigma.WithMaxTokens(128),
 		}),
 	)
+}
+
+func googleVertexProbeCases(_ routeSpec, model sigma.Model) []probeCase {
+	cases := []probeCase{
+		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
+		singleTurnCase("developer_instruction", "system instruction handling", sigma.Request{
+			SystemPrompt: "Reply tersely.",
+			Messages:     []sigma.Message{sigma.UserText("Reply with exactly: dev-ok.")},
+		}, []sigma.Option{sigma.WithMaxTokens(128)}),
+	}
+	if model.SupportsImages() {
+		cases = append(cases, singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}))
+	}
+	if model.SupportsReasoning() {
+		disableThinking := true
+		cases = append(cases, singleTurnCase("thinking_disabled", "typed disabled thinking", basicRequest("Reply with exactly: 5."), []sigma.Option{
+			sigma.WithGoogleOptions(sigma.GoogleOptions{DisableThinking: &disableThinking}),
+			sigma.WithMaxTokens(512),
+		}))
+		for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh} {
+			if model.SupportsThinkingLevel(level) {
+				cases = append(cases, singleTurnCase("reasoning_level_"+string(level), "typed reasoning "+string(level), basicRequest("Reply with exactly: 5."), []sigma.Option{
+					sigma.WithReasoningLevel(level),
+					sigma.WithMaxTokens(512),
+				}))
+			}
+		}
+	}
+	if model.SupportsTools {
+		cases = append(cases,
+			googleToolCase("tool_auto_file_read", "auto read-file tool", "auto"),
+			googleToolCase("tool_any_file_read", "forced-any read-file tool", "any"),
+		)
+	}
+	return cases
 }
 
 func openAICompatibleProbeCases(route routeSpec, model sigma.Model) []probeCase {
@@ -1700,6 +1844,29 @@ func toolCase(name string, description string, choice any) probeCase {
 		},
 		Options: []sigma.Option{
 			sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: choice}),
+			sigma.WithMaxTokens(512),
+		},
+	}
+}
+
+func googleToolCase(name string, description string, choice string) probeCase {
+	return probeCase{
+		Name:        name,
+		Description: description,
+		Request: sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use the available tool and answer with the result.")},
+			Tools: []sigma.Tool{{
+				Name:        "read_file",
+				Description: "Read a file",
+				InputSchema: sigma.Schema{
+					jsonTypeKey:  "object",
+					"properties": map[string]any{"path": map[string]any{jsonTypeKey: "string"}},
+					"required":   []any{"path"},
+				},
+			}},
+		},
+		Options: []sigma.Option{
+			sigma.WithGoogleOptions(sigma.GoogleOptions{ToolChoice: choice}),
 			sigma.WithMaxTokens(512),
 		},
 	}

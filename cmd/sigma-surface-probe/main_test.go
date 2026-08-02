@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -258,6 +259,87 @@ func TestNVIDIARouteBuildsExpectedModels(t *testing.T) {
 	assertMetadataStrings(t, discovered.ProviderMetadata, "apiKeyEnvVars", []string{"NVIDIA_API_KEY"})
 }
 
+func TestGoogleVertexRouteUsesGeneratedModels(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex"]
+	if route.RegisterProvider == nil {
+		t.Fatal("google-vertex route missing provider registration")
+	}
+	if got, want := route.Provider, sigma.ProviderGoogleVertex; got != want {
+		t.Fatalf("provider = %q, want %q", got, want)
+	}
+
+	registry := sigma.NewRegistry()
+	if err := route.RegisterProvider(registry, route); err != nil {
+		t.Fatalf("register provider: %v", err)
+	}
+	providers := registry.ListProviders()
+	if len(providers) != 1 || providers[0].ID != sigma.ProviderGoogleVertex || providers[0].TextAPI != sigma.APIGoogleVertex {
+		t.Fatalf("registered providers = %#v, want google-vertex text provider", providers)
+	}
+
+	got := route.Model(route, "gemini-3.1-pro-preview")
+	want, ok := sigma.GetModel(sigma.ProviderGoogleVertex, "gemini-3.1-pro-preview")
+	if !ok {
+		t.Fatal("generated google-vertex model was not registered")
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("probe model differs from generated model:\n got: %#v\nwant: %#v", got, want)
+	}
+	if got.SupportsThinkingLevel(sigma.ThinkingLevelMedium) || !got.SupportsThinkingLevel(sigma.ThinkingLevelLow) || !got.SupportsThinkingLevel(sigma.ThinkingLevelHigh) {
+		t.Fatalf("generated thinking restrictions were not preserved: %+v", got)
+	}
+}
+
+func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex"]
+	route.BaseURL = "http://127.0.0.1:1/v1"
+	models, err := modelsForRoute(context.Background(), route, routeCredential{}, nil)
+	if err != nil {
+		t.Fatalf("modelsForRoute returned error: %v", err)
+	}
+	if len(models) == 0 {
+		t.Fatal("modelsForRoute returned no built-in Vertex models")
+	}
+	if !sort.StringsAreSorted(models) {
+		t.Fatalf("models are not sorted: %v", models)
+	}
+	for _, modelID := range models {
+		model, ok := sigma.GetModel(sigma.ProviderGoogleVertex, sigma.ModelID(modelID))
+		if !ok || model.API != sigma.APIGoogleVertex {
+			t.Fatalf("model %q does not resolve to built-in google-vertex text metadata", modelID)
+		}
+	}
+	for _, modelID := range []string{"gemini-1.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview", "gemini-3.1-pro-preview"} {
+		if !hasString(models, modelID) {
+			t.Fatalf("built-in models do not include %q: %v", modelID, models)
+		}
+	}
+}
+
+func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
+	t.Parallel()
+
+	models, err := modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{
+		"gemini-3-flash-preview": true,
+		"gemini-2.5-flash":       true,
+	})
+	if err != nil {
+		t.Fatalf("modelsForRoute returned error: %v", err)
+	}
+	if !reflect.DeepEqual(models, []string{"gemini-2.5-flash", "gemini-3-flash-preview"}) {
+		t.Fatalf("models = %v, want sorted selected Vertex models", models)
+	}
+
+	_, err = modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{"not-a-vertex-model": true})
+	if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
+		t.Fatalf("invalid model error = %v, want clear local rejection", err)
+	}
+}
+
 func TestModelsForRouteUsesSelectedModelsWithoutDiscovery(t *testing.T) {
 	t.Parallel()
 
@@ -480,6 +562,252 @@ func TestOpenAICodexAuthOptionsUseOAuthTokenProvider(t *testing.T) {
 	}
 	if got, want := credential.Metadata["accountID"], "acct_probe"; got != want {
 		t.Fatalf("accountID metadata = %v, want %q", got, want)
+	}
+}
+
+func TestGoogleVertexCredentialPrecedence(t *testing.T) {
+	clearGoogleVertexEnvironment(t)
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "cloud-project")
+	t.Setenv("GCLOUD_PROJECT", "gcloud-project")
+	t.Setenv("GOOGLE_CLOUD_LOCATION", "cloud-location")
+	t.Setenv("GOOGLE_CLOUD_REGION", "cloud-region")
+	t.Setenv("GOOGLE_CLOUD_ACCESS_TOKEN", "oauth-token")
+	t.Setenv("GOOGLE_CLOUD_API_KEY", "cloud-key")
+	t.Setenv("GOOGLE_API_KEY", "google-key")
+
+	credential, err := credentialForRoute(context.Background(), routes["google-vertex"], config{})
+	if err != nil {
+		t.Fatalf("credentialForRoute returned error: %v", err)
+	}
+	if credential.projectID != "cloud-project" || credential.location != "cloud-location" {
+		t.Fatalf("routing = %q/%q, want cloud-project/cloud-location", credential.projectID, credential.location)
+	}
+	if credential.accessToken != "oauth-token" || credential.apiKey != "" {
+		t.Fatalf("auth selection = token %t, key %t; want token only", credential.accessToken != "", credential.apiKey != "")
+	}
+}
+
+func TestGoogleVertexCredentialFallbacks(t *testing.T) {
+	clearGoogleVertexEnvironment(t)
+	t.Setenv("GCLOUD_PROJECT", "fallback-project")
+	t.Setenv("GOOGLE_CLOUD_REGION", "fallback-region")
+	t.Setenv("GOOGLE_CLOUD_API_KEY", "cloud-key")
+	t.Setenv("GOOGLE_API_KEY", "google-key")
+
+	credential, err := googleVertexCredential()
+	if err != nil {
+		t.Fatalf("googleVertexCredential returned error: %v", err)
+	}
+	if credential.projectID != "fallback-project" || credential.location != "fallback-region" || credential.apiKey != "cloud-key" {
+		t.Fatalf("credential = project %q location %q key %q", credential.projectID, credential.location, credential.apiKey)
+	}
+
+	t.Setenv("GOOGLE_CLOUD_API_KEY", "")
+	credential, err = googleVertexCredential()
+	if err != nil {
+		t.Fatalf("GOOGLE_API_KEY fallback returned error: %v", err)
+	}
+	if credential.apiKey != "google-key" {
+		t.Fatalf("api key = %q, want GOOGLE_API_KEY fallback", credential.apiKey)
+	}
+}
+
+func TestGoogleVertexCredentialRequiresRoutingAndAuth(t *testing.T) {
+	tests := []struct {
+		name    string
+		env     map[string]string
+		wantErr string
+	}{
+		{name: "project", env: map[string]string{"GOOGLE_CLOUD_LOCATION": "location", "GOOGLE_CLOUD_API_KEY": "key"}, wantErr: "GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT"},
+		{name: "location", env: map[string]string{"GOOGLE_CLOUD_PROJECT": "project", "GOOGLE_CLOUD_API_KEY": "key"}, wantErr: "GOOGLE_CLOUD_LOCATION or GOOGLE_CLOUD_REGION"},
+		{name: "authentication", env: map[string]string{"GOOGLE_CLOUD_PROJECT": "project", "GOOGLE_CLOUD_LOCATION": "location"}, wantErr: "GOOGLE_CLOUD_ACCESS_TOKEN, GOOGLE_CLOUD_API_KEY, or GOOGLE_API_KEY"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearGoogleVertexEnvironment(t)
+			for name, value := range tt.env {
+				t.Setenv(name, value)
+			}
+			_, err := googleVertexCredential()
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestGoogleVertexAuthOptions(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex"]
+	model := route.Model(route, "gemini-2.5-flash")
+	oauth := applyProbeOptions(authOptions(route, routeCredential{
+		accessToken: "oauth-token",
+		projectID:   "test-project",
+		location:    "us-central1",
+	}))
+	providerOptions := oauth.ProviderOptions[route.Provider]
+	if providerOptions["projectID"] != "test-project" || providerOptions["location"] != "us-central1" {
+		t.Fatalf("provider options = %#v, want request-scoped Vertex routing", providerOptions)
+	}
+	resolver, ok := oauth.ProviderAuthResolvers[route.Provider]
+	if !ok {
+		t.Fatal("missing google-vertex auth resolver")
+	}
+	credential, err := resolver.Resolve(context.Background(), model, oauth)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if credential.Type != sigma.CredentialTypeOAuthToken || credential.Value != "oauth-token" || credential.Source != "env:GOOGLE_CLOUD_ACCESS_TOKEN" {
+		t.Fatalf("credential = %s, want typed environment OAuth token", credential)
+	}
+
+	apiKey := applyProbeOptions(authOptions(route, routeCredential{
+		apiKey:    "api-key",
+		projectID: "test-project",
+		location:  "us-central1",
+	}))
+	if apiKey.APIKey != "api-key" || apiKey.ProviderAuthResolvers[route.Provider] != nil {
+		t.Fatalf("API-key options = %#v, want API key without OAuth resolver", apiKey)
+	}
+}
+
+func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
+	tests := []struct {
+		name              string
+		credential        routeCredential
+		wantAuthorization string
+		wantAPIKey        string
+	}{
+		{
+			name:              "oauth bearer",
+			credential:        routeCredential{accessToken: "oauth-secret", projectID: "test-project", location: "us-central1"},
+			wantAuthorization: "Bearer oauth-secret",
+		},
+		{
+			name:       "api key",
+			credential: routeCredential{apiKey: "api-secret", projectID: "test-project", location: "us-central1"},
+			wantAPIKey: "api-secret",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got, want := r.URL.Path, "/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash:streamGenerateContent"; got != want {
+					t.Errorf("path = %q, want %q", got, want)
+				}
+				if got := r.URL.Query().Get("alt"); got != "sse" {
+					t.Errorf("alt = %q, want sse", got)
+				}
+				if got := r.Header.Get("Authorization"); got != tt.wantAuthorization {
+					t.Errorf("Authorization = %q, want %q", got, tt.wantAuthorization)
+				}
+				if got := r.Header.Get("X-Goog-Api-Key"); got != tt.wantAPIKey {
+					t.Errorf("X-Goog-Api-Key = %q, want %q", got, tt.wantAPIKey)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				if bytes.Contains(body, []byte("oauth-secret")) || bytes.Contains(body, []byte("api-secret")) {
+					t.Errorf("request payload leaked credentials: %s", body)
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, "data: {\"responseId\":\"vertex-response\",\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"sigma-ok\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1,\"totalTokenCount\":2}}\n\n")
+			}))
+			defer server.Close()
+
+			route := routes["google-vertex"]
+			route.BaseURL = server.URL + "/v1"
+			model := route.Model(route, "gemini-2.5-flash")
+			result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+				singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
+				tt.credential, "basic_text")
+			if result.Outcome != "ok" || result.Error != "" {
+				t.Fatalf("probe result = %+v, want success", result)
+			}
+		})
+	}
+}
+
+func TestGoogleVertexProbeErrorDoesNotLeakAccessToken(t *testing.T) {
+	t.Parallel()
+
+	const accessToken = "oauth-secret-that-must-not-leak"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":{"message":"denied"}}`, http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	route := routes["google-vertex"]
+	route.BaseURL = server.URL + "/v1"
+	model := route.Model(route, "gemini-2.5-flash")
+	result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
+		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
+	if result.Error == "" {
+		t.Fatal("probe unexpectedly succeeded")
+	}
+	if strings.Contains(result.Error, accessToken) {
+		t.Fatalf("probe error leaked access token: %s", result.Error)
+	}
+}
+
+func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		modelID string
+		want    []string
+		notWant []string
+	}{
+		{
+			modelID: "gemini-1.5-flash",
+			want:    []string{"basic_text", "developer_instruction", "image_input", "tool_auto_file_read", "tool_any_file_read"},
+			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
+		{
+			modelID: "gemini-2.5-flash",
+			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
+		{
+			modelID: "gemini-3-flash-preview",
+			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
+		{
+			modelID: "gemini-3.1-pro-preview",
+			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_high"},
+			notWant: []string{"reasoning_level_medium"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.modelID, func(t *testing.T) {
+			t.Parallel()
+			model, ok := sigma.GetModel(sigma.ProviderGoogleVertex, sigma.ModelID(tt.modelID))
+			if !ok {
+				t.Fatalf("model %q not found", tt.modelID)
+			}
+			cases := googleVertexProbeCases(routes["google-vertex"], model)
+			for _, name := range tt.want {
+				if !hasRepairVariant(cases, name) {
+					t.Errorf("model %q missing case %q", tt.modelID, name)
+				}
+			}
+			for _, name := range tt.notWant {
+				if hasRepairVariant(cases, name) {
+					t.Errorf("model %q unexpectedly includes case %q", tt.modelID, name)
+				}
+			}
+		})
+	}
+
+	auto := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-2.5-flash")), "tool_auto_file_read").Options)
+	if auto.GoogleOptions == nil || auto.GoogleOptions.ToolChoice != "auto" {
+		t.Fatalf("auto tool options = %#v", auto.GoogleOptions)
+	}
+	anyChoice := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-2.5-flash")), "tool_any_file_read").Options)
+	if anyChoice.GoogleOptions == nil || anyChoice.GoogleOptions.ToolChoice != "any" {
+		t.Fatalf("any tool options = %#v", anyChoice.GoogleOptions)
 	}
 }
 
@@ -1530,6 +1858,30 @@ func hasRepairVariant(variants []probeCase, name string) bool {
 		}
 	}
 	return false
+}
+
+func hasString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func clearGoogleVertexEnvironment(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{
+		"GOOGLE_CLOUD_PROJECT",
+		"GCLOUD_PROJECT",
+		"GOOGLE_CLOUD_LOCATION",
+		"GOOGLE_CLOUD_REGION",
+		"GOOGLE_CLOUD_ACCESS_TOKEN",
+		"GOOGLE_CLOUD_API_KEY",
+		"GOOGLE_API_KEY",
+	} {
+		t.Setenv(name, "")
+	}
 }
 
 func findProbeCase(t *testing.T, cases []probeCase, name string) probeCase {

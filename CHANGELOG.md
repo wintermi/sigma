@@ -65,6 +65,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
   explicit caller opt-in or opt-out control native custom-tool serialization;
   replay, tool results, and streamed custom input retain Sigma's existing
   tool-call surface.
+- `cmd/sigma-surface-probe` now has an opt-in native Vertex Gemini text route
+  with catalog-backed model selection, explicit project/location routing,
+  externally supplied OAuth access tokens or API keys, and capability-gated
+  image, function-tool, and thinking diagnostics.
 
 ### Changed
 

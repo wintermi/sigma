@@ -58,6 +58,9 @@ and retry splits. Google Generative AI, Mistral Conversations, and Bedrock
 Converse Stream also reject missing terminal markers with retryable transient
 errors and partial finals. Codex session cleanup now clears all session state,
 while abandoned debug and fallback state expires after five idle minutes.
+The surface-probe command now also has an opt-in native Vertex Gemini text
+route that reuses built-in model capabilities, accepts caller-supplied OAuth
+access tokens or API keys, and keeps live provider calls outside CI.
 
 ## Changed
 
@@ -190,6 +193,13 @@ while abandoned debug and fallback state expires after five idle minutes.
   custom-tool payload; callers may explicitly enable or disable it for
   compatible endpoints. Assistant and tool-result replay plus streamed custom
   input continue to use Sigma's normal tool-call surface.
+- `cmd/sigma-surface-probe` now supports opt-in native Vertex Gemini text
+  diagnostics. Omitted model selection walks the sorted built-in
+  `google-vertex` text catalog, explicit model IDs are validated locally, and
+  image, function-tool, disabled-thinking, and reasoning-level cases follow
+  generated model capabilities. Project, location, and caller-supplied OAuth
+  access tokens or API keys are passed through existing provider options and
+  authentication surfaces without a Vertex model-discovery request.
 
 ## Compatibility
 
@@ -293,10 +303,20 @@ while abandoned debug and fallback state expires after five idle minutes.
   `EnableGrammarTools` to `false` preserves function-tool serialization, and
   explicit enablement is rejected on unrelated APIs. This adds no new provider
   or provider-neutral constrained-sampling surface.
+- The `google-vertex` surface-probe route is an additive CLI diagnostic. It
+  resolves project and location from explicit environment variables, prefers
+  `GOOGLE_CLOUD_ACCESS_TOKEN` over the existing API-key fallbacks, and neither
+  persists nor refreshes the token. Public APIs, provider registration,
+  adapter payload contracts, catalog rows, generated artifacts, serialized
+  messages, normalized responses, default probe routes, and CI behavior are
+  unchanged.
 
 ## Deferred work
 
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
+- Vertex partner MaaS probes, Vertex image and embedding probes, catalog
+  expansion, and automatic ambient credential loading remain outside this
+  native Gemini text-probe slice.
 
 ## Validation status
 

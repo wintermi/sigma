@@ -681,6 +681,10 @@ should still come through the catalog refresh workflow.
       explicit project/location routing and deterministic fixtures.
 - [x] Add curated native Vertex Gemini 3.1 Flash Lite, Gemini 3.5 Flash, and
       Flash/Flash-Lite latest metadata with deterministic registry coverage.
+- [x] Add opt-in native Vertex Gemini text probes that reuse built-in model
+      metadata, explicit project/location routing, externally supplied OAuth
+      access tokens or API keys, and capability-gated cases without network
+      model discovery or live calls in `mise run ci`.
 - [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
       use credential-gated probes only for manual compatibility investigation.
 - [ ] Keep ambient Vertex project/location environment fallback and built-in ADC

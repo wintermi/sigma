@@ -19,7 +19,7 @@ Common flags:
 
 ```text
 -routes                 comma-separated routes to probe
--models                 comma-separated model IDs; omitting this discovers models
+-models                 comma-separated model IDs; omitting this uses route defaults
 -repair                 try targeted repair variants after a failing case
 -include-unavailable    probe known unavailable advertised models instead of skipping
 -codex-oauth            run OpenAI Codex device-code OAuth for openai-codex
@@ -46,6 +46,7 @@ All other routes must be requested explicitly.
 | `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.5` unless `-models` is set |
 | `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
 | `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
+| `google-vertex` | Native Vertex Gemini `streamGenerateContent` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses every built-in `google-vertex` Gemini text model in sorted order unless `-models` is set |
 | `fireworks-openai` | Fireworks OpenAI-compatible Chat Completions | `FIREWORKS_API_KEY` | Discovers Fireworks models |
 | `fireworks-anthropic` | Fireworks Anthropic-compatible Messages | `FIREWORKS_API_KEY` | Discovers Fireworks models |
 | `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Discovers Moonshot AI models |
@@ -127,6 +128,31 @@ NVIDIA_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes nvidia \
   -repair
 ```
+
+Probe one native Vertex Gemini model with an externally supplied OAuth access
+token:
+
+```bash
+GOOGLE_CLOUD_ACCESS_TOKEN="$(gcloud auth application-default print-access-token)" \
+GOOGLE_CLOUD_PROJECT=my-project \
+GOOGLE_CLOUD_LOCATION=us-central1 \
+mise run go:run -- ./cmd/sigma-surface-probe \
+  -routes google-vertex \
+  -models gemini-2.5-flash \
+  -repair
+```
+
+The project resolves from `GOOGLE_CLOUD_PROJECT`, then `GCLOUD_PROJECT`. The
+location resolves from `GOOGLE_CLOUD_LOCATION`, then `GOOGLE_CLOUD_REGION`.
+Authentication resolves `GOOGLE_CLOUD_ACCESS_TOKEN` first, followed by
+`GOOGLE_CLOUD_API_KEY` and `GOOGLE_API_KEY`. The probe passes an access token as
+a typed OAuth bearer credential and does not print, persist, inspect, or refresh
+it.
+
+Omit `-models` to probe every built-in native Vertex Gemini text model
+sequentially. Explicit IDs must be built-in `google-vertex` text models; model
+selection is catalog-backed and never calls a Vertex model-discovery endpoint.
+Vertex-hosted partner MaaS models, images, and embeddings are not included.
 
 Probe OpenAI Responses with a known model:
 
@@ -244,6 +270,13 @@ reasoning_level_high
 tool_auto_file_read
 tool_required_file_read
 ```
+
+The `google-vertex` route always checks basic text and system instructions. It
+adds image input, automatic and forced-any function tools, typed disabled
+thinking, and low, medium, or high reasoning cases only when the selected
+built-in model metadata advertises the corresponding capability or thinking
+level. This keeps restricted Gemini models from receiving unsupported
+reasoning levels.
 
 ## Output
 
