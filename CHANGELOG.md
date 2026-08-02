@@ -16,8 +16,9 @@ See [release notes](docs/release-notes-v0.7.0.md).
   and judges, a sequential Sigma text harness, paired baseline/candidate
   summaries, private JSONL artifacts, and an opt-in smoke runner under
   `cmd/sigma-evals-runner` for direct OpenAI Responses, OpenCode Go, Fireworks,
-  and native Vertex Gemini models without adding a public API or live calls to
-  deterministic CI.
+  and native Vertex Gemini models. The sequential suite covers factual recall,
+  arithmetic, exact formatting, JSON extraction, and multi-turn recall without
+  adding a public API or live calls to deterministic CI.
 - Text streams and completions now accept `WithRequestHTTPClient` for an
   opt-in HTTP/SSE client override on an individual call.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` bearer credentials,

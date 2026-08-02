@@ -54,22 +54,11 @@ func TestProviderFactualSmoke(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	execution := evals.Run(t.Context(), liveRunner, t, factualSmokeCase(suite.harness))
-	if execution.Err != nil {
-		return
-	}
-	if execution.Result.Usage.Provider != string(suite.model.Provider) ||
-		execution.Result.Usage.Model != string(suite.model.ID) {
-		t.Errorf(
-			"usage model identity = %s/%s, want %s/%s",
-			execution.Result.Usage.Provider,
-			execution.Result.Usage.Model,
-			suite.model.Provider,
-			suite.model.ID,
-		)
-	}
-	if execution.Result.Usage.TotalTokens <= 0 {
-		t.Errorf("total token usage = %d, want positive", execution.Result.Usage.TotalTokens)
+	for _, smoke := range smokeCases(suite.harness) {
+		t.Run(smoke.name, func(t *testing.T) {
+			execution := evals.Run(t.Context(), liveRunner, t, smoke.evaluation)
+			validateSmokeExecution(t, suite.model, execution)
+		})
 	}
 }
 

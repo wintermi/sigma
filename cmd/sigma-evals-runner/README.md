@@ -1,8 +1,13 @@
 # Sigma evals runner
 
-`sigma-evals-runner` is an opt-in live evaluation command. The suite runs one
-factual smoke check against a caller-selected supported catalog model. It is
-intentionally outside the deterministic test and CI tasks.
+`sigma-evals-runner` is an opt-in live evaluation command. The suite runs five
+provider-neutral smoke cases against a caller-selected supported catalog model:
+factual recall, arithmetic, exact formatting, JSON extraction, and multi-turn
+recall. It is intentionally outside the deterministic test and CI tasks.
+
+Cases execute sequentially, receive independent pass/fail judgments, and write
+separate run records and transcripts. The command continues through independent
+case failures so one invocation reports the complete smoke result.
 
 Run the build-tagged Go-test suite from the repository root:
 

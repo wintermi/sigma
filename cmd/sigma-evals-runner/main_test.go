@@ -198,6 +198,67 @@ func TestVertexEvalConfigRequiresRoutingAndAuthentication(t *testing.T) {
 	}
 }
 
+func TestSmokeCasesUseDeterministicLocalJudges(t *testing.T) {
+	t.Parallel()
+
+	harness := evals.HarnessFunc[evals.SigmaInput, string]{Name: "fake"}
+	cases := smokeCases(harness)
+	want := []struct {
+		name   string
+		output string
+	}{
+		{name: "factual-recall", output: "paris"},
+		{name: "arithmetic", output: "391"},
+		{name: "exact-formatting", output: "red,green,blue"},
+		{name: "json-extraction", output: `{"count":7,"name":"Ada"}`},
+		{name: "multi-turn-recall", output: "cedar"},
+	}
+	if len(cases) != len(want) {
+		t.Fatalf("smoke case count = %d, want %d", len(cases), len(want))
+	}
+	for index, smoke := range cases {
+		if smoke.name != want[index].name || len(smoke.evaluation.Judges) != 1 ||
+			smoke.evaluation.JudgeThreshold == nil || *smoke.evaluation.JudgeThreshold != 1 {
+			t.Fatalf("smoke case %d = %#v", index, smoke)
+		}
+		judgment, err := smoke.evaluation.Judges[0].Score(context.Background(), evals.JudgmentInput[evals.SigmaInput, string]{
+			Input:  smoke.evaluation.Input,
+			Result: evals.RunResult[string]{Output: want[index].output},
+		})
+		if err != nil || judgment.Score != 1 {
+			t.Fatalf("smoke case %q judgment = %#v, error = %v", smoke.name, judgment, err)
+		}
+	}
+	if got := len(cases[len(cases)-1].evaluation.Input.Prompts); got != 2 {
+		t.Fatalf("multi-turn prompt count = %d, want 2", got)
+	}
+}
+
+func TestSmokeJudgesRejectMalformedOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		judge  evals.Judge[evals.SigmaInput, string]
+		output string
+	}{
+		{name: "case-sensitive formatting", judge: exactJudge("red,green,blue"), output: "RED,GREEN,BLUE"},
+		{name: "invalid JSON", judge: jsonExtractionJudge(), output: `{"name":"Ada","count":7} trailing`},
+		{name: "unknown JSON field", judge: jsonExtractionJudge(), output: `{"name":"Ada","count":7,"extra":true}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			judgment, err := tt.judge.Score(context.Background(), evals.JudgmentInput[evals.SigmaInput, string]{
+				Result: evals.RunResult[string]{Output: tt.output},
+			})
+			if err != nil || judgment.Score != 0 || judgment.Reason == "" {
+				t.Fatalf("judgment = %#v, error = %v", judgment, err)
+			}
+		})
+	}
+}
+
 func mapEnvironment(values map[string]string) evals.EnvironmentLookup {
 	return func(name string) (string, bool) {
 		value, ok := values[name]

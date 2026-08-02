@@ -76,7 +76,8 @@ Repository maintainers can now also author Go-native behavioral evaluations
 with generic harnesses and judges, sequential Sigma text conversations, paired
 baseline/candidate reports, and private run artifacts. An opt-in smoke runner
 for direct OpenAI Responses, OpenCode Go, Fireworks, and native Vertex Gemini
-models is available outside deterministic CI.
+models is available outside deterministic CI, with separate factual,
+arithmetic, exact-formatting, JSON-extraction, and multi-turn checks.
 
 ## Changed
 
@@ -84,7 +85,8 @@ models is available outside deterministic CI.
   transcript, usage, timing, and artifact primitives. `cmd/sigma-evals-runner`
   supplies the opt-in provider-backed smoke suite; direct OpenAI Responses,
   OpenCode Go, both Fireworks text surfaces, and native Vertex Gemini use
-  explicit suite-local registration, and `mise run ci` makes no live model
+  explicit suite-local registration. Five sequential cases receive independent
+  deterministic judgments and artifacts, and `mise run ci` makes no live model
   calls.
 - Package-level model lookup, routing, generation, image, and embedding helpers
   now use the live shared default registry without cloning the generated catalog

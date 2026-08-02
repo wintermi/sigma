@@ -91,6 +91,11 @@ Vertex requires project and location environment values plus an externally
 supplied access token or API key. See `cmd/sigma-evals-runner/README.md` for the
 complete environment names and examples.
 
+Each invocation sequentially checks factual recall, arithmetic, exact
+formatting, JSON extraction, and multi-turn recall. Every case has a local
+deterministic judge and its own run artifact, and independent failures do not
+prevent later cases from running.
+
 Evaluation artifacts are stored under an ignored `.eval/` invocation directory
 unless `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` selects an exact path. They
 use private filesystem permissions but contain complete prompts, responses,

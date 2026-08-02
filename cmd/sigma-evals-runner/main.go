@@ -88,33 +88,28 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 	printTof(stderr, "[eval] model=%s/%s\n", suite.model.Provider, suite.model.ID)
 	printTof(stderr, "[eval] artifacts=%s\n", runner.ArtifactDir())
 
-	test := &commandTest{name: "Provider factual smoke"}
 	ctx, cancel := context.WithTimeout(context.Background(), config.timeout)
-	execution := evals.Run(ctx, runner, test, factualSmokeCase(suite.harness))
+	var tests []*commandTest
+	for _, smoke := range smokeCases(suite.harness) {
+		test := &commandTest{name: "Provider smoke/" + smoke.name}
+		execution := evals.Run(ctx, runner, test, smoke.evaluation)
+		validateSmokeExecution(test, suite.model, execution)
+		test.finish()
+		tests = append(tests, test)
+	}
 	cancel()
-	if execution.Err == nil {
-		if execution.Result.Usage.Provider != string(suite.model.Provider) ||
-			execution.Result.Usage.Model != string(suite.model.ID) {
-			test.Errorf(
-				"usage model identity = %s/%s, want %s/%s",
-				execution.Result.Usage.Provider,
-				execution.Result.Usage.Model,
-				suite.model.Provider,
-				suite.model.ID,
-			)
-		}
-		if execution.Result.Usage.TotalTokens <= 0 {
-			test.Errorf("total token usage = %d, want positive", execution.Result.Usage.TotalTokens)
-		}
-	}
-	test.finish()
 	if err := runner.Close(stdout); err != nil {
-		test.Errorf("close runner: %v", err)
+		printTof(stderr, "[eval] error=close runner: %v\n", err)
+		return 1
 	}
-	for _, message := range test.errors {
-		printTof(stderr, "[eval] error=%s\n", message)
+	failed := false
+	for _, test := range tests {
+		for _, message := range test.errors {
+			printTof(stderr, "[eval] test=%s error=%s\n", test.name, message)
+		}
+		failed = failed || test.Failed()
 	}
-	if test.Failed() {
+	if failed {
 		return 1
 	}
 	return 0
@@ -126,7 +121,7 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 	provider := flags.String("provider", "", "default provider id")
 	model := flags.String("model", "", "default model id")
 	artifactDirectory := flags.String("artifact-dir", "", "exact private artifact directory")
-	timeout := flags.Duration("timeout", 2*time.Minute, "overall evaluation timeout")
+	timeout := flags.Duration("timeout", 5*time.Minute, "overall evaluation timeout")
 	if err := flags.Parse(args); err != nil {
 		return runnerConfig{}, fmt.Errorf("parse flags: %w", err)
 	}

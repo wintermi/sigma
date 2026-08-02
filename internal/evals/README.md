@@ -17,7 +17,8 @@ mise run eval -- -provider openai -model gpt-5.6-sol
 Command-line values take precedence and must be supplied together. The bundled
 runner supports direct OpenAI Responses, OpenCode Go, both Fireworks text
 surfaces, and native Vertex Gemini models. Each provider is registered
-explicitly by the suite.
+explicitly by the suite. Its provider-neutral cases cover factual recall,
+arithmetic, exact formatting, JSON extraction, and multi-turn recall.
 
 The task runs the build-tagged Go test in that command package and forwards
 additional Go-test arguments, such as `-timeout`. Live evaluations are not part
