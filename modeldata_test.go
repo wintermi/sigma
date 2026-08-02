@@ -2504,6 +2504,43 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 	}
 	assertMetadataString(t, vertex.ProviderMetadata, "vertexPublisher", "google")
 	assertMetadataStrings(t, vertex.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
+	for _, provider := range []ProviderID{ProviderGoogle, ProviderGoogleVertex} {
+		for _, tt := range []struct {
+			id       ModelID
+			minimal  string
+			high     string
+			offValid bool
+		}{
+			{id: "gemini-2.5-flash", minimal: "128", high: "24576", offValid: true},
+			{id: "gemini-2.5-flash-lite", minimal: "512", high: "24576", offValid: true},
+			{id: "gemini-2.5-pro", minimal: "128", high: "32768", offValid: false},
+		} {
+			model, ok := registry.Model(provider, tt.id)
+			if !ok {
+				t.Fatalf("fresh registry missing generated %s %s model", provider, tt.id)
+			}
+			for level, want := range map[ThinkingLevel]string{
+				ThinkingLevelMinimal: tt.minimal,
+				ThinkingLevelLow:     "2048",
+				ThinkingLevelMedium:  "8192",
+				ThinkingLevelHigh:    tt.high,
+			} {
+				if got, ok := model.ProviderThinkingLevel(level); !ok || got != want {
+					t.Fatalf("%s %s provider thinking level %q = %q, %t; want %q, true", provider, tt.id, level, got, ok, want)
+				}
+			}
+			if got := model.SupportsThinkingLevel(ThinkingLevelOff); got != tt.offValid {
+				t.Fatalf("%s %s supports thinking off = %t, want %t", provider, tt.id, got, tt.offValid)
+			}
+		}
+	}
+	vertex20Lite, ok := registry.Model(ProviderGoogleVertex, "gemini-2.0-flash-lite")
+	if !ok {
+		t.Fatal("fresh registry missing generated Vertex Gemini 2.0 Flash Lite model")
+	}
+	if vertex20Lite.SupportsReasoning() {
+		t.Fatalf("Vertex Gemini 2.0 Flash Lite unexpectedly supports reasoning: %+v", vertex20Lite)
+	}
 	for _, tt := range []struct {
 		id                               ModelID
 		inputCost, outputCost, cacheRead float64

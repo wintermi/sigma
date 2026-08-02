@@ -60,7 +60,10 @@ errors and partial finals. Codex session cleanup now clears all session state,
 while abandoned debug and fallback state expires after five idle minutes.
 The surface-probe command now also has an opt-in native Vertex Gemini text
 route that reuses built-in model capabilities, accepts caller-supplied OAuth
-access tokens or API keys, and keeps live provider calls outside CI.
+access tokens or API keys, and keeps live provider calls outside CI. Gemini 2.5
+reasoning requests now use supported token budgets across direct Google and
+native Vertex routes, while probe cases honor models that do not support
+disabled thinking.
 
 ## Changed
 
@@ -200,6 +203,11 @@ access tokens or API keys, and keeps live provider calls outside CI.
   generated model capabilities. Project, location, and caller-supplied OAuth
   access tokens or API keys are passed through existing provider options and
   authentication surfaces without a Vertex model-discovery request.
+- Generated Google and native Vertex Gemini 2.5 metadata now maps Sigma's
+  minimal, low, medium, and high reasoning levels to provider token budgets.
+  Gemini 2.5 Pro marks disabled thinking unsupported, Vertex Gemini 2.0 Flash
+  Lite no longer advertises thinking, and the native Vertex probe omits
+  disabled-thinking cases when `off` is not supported.
 
 ## Compatibility
 
@@ -306,10 +314,12 @@ access tokens or API keys, and keeps live provider calls outside CI.
 - The `google-vertex` surface-probe route is an additive CLI diagnostic. It
   resolves project and location from explicit environment variables, prefers
   `GOOGLE_CLOUD_ACCESS_TOKEN` over the existing API-key fallbacks, and neither
-  persists nor refreshes the token. Public APIs, provider registration,
-  adapter payload contracts, catalog rows, generated artifacts, serialized
-  messages, normalized responses, default probe routes, and CI behavior are
-  unchanged.
+  persists nor refreshes the token. Gemini 2.5 reasoning payloads now use
+  `thinkingBudget` instead of the unsupported `thinkingLevel`, and unsupported
+  disabled-thinking requests are rejected or omitted according to generated
+  metadata. Public APIs, provider registration, authentication, transports,
+  serialized messages, normalized responses, default probe routes, and CI
+  behavior are unchanged.
 
 ## Deferred work
 

@@ -767,17 +767,28 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 		},
 		{
+			modelID: "gemini-2.0-flash-lite",
+			want:    []string{"basic_text", "developer_instruction", "image_input", "tool_auto_file_read", "tool_any_file_read"},
+			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+		},
+		{
 			modelID: "gemini-2.5-flash",
 			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 		},
 		{
+			modelID: "gemini-2.5-pro",
+			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled"},
+		},
+		{
 			modelID: "gemini-3-flash-preview",
-			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled"},
 		},
 		{
 			modelID: "gemini-3.1-pro-preview",
-			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_high"},
-			notWant: []string{"reasoning_level_medium"},
+			want:    []string{"reasoning_level_low", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled", "reasoning_level_medium"},
 		},
 	}
 	for _, tt := range tests {
@@ -1790,6 +1801,9 @@ func TestClassifyFailure(t *testing.T) {
 	}
 	if got := classifyFailure(routes["openai-codex"], model, errors.New("status=400 body={\"detail\":\"Store must be set to false\"}")); got != "sigma_request_shape" {
 		t.Fatalf("store-false classification = %q", got)
+	}
+	if got := classifyFailure(routes["google-vertex"], model, errors.New("thinking_level is not supported by this model")); got != "sigma_request_shape" {
+		t.Fatalf("unsupported-thinking-level classification = %q", got)
 	}
 	if got := classifyFailure(route, model, errors.New("model does not support image input")); got != "provider_capability_limit" {
 		t.Fatalf("image classification = %q", got)

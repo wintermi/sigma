@@ -685,6 +685,10 @@ should still come through the catalog refresh workflow.
       metadata, explicit project/location routing, externally supplied OAuth
       access tokens or API keys, and capability-gated cases without network
       model discovery or live calls in `mise run ci`.
+- [x] Map Gemini 2.5 reasoning levels to supported token budgets across direct
+      Google and native Vertex routes, remove stale Vertex Gemini 2.0 Flash Lite
+      thinking support, and skip probe cases when disabled thinking is not a
+      model capability.
 - [ ] Keep live Google Gemini API and Vertex AI validation out of `mise run ci`;
       use credential-gated probes only for manual compatibility investigation.
 - [ ] Keep ambient Vertex project/location environment fallback and built-in ADC

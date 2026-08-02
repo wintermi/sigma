@@ -1657,11 +1657,13 @@ func googleVertexProbeCases(_ routeSpec, model sigma.Model) []probeCase {
 		cases = append(cases, singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}))
 	}
 	if model.SupportsReasoning() {
-		disableThinking := true
-		cases = append(cases, singleTurnCase("thinking_disabled", "typed disabled thinking", basicRequest("Reply with exactly: 5."), []sigma.Option{
-			sigma.WithGoogleOptions(sigma.GoogleOptions{DisableThinking: &disableThinking}),
-			sigma.WithMaxTokens(512),
-		}))
+		if model.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
+			disableThinking := true
+			cases = append(cases, singleTurnCase("thinking_disabled", "typed disabled thinking", basicRequest("Reply with exactly: 5."), []sigma.Option{
+				sigma.WithGoogleOptions(sigma.GoogleOptions{DisableThinking: &disableThinking}),
+				sigma.WithMaxTokens(512),
+			}))
+		}
 		for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh} {
 			if model.SupportsThinkingLevel(level) {
 				cases = append(cases, singleTurnCase("reasoning_level_"+string(level), "typed reasoning "+string(level), basicRequest("Reply with exactly: 5."), []sigma.Option{
@@ -2038,6 +2040,7 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	case strings.Contains(message, "unknown parameter"),
 		strings.Contains(message, "missing required parameter"),
 		strings.Contains(message, "unsupported parameter"),
+		strings.Contains(message, "thinking_level is not supported"),
 		strings.Contains(message, "instructions are required"),
 		strings.Contains(message, "store must be set to false"),
 		strings.Contains(message, "not supported for format oa-compat"),

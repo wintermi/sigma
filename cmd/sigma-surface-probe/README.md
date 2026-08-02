@@ -275,8 +275,10 @@ The `google-vertex` route always checks basic text and system instructions. It
 adds image input, automatic and forced-any function tools, typed disabled
 thinking, and low, medium, or high reasoning cases only when the selected
 built-in model metadata advertises the corresponding capability or thinking
-level. This keeps restricted Gemini models from receiving unsupported
-reasoning levels.
+level. Gemini 2.5 reasoning levels use the generated token-budget mappings;
+Gemini 3 models use named thinking levels. Disabled-thinking cases are omitted
+when the model metadata marks `off` as unsupported. This keeps restricted
+Gemini models from receiving unsupported reasoning configurations.
 
 ## Output
 

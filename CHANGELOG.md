@@ -69,6 +69,11 @@ See [release notes](docs/release-notes-v0.7.0.md).
   with catalog-backed model selection, explicit project/location routing,
   externally supplied OAuth access tokens or API keys, and capability-gated
   image, function-tool, and thinking diagnostics.
+- Gemini 2.5 reasoning levels now serialize as model-family token budgets for
+  direct Google and native Vertex requests. Generated metadata also stops
+  advertising thinking for Vertex Gemini 2.0 Flash Lite, marks disabled
+  thinking unsupported on Gemini 2.5 Pro, and keeps the Vertex probe from
+  sending unsupported disabled-thinking cases.
 
 ### Changed
 

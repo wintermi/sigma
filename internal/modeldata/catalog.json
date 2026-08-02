@@ -10701,7 +10701,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": true,
+      "supportsThinking": false,
       "cost": {
         "inputPerMillion": 0.075,
         "outputPerMillion": 0.3,
@@ -10733,6 +10733,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "128",
+        "low": "2048",
+        "medium": "8192",
+        "high": "24576"
+      },
       "cost": {
         "inputPerMillion": 0.3,
         "outputPerMillion": 2.5,
@@ -10764,6 +10770,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "512",
+        "low": "2048",
+        "medium": "8192",
+        "high": "24576"
+      },
       "cost": {
         "inputPerMillion": 0.1,
         "outputPerMillion": 0.4,
@@ -10795,6 +10807,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "512",
+        "low": "2048",
+        "medium": "8192",
+        "high": "24576"
+      },
       "cost": {
         "inputPerMillion": 0.1,
         "outputPerMillion": 0.4,
@@ -10826,6 +10844,15 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "128",
+        "low": "2048",
+        "medium": "8192",
+        "high": "32768"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
       "cost": {
         "inputPerMillion": 1.25,
         "outputPerMillion": 10,
@@ -11628,6 +11655,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "128",
+        "low": "2048",
+        "medium": "8192",
+        "high": "24576"
+      },
       "cost": {
         "inputPerMillion": 0.3,
         "outputPerMillion": 2.5,
@@ -11658,6 +11691,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "512",
+        "low": "2048",
+        "medium": "8192",
+        "high": "24576"
+      },
       "cost": {
         "inputPerMillion": 0.1,
         "outputPerMillion": 0.4,
@@ -11688,6 +11727,15 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "128",
+        "low": "2048",
+        "medium": "8192",
+        "high": "32768"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
       "cost": {
         "inputPerMillion": 1.25,
         "outputPerMillion": 10,
