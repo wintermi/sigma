@@ -6,7 +6,11 @@ The project follows standard Major.Minor.Patch versioning and Go module
 semantic import versioning. The initial release is `v0.1.0`; public APIs may
 still change before `v1.0.0`, with breaking changes called out in release notes.
 
-## [0.7.0] - Unreleased
+## [0.8.0] - Unreleased
+
+See [release notes](docs/release-notes-v0.8.0.md).
+
+## [0.7.0] - 2026-08-02
 
 See [release notes](docs/release-notes-v0.7.0.md).
 
@@ -116,6 +120,11 @@ See [release notes](docs/release-notes-v0.7.0.md).
   thinking levels rejected by those endpoints. Surface-probe repairs now keep
   the original failure classification when minimal text succeeds and report
   that availability evidence separately.
+- `cmd/sigma-surface-probe` now gives each primary case and repair attempt an
+  independent timeout within the overall run deadline, classifies deadline and
+  rate-limit failures as upstream availability, and separates logprob support
+  from output-budget repair evidence. Fireworks Kimi K3 discovery reuses its
+  generated registry metadata.
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.

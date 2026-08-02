@@ -596,8 +596,9 @@ restored.Messages = append(restored.Messages, sigma.UserText("Tell me more."))
 ```
 
 For cross-provider replay, keep provider/model provenance on assistant messages
-and check [provider-parity.md](provider-parity.md). Cross-provider context
-handoff and capability-loss reporting are not yet complete Go parity.
+and adapt the request with `sigma.TransformRequestForModel` or messages with
+`sigma.TransformMessagesForModel`. The returned `sigma.HandoffReport` records
+capability losses and repairs; callers still own execution and orchestration.
 
 ## Auth, Environment, OAuth, And Browser Differences
 
@@ -610,9 +611,10 @@ those concerns explicit:
   credential lookup.
 - `sigma.EnvironmentAuthResolver` reads static API keys from environment
   variables based on model metadata and common provider names.
-- OAuth token refresh and storage are application responsibilities. Provider
-  adapters that need OAuth accept injected token providers, for example Codex
-  Responses through `openai.WithCodexResponsesOAuthTokenProvider`.
+- Provider packages expose opt-in OAuth login and refresh helpers where
+  supported. A caller-supplied `sigma.CredentialStore` can participate in
+  provider auth resolution; durable persistence remains an application
+  responsibility.
 - There is no browser build, no browser environment detection, and no frontend
   API-key warning path in the Go package.
 
@@ -626,12 +628,11 @@ parity:
   literal unions.
 - `streamSimple` and `completeSimple` as separate top-level helpers; Go uses
   `WithReasoningLevel` with `Stream`, `Complete`, or `CompleteText`.
-- Automatic interactive OAuth login and credential persistence.
-- Live provider/model discovery at request time; Go uses generated metadata and
-  explicit registration.
-- A full TypeScript-style cross-provider handoff layer. Provider-neutral message
-  structures exist, but incomplete areas remain tracked in
-  [provider-parity.md](provider-parity.md).
+- OAuth login or credential persistence triggered implicitly by model dispatch.
+- Live provider/model discovery as a dispatch side effect; Go uses generated
+  metadata plus explicitly registered dynamic sources and refresh operations.
+- Agent-managed cross-provider handoff execution. Sigma adapts requests and
+  reports capability losses, while applications own execution and retries.
 - Debug callbacks like `onPayload` and `onResponse` as public root options.
   Provider packages may expose deterministic tests and diagnostics, but the root
   package does not promise callback-name parity.

@@ -911,14 +911,14 @@ should still come through the catalog refresh workflow.
 - [x] Cover handoff surfaces with deterministic behavioural
       tests (text+thinking+tools+image cases to non-supporting targets, error
       paths, provenance preservation) meeting the evidence bar in RELEASING.md.
-- [x] Implement durable credential storage for OAuth and stored API-key flows.
-      Provide a CredentialStore interface (read, modify-with-fn for serialized
-      atomic updates during refresh, delete) plus in-memory default. Integrate so
-      caller-supplied stores participate in EnvironmentAuthResolver paths and
-      provider OAuth login/refresh (Anthropic, GitHub Copilot, OpenAI Codex)
-      without changing existing caller-owned default behaviour. Stored auth
-      descriptors can also apply provider-scoped request configuration such as
-      routing placeholders before provider URLs are built.
+- [x] Implement credential storage contracts for OAuth and stored API-key
+      flows. Provide a CredentialStore interface (read, modify-with-fn for
+      serialized atomic updates during refresh, delete) plus an in-memory
+      implementation. Integrate so caller-supplied stores participate in
+      EnvironmentAuthResolver paths and provider OAuth login/refresh without
+      changing existing caller-owned default behaviour. Stored auth descriptors
+      can also apply provider-scoped request configuration such as routing
+      placeholders before provider URLs are built.
 - [ ] Add file-backed, encrypted, OS keychain, or UI-driven credential
       persistence only as separate caller-owned integrations on top of
       CredentialStore; keep Sigma's built-in store process-local.
@@ -927,6 +927,6 @@ should still come through the catalog refresh workflow.
       catalogs) so Client.Models and registry contents are not limited to the
       static generated catalog while preserving curated metadata as the reliable
       offline baseline and reviewable default.
-- [ ] Extend runtime/dynamic refresh beyond text models only after image,
-      embedding, built-in live provider catalog refresh, and credential-backed
-      discovery semantics are settled separately.
+- [x] Extend runtime/dynamic refresh to image and embedding model sources while
+      keeping built-in live provider catalog refresh and credential-backed
+      discovery provider-specific and explicit.

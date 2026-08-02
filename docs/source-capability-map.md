@@ -9,11 +9,11 @@ packages and metadata fields. It should be read with
 | Source API or family | Go API constant | Go package or metadata owner | Current role |
 | --- | --- | --- | --- |
 | OpenAI Chat Completions and OpenAI-compatible providers | `openai-completions` | [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat`, `OpenAIOptions` | Shared text adapter for OpenAI-compatible endpoints, OpenRouter text routing, custom/local endpoints, typed tool choice, and compatibility-specific cache/tool-stream payloads. |
-| Fireworks OpenAI-compatible Chat Completions | `openai-completions` | [provider/fireworks](../provider/fireworks), [provider/openai](../provider/openai) | Fireworks convenience wrapper over the shared Chat Completions adapter; generated metadata includes the Fire Pass Kimi K2.6 Turbo router and Kimi K2.7 Code. |
-| Fireworks Anthropic-compatible Messages | `anthropic-messages` | [provider/fireworks](../provider/fireworks), [provider/anthropic](../provider/anthropic), `Model.AnthropicMessagesCompat` | Fireworks convenience wrapper over the shared Anthropic Messages adapter; generated metadata includes the verified Kimi K2.6 and Kimi K2.7 Code Messages routes under `fireworks-anthropic`. |
+| Fireworks OpenAI-compatible Chat Completions | `openai-completions` | [provider/fireworks](../provider/fireworks), [provider/openai](../provider/openai) | Fireworks convenience wrapper over the shared Chat Completions adapter; generated metadata includes GLM, Nemotron, Kimi K2.6/K2.7, and Kimi K3 routes. |
+| Fireworks Anthropic-compatible Messages | `anthropic-messages` | [provider/fireworks](../provider/fireworks), [provider/anthropic](../provider/anthropic), `Model.AnthropicMessagesCompat` | Fireworks convenience wrapper over the shared Anthropic Messages adapter with curated DeepSeek, GLM, GPT-OSS, Kimi, MiniMax, Nemotron, and Qwen routes under `fireworks-anthropic`. |
 | Moonshot AI OpenAI-compatible Chat Completions | `openai-completions` | [provider/moonshot](../provider/moonshot), [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat` | Moonshot convenience wrappers over the shared Chat Completions adapter; generated metadata includes direct K2.7 Code and K2.7 Code HighSpeed rows for Moonshot AI and Moonshot AI CN. |
 | Qwen Token Plan OpenAI-compatible Chat Completions | `openai-completions` | [provider/qwen](../provider/qwen), [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat` | Regional convenience wrappers over the shared Chat Completions adapter; focused generated metadata includes Qwen3.7 Max and Qwen3.8 Max Preview with Qwen reasoning compatibility. |
-| xAI/Grok OpenAI-compatible Chat Completions | `openai-completions` | [provider/xai](../provider/xai), [provider/openai](../provider/openai) | xAI convenience wrapper over the shared Chat Completions adapter, with xAI defaults, `XAI_API_KEY` credential fallback, and Grok compatibility detection. |
+| xAI/Grok text APIs | `openai-completions`, `openai-responses` | [provider/xai](../provider/xai), [provider/openai](../provider/openai) | xAI wrapper over shared Chat Completions and Responses adapters, with API-key and device-code OAuth auth, Grok compatibility detection, and a native Responses route for Grok 4.5. |
 | Hugging Face Router OpenAI-compatible Chat Completions | `openai-completions` | [provider/huggingface](../provider/huggingface), [provider/openai](../provider/openai), `Model.OpenAICompletionsCompat` | Hugging Face convenience wrapper over the shared Chat Completions adapter with router defaults, `HF_TOKEN` credential fallback, and focused generated metadata. |
 | OpenCode Zen and OpenCode Go routed text APIs | `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai` | [provider/opencode](../provider/opencode), `Model.ProviderMetadata["opencodeAPI"]` | Curated OpenCode metadata selects the model-specific route while retaining `OPENCODE_API_KEY` authentication. |
 | OpenAI Responses | `openai-responses` | [provider/openai](../provider/openai), `Model.API`, `OpenAIOptions` | Separate Responses adapter for response IDs, reasoning summaries, output blocks, tool-result images, bounded replay IDs, and Responses-specific options. |
@@ -28,7 +28,7 @@ packages and metadata fields. It should be read with
 | Mistral Conversations | `mistral-conversations` | [provider/mistral](../provider/mistral) | Text adapter for Mistral Conversations streaming, thinking chunks, base64/URL image input, stringified image tool results, session affinity, and tool-call deltas. |
 | Radius gateway Messages | `radius-messages` | [provider/radius](../provider/radius), `CachedTextModelSource`, `RadiusOAuthTokenProvider` | Runtime text adapter with native SSE streaming, image/thinking/tool replay, caller-configured browser/device OAuth, API-key or OAuth-authenticated catalog refresh, and opt-in caller-owned catalog snapshots. |
 | Amazon Bedrock Converse Stream | `bedrock-converse-stream` | [provider/bedrock](../provider/bedrock) | AWS-isolated text adapter with stdlib SigV4/EventStream transport, injectable Converse Stream client, and credential detector. |
-| OpenAI Images | `openai-images` | [provider/openai](../provider/openai), [image_models_generated.go](../image_models_generated.go) | Generation-only adapter over OpenAI's dedicated Images API plus generated image model metadata. |
+| OpenAI Images | `openai-images` | [provider/openai](../provider/openai), [image_models_generated.go](../image_models_generated.go) | Adapter over OpenAI's dedicated Images API with generation, reference-image edits, DALL-E 2 variations, streaming partial images, and generated image model metadata. |
 | OpenRouter image generation through Chat Completions | `openrouter-images` | [provider/openrouter](../provider/openrouter), `ImageModel.ProviderMetadata` | Image-generation adapter over OpenRouter chat-completions image responses. |
 | Google Gemini API image generation | `google-images` | [provider/google](../provider/google), [image_models_generated.go](../image_models_generated.go) | Image adapter over Gemini API Imagen `predict` and Gemini image `generateContent` image outputs. |
 | Google Vertex AI Imagen generation | `google-vertex-images` | [provider/google](../provider/google), `VertexConfig`, [image_models_generated.go](../image_models_generated.go) | Vertex Imagen `predict` adapter using explicit project/location routing and Google auth handling. |
@@ -50,17 +50,17 @@ packages and metadata fields. It should be read with
 | Google Vertex AI | `google-vertex` | `google-vertex`, `google-vertex-images`, `google-vertex-embeddings` | Generated metadata includes representative Gemini Vertex text, Imagen, and embedding routes; callers still supply project/location routing. |
 | Mistral | `mistral` | `mistral-conversations` | Generated metadata includes Mistral Large text plus representative adjustable and native reasoning models. |
 | Radius gateway | `radius` | `radius-messages` | Use [provider/radius](../provider/radius) and explicitly refresh gateway-owned models. `RADIUS_API_KEY` remains the API-key fallback; caller-configured OAuth can use provider auth and `WithCatalogAuthResolver`. `WithCatalogStore` enables caller-owned snapshots restored through `Client.RestoreTextModels`; no static catalog or automatic stale-cache fallback is provided. |
-| OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes one text route and image routes for Gemini and Grok Imagine routed models. |
+| OpenRouter | `openrouter` | `openai-completions`, `openrouter-images` | Generated metadata includes curated text and image routes. Browser PKCE login returns an API key for caller-owned persistence. |
 | OpenCode Zen, OpenCode Go | `opencode`, `opencode-go` | `openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai` | Use [provider/opencode](../provider/opencode); generated metadata selects the model-specific route. |
-| xAI/Grok | `xai` | `openai-completions` | Use [provider/xai](../provider/xai) for Grok Chat Completions requests. Generated metadata includes curated Grok text, image-input, and reasoning-capable routes with `XAI_API_KEY` credential metadata. |
+| xAI/Grok | `xai` | `openai-completions`, `openai-responses` | Use [provider/xai](../provider/xai) for Grok text requests. Generated metadata includes curated image-input and reasoning-capable routes, including Grok 4.5 through Responses, with API-key and device-code OAuth auth. |
 | GitHub Copilot | `github-copilot` | `openai-completions`, `openai-responses`, `anthropic-messages` | Use [provider/githubcopilot](../provider/githubcopilot). Generated metadata includes Copilot OpenAI-compatible and Anthropic-compatible routes with static Copilot headers and `COPILOT_GITHUB_TOKEN` credential metadata. |
 | Cloudflare AI Gateway | `cloudflare-ai-gateway` | `openai-completions`, `openai-responses`, `anthropic-messages` | Use [provider/cloudflare](../provider/cloudflare) for AI Gateway routes. Generated metadata includes OpenAI-compatible and Anthropic-compatible passthrough rows with environment-backed account/gateway placeholders and `CLOUDFLARE_API_KEY` credential metadata. |
 | DeepSeek, Groq, Cerebras, Together | `deepseek`, `groq`, `cerebras`, `together` | `openai-completions` | Use the provider-local wrappers for direct Chat Completions requests. Generated metadata includes representative routes backed by shared OpenAI-compatible fixture coverage. |
 | Hugging Face Router | `huggingface` | `openai-completions` | Use [provider/huggingface](../provider/huggingface). Generated metadata includes focused router rows with `HF_TOKEN` credential metadata and shared OpenAI-compatible fixture coverage. |
-| Fireworks | `fireworks`, `fireworks-anthropic` | `openai-completions`, `anthropic-messages` | Generated metadata includes the Fire Pass Kimi K2.6 Turbo router and Kimi K2.7 Code for the OpenAI-compatible endpoint, plus Kimi K2.6 and Kimi K2.7 Code for the Anthropic-compatible Messages endpoint. |
+| Fireworks | `fireworks`, `fireworks-anthropic` | `openai-completions`, `anthropic-messages` | Generated metadata includes curated GLM, Nemotron, and Kimi routes, including Kimi K3 on the OpenAI-compatible endpoint, plus broader Anthropic-compatible DeepSeek, GPT-OSS, MiniMax, and Qwen routes. |
 | Moonshot AI | `moonshotai`, `moonshotai-cn` | `openai-completions` | Use [provider/moonshot](../provider/moonshot). Generated metadata includes direct Kimi K2 rows with `MOONSHOT_API_KEY` credential metadata and K2.7 disabled-thinking compatibility metadata. |
 | Qwen Token Plan | `qwen-token-plan`, `qwen-token-plan-cn` | `openai-completions` | Use [provider/qwen](../provider/qwen). Generated metadata includes focused Qwen3.7 Max and Qwen3.8 Max Preview rows with regional API-key fallback and Qwen thinking compatibility metadata. |
-| Kimi Coding | `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). Generated metadata includes Kimi Coding Anthropic-compatible routes with Kimi CLI headers and `KIMI_API_KEY` credential metadata. |
+| Kimi Coding | `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). Generated metadata includes Kimi Coding Anthropic-compatible routes with Kimi CLI headers, API-key auth, and opt-in device-code OAuth. |
 | Vercel AI Gateway | `vercel-ai-gateway` | `anthropic-messages` | Use [provider/vercel](../provider/vercel). Generated metadata includes curated gateway routes with `AI_GATEWAY_API_KEY` credential metadata and route-specific Anthropic compatibility metadata. |
 | Kimi, Xiaomi | `kimi`, `xiaomi` | `anthropic-messages` or `openai-completions` when caller registers compatible providers | Generated metadata includes representative metadata-only routes with compatibility metadata. |
 | Custom/local endpoints | `custom` or caller-defined | Usually `openai-completions` | Use explicit registry entries, `WithBaseURL`, and compatibility metadata. |
@@ -92,15 +92,25 @@ packages and metadata fields. It should be read with
 
 ## Source capabilities not yet represented as complete Go parity
 
-- OpenAI Images is generation-only; edits, variations, streaming partial images, and Responses image-tool generation are deferred.
+- OpenAI Images supports generation, reference-image edits, DALL-E 2
+  variations, streaming partial images, and Responses image-tool generation.
+  Live image validation remains outside deterministic CI.
 - Google and Vertex image adapters are generation-only. Reference edits,
   variations, and live image validation remain future work.
 - Google, Vertex, and Bedrock embeddings are fixture-backed provider adapters;
   live embedding probes and tokenizer-based input estimates remain future work.
-- Automatic provider/model discovery is generated from curated metadata, not live provider listing calls.
-- OAuth credential persistence is intentionally absent.
-- Cross-provider context handoff and capability-loss reporting are future work.
-- Source-level provider breadth is larger than generated default models. Several provider IDs still exist only for caller-registered compatible models today, and OpenCode coverage is limited to curated OpenAI-compatible routes.
-- Codex WebSocket proxy-aware dialing and durable session caching remain
-  deferred.
+- Built-in provider/model discovery uses generated curated metadata. Explicitly
+  registered text, image, and embedding sources plus Radius catalog refresh can
+  add runtime models; normal dispatch never performs automatic live discovery.
+- Sigma provides a caller-supplied `CredentialStore` contract and a process-local
+  in-memory implementation. Durable file, keychain, and UI-backed persistence
+  remain application responsibilities.
+- `TransformRequestForModel` and `TransformMessagesForModel` provide opt-in
+  cross-provider handoff with capability-loss reporting. Agent execution,
+  retries, and session orchestration remain caller-owned.
+- Source-level provider breadth is larger than generated default models. Several
+  provider IDs still exist only for caller-registered compatible models today,
+  and OpenCode coverage remains limited to curated routed models.
+- Codex WebSocket transport supports proxy-aware dialing and bounded in-process
+  session caching. Durable cross-process session persistence remains deferred.
 - Live-test coverage is opt-in and sparse. Standard tests must remain deterministic and credential-free.

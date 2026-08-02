@@ -26,9 +26,9 @@ Release scope values:
 | Provider family | Built-in API | Release scope | Text | Image input | Image generation | Streaming | Tool calls | Partial tool JSON | Thinking | Cache retention | Usage | Cost | Custom headers | OAuth | Local endpoints | Live-test coverage |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OpenAI-compatible Chat Completions and custom endpoints | `openai-completions` | `MVP` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
-| OpenRouter OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| OpenRouter OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | Fireworks OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
-| xAI/Grok Chat Completions and Grok 4.5 Responses | `openai-completions`, `openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
+| xAI/Grok Chat Completions and Grok 4.5 Responses | `openai-completions`, `openai-responses` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | NVIDIA NIM OpenAI-compatible Chat Completions and Embeddings | `openai-completions`, `openai-embeddings` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Xiaomi MiMo OpenAI-compatible Chat Completions and token-plan routes | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 | Qwen Token Plan regional Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `implemented` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
@@ -58,7 +58,7 @@ Release scope values:
 
 - `openai-completions`: [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [internal/sse/testdata/openai/text_usage.sse](../internal/sse/testdata/openai/text_usage.sse), [internal/sse/testdata/openai/tool_call.sse](../internal/sse/testdata/openai/tool_call.sse).
 - Fireworks `openai-completions`: [provider/fireworks/fireworks_test.go](../provider/fireworks/fireworks_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
-- xAI/Grok `openai-completions` and Grok 4.5 `openai-responses`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
+- xAI/Grok `openai-completions` and Grok 4.5 `openai-responses`: [provider/xai/xai_test.go](../provider/xai/xai_test.go), [provider/xai/oauth_test.go](../provider/xai/oauth_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - NVIDIA NIM `openai-completions` and `openai-embeddings`: [provider/nvidia/nvidia_test.go](../provider/nvidia/nvidia_test.go), [modeldata_test.go](../modeldata_test.go).
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
 - Qwen Token Plan `openai-completions`: [provider/qwen/qwen_test.go](../provider/qwen/qwen_test.go), [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [modeldata_test.go](../modeldata_test.go).
@@ -71,7 +71,7 @@ Release scope values:
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
 - Vercel AI Gateway `anthropic-messages`: [provider/vercel/vercel_test.go](../provider/vercel/vercel_test.go), [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go).
 - Hugging Face Router `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [modeldata_test.go](../modeldata_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
-- OpenRouter `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [modeldata_test.go](../modeldata_test.go).
+- OpenRouter `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go), [provider/openrouter/oauth_test.go](../provider/openrouter/oauth_test.go), [modeldata_test.go](../modeldata_test.go).
 - DeepSeek, Groq, Cerebras, and Together `openai-completions`: [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/compat_test.go](../provider/openai/compat_test.go).
 - `anthropic-messages`: [provider/anthropic/anthropic_test.go](../provider/anthropic/anthropic_test.go), [provider/anthropic/oauth_test.go](../provider/anthropic/oauth_test.go), [provider/kimi/kimi_test.go](../provider/kimi/kimi_test.go).
 - `google-generative-ai`: [provider/google/google_test.go](../provider/google/google_test.go).
@@ -171,7 +171,9 @@ Release scope values:
   token. Token persistence is caller-owned.
 - The `not supported by provider` value in the OAuth column for the Bedrock row describes the provider's native authentication model, not a missing code path. The adapter still forwards an OAuth-typed `Credential` returned by an auth resolver as a bearer token, with fixture coverage.
 - Live tests are skipped by default and are not an MVP readiness signal unless a row explicitly says `live-tested`.
-- Cross-provider context handoff is not covered by this matrix; unsupported handoff behavior must remain explicit in later compatibility docs.
+- Cross-provider context handoff is an opt-in root-package helper rather than a
+  provider-row capability. `HandoffReport` records dropped, converted, and
+  repaired content; callers still own execution and orchestration.
 - MVP rows are the only provider rows that may be described as release-ready in
   README wording. Preview rows may be documented, but not advertised as part of
   the first release gate.

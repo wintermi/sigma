@@ -1,9 +1,8 @@
 # Release notes: sigma v0.7.0
 
-This is the maintainer-facing development note for the next `sigma` tag. Add
-the v0.7.0 summary and scope as changes land. For the itemized change list see
-[CHANGELOG.md](../CHANGELOG.md); for the validation commands and pre-tag
-checklist see [RELEASING.md](../RELEASING.md).
+This is the maintainer-facing release note for `sigma` v0.7.0. For the
+itemized change list see [CHANGELOG.md](../CHANGELOG.md); for the validation
+commands and pre-tag checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
@@ -72,6 +71,11 @@ tools without advertising named thinking levels rejected by those endpoints.
 When a surface-probe repair confirms minimal-text availability after another
 case fails, the original failure classification is now retained and the
 availability result is reported separately.
+Primary surface-probe cases and repair attempts now also have independent
+deadlines bounded by the overall run timeout. Deadline and rate-limit failures
+are reported as upstream availability, while logprob repairs distinguish field
+support from output-budget interactions and Fireworks Kimi K3 discovery reuses
+its generated registry metadata.
 Repository maintainers can now also author Go-native behavioral evaluations
 with generic harnesses and judges, sequential Sigma text conversations, paired
 baseline/candidate reports, and private run artifacts. An opt-in smoke runner
@@ -250,6 +254,11 @@ repetitions, with observational pass-rate lift and paired telemetry deltas.
 - Surface-probe minimal-text repair checks now set additive
   `availabilityOKAfterFailure` evidence while preserving the original
   `sigma_request_shape`, capability, or other failure outcome and error.
+- Surface-probe primary cases and repair attempts now receive independent
+  `-case-timeout` contexts bounded by the existing overall `-timeout`.
+  Deadline and rate-limit failures are classified as upstream availability,
+  logprob repairs isolate field support from output-budget interactions, and
+  Fireworks Kimi K3 discovery prefers generated registry metadata.
 
 ## Compatibility
 
@@ -401,5 +410,8 @@ repetitions, with observational pass-rate lift and paired telemetry deltas.
 
 ## Validation status
 
-Validate this release with the process in [RELEASING.md](../RELEASING.md),
-including the local CI-equivalent `mise run ci` gate before tagging.
+Validated on 2026-08-02 with:
+
+- `mise run go:generate` with no generated metadata drift.
+- `mise run ci`.
+- `git diff --check`.

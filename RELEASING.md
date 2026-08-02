@@ -98,10 +98,12 @@ item in:
 - Live provider calls in `mise run go:test`.
 - Marketing claims that a provider is production-quality without deterministic
   fixtures or fake-client coverage.
-- Automatic live provider/model discovery calls.
+- Automatic live provider/model discovery as a side effect of normal dispatch.
 - Provider parity claims based only on generated metadata.
-- Credential storage, browser login flows, or hidden environment reads inside
-  provider adapters.
+- Browser login, credential refresh, or durable persistence triggered
+  implicitly by normal provider dispatch. Auth helpers and credential stores
+  remain explicit and caller-owned.
+- Hidden ambient credential loading inside provider adapters.
 
 Deferred (not excluded) work is tracked in [TODO.md](TODO.md).
 
