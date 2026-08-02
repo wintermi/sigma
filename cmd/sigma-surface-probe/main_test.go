@@ -287,7 +287,7 @@ func TestGoogleVertexRouteUsesGeneratedModels(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("probe model differs from generated model:\n got: %#v\nwant: %#v", got, want)
 	}
-	if got.SupportsThinkingLevel(sigma.ThinkingLevelMedium) || !got.SupportsThinkingLevel(sigma.ThinkingLevelLow) || !got.SupportsThinkingLevel(sigma.ThinkingLevelHigh) {
+	if !got.SupportsThinkingLevel(sigma.ThinkingLevelMedium) || !got.SupportsThinkingLevel(sigma.ThinkingLevelLow) || !got.SupportsThinkingLevel(sigma.ThinkingLevelHigh) || got.SupportsThinkingLevel(sigma.ThinkingLevelMinimal) || got.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
 		t.Fatalf("generated thinking restrictions were not preserved: %+v", got)
 	}
 }
@@ -313,9 +313,28 @@ func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 			t.Fatalf("model %q does not resolve to built-in google-vertex text metadata", modelID)
 		}
 	}
-	for _, modelID := range []string{"gemini-1.5-flash", "gemini-2.5-flash", "gemini-3-flash-preview", "gemini-3.1-pro-preview"} {
+	for _, modelID := range []string{
+		"gemini-2.5-flash",
+		"gemini-3-flash-preview",
+		"gemini-3.1-pro-preview",
+		"gemini-3.5-flash-lite",
+		"gemini-3.6-flash",
+	} {
 		if !hasString(models, modelID) {
 			t.Fatalf("built-in models do not include %q: %v", modelID, models)
+		}
+	}
+	for _, modelID := range []string{
+		"gemini-1.5-flash",
+		"gemini-1.5-flash-8b",
+		"gemini-1.5-pro",
+		"gemini-2.0-flash",
+		"gemini-2.0-flash-lite",
+		"gemini-2.5-flash-lite-preview-09-2025",
+		"gemini-3-pro-preview",
+	} {
+		if hasString(models, modelID) {
+			t.Fatalf("built-in models unexpectedly include retired model %q: %v", modelID, models)
 		}
 	}
 }
@@ -324,19 +343,30 @@ func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 	t.Parallel()
 
 	models, err := modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{
-		"gemini-3-flash-preview": true,
-		"gemini-2.5-flash":       true,
+		"gemini-3.5-flash-lite": true,
+		"gemini-3.6-flash":      true,
 	})
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
-	if !reflect.DeepEqual(models, []string{"gemini-2.5-flash", "gemini-3-flash-preview"}) {
+	if !reflect.DeepEqual(models, []string{"gemini-3.5-flash-lite", "gemini-3.6-flash"}) {
 		t.Fatalf("models = %v, want sorted selected Vertex models", models)
 	}
 
-	_, err = modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{"not-a-vertex-model": true})
-	if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
-		t.Fatalf("invalid model error = %v, want clear local rejection", err)
+	for _, modelID := range []string{
+		"not-a-vertex-model",
+		"gemini-1.5-flash",
+		"gemini-1.5-flash-8b",
+		"gemini-1.5-pro",
+		"gemini-2.0-flash",
+		"gemini-2.0-flash-lite",
+		"gemini-2.5-flash-lite-preview-09-2025",
+		"gemini-3-pro-preview",
+	} {
+		_, err = modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{modelID: true})
+		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
+			t.Fatalf("invalid model %q error = %v, want clear local rejection", modelID, err)
+		}
 	}
 }
 
@@ -762,16 +792,6 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 		notWant []string
 	}{
 		{
-			modelID: "gemini-1.5-flash",
-			want:    []string{"basic_text", "developer_instruction", "image_input", "tool_auto_file_read", "tool_any_file_read"},
-			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
-		},
-		{
-			modelID: "gemini-2.0-flash-lite",
-			want:    []string{"basic_text", "developer_instruction", "image_input", "tool_auto_file_read", "tool_any_file_read"},
-			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
-		},
-		{
 			modelID: "gemini-2.5-flash",
 			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 		},
@@ -787,8 +807,18 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 		},
 		{
 			modelID: "gemini-3.1-pro-preview",
-			want:    []string{"reasoning_level_low", "reasoning_level_high"},
-			notWant: []string{"thinking_disabled", "reasoning_level_medium"},
+			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled"},
+		},
+		{
+			modelID: "gemini-3.5-flash-lite",
+			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled"},
+		},
+		{
+			modelID: "gemini-3.6-flash",
+			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
+			notWant: []string{"thinking_disabled"},
 		},
 	}
 	for _, tt := range tests {

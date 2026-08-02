@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-07-28",
+  "snapshotDate": "2026-08-02",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -41,6 +41,14 @@
     {
       "name": "Google Gemini models",
       "url": "https://ai.google.dev/gemini-api/docs/models"
+    },
+    {
+      "name": "Google Vertex AI Gemini model lifecycle",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions"
+    },
+    {
+      "name": "Google Vertex AI Gemini pricing",
+      "url": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing"
     },
     {
       "name": "Hugging Face Router models",
@@ -10567,161 +10575,6 @@
       ]
     },
     {
-      "id": "gemini-1.5-flash",
-      "name": "Gemini 1.5 Flash (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": false,
-      "cost": {
-        "inputPerMillion": 0.075,
-        "outputPerMillion": 0.3,
-        "cacheReadInputPerMillion": 0.01875,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 8192,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
-      "id": "gemini-1.5-flash-8b",
-      "name": "Gemini 1.5 Flash-8B (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": false,
-      "cost": {
-        "inputPerMillion": 0.0375,
-        "outputPerMillion": 0.15,
-        "cacheReadInputPerMillion": 0.01,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 8192,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
-      "id": "gemini-1.5-pro",
-      "name": "Gemini 1.5 Pro (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": false,
-      "cost": {
-        "inputPerMillion": 1.25,
-        "outputPerMillion": 5,
-        "cacheReadInputPerMillion": 0.3125,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 8192,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
-      "id": "gemini-2.0-flash",
-      "name": "Gemini 2.0 Flash (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": false,
-      "cost": {
-        "inputPerMillion": 0.15,
-        "outputPerMillion": 0.6,
-        "cacheReadInputPerMillion": 0.0375,
-        "currency": "USD"
-      },
-      "contextWindow": 1048576,
-      "maxOutputTokens": 8192,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
-      "id": "gemini-2.0-flash-lite",
-      "name": "Gemini 2.0 Flash Lite (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": false,
-      "cost": {
-        "inputPerMillion": 0.075,
-        "outputPerMillion": 0.3,
-        "cacheReadInputPerMillion": 0.01875,
-        "currency": "USD"
-      },
-      "contextWindow": 1048576,
-      "maxOutputTokens": 65536,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
       "id": "gemini-2.5-flash",
       "name": "Gemini 2.5 Flash (Vertex)",
       "provider": "google-vertex",
@@ -10761,43 +10614,6 @@
     {
       "id": "gemini-2.5-flash-lite",
       "name": "Gemini 2.5 Flash Lite (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "thinkingLevelMap": {
-        "minimal": "512",
-        "low": "2048",
-        "medium": "8192",
-        "high": "24576"
-      },
-      "cost": {
-        "inputPerMillion": 0.1,
-        "outputPerMillion": 0.4,
-        "cacheReadInputPerMillion": 0.01,
-        "currency": "USD"
-      },
-      "contextWindow": 1048576,
-      "maxOutputTokens": 65536,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      }
-    },
-    {
-      "id": "gemini-2.5-flash-lite-preview-09-2025",
-      "name": "Gemini 2.5 Flash Lite Preview 09-25 (Vertex)",
       "provider": "google-vertex",
       "api": "google-vertex",
       "baseURL": "https://{location}-aiplatform.googleapis.com",
@@ -10941,46 +10757,6 @@
       ]
     },
     {
-      "id": "gemini-3-pro-preview",
-      "name": "Gemini 3 Pro Preview (Vertex)",
-      "provider": "google-vertex",
-      "api": "google-vertex",
-      "baseURL": "https://{location}-aiplatform.googleapis.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 2,
-        "outputPerMillion": 12,
-        "cacheReadInputPerMillion": 0.2,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 64000,
-      "headers": {},
-      "authEnvNames": [
-        "GOOGLE_CLOUD_API_KEY",
-        "GOOGLE_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini",
-        "vertexPublisher": "google"
-      },
-      "thinkingLevelMap": {
-        "low": "LOW",
-        "high": "HIGH"
-      },
-      "unsupportedThinkingLevels": [
-        "off",
-        "minimal",
-        "medium"
-      ]
-    },
-    {
       "id": "gemini-3.1-pro-preview",
       "name": "Gemini 3.1 Pro Preview (Vertex)",
       "provider": "google-vertex",
@@ -11012,12 +10788,12 @@
       },
       "thinkingLevelMap": {
         "low": "LOW",
+        "medium": "MEDIUM",
         "high": "HIGH"
       },
       "unsupportedThinkingLevels": [
         "off",
-        "minimal",
-        "medium"
+        "minimal"
       ]
     },
     {
@@ -11052,12 +10828,12 @@
       },
       "thinkingLevelMap": {
         "low": "LOW",
+        "medium": "MEDIUM",
         "high": "HIGH"
       },
       "unsupportedThinkingLevels": [
         "off",
-        "minimal",
-        "medium"
+        "minimal"
       ]
     },
     {
@@ -11075,6 +10851,74 @@
       "cost": {
         "inputPerMillion": 1.5,
         "outputPerMillion": 9,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "gemini-3.5-flash-lite",
+      "name": "Gemini 3.5 Flash-Lite (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.03,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "gemini-3.6-flash",
+      "name": "Gemini 3.6 Flash (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 7.5,
         "cacheReadInputPerMillion": 0.15,
         "currency": "USD"
       },

@@ -63,7 +63,10 @@ route that reuses built-in model capabilities, accepts caller-supplied OAuth
 access tokens or API keys, and keeps live provider calls outside CI. Gemini 2.5
 reasoning requests now use supported token budgets across direct Google and
 native Vertex routes, while probe cases honor models that do not support
-disabled thinking.
+disabled thinking. The native Vertex text catalog now adds Gemini 3.6 Flash and
+Gemini 3.5 Flash-Lite, removes retired or superseded Gemini 1.5, Gemini 2.0,
+Gemini 2.5 Flash-Lite Preview 09-2025, and Gemini 3 Pro Preview rows, and
+supports medium thinking on both Gemini 3.1 Pro Preview endpoints.
 
 ## Changed
 
@@ -205,9 +208,16 @@ disabled thinking.
   authentication surfaces without a Vertex model-discovery request.
 - Generated Google and native Vertex Gemini 2.5 metadata now maps Sigma's
   minimal, low, medium, and high reasoning levels to provider token budgets.
-  Gemini 2.5 Pro marks disabled thinking unsupported, Vertex Gemini 2.0 Flash
-  Lite no longer advertises thinking, and the native Vertex probe omits
-  disabled-thinking cases when `off` is not supported.
+  Gemini 2.5 Pro marks disabled thinking unsupported, and the native Vertex
+  probe omits disabled-thinking cases when `off` is not supported.
+- Generated native Vertex Gemini text metadata now includes
+  `gemini-3.6-flash` and `gemini-3.5-flash-lite` with reviewed text/image,
+  function-tool, thinking, limit, and standard global pricing metadata. Both
+  Gemini 3.1 Pro Preview endpoints now accept low, medium, and high thinking.
+  Retired Gemini 1.5 and Gemini 2.0 rows, the dated Gemini 2.5 Flash-Lite
+  preview, and Gemini 3 Pro Preview are no longer included. The surface-probe
+  documentation uses the global location so a complete catalog run includes
+  global-only models.
 
 ## Compatibility
 
@@ -320,13 +330,23 @@ disabled thinking.
   metadata. Public APIs, provider registration, authentication, transports,
   serialized messages, normalized responses, default probe routes, and CI
   behavior are unchanged.
+- The native `google-vertex` text refresh is metadata-only. Existing provider
+  registration, authentication, request payload contracts, transports,
+  normalized responses, and public APIs are unchanged. The newly added models
+  resolve through the existing adapter, while `gemini-1.5-flash`,
+  `gemini-1.5-flash-8b`, `gemini-1.5-pro`, `gemini-2.0-flash`,
+  `gemini-2.0-flash-lite`, `gemini-2.5-flash-lite-preview-09-2025`, and
+  `gemini-3-pro-preview` no longer resolve from the built-in Vertex registry.
+  Catalog costs use standard global PayGo rates; region-specific and
+  long-context pricing remain outside this refresh.
 
 ## Deferred work
 
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
-- Vertex partner MaaS probes, Vertex image and embedding probes, catalog
-  expansion, and automatic ambient credential loading remain outside this
-  native Gemini text-probe slice.
+- Vertex partner MaaS probes, Vertex image and embedding probes, broader
+  catalog expansion, location-aware probe filtering, regional pricing, and
+  automatic ambient credential loading remain outside this native Gemini text
+  slice.
 
 ## Validation status
 

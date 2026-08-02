@@ -70,9 +70,8 @@ See [release notes](docs/release-notes-v0.7.0.md).
   externally supplied OAuth access tokens or API keys, and capability-gated
   image, function-tool, and thinking diagnostics.
 - Gemini 2.5 reasoning levels now serialize as model-family token budgets for
-  direct Google and native Vertex requests. Generated metadata also stops
-  advertising thinking for Vertex Gemini 2.0 Flash Lite, marks disabled
-  thinking unsupported on Gemini 2.5 Pro, and keeps the Vertex probe from
+  direct Google and native Vertex requests. Generated metadata marks disabled
+  thinking unsupported on Gemini 2.5 Pro and keeps the Vertex probe from
   sending unsupported disabled-thinking cases.
 
 ### Changed
@@ -98,6 +97,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
   streams now retain non-empty raw terminal reasons under their wire-native
   assistant provider metadata keys without changing normalized stop reasons or
   provider error behavior.
+- The native Vertex Gemini text catalog now includes Gemini 3.6 Flash and
+  Gemini 3.5 Flash-Lite, removes retired or superseded Gemini 1.5, 2.0, dated
+  2.5 Flash-Lite preview, and 3 Pro Preview rows, and enables medium thinking
+  for both Gemini 3.1 Pro Preview endpoints.
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.

@@ -180,6 +180,71 @@ func TestVertexGemini25ReasoningLevelsUseThinkingBudgets(t *testing.T) {
 	}
 }
 
+func TestVertexCurrentGeminiFlashModelsUseNamedThinkingLevels(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		modelID string
+		level   sigma.ThinkingLevel
+		want    string
+	}{
+		{modelID: "gemini-3.5-flash-lite", level: sigma.ThinkingLevelMinimal, want: "MINIMAL"},
+		{modelID: "gemini-3.6-flash", level: sigma.ThinkingLevelMedium, want: "MEDIUM"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.modelID, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedVertexRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureVertexRequest(t, requests, r)
+				writeVertexSSE(t, w, vertexCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			model, ok := sigma.GetModel(sigma.ProviderGoogleVertex, sigma.ModelID(tt.modelID))
+			if !ok {
+				t.Fatalf("generated Vertex model %q is missing", tt.modelID)
+			}
+			client := vertexTestClientWithModel(
+				t,
+				model,
+				vertexAPIKeyResolver("vertex-api-key"),
+				WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "global", APIVersion: "v1"}),
+				WithVertexBaseURL(server.URL+"/v1"),
+			)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithReasoningLevel(tt.level),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveVertexRequest(t, requests)
+			wantPath := "/v1/projects/test-project/locations/global/publishers/google/models/" + tt.modelID + ":streamGenerateContent"
+			if request.Path != wantPath {
+				t.Fatalf("path = %q, want %q", request.Path, wantPath)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal([]byte(request.Body), &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			generation := payload["generationConfig"].(map[string]any)
+			thinking := generation["thinkingConfig"].(map[string]any)
+			if got := thinking["thinkingLevel"]; got != tt.want {
+				t.Fatalf("thinkingLevel = %v, want %q", got, tt.want)
+			}
+			if got, ok := thinking["thinkingBudget"]; ok {
+				t.Fatalf("thinkingBudget = %v, want omitted for %s", got, tt.modelID)
+			}
+		})
+	}
+}
+
 func TestVertexOmitsFunctionCallIDs(t *testing.T) {
 	t.Parallel()
 

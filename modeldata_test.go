@@ -2534,19 +2534,14 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 			}
 		}
 	}
-	vertex20Lite, ok := registry.Model(ProviderGoogleVertex, "gemini-2.0-flash-lite")
-	if !ok {
-		t.Fatal("fresh registry missing generated Vertex Gemini 2.0 Flash Lite model")
-	}
-	if vertex20Lite.SupportsReasoning() {
-		t.Fatalf("Vertex Gemini 2.0 Flash Lite unexpectedly supports reasoning: %+v", vertex20Lite)
-	}
 	for _, tt := range []struct {
 		id                               ModelID
 		inputCost, outputCost, cacheRead float64
 	}{
 		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
 		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
+		{id: "gemini-3.5-flash-lite", inputCost: 0.3, outputCost: 2.5, cacheRead: 0.03},
+		{id: "gemini-3.6-flash", inputCost: 1.5, outputCost: 7.5, cacheRead: 0.15},
 		{id: "gemini-flash-latest", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
 		{id: "gemini-flash-lite-latest", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
 	} {
@@ -2569,14 +2564,56 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		assertMetadataString(t, model.ProviderMetadata, "vertexPublisher", "google")
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"GOOGLE_CLOUD_API_KEY", "GOOGLE_API_KEY"})
 	}
-	vertexPro, ok := registry.Model(ProviderGoogleVertex, "gemini-3.1-pro-preview")
-	if !ok {
-		t.Fatal("fresh registry missing generated Vertex Gemini 3.1 Pro Preview model")
+	for _, modelID := range []ModelID{"gemini-3.1-pro-preview", "gemini-3.1-pro-preview-customtools"} {
+		vertexPro, ok := registry.Model(ProviderGoogleVertex, modelID)
+		if !ok {
+			t.Fatalf("fresh registry missing generated Vertex %s model", modelID)
+		}
+		if vertexPro.API != APIGoogleVertex || !vertexPro.SupportsTools || !vertexPro.SupportsImages() || !vertexPro.SupportsReasoning() {
+			t.Fatalf("Vertex %s metadata = %+v, want Vertex tools, images, and reasoning", modelID, vertexPro)
+		}
+		for level, want := range map[ThinkingLevel]string{
+			ThinkingLevelLow:    "LOW",
+			ThinkingLevelMedium: "MEDIUM",
+			ThinkingLevelHigh:   "HIGH",
+		} {
+			if got, ok := vertexPro.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("Vertex %s provider thinking level %q = %q, %t; want %q, true", modelID, level, got, ok, want)
+			}
+		}
+		for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal} {
+			if vertexPro.SupportsThinkingLevel(level) {
+				t.Fatalf("Vertex %s unexpectedly supports thinking level %q", modelID, level)
+			}
+		}
+		assertMetadataString(t, vertexPro.ProviderMetadata, "vertexPublisher", "google")
 	}
-	if vertexPro.API != APIGoogleVertex || !vertexPro.SupportsTools || !vertexPro.SupportsImages() || !vertexPro.SupportsReasoning() {
-		t.Fatalf("Vertex Gemini 3.1 Pro Preview metadata = %+v, want Vertex tools, images, and reasoning", vertexPro)
+
+	for _, modelID := range []ModelID{
+		"gemini-2.5-flash",
+		"gemini-2.5-flash-lite",
+		"gemini-2.5-pro",
+		"gemini-3-flash-preview",
+		"gemini-flash-latest",
+		"gemini-flash-lite-latest",
+	} {
+		if _, ok := registry.Model(ProviderGoogleVertex, modelID); !ok {
+			t.Fatalf("fresh registry missing retained Vertex model %s", modelID)
+		}
 	}
-	assertMetadataString(t, vertexPro.ProviderMetadata, "vertexPublisher", "google")
+	for _, modelID := range []ModelID{
+		"gemini-1.5-flash",
+		"gemini-1.5-flash-8b",
+		"gemini-1.5-pro",
+		"gemini-2.0-flash",
+		"gemini-2.0-flash-lite",
+		"gemini-2.5-flash-lite-preview-09-2025",
+		"gemini-3-pro-preview",
+	} {
+		if _, ok := registry.Model(ProviderGoogleVertex, modelID); ok {
+			t.Fatalf("fresh registry unexpectedly contains retired Vertex model %s", modelID)
+		}
+	}
 
 	vertexClaude, ok := registry.Model(ProviderGoogleVertexAnthropic, "claude-sonnet-4@20250514")
 	if !ok {

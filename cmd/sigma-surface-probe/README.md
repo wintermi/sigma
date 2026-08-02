@@ -135,10 +135,10 @@ token:
 ```bash
 GOOGLE_CLOUD_ACCESS_TOKEN="$(gcloud auth application-default print-access-token)" \
 GOOGLE_CLOUD_PROJECT=my-project \
-GOOGLE_CLOUD_LOCATION=us-central1 \
+GOOGLE_CLOUD_LOCATION=global \
 mise run go:run -- ./cmd/sigma-surface-probe \
   -routes google-vertex \
-  -models gemini-2.5-flash \
+  -models gemini-3.6-flash \
   -repair
 ```
 
@@ -153,6 +153,9 @@ Omit `-models` to probe every built-in native Vertex Gemini text model
 sequentially. Explicit IDs must be built-in `google-vertex` text models; model
 selection is catalog-backed and never calls a Vertex model-discovery endpoint.
 Vertex-hosted partner MaaS models, images, and embeddings are not included.
+Use the `global` location when probing the complete catalog because some current
+models are global-only. A regional or multi-region location remains valid when
+every explicitly selected model is available there.
 
 Probe OpenAI Responses with a known model:
 

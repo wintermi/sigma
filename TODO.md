@@ -681,6 +681,9 @@ should still come through the catalog refresh workflow.
       explicit project/location routing and deterministic fixtures.
 - [x] Add curated native Vertex Gemini 3.1 Flash Lite, Gemini 3.5 Flash, and
       Flash/Flash-Lite latest metadata with deterministic registry coverage.
+- [x] Refresh the native Vertex Gemini text catalog with Gemini 3.6 Flash and
+      Gemini 3.5 Flash-Lite, remove retired and superseded rows, and align
+      Gemini 3.1 Pro thinking-level metadata with current provider support.
 - [x] Add opt-in native Vertex Gemini text probes that reuse built-in model
       metadata, explicit project/location routing, externally supplied OAuth
       access tokens or API keys, and capability-gated cases without network
