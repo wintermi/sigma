@@ -53,6 +53,10 @@ run = "go generate ./..."
 description = "Run a Go package or command, passing through arguments"
 run = "go run"
 
+[tasks.eval]
+description = "Run opt-in live behavioral evaluations"
+run = "go test -tags=evals ./cmd/sigma-evals-runner"
+
 [tasks."go:fmt"]
 description = "Apply Go formatters defined in .golangci.yaml"
 run = "golangci-lint fmt"

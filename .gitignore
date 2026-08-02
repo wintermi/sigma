@@ -42,3 +42,4 @@ __pycache__/
 # Project Ignore
 bin/**
 build/**
+.eval/

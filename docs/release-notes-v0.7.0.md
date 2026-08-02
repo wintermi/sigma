@@ -72,9 +72,20 @@ tools without advertising named thinking levels rejected by those endpoints.
 When a surface-probe repair confirms minimal-text availability after another
 case fails, the original failure classification is now retained and the
 availability result is reported separately.
+Repository maintainers can now also author Go-native behavioral evaluations
+with generic harnesses and judges, sequential Sigma text conversations, paired
+baseline/candidate reports, and private run artifacts. An opt-in smoke runner
+for direct OpenAI Responses, OpenCode Go, Fireworks, and native Vertex Gemini
+models is available outside deterministic CI.
 
 ## Changed
 
+- `internal/evals` now provides repository-only harness, judge, comparison,
+  transcript, usage, timing, and artifact primitives. `cmd/sigma-evals-runner`
+  supplies the opt-in provider-backed smoke suite; direct OpenAI Responses,
+  OpenCode Go, both Fireworks text surfaces, and native Vertex Gemini use
+  explicit suite-local registration, and `mise run ci` makes no live model
+  calls.
 - Package-level model lookup, routing, generation, image, and embedding helpers
   now use the live shared default registry without cloning the generated catalog
   on every call. Public registry clones and explicitly constructed clients
@@ -233,6 +244,11 @@ availability result is reported separately.
 
 ## Compatibility
 
+- The evaluation framework is internal tooling and does not add a root-package
+  API or compatibility promise. Its Sigma harness performs sequential text
+  turns but does not execute tools, manage workspaces, reload resources, or add
+  an agent runtime. Full-content artifacts are ignored by git and written with
+  private permissions, but may still contain sensitive prompts and responses.
 - `OpenAIResponsesCompat.SupportsExplicitPromptCacheMode` is additive and
   opt-in. Only an explicit `CacheRetentionNone` request on a marked model gains
   `prompt_cache_options`; unset retention, older or unmarked models, Azure
@@ -363,6 +379,9 @@ availability result is reported separately.
 ## Deferred work
 
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
+- Broader provider-specific live evaluation suites and agent orchestration
+  remain separate future work; the live runner remains a focused factual check
+  for its explicitly registered routes.
 - Vertex partner MaaS probes, Vertex image and embedding probes, broader
   catalog expansion, location-aware probe filtering, regional pricing, and
   automatic ambient credential loading remain outside this native Gemini text

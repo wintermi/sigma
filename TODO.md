@@ -880,6 +880,11 @@ should still come through the catalog refresh workflow.
 
 ## Agent runtime and orchestration
 
+- [x] Add a repository-internal Go evaluation framework with generic harnesses
+      and judges, a sequential Sigma text harness, paired comparison reports,
+      private run artifacts, and an opt-in live smoke runner for explicitly
+      registered OpenAI, OpenCode Go, Fireworks, and native Vertex routes while
+      keeping live calls outside deterministic CI.
 - [ ] Add agent runtime integration on top of the provider-neutral primitives
       `sigma` exposes (orchestration is deferred to later integration cards).
 - [x] Implement cross-provider context handoff beyond diagnostic surface probes.
