@@ -252,6 +252,9 @@ func TestVertexAnthropicStreamingReusesMessagesParser(t *testing.T) {
 	if got, want := final.Content[0].Text, "ok"; got != want {
 		t.Fatalf("text = %q, want %q", got, want)
 	}
+	if got, want := final.ProviderMetadata["stop_reason"], "end_turn"; got != want {
+		t.Fatalf("raw stop reason = %v, want %v", got, want)
+	}
 }
 
 func vertexAnthropicTestClient(t *testing.T, model sigma.Model, resolver sigma.AuthResolver, opts ...anthropic.VertexProviderOption) *sigma.Client {

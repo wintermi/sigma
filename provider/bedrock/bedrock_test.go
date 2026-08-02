@@ -899,6 +899,9 @@ func TestCompleteUsesFakeCredentialDetectorAndClient(t *testing.T) {
 	if final.Usage == nil || final.Usage.TotalTokens != 3 {
 		t.Fatalf("usage = %+v, want total tokens 3", final.Usage)
 	}
+	if got, want := final.ProviderMetadata["stopReason"], "end_turn"; got != want {
+		t.Fatalf("raw stop reason = %v, want %v", got, want)
+	}
 }
 
 func TestPrematureConverseStreamReturnsPartialFinal(t *testing.T) {
@@ -920,6 +923,9 @@ func TestPrematureConverseStreamReturnsPartialFinal(t *testing.T) {
 	}
 	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
 		t.Fatalf("partial final content = %#v, want partial text", final.Content)
+	}
+	if _, ok := final.ProviderMetadata["stopReason"]; ok {
+		t.Fatalf("raw stop reason = %v, want absent", final.ProviderMetadata["stopReason"])
 	}
 	classification := sigma.ClassifyError(err)
 	if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
@@ -982,8 +988,15 @@ func TestUnknownBedrockStopReasonReturnsProviderError(t *testing.T) {
 	if got, want := final.Content[0].Text, "partial"; got != want {
 		t.Fatalf("partial text = %q, want %q", got, want)
 	}
+	if got, want := final.ProviderMetadata["stopReason"], "service_unavailable"; got != want {
+		t.Fatalf("raw stop reason = %v, want %v", got, want)
+	}
 	if len(final.Diagnostics) != 1 || !strings.Contains(final.Diagnostics[0].BodyPreview, "service_unavailable") {
 		t.Fatalf("diagnostics = %#v, want raw stop reason", final.Diagnostics)
+	}
+	classification := sigma.ClassifyError(err)
+	if classification.Class != sigma.ErrorClassUnknown || classification.RetryHint.Retryable {
+		t.Fatalf("classification = %#v, want non-retryable unknown", classification)
 	}
 }
 

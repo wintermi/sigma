@@ -85,6 +85,10 @@ See [release notes](docs/release-notes-v0.7.0.md).
 - OpenAI-compatible Chat Completions routes now retain non-empty raw terminal
   `finish_reason` values in assistant provider metadata without changing
   normalized stop reasons or provider error behavior.
+- Anthropic Messages, Google Gemini and Vertex AI, and Amazon Bedrock Converse
+  streams now retain non-empty raw terminal reasons under their wire-native
+  assistant provider metadata keys without changing normalized stop reasons or
+  provider error behavior.
 - Codex request-affinity headers now clamp session IDs to 64 characters,
   OpenRouter cache affinity uses its `x-session-id` header, and unrecognised
   Bedrock terminal stop reasons now return typed provider errors.

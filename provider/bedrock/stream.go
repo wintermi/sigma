@@ -73,6 +73,7 @@ type converseStreamParser struct {
 	responseFormatTools map[int]struct{}
 	usage               *sigma.Usage
 	stop                sigma.StopReason
+	rawStopReason       string
 	messageStopped      bool
 }
 
@@ -149,6 +150,9 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 		return nil
 	case ConverseEventMessageStop:
 		p.messageStopped = true
+		if event.StopReason != "" {
+			p.rawStopReason = event.StopReason
+		}
 		p.stop = bedrockStopReason(event.StopReason)
 		if p.stop == sigma.StopReasonUnknown {
 			return providerError(p.model, fmt.Errorf("bedrock converse stream: unhandled stop reason %q", event.StopReason))
@@ -336,6 +340,12 @@ func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMess
 		usage, cost := sigma.AccountUsage(p.model, *p.usage)
 		p.final.Usage = &usage
 		p.final.Cost = &cost
+	}
+	if p.rawStopReason != "" {
+		if p.final.ProviderMetadata == nil {
+			p.final.ProviderMetadata = make(map[string]any)
+		}
+		p.final.ProviderMetadata["stopReason"] = p.rawStopReason
 	}
 	return p.final
 }

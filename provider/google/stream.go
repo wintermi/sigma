@@ -75,6 +75,7 @@ type streamParser struct {
 	currentThink    *googleBlockState
 	usage           *sigma.Usage
 	stopReason      sigma.StopReason
+	rawStopReason   string
 	responseID      string
 	modelVersion    string
 	promptFeedback  map[string]any
@@ -139,6 +140,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		p.captureCandidate(candidate)
 		if candidate.FinishReason != "" {
 			p.finished = true
+			p.rawStopReason = candidate.FinishReason
 			p.stopReason = googleStopReason(candidate.FinishReason)
 		}
 		for _, part := range candidate.Content.Parts {
@@ -401,6 +403,9 @@ func (p *streamParser) responseMetadata() map[string]any {
 	}
 	if p.modelVersion != "" && p.modelVersion != string(p.model.ID) {
 		metadata["modelVersion"] = p.modelVersion
+	}
+	if p.rawStopReason != "" {
+		metadata["finishReason"] = p.rawStopReason
 	}
 	if len(p.promptFeedback) > 0 {
 		metadata["promptFeedback"] = p.promptFeedback

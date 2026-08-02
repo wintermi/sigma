@@ -2109,6 +2109,9 @@ data: {"type":"message_stop"}
 			if got := final.StopReason; got != tt.want {
 				t.Fatalf("stop reason = %q, want %q", got, tt.want)
 			}
+			if got, want := final.ProviderMetadata["stop_reason"], tt.stopReason; got != want {
+				t.Fatalf("raw stop reason = %v, want %v", got, want)
+			}
 			if final.Usage == nil {
 				t.Fatal("final usage was nil")
 			}
@@ -2368,6 +2371,9 @@ data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text
 	}
 	if got, want := final.ProviderMetadata["id"], "msg_truncated"; got != want {
 		t.Fatalf("response id = %v, want %v", got, want)
+	}
+	if _, ok := final.ProviderMetadata["stop_reason"]; ok {
+		t.Fatalf("raw stop reason = %v, want absent", final.ProviderMetadata["stop_reason"])
 	}
 	classification := sigma.ClassifyError(err)
 	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {

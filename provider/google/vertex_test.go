@@ -487,6 +487,9 @@ func TestVertexStreamingReusesGoogleParser(t *testing.T) {
 	if final.Usage == nil || final.Usage.TotalTokens != 5 {
 		t.Fatalf("usage = %+v, want total tokens 5", final.Usage)
 	}
+	if got, want := final.ProviderMetadata["finishReason"], "STOP"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
 }
 
 func TestVertexProviderErrorIsTypedAndRedacted(t *testing.T) {

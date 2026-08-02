@@ -42,6 +42,9 @@ OpenAI Responses routes now also retain non-empty raw terminal response status
 in assistant provider metadata for diagnostics.
 OpenAI-compatible Chat Completions routes likewise retain non-empty raw
 terminal `finish_reason` values in assistant provider metadata.
+Anthropic Messages, Google Gemini and Vertex AI, and Amazon Bedrock Converse
+streams now also retain their non-empty raw terminal reasons in assistant
+provider metadata for diagnostics.
 Explicit `CacheRetentionNone` requests on reviewed direct OpenAI GPT-5.6
 Responses models now disable implicit prompt-cache writes through capability-
 gated explicit cache mode.
@@ -77,6 +80,11 @@ while abandoned debug and fallback state expires after five idle minutes.
 - OpenAI-compatible Chat Completions routes now retain each non-empty terminal
   `finish_reason` in assistant provider metadata, including values that
   normalize to provider errors or unknown stop reasons.
+- Anthropic Messages streams now retain terminal reasons as `stop_reason`,
+  Google Gemini API and Vertex AI streams retain them as `finishReason`, and
+  Amazon Bedrock Converse streams retain them as `stopReason` in assistant
+  provider metadata. Recognized and provider-specific reasons use the same
+  normalized stop and error behavior as before.
 - Text `Stream` and `Complete` calls now accept `WithRequestHTTPClient` for a
   caller-selected HTTP/SSE transport client.
 - Anthropic Messages now resolves `ANTHROPIC_AUTH_TOKEN` as bearer
@@ -199,6 +207,11 @@ while abandoned debug and fallback state expires after five idle minutes.
   uses the existing opaque provider metadata map. Public APIs, request
   payloads, serialized message shapes, normalized stop reasons, and provider
   error behavior are unchanged.
+- Anthropic, Google, Vertex AI, and Bedrock terminal-reason metadata is
+  additive and uses the existing opaque provider metadata map with the
+  wire-native keys `stop_reason`, `finishReason`, and `stopReason`. Public APIs,
+  request payloads, normalized stop reasons, provider errors, and transports
+  are unchanged.
 - `WithRequestHTTPClient` is additive. A call-scoped client overrides client
   and provider fallback clients for HTTP/SSE dispatch without changing default
   clients, provider request shapes, image or embedding calls, or WebSocket

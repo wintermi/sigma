@@ -316,6 +316,9 @@ func TestCompleteSendsGoldenPayloadWithImagesToolsThinkingAndHooks(t *testing.T)
 	if got, want := final.ProviderMetadata["id"], "resp_complete"; got != want {
 		t.Fatalf("response id = %v, want %v", got, want)
 	}
+	if got, want := final.ProviderMetadata["finishReason"], "STOP"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
 
 	request := receiveRequest(t, requests)
 	if got, want := request.Method, http.MethodPost; got != want {
@@ -1132,6 +1135,9 @@ func TestCompleteFunctionCallArgumentsEmitToolCallEvents(t *testing.T) {
 	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
+	if got, want := final.ProviderMetadata["finishReason"], "STOP"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
 	if got, want := final.Content[0].ToolCallID, "call_weather"; got != want {
 		t.Fatalf("tool call id = %q, want %q", got, want)
 	}
@@ -1338,6 +1344,9 @@ func TestMalformedFunctionCallFinishReasonMapsToErrorWithoutToolCalls(t *testing
 	if got := len(final.Content); got != 1 || final.Content[0].Type != sigma.ContentBlockText {
 		t.Fatalf("content = %#v, want text only", final.Content)
 	}
+	if got, want := final.ProviderMetadata["finishReason"], "MALFORMED_FUNCTION_CALL"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
 }
 
 func TestPrematureGenerativeStreamReturnsPartialFinal(t *testing.T) {
@@ -1371,6 +1380,9 @@ func TestPrematureGenerativeStreamReturnsPartialFinal(t *testing.T) {
 			}
 			if len(final.Content) != 1 || final.Content[0].Text != "partial" {
 				t.Fatalf("partial final content = %#v, want partial text", final.Content)
+			}
+			if _, ok := final.ProviderMetadata["finishReason"]; ok {
+				t.Fatalf("raw finish reason = %v, want absent", final.ProviderMetadata["finishReason"])
 			}
 			classification := sigma.ClassifyError(err)
 			if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {

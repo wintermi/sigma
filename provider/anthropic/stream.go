@@ -104,6 +104,7 @@ type streamParser struct {
 	metadata       map[string]any
 	usage          *sigma.Usage
 	stopReason     sigma.StopReason
+	rawStopReason  string
 	messageStarted bool
 	messageStopped bool
 }
@@ -167,6 +168,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		return p.handleContentBlockStop(ctx, parsed.Index)
 	case "message_delta":
 		if parsed.Delta.StopReason != "" {
+			p.rawStopReason = parsed.Delta.StopReason
 			p.stopReason = anthropicStopReason(parsed.Delta.StopReason)
 		}
 		if len(parsed.Delta.Container) > 0 {
@@ -202,6 +204,7 @@ func (p *streamParser) captureMessage(message streamMessage) {
 		p.providerModel = message.Model
 	}
 	if message.StopReason != "" {
+		p.rawStopReason = message.StopReason
 		p.stopReason = anthropicStopReason(message.StopReason)
 	}
 	if message.Usage != nil {
@@ -766,6 +769,9 @@ func (p *streamParser) setMetadata(key string, value any) {
 
 func (p *streamParser) responseMetadata() map[string]any {
 	metadata := responseMetadata(p.responseID, p.providerModel, p.model.ID)
+	if p.rawStopReason != "" {
+		metadata = withProviderMetadata(metadata, "stop_reason", p.rawStopReason)
+	}
 	if len(p.metadata) == 0 {
 		return metadata
 	}
