@@ -22,6 +22,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 - Qwen Token Plan Qwen3.8 Max Preview requests now preserve supported reasoning
   levels through native `reasoning_effort` controls across the international
   and China regional routes, while Qwen3.7 Max remains toggle-only.
+- Anthropic Messages streams now emit non-empty text and thinking carried by
+  content-block start events as ordered initial deltas, preserving complete
+  incremental output alongside signatures and citations.
 
 ## [0.7.0] - 2026-08-02
 

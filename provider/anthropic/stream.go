@@ -254,16 +254,25 @@ func (p *streamParser) handleContentBlockStop(ctx context.Context, index int) er
 }
 
 func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, content streamContent) error {
-	p.captureContent(index, content)
 	switch content.Type {
 	case "text": //nolint:goconst
-		return p.emitText(ctx, index, "")
+		state := p.textState(index)
+		if len(content.Citations) > 0 {
+			state.ProviderMetadata = addCitations(state.ProviderMetadata, content.Citations)
+		}
+		return p.emitText(ctx, index, content.Text)
 	case "thinking":
-		return p.emitThinking(ctx, index, "")
+		state := p.thinkingState(index)
+		if content.Signature != "" {
+			state.Signature = content.Signature
+		}
+		return p.emitThinking(ctx, index, content.Thinking)
 	case "redacted_thinking":
+		p.captureContent(index, content)
 		_ = p.thinkingState(index)
 		return nil
 	case "tool_use", "server_tool_use":
+		p.captureContent(index, content)
 		return p.emitToolCall(ctx, index, "")
 	default:
 		return nil

@@ -1928,6 +1928,114 @@ data: {"type":"message_stop"}
 	}
 }
 
+func TestStreamingEmitsContentBlockStartContentAsDeltas(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMessagesSSE(t, w, `event: message_start
+data: {"type":"message_start","message":{"id":"msg_initial_content","type":"message","role":"assistant","model":"claude-test","content":[],"usage":{"input_tokens":1,"output_tokens":1}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"Initial thinking","signature":"initial_"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" plus delta"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"signature"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: content_block_start
+data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":"Initial text","citations":[{"type":"web_search_result_location","url":"https://example.com","cited_text":"initial"}]}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" plus delta"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}
+
+event: message_stop
+data: {"type":"message_stop"}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-initial-content-stream-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindThinkingStart,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingDelta,
+		sigma.EventKindThinkingEnd,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+
+	var thinkingDeltas, textDeltas []sigma.Event
+	for _, event := range events {
+		switch event.Kind {
+		case sigma.EventKindThinkingDelta:
+			thinkingDeltas = append(thinkingDeltas, event)
+		case sigma.EventKindTextDelta:
+			textDeltas = append(textDeltas, event)
+		}
+	}
+	if got, want := []string{thinkingDeltas[0].DeltaText, thinkingDeltas[1].DeltaText}, []string{"Initial thinking", " plus delta"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("thinking deltas = %q, want %q", got, want)
+	}
+	if got, want := thinkingDeltas[1].Thinking, "Initial thinking plus delta"; got != want {
+		t.Fatalf("cumulative thinking = %q, want %q", got, want)
+	}
+	if got, want := []string{textDeltas[0].DeltaText, textDeltas[1].DeltaText}, []string{"Initial text", " plus delta"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("text deltas = %q, want %q", got, want)
+	}
+	if got, want := textDeltas[1].Text, "Initial text plus delta"; got != want {
+		t.Fatalf("cumulative text = %q, want %q", got, want)
+	}
+	if got, want := len(final.Content), 2; got != want {
+		t.Fatalf("final content blocks = %d, want %d", got, want)
+	}
+	if got, want := final.Content[0].ThinkingText, "Initial thinking plus delta"; got != want {
+		t.Fatalf("final thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].Signature, "initial_signature"; got != want {
+		t.Fatalf("final thinking signature = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "Initial text plus delta"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+	citations := final.Content[1].Citations()
+	if got, want := len(citations), 1; got != want {
+		t.Fatalf("final citations = %d, want %d", got, want)
+	}
+	if got, want := citations[0].URL, "https://example.com"; got != want {
+		t.Fatalf("final citation URL = %q, want %q", got, want)
+	}
+}
+
 func TestStreamingPreservesHostedToolAndProviderMetadata(t *testing.T) {
 	t.Parallel()
 

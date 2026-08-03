@@ -13,6 +13,8 @@ retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
 Qwen Token Plan requests now preserve supported Qwen3.8 Max Preview reasoning
 levels across both regional routes while keeping Qwen3.7 Max toggle-only.
+Anthropic Messages streams now surface text and thinking delivered with
+content-block start events immediately through incremental output.
 
 ## Added
 
@@ -30,6 +32,9 @@ levels across both regional routes while keeping Qwen3.7 Max toggle-only.
   levels through native `reasoning_effort` controls alongside Qwen thinking
   toggles on the international and China routes. Qwen3.7 Max remains
   toggle-only.
+- Anthropic Messages streams now emit non-empty text and thinking delivered by
+  content-block start events as ordered initial deltas while retaining
+  signatures, citations, and complete final blocks.
 
 ## Deferred work
 

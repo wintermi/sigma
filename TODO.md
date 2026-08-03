@@ -62,6 +62,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Require Google Generative AI finish reasons, Mistral Conversations done
       events, and Bedrock Converse Stream message-stop events before accepting a
       clean stream ending, preserving partial finals and retry classification.
+- [x] Surface non-empty Anthropic Messages text and thinking from content-block
+      start events as ordered incremental deltas while preserving signatures,
+      citations, and final block assembly.
 
 ## Image generation
 
