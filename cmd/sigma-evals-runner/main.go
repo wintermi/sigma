@@ -27,7 +27,10 @@ type runnerConfig struct {
 	runPattern  *regexp.Regexp
 	artifactDir string
 	timeout     time.Duration
+	caseTimeout time.Duration
 }
+
+const defaultCaseTimeout = time.Minute
 
 type candidateSelections []evals.ModelSelection
 
@@ -132,6 +135,7 @@ func run(args []string, stdout, stderr io.Writer, lookup evals.EnvironmentLookup
 		baseline,
 		candidates,
 		config.repetitions,
+		config.caseTimeout,
 	)
 	cancel()
 	if runErr != nil {
@@ -160,6 +164,11 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 	runPattern := flags.String("run", "", "regular expression selecting smoke case names")
 	artifactDirectory := flags.String("artifact-dir", "", "exact private artifact directory")
 	timeout := flags.Duration("timeout", 5*time.Minute, "overall evaluation timeout")
+	caseTimeout := flags.Duration(
+		"case-timeout",
+		defaultCaseTimeout,
+		"maximum duration for one evaluation; 0 uses only the overall timeout",
+	)
 	if err := flags.Parse(args); err != nil {
 		return runnerConfig{}, fmt.Errorf("parse flags: %w", err)
 	}
@@ -168,6 +177,9 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 	}
 	if *timeout <= 0 {
 		return runnerConfig{}, errors.New("timeout must be positive")
+	}
+	if *caseTimeout < 0 {
+		return runnerConfig{}, errors.New("case timeout must not be negative")
 	}
 	if *repetitions <= 0 {
 		return runnerConfig{}, errors.New("repetitions must be positive")
@@ -203,6 +215,7 @@ func parseConfig(args []string, stderr io.Writer, lookup evals.EnvironmentLookup
 		runPattern:  compiledRunPattern,
 		artifactDir: strings.TrimSpace(*artifactDirectory),
 		timeout:     *timeout,
+		caseTimeout: *caseTimeout,
 	}, nil
 }
 

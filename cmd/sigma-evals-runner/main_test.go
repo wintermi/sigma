@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -39,6 +41,7 @@ func TestParseConfigUsesCLISelectionOverEnvironment(t *testing.T) {
 		"-run", "factual|multi-turn",
 		"-artifact-dir", "artifacts",
 		"-timeout", "30s",
+		"-case-timeout", "20s",
 	}, &bytes.Buffer{}, lookup)
 	if err != nil {
 		t.Fatalf("parseConfig returned error: %v", err)
@@ -47,8 +50,36 @@ func TestParseConfigUsesCLISelectionOverEnvironment(t *testing.T) {
 		len(config.candidates) != 2 || config.candidates[0].Provider != "opencode-go" ||
 		config.candidates[1].Model != "accounts/fireworks/models/kimi-k3" ||
 		config.repetitions != 3 || !config.runPattern.MatchString("factual-recall") ||
-		config.artifactDir != "artifacts" || config.timeout != 30*time.Second {
+		config.artifactDir != "artifacts" || config.timeout != 30*time.Second ||
+		config.caseTimeout != 20*time.Second {
 		t.Fatalf("config = %#v", config)
+	}
+}
+
+func TestParseConfigCaseTimeoutDefaultsAndAllowsZero(t *testing.T) {
+	t.Parallel()
+
+	lookup := func(string) (string, bool) { return "", false }
+	tests := []struct {
+		name string
+		args []string
+		want time.Duration
+	}{
+		{name: "default", want: defaultCaseTimeout},
+		{name: "disabled", args: []string{"-case-timeout", "0"}, want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			args := append([]string{"-provider", "openai", "-model", "model"}, tt.args...)
+			config, err := parseConfig(args, &bytes.Buffer{}, lookup)
+			if err != nil {
+				t.Fatalf("parseConfig returned error: %v", err)
+			}
+			if config.caseTimeout != tt.want {
+				t.Fatalf("case timeout = %s, want %s", config.caseTimeout, tt.want)
+			}
+		})
 	}
 }
 
@@ -64,6 +95,7 @@ func TestParseConfigRequiresCompleteSelectionAndPositiveTimeout(t *testing.T) {
 		{name: "missing selection", want: evals.ProviderEnvironmentVariable},
 		{name: "partial selection", args: []string{"-provider", "openai"}, want: "requires both"},
 		{name: "timeout", args: []string{"-provider", "openai", "-model", "model", "-timeout", "0s"}, want: "positive"},
+		{name: "negative case timeout", args: []string{"-provider", "openai", "-model", "model", "-case-timeout", "-1s"}, want: "must not be negative"},
 		{name: "repetitions", args: []string{"-provider", "openai", "-model", "model", "-repetitions", "0"}, want: "positive"},
 		{name: "repetitions without candidate", args: []string{"-provider", "openai", "-model", "model", "-repetitions", "2"}, want: "candidate"},
 		{name: "invalid run expression", args: []string{"-provider", "openai", "-model", "model", "-run", "["}, want: "compile -run"},
@@ -404,6 +436,7 @@ func TestExecuteSmokeRunsProducesPairedObservationsWithoutFailingOnLowScores(t *
 		baseline,
 		[]smokeSuite{candidate},
 		2,
+		0,
 	)
 	if err != nil {
 		t.Fatalf("executeSmokeRuns returned error: %v", err)
@@ -460,6 +493,7 @@ func TestExecuteSmokeRunsSingleModelFailsHardAndReportsCleanupErrorsBeforeResult
 		baseline,
 		nil,
 		1,
+		0,
 	)
 	if err != nil {
 		t.Fatalf("executeSmokeRuns returned error: %v", err)
@@ -495,6 +529,7 @@ func TestExecuteSmokeRunsComparisonFailsOnHarnessErrors(t *testing.T) {
 		baseline,
 		[]smokeSuite{candidate},
 		1,
+		0,
 	)
 	if err != nil {
 		t.Fatalf("executeSmokeRuns returned error: %v", err)
@@ -506,6 +541,127 @@ func TestExecuteSmokeRunsComparisonFailsOnHarnessErrors(t *testing.T) {
 		!strings.Contains(stdout.String(), `error="evals: harness \"candidate/model\": provider unavailable"`) ||
 		!strings.Contains(stderr.String(), "provider unavailable") {
 		t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
+	}
+}
+
+func TestExecuteSmokeRunsUsesIndependentCaseTimeouts(t *testing.T) {
+	t.Parallel()
+
+	artifactDir := t.TempDir()
+	runner, err := evals.NewRunner(evals.RunnerConfig{ArtifactDir: artifactDir})
+	if err != nil {
+		t.Fatalf("NewRunner returned error: %v", err)
+	}
+	baseline := fakeSmokeSuite("baseline/model", "expected", nil)
+	candidate := smokeSuite{
+		model: sigma.Model{Provider: "candidate", ID: "model"},
+		harness: evals.HarnessFunc[evals.SigmaInput, string]{
+			Name: "candidate/model",
+			Func: func(ctx context.Context, input evals.SigmaInput, run *evals.RunContext) (evals.RunResult[string], error) {
+				result := evals.RunResult[string]{
+					Output: "expected",
+					Usage: evals.Usage{
+						Provider:    "candidate",
+						Model:       "model",
+						InputTokens: 4,
+						TotalTokens: 5,
+					},
+				}
+				if input.Prompts[0] != "timeout" {
+					return result, nil
+				}
+				if err := run.Attach(evals.AttachmentFile, "partial.txt", "text/plain", []byte("partial")); err != nil {
+					return result, err
+				}
+				<-ctx.Done()
+				return result, ctx.Err()
+			},
+		},
+	}
+	cases := []smokeCase{
+		newSmokeCase("timeout", evals.Prompt("timeout"), exactJudge("expected")),
+		newSmokeCase("following", evals.Prompt("following"), exactJudge("expected")),
+	}
+	var stdout, stderr bytes.Buffer
+	summary, err := executeSmokeRuns(
+		context.Background(),
+		runner,
+		&stdout,
+		&stderr,
+		cases,
+		baseline,
+		[]smokeSuite{candidate},
+		1,
+		20*time.Millisecond,
+	)
+	if err != nil {
+		t.Fatalf("executeSmokeRuns returned error: %v", err)
+	}
+	if summary.Runs != 4 || summary.Correct != 3 || summary.OperationalFailures != 1 || !summary.Failed {
+		t.Fatalf("summary = %#v", summary)
+	}
+	if !strings.Contains(stdout.String(), "FAIL role=candidate harness=candidate/model case=timeout") ||
+		!strings.Contains(stdout.String(), "PASS role=candidate harness=candidate/model case=following") ||
+		!strings.Contains(stderr.String(), "context deadline exceeded") {
+		t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
+	}
+
+	var report bytes.Buffer
+	if err := runner.Close(&report); err != nil {
+		t.Fatalf("Runner.Close returned error: %v", err)
+	}
+	if !strings.Contains(report.String(), "Candidate  candidate/model (1/2 pairs)") ||
+		!strings.Contains(report.String(), "errored-observation") {
+		t.Fatalf("comparison report = %q", report.String())
+	}
+	records, err := os.ReadFile(filepath.Join(artifactDir, "runs.jsonl"))
+	if err != nil {
+		t.Fatalf("read runs.jsonl: %v", err)
+	}
+	if !strings.Contains(string(records), "partial.txt") ||
+		!strings.Contains(string(records), "context deadline exceeded") {
+		t.Fatalf("runs.jsonl = %q", records)
+	}
+}
+
+func TestExecuteSmokeRunsZeroCaseTimeoutUsesParentContext(t *testing.T) {
+	t.Parallel()
+
+	runner, err := evals.NewRunner(evals.RunnerConfig{ArtifactDir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewRunner returned error: %v", err)
+	}
+	baseline := smokeSuite{
+		model: sigma.Model{Provider: "baseline", ID: "model"},
+		harness: evals.HarnessFunc[evals.SigmaInput, string]{
+			Name: "baseline/model",
+			Func: func(ctx context.Context, _ evals.SigmaInput, _ *evals.RunContext) (evals.RunResult[string], error) {
+				if _, ok := ctx.Deadline(); ok {
+					return evals.RunResult[string]{}, errors.New("unexpected per-case deadline")
+				}
+				return evals.RunResult[string]{
+					Output: "expected",
+					Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: 1},
+				}, nil
+			},
+		},
+	}
+	summary, err := executeSmokeRuns(
+		context.Background(),
+		runner,
+		io.Discard,
+		io.Discard,
+		[]smokeCase{newSmokeCase("zero-timeout", evals.Prompt("prompt"), exactJudge("expected"))},
+		baseline,
+		nil,
+		1,
+		0,
+	)
+	if err != nil {
+		t.Fatalf("executeSmokeRuns returned error: %v", err)
+	}
+	if summary.Runs != 1 || summary.Correct != 1 || summary.OperationalFailures != 0 || summary.Failed {
+		t.Fatalf("summary = %#v", summary)
 	}
 }
 

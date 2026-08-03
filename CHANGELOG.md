@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- `cmd/sigma-evals-runner` now applies an independent, configurable timeout to
+  each case/model/repetition run so one stalled provider call is recorded as an
+  operational failure without cancelling later evaluations; the existing
+  overall command timeout remains the hard invocation limit.
 - OpenAI-compatible Chat Completions models can now opt out of terminal
   `finish_reason` support through `OpenAICompletionsCompat`, accepting an
   explicit `[DONE]` marker while continuing to reject unmarked stream EOF.

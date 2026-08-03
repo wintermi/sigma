@@ -17,9 +17,17 @@ Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
 OpenAI-compatible Chat Completions models can also opt into successful
 `[DONE]` termination when their endpoint does not emit `finish_reason`.
+The opt-in evaluation runner now isolates every case/model/repetition run with
+an independent deadline so a stalled provider call does not cancel later
+evaluations.
 
 ## Added
 
+- `cmd/sigma-evals-runner` now defaults each case/model/repetition run to an
+  independent one-minute timeout bounded by the overall command deadline.
+  Timed-out runs remain operational failures with partial artifacts and
+  comparison diagnostics, while later runs continue when the overall deadline
+  remains active; callers can configure the duration or disable it.
 - `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
   end streams with `[DONE]` but do not emit `finish_reason`.
 

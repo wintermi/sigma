@@ -39,8 +39,11 @@ observational and feed the paired report; setup, execution, judge, telemetry,
 timeout, and persistence errors still fail the command.
 
 The task runs that command directly and forwards command arguments, including
-`-timeout`. Live evaluations are not part of `mise run go:test` or
-`mise run ci`.
+`-timeout`. Each case, harness, and repetition receives an independent
+`-case-timeout`, defaulting to one minute and bounded by the overall timeout,
+so one stalled provider run does not cancel later evaluations. Set
+`-case-timeout 0` to use only the overall timeout. Live evaluations are not
+part of `mise run go:test` or `mise run ci`.
 
 ## Write a Sigma harness
 

@@ -287,6 +287,7 @@ func executeSmokeRuns(
 	baseline smokeSuite,
 	candidates []smokeSuite,
 	repetitions int,
+	caseTimeout time.Duration,
 ) (smokeRunSummary, error) {
 	comparative := len(candidates) > 0
 	rows := []evals.HarnessTableRow[evals.SigmaInput, string]{
@@ -332,13 +333,21 @@ func executeSmokeRuns(
 				threshold = &value
 			}
 			test := &commandTest{name: prefix + smoke.name}
-			execution := evals.Run(ctx, runner, test, evals.Case[evals.SigmaInput, string]{
+			runContext := ctx
+			var cancel context.CancelFunc
+			if caseTimeout > 0 {
+				runContext, cancel = context.WithTimeout(ctx, caseTimeout)
+			}
+			execution := evals.Run(runContext, runner, test, evals.Case[evals.SigmaInput, string]{
 				EvalSet:        "Sigma text smoke",
 				Input:          smoke.input,
 				Harness:        row.Harness,
 				Judges:         []evals.Judge[evals.SigmaInput, string]{smoke.judge},
 				JudgeThreshold: threshold,
 			})
+			if cancel != nil {
+				cancel()
+			}
 			afterRun := len(test.errors)
 			validateSmokeExecution(test, suite.model, execution)
 			validationErrors := append([]string(nil), test.errors[afterRun:]...)

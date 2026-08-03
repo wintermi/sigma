@@ -8,7 +8,10 @@ the deterministic test and CI tasks.
 
 Cases execute sequentially, receive independent pass/fail judgments, and write
 separate run records and transcripts. The command continues through independent
-case failures so one invocation reports the complete smoke result.
+case failures so one invocation reports the complete smoke result. Each
+case/model/repetition run has an independent one-minute deadline, bounded by the
+overall command deadline, so one stalled provider call does not consume the
+remaining cases.
 
 Successful and failed runs print a compact result line with the model role,
 full model identity, case, repetition, judgment, score, input/output tokens,
@@ -85,7 +88,12 @@ can also be run through the generic Go task:
 mise run go:run -- ./cmd/sigma-evals-runner -provider openai -model gpt-5.6-sol
 ```
 
-Use `-timeout` to change the five-minute overall command deadline.
+Use `-timeout` to change the five-minute overall command deadline. Use
+`-case-timeout` to change the one-minute deadline applied independently to each
+case/model/repetition run, or set `-case-timeout 0` to rely only on the overall
+deadline. A per-run timeout is reported as an operational failure, preserves
+the run's partial artifacts, and does not stop later runs while the overall
+deadline remains active.
 
 The equivalent environment defaults are:
 

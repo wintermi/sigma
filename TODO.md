@@ -904,6 +904,9 @@ should still come through the catalog refresh workflow.
       Go-style case filtering plus repeated baseline/candidate model comparisons
       with observational scores and paired correctness, token, latency, and cost
       reports.
+- [x] Give every live eval case/model/repetition run an independent deadline so
+      a stalled provider call is recorded with its partial artifacts and does
+      not cancel later evaluations, while retaining an overall command timeout.
 - [ ] Add agent runtime integration on top of the provider-neutral primitives
       `sigma` exposes (orchestration is deferred to later integration cards),
       then add agent-backed evaluation scenarios for isolated workspaces, tool
