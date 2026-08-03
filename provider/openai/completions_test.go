@@ -1365,37 +1365,117 @@ func TestChatCompletionsStreamingUsesFirstReasoningAlias(t *testing.T) {
 func TestChatCompletionsStreamingRequiresFinishReason(t *testing.T) {
 	t.Parallel()
 
+	tests := []struct {
+		name         string
+		support      sigma.OpenAICompatSupport
+		finishReason string
+		done         bool
+		wantError    bool
+		wantStop     sigma.StopReason
+	}{
+		{name: "default requires finish reason", done: true, wantError: true, wantStop: sigma.StopReasonError},
+		{name: "explicit support requires finish reason", support: sigma.OpenAICompatSupported, done: true, wantError: true, wantStop: sigma.StopReasonError},
+		{name: "unsupported accepts done marker", support: sigma.OpenAICompatUnsupported, done: true, wantStop: sigma.StopReasonEndTurn},
+		{name: "unsupported rejects unmarked eof", support: sigma.OpenAICompatUnsupported, wantError: true, wantStop: sigma.StopReasonError},
+		{name: "supplied finish reason wins", support: sigma.OpenAICompatUnsupported, finishReason: "length", done: true, wantStop: sigma.StopReasonMaxTokens},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				finishReason := "null"
+				if tt.finishReason != "" {
+					finishReason = `"` + tt.finishReason + `"`
+				}
+				_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":`+finishReason+`}],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}`+"\n\n")
+				if tt.done {
+					_, _ = io.WriteString(w, "data: [DONE]\n\n")
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-finish-reason-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := openAITestModel(providerID)
+			model.OpenAICompletionsCompat.SupportsFinishReason = tt.support
+			client := openAITestClient(t, providerID, model, server.URL)
+			stream := client.Stream(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("hi")},
+			})
+			events := collectEvents(t, stream)
+			final, ok := stream.Final()
+			if !ok {
+				t.Fatal("stream final was not recorded")
+			}
+
+			if tt.wantError {
+				if err := stream.Err(); err == nil || !strings.Contains(err.Error(), "stream ended without finish_reason") {
+					t.Fatalf("stream error = %v, want missing finish_reason", err)
+				}
+			} else if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			wantTerminal := sigma.EventKindDone
+			if tt.wantError {
+				wantTerminal = sigma.EventKindError
+			}
+			if got := events[len(events)-1].Kind; got != wantTerminal {
+				t.Fatalf("terminal event = %q, want %q", got, wantTerminal)
+			}
+			if got := final.StopReason; got != tt.wantStop {
+				t.Fatalf("stop reason = %q, want %q", got, tt.wantStop)
+			}
+			if got, want := final.Content[0].Text, "partial"; got != want {
+				t.Fatalf("partial text = %q, want %q", got, want)
+			}
+			if final.Usage == nil || final.Usage.TotalTokens != 13 {
+				t.Fatalf("usage = %#v, want 13 total tokens", final.Usage)
+			}
+			if tt.finishReason == "" {
+				if _, ok := final.ProviderMetadata["finish_reason"]; ok {
+					t.Fatalf("finish reason metadata = %#v, want omitted", final.ProviderMetadata)
+				}
+			} else if got := final.ProviderMetadata["finish_reason"]; got != tt.finishReason {
+				t.Fatalf("finish reason metadata = %v, want %q", got, tt.finishReason)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsStreamingInfersToolCallsWithoutFinishReason(t *testing.T) {
+	t.Parallel()
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, `data: {"choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}],"usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13}}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_no_finish_tool","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":null}]}`+"\n\n")
 		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
 	t.Cleanup(server.Close)
 
-	providerID := sigma.ProviderID("openai-missing-finish-reason-test")
+	providerID := sigma.ProviderID("openai-no-finish-tool-test")
 	model := openAITestModel(providerID)
+	model.OpenAICompletionsCompat.SupportsFinishReason = sigma.OpenAICompatUnsupported
 	client := openAITestClient(t, providerID, model, server.URL)
 
 	final, err := sigma.Collect(context.Background(), client.Stream(context.Background(), model, sigma.Request{
-		Messages: []sigma.Message{sigma.UserText("hi")},
+		Messages: []sigma.Message{sigma.UserText("read")},
+		Tools:    []sigma.Tool{{Name: "read", InputSchema: sigma.Schema{"type": "object"}}},
 	}))
-	if err == nil {
-		t.Fatal("Collect returned nil error")
+	if err != nil {
+		t.Fatalf("Collect returned error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "stream ended without finish_reason") {
-		t.Fatalf("Collect error = %v, want missing finish_reason", err)
-	}
-	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
-	if got, want := final.Content[0].Text, "partial"; got != want {
-		t.Fatalf("partial text = %q, want %q", got, want)
+	if got, want := len(final.Content), 1; got != want {
+		t.Fatalf("content blocks = %d, want %d", got, want)
 	}
-	if final.Usage == nil {
-		t.Fatal("usage = nil, want provider usage preserved")
+	arguments, ok := final.Content[0].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("tool arguments type = %T, want map", final.Content[0].ToolArguments)
 	}
-	if got, want := final.Usage.TotalTokens, 13; got != want {
-		t.Fatalf("total tokens = %d, want %d", got, want)
+	if got, want := arguments["path"], "README.md"; got != want {
+		t.Fatalf("tool path = %v, want %q", got, want)
 	}
 }
 

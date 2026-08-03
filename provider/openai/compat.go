@@ -24,6 +24,7 @@ type completionsCompat struct {
 	supportsRequiredToolChoice                  bool
 	supportsToolStream                          bool
 	supportsGrammarTools                        bool
+	supportsFinishReason                        bool
 	supportsJSONSchemaResponseFormat            bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
@@ -61,6 +62,7 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsRequiredToolChoice = supportOverride(compat.supportsRequiredToolChoice, override.SupportsRequiredToolChoice)
 	compat.supportsToolStream = supportOverride(compat.supportsToolStream, override.SupportsToolStream)
 	compat.supportsGrammarTools = supportOverride(compat.supportsGrammarTools, override.SupportsGrammarTools)
+	compat.supportsFinishReason = supportOverride(compat.supportsFinishReason, override.SupportsFinishReason)
 	compat.supportsJSONSchemaResponseFormat = supportOverride(
 		compat.supportsJSONSchemaResponseFormat,
 		override.SupportsJSONSchemaResponseFormat,
@@ -112,6 +114,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 			supportsStreamingUsage:           true,
 			supportsStrictTools:              true,
 			supportsRequiredToolChoice:       true,
+			supportsFinishReason:             true,
 			supportsJSONSchemaResponseFormat: true,
 			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 			cacheControlFormat:               sigma.OpenAICompletionsCacheControlMessage,
@@ -182,6 +185,7 @@ func conservativeCompletionsCompat() completionsCompat {
 		reasoningFormat:                  sigma.OpenAICompletionsReasoningUnsupported,
 		supportsReasoningEffort:          true,
 		supportsRequiredToolChoice:       true,
+		supportsFinishReason:             true,
 		supportsJSONSchemaResponseFormat: true,
 		maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
 		cacheControlFormat:               sigma.OpenAICompletionsCacheControlUnsupported,

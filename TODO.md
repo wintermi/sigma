@@ -65,6 +65,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Surface non-empty Anthropic Messages text and thinking from content-block
       start events as ordered incremental deltas while preserving signatures,
       citations, and final block assembly.
+- [x] Add an opt-in OpenAI-compatible Chat Completions setting for endpoints
+      that terminate with `[DONE]` without a `finish_reason`, while preserving
+      strict defaults and rejecting unmarked stream EOF.
 
 ## Image generation
 

@@ -148,13 +148,14 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		return
 	}
 
-	grammarTools, err := chatGrammarToolInputProperties(req, opts, openAICompletionsCompat(model, p.baseURLForModel(model, opts)))
+	compat := openAICompletionsCompat(model, p.baseURLForModel(model, opts))
+	grammarTools, err := chatGrammarToolInputProperties(req, opts, compat)
 	if err != nil {
 		final.StopReason = sigma.StopReasonError
 		_ = writer.Error(ctx, err, final)
 		return
 	}
-	final, err = parseCompletionsStream(ctx, body, writer, model, grammarTools)
+	final, err = parseCompletionsStream(ctx, body, writer, model, grammarTools, compat.supportsFinishReason)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted

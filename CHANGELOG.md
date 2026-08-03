@@ -10,6 +10,12 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 See [release notes](docs/release-notes-v0.8.0.md).
 
+### Added
+
+- OpenAI-compatible Chat Completions models can now opt out of terminal
+  `finish_reason` support through `OpenAICompletionsCompat`, accepting an
+  explicit `[DONE]` marker while continuing to reject unmarked stream EOF.
+
 ### Fixed
 
 - Google Generative AI and native Vertex Gemini 3 requests now preserve

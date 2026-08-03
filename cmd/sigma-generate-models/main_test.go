@@ -82,6 +82,24 @@ func TestRenderTextModelsIncludesGrammarToolCompatibility(t *testing.T) {
 	}
 }
 
+func TestRenderTextModelsIncludesFinishReasonCompatibility(t *testing.T) {
+	t.Parallel()
+
+	catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{{
+		ID:       "finish-reason-compatible",
+		Provider: "custom",
+		API:      "openai-completions",
+		OpenAICompletionsCompat: &modeldata.OpenAICompletionsCompat{
+			SupportsFinishReason: "unsupported",
+		},
+	}}}
+
+	rendered := string(renderTextModels(catalog))
+	if !strings.Contains(rendered, "SupportsFinishReason: OpenAICompatSupport(\"unsupported\")") {
+		t.Fatalf("generated text models omitted finish-reason compatibility: %s", rendered)
+	}
+}
+
 func TestRenderTextModelsIncludesExplicitPromptCacheCompatibility(t *testing.T) {
 	t.Parallel()
 

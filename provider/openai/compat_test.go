@@ -14,6 +14,48 @@ import (
 	"github.com/wintermi/sigma/internal/goldentest"
 )
 
+func TestOpenAICompletionsCompatResolvesFinishReasonSupport(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		provider sigma.ProviderID
+		compat   *sigma.OpenAICompletionsCompat
+		want     bool
+	}{
+		{name: "custom default", provider: sigma.ProviderCustom, want: true},
+		{name: "openai default", provider: sigma.ProviderOpenAI, want: true},
+		{
+			name:     "explicitly supported",
+			provider: sigma.ProviderCustom,
+			compat: &sigma.OpenAICompletionsCompat{
+				SupportsFinishReason: sigma.OpenAICompatSupported,
+			},
+			want: true,
+		},
+		{
+			name:     "explicitly unsupported",
+			provider: sigma.ProviderCustom,
+			compat: &sigma.OpenAICompletionsCompat{
+				SupportsFinishReason: sigma.OpenAICompatUnsupported,
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{Provider: tt.provider, OpenAICompletionsCompat: tt.compat}
+			got := openAICompletionsCompat(model, "https://custom.example/v1").supportsFinishReason
+			if got != tt.want {
+				t.Fatalf("supports finish reason = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 	t.Parallel()
 

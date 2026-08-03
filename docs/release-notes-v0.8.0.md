@@ -15,10 +15,13 @@ Qwen Token Plan requests now preserve supported Qwen3.8 Max Preview reasoning
 levels across both regional routes while keeping Qwen3.7 Max toggle-only.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
+OpenAI-compatible Chat Completions models can also opt into successful
+`[DONE]` termination when their endpoint does not emit `finish_reason`.
 
 ## Added
 
-- Nothing yet.
+- `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
+  end streams with `[DONE]` but do not emit `finish_reason`.
 
 ## Compatibility
 
@@ -35,6 +38,10 @@ content-block start events immediately through incremental output.
 - Anthropic Messages streams now emit non-empty text and thinking delivered by
   content-block start events as ordered initial deltas while retaining
   signatures, citations, and complete final blocks.
+- OpenAI-compatible Chat Completions streams configured without finish-reason
+  support now infer normal or tool-call completion from assembled output after
+  an explicit `[DONE]` marker. Default compatibility remains strict, and raw
+  EOF without a terminal signal remains an error.
 
 ## Deferred work
 

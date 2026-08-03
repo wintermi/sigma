@@ -135,7 +135,7 @@ type completionCustomToolCall struct {
 	closed bool
 }
 
-func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, grammarTools map[string]string) (sigma.AssistantMessage, error) {
+func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, grammarTools map[string]string, supportsFinishReason bool) (sigma.AssistantMessage, error) {
 	parser := completionStreamParser{
 		writer:           writer,
 		model:            model,
@@ -148,8 +148,10 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 			Provider: model.Provider,
 		},
 	}
+	sawDone := false
 	err := sse.Parse(ctx, r, func(event sse.Event) error {
 		if event.Done {
+			sawDone = true
 			return sse.ErrStop
 		}
 		return parser.handleEvent(ctx, event)
@@ -157,7 +159,7 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 	if err != nil {
 		return parser.finalize(ctx), err
 	}
-	if !parser.sawFinishReason {
+	if !parser.sawFinishReason && (supportsFinishReason || !sawDone) {
 		return parser.finalize(ctx), errors.New("openai completions: stream ended without finish_reason")
 	}
 	return parser.finalize(ctx), nil
