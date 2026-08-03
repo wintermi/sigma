@@ -771,6 +771,9 @@ should still come through the catalog refresh workflow.
 - [x] Keep Bedrock SigV4 canonical request paths aligned with escaped model-ID
       wire paths for inference-profile ARNs across Converse Stream and
       embeddings.
+- [x] Preserve the requested model and AWS request ID from successful HTTP
+      responses in mid-stream Converse service-exception diagnostics without
+      changing provider error or retry classification.
 - [x] Harden Bedrock Claude replay compatibility for split reasoning
       signatures, redacted reasoning content, event-stream exception
       classification, and Claude 5-family thinking/cache predicates.

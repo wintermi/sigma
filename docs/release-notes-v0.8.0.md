@@ -9,7 +9,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 `sigma` v0.8.0 begins by tightening native Gemini 3 replay compatibility across
 Google Generative AI and Vertex AI so function calls and matching tool results
-retain stable normalized IDs.
+retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
+also retain their requested model and AWS request ID for diagnostic correlation.
 
 ## Added
 
@@ -20,6 +21,9 @@ retain stable normalized IDs.
 - Google Generative AI and native Vertex Gemini 3 requests now preserve
   normalized tool-call IDs on replayed function calls and matching tool
   results. Older Vertex Gemini requests continue omitting unsupported IDs.
+- Amazon Bedrock Converse Stream service exceptions now retain the requested
+  model and AWS request ID in typed provider errors and assistant diagnostics
+  while preserving existing stop reasons and retry classification.
 
 ## Deferred work
 

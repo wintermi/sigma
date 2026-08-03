@@ -16,6 +16,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
   normalized tool-call IDs on replayed function calls and matching tool
   results, while older Vertex Gemini requests continue omitting unsupported
   IDs.
+- Amazon Bedrock Converse Stream service exceptions now retain the requested
+  model and AWS request ID in typed provider errors and assistant diagnostics
+  without changing retry classification.
 
 ## [0.7.0] - 2026-08-02
 

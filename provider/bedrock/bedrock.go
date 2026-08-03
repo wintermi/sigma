@@ -446,7 +446,7 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 		_ = resp.Body.Close()
 		return nil, withDataRetentionHint(sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse))
 	}
-	return newHTTPConverseStream(resp.Body), nil
+	return newHTTPConverseStream(resp.Body, sigma.ModelID(req.ModelID), resp.Header.Get("x-amzn-requestid")), nil
 }
 
 func reservedBedrockHeader(key string) bool {
@@ -692,18 +692,22 @@ func awsRole(role string) string {
 }
 
 type httpConverseStream struct {
-	body   io.ReadCloser
-	events chan ConverseEvent
-	done   chan struct{}
-	err    error
-	once   sync.Once
+	body      io.ReadCloser
+	model     sigma.ModelID
+	requestID string
+	events    chan ConverseEvent
+	done      chan struct{}
+	err       error
+	once      sync.Once
 }
 
-func newHTTPConverseStream(body io.ReadCloser) *httpConverseStream {
+func newHTTPConverseStream(body io.ReadCloser, model sigma.ModelID, requestID string) *httpConverseStream {
 	stream := &httpConverseStream{
-		body:   body,
-		events: make(chan ConverseEvent),
-		done:   make(chan struct{}),
+		body:      body,
+		model:     model,
+		requestID: requestID,
+		events:    make(chan ConverseEvent),
+		done:      make(chan struct{}),
 	}
 	go stream.forward()
 	return stream
@@ -746,11 +750,28 @@ func (s *httpConverseStream) forward() {
 		if !ok {
 			continue
 		}
+		s.addResponseMetadata(event)
 		select {
 		case s.events <- event:
 		case <-s.done:
 			return
 		}
+	}
+}
+
+func (s *httpConverseStream) addResponseMetadata(event ConverseEvent) {
+	if event.Kind != ConverseEventError || event.Err == nil {
+		return
+	}
+	var providerErr *sigma.ProviderError
+	if !errors.As(event.Err, &providerErr) {
+		return
+	}
+	if providerErr.Model == "" {
+		providerErr.Model = s.model
+	}
+	if providerErr.RequestID == "" {
+		providerErr.RequestID = s.requestID
 	}
 }
 

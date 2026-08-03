@@ -1383,7 +1383,7 @@ func TestHTTPConverseStreamCloseReleasesBlockedForward(t *testing.T) {
 	body := newBlockingReadCloser(frame)
 
 	baseline := runtime.NumGoroutine()
-	stream := newHTTPConverseStream(body)
+	stream := newHTTPConverseStream(body, "", "")
 
 	// Wait until the decoder has consumed the frame; forward() then parks on the
 	// channel send because nothing drains Events().
@@ -1556,6 +1556,96 @@ func TestHTTPConverseStreamClientUsesBearerToken(t *testing.T) {
 	}
 }
 
+func TestHTTPConverseStreamExceptionPreservesResponseMetadata(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		requestID string
+	}{
+		{name: "request ID", requestID: "req-123"},
+		{name: "missing request ID"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if tt.requestID != "" {
+					w.Header().Set("x-amzn-requestid", tt.requestID)
+				}
+				w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+				_, _ = w.Write(bedrockEventStream(bedrockEventStreamExceptionFrame(
+					"ThrottlingException",
+					[]byte(`{"message":"slow down"}`),
+				)))
+			}))
+			t.Cleanup(server.Close)
+
+			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+			model.ID = "model"
+			client := bedrockTestClient(
+				t,
+				sigma.ProviderAmazonBedrock,
+				model,
+				nil,
+				fakeCredentialDetector{info: CredentialInfo{Source: CredentialSourceBearerToken, BearerToken: "bedrock-token"}},
+				WithRegion("us-east-1"),
+				WithEndpoint(server.URL),
+			)
+
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if !errors.Is(err, sigma.ErrProviderResponse) {
+				t.Fatalf("Complete error = %v, want ErrProviderResponse", err)
+			}
+			var providerErr *sigma.ProviderError
+			if !errors.As(err, &providerErr) {
+				t.Fatalf("Complete error type = %T, want *sigma.ProviderError", err)
+			}
+			if got, want := providerErr.Provider, sigma.ProviderAmazonBedrock; got != want {
+				t.Fatalf("provider error provider = %q, want %q", got, want)
+			}
+			if got, want := providerErr.API, sigma.APIBedrockConverseStream; got != want {
+				t.Fatalf("provider error API = %q, want %q", got, want)
+			}
+			if got, want := providerErr.Model, model.ID; got != want {
+				t.Fatalf("provider error model = %q, want %q", got, want)
+			}
+			if got, want := providerErr.RequestID, tt.requestID; got != want {
+				t.Fatalf("provider error request ID = %q, want %q", got, want)
+			}
+			if got, want := providerErr.ProviderCode, "ThrottlingException"; got != want {
+				t.Fatalf("provider error code = %q, want %q", got, want)
+			}
+			if got, want := final.StopReason, sigma.StopReasonError; got != want {
+				t.Fatalf("stop reason = %q, want %q", got, want)
+			}
+			if len(final.Diagnostics) != 1 {
+				t.Fatalf("diagnostics = %#v, want one", final.Diagnostics)
+			}
+			diagnostic := final.Diagnostics[0]
+			if got, want := diagnostic.Provider, sigma.ProviderAmazonBedrock; got != want {
+				t.Fatalf("diagnostic provider = %q, want %q", got, want)
+			}
+			if got, want := diagnostic.API, sigma.APIBedrockConverseStream; got != want {
+				t.Fatalf("diagnostic API = %q, want %q", got, want)
+			}
+			if got, want := diagnostic.Model, model.ID; got != want {
+				t.Fatalf("diagnostic model = %q, want %q", got, want)
+			}
+			if got, want := diagnostic.RequestID, tt.requestID; got != want {
+				t.Fatalf("diagnostic request ID = %q, want %q", got, want)
+			}
+			if got, want := diagnostic.ProviderCode, "ThrottlingException"; got != want {
+				t.Fatalf("diagnostic provider code = %q, want %q", got, want)
+			}
+			classification := sigma.ClassifyError(err)
+			if classification.Class != sigma.ErrorClassRateLimited || !classification.RetryHint.Retryable {
+				t.Fatalf("classification = %#v, want retryable rate limit", classification)
+			}
+		})
+	}
+}
+
 type bedrockRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f bedrockRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -1582,7 +1672,7 @@ func (b *countingResponseBody) Close() error {
 func TestEventStreamDecoderReportsMalformedFrame(t *testing.T) {
 	t.Parallel()
 
-	stream := newHTTPConverseStream(io.NopCloser(bytes.NewReader([]byte{0, 0, 0, 16})))
+	stream := newHTTPConverseStream(io.NopCloser(bytes.NewReader([]byte{0, 0, 0, 16})), "", "")
 	_ = readConverseEvents(stream)
 	if err := stream.Err(); err == nil {
 		t.Fatal("stream error = nil, want malformed frame error")
@@ -2672,6 +2762,17 @@ func bedrockEventStreamFrame(eventType string, payload []byte) []byte {
 	headers := appendEventStreamHeader(nil, ":message-type", "event")
 	headers = appendEventStreamHeader(headers, ":event-type", eventType)
 	headers = appendEventStreamHeader(headers, ":content-type", "application/json")
+	return bedrockEventStreamFrameWithHeaders(headers, payload)
+}
+
+func bedrockEventStreamExceptionFrame(exceptionType string, payload []byte) []byte {
+	headers := appendEventStreamHeader(nil, ":message-type", "exception")
+	headers = appendEventStreamHeader(headers, ":exception-type", exceptionType)
+	headers = appendEventStreamHeader(headers, ":content-type", "application/json")
+	return bedrockEventStreamFrameWithHeaders(headers, payload)
+}
+
+func bedrockEventStreamFrameWithHeaders(headers, payload []byte) []byte {
 	totalLen := 12 + len(headers) + len(payload) + 4
 	frame := make([]byte, totalLen)
 	binary.BigEndian.PutUint32(frame[0:4], uint32(totalLen))
