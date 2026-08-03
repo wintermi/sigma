@@ -19,6 +19,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   without changing retry classification.
+- Qwen Token Plan Qwen3.8 Max Preview requests now preserve supported reasoning
+  levels through native `reasoning_effort` controls across the international
+  and China regional routes, while Qwen3.7 Max remains toggle-only.
 
 ## [0.7.0] - 2026-08-02
 

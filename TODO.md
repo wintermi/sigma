@@ -413,6 +413,9 @@ metadata-only and backed by compatibility checks.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
 - [x] Qwen Token Plan — promote focused international and China regional
       Chat Completions rows with generated metadata and fixtures.
+- [x] Qwen Token Plan — preserve Qwen3.8 Max Preview reasoning levels through
+      native reasoning-effort controls across both regional routes while
+      keeping Qwen3.7 Max toggle-only.
 - [ ] Qwen Token Plan — expand the remaining catalog and add provider-specific
       hosted-tool behavior only after those contracts have deterministic
       request-shape coverage.

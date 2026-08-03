@@ -7,6 +7,7 @@ package qwen_test
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ type capturedRequest struct {
 	Method  string
 	Path    string
 	Headers http.Header
+	Body    []byte
 }
 
 func TestRegistersReportOpenAICompletionsAPI(t *testing.T) {
@@ -220,6 +222,112 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 	}
 }
 
+func TestCompleteUsesQwenThinkingControls(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		provider   sigma.ProviderID
+		modelID    sigma.ModelID
+		level      sigma.ThinkingLevel
+		wantEffort string
+		register   func(*sigma.Registry) error
+	}{
+		{
+			name:       "international qwen3.8 sends effort",
+			provider:   sigma.ProviderQwenTokenPlan,
+			modelID:    "qwen3.8-max-preview",
+			level:      sigma.ThinkingLevelXHigh,
+			wantEffort: "xhigh",
+			register: func(registry *sigma.Registry) error {
+				return qwen.Register(registry)
+			},
+		},
+		{
+			name:       "china qwen3.8 sends effort",
+			provider:   sigma.ProviderQwenTokenPlanCN,
+			modelID:    "qwen3.8-max-preview",
+			level:      sigma.ThinkingLevelXHigh,
+			wantEffort: "xhigh",
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterCN(registry)
+			},
+		},
+		{
+			name:     "international qwen3.7 remains toggle only",
+			provider: sigma.ProviderQwenTokenPlan,
+			modelID:  "qwen3.7-max",
+			level:    sigma.ThinkingLevelHigh,
+			register: func(registry *sigma.Registry) error {
+				return qwen.Register(registry)
+			},
+		},
+		{
+			name:     "china qwen3.7 remains toggle only",
+			provider: sigma.ProviderQwenTokenPlanCN,
+			modelID:  "qwen3.7-max",
+			level:    sigma.ThinkingLevelHigh,
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterCN(registry)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeCompleted(t, w)
+			}))
+			t.Cleanup(server.Close)
+
+			model, ok := sigma.DefaultRegistry().Model(tt.provider, tt.modelID)
+			if !ok {
+				t.Fatalf("default registry missing %s model %q", tt.provider, tt.modelID)
+			}
+			registry := sigma.NewRegistry()
+			if err := tt.register(registry); err != nil {
+				t.Fatalf("register returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+
+			if _, err := sigma.NewClient(sigma.WithRegistry(registry)).Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAPIKey("request-key"),
+				sigma.WithReasoningLevel(tt.level),
+				sigma.WithProviderOption(tt.provider, "baseURL", server.URL+"/v1"),
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var body map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &body); err != nil {
+				t.Fatalf("decode request body: %v", err)
+			}
+			if got := body["enable_thinking"]; got != true {
+				t.Fatalf("enable_thinking = %#v, want true", got)
+			}
+			if tt.wantEffort == "" {
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
+				}
+			} else if got := body["reasoning_effort"]; got != tt.wantEffort {
+				t.Fatalf("reasoning_effort = %#v, want %q", got, tt.wantEffort)
+			}
+			if _, ok := body["thinking"]; ok {
+				t.Fatalf("thinking = %#v, want absent", body["thinking"])
+			}
+		})
+	}
+}
+
 func qwenTestModel(provider sigma.ProviderID) sigma.Model {
 	return sigma.Model{
 		ID:               "qwen3.7-max",
@@ -234,11 +342,16 @@ func qwenTestModel(provider sigma.ProviderID) sigma.Model {
 
 func captureRequest(t *testing.T, requests chan<- capturedRequest, r *http.Request) {
 	t.Helper()
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Fatalf("read request body: %v", err)
+	}
 
 	requests <- capturedRequest{
 		Method:  r.Method,
 		Path:    r.URL.Path,
 		Headers: r.Header.Clone(),
+		Body:    body,
 	}
 }
 

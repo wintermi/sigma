@@ -1750,6 +1750,26 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 				t.Fatalf("%s %s compat = %#v, want qwen reasoning with store and developer role unsupported", tt.provider, model.ID, model.OpenAICompletionsCompat)
 			}
 		}
+		if qwenMax.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
+			t.Fatalf("%s qwen3.7-max reasoning effort support = %q, want unsupported", tt.provider, qwenMax.OpenAICompletionsCompat.SupportsReasoningEffort)
+		}
+		if qwenPreview.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
+			t.Fatalf("%s qwen3.8-max-preview reasoning effort support = %q, want supported", tt.provider, qwenPreview.OpenAICompletionsCompat.SupportsReasoningEffort)
+		}
+		for level, want := range map[ThinkingLevel]string{
+			ThinkingLevelLow:    "low",
+			ThinkingLevelMedium: "medium",
+			ThinkingLevelXHigh:  "xhigh",
+		} {
+			if got, ok := qwenPreview.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("%s qwen3.8-max-preview reasoning level %q = %q, %t, want %q, true", tt.provider, level, got, ok, want)
+			}
+		}
+		for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelHigh} {
+			if qwenPreview.SupportsThinkingLevel(level) {
+				t.Fatalf("%s qwen3.8-max-preview unexpectedly supports reasoning level %q", tt.provider, level)
+			}
+		}
 	}
 
 	for _, provider := range []ProviderID{ProviderMoonshotAI, ProviderMoonshotAICN} {

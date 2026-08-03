@@ -2807,16 +2807,22 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				if got := body["enable_thinking"]; got != false {
 					t.Fatalf("enable_thinking = %#v, want false", got)
 				}
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
+				}
 			},
 		},
 		{
-			name:   "qwen enables thinking when a level is requested",
+			name:   "qwen sends mapped reasoning effort when a level is requested",
 			format: sigma.OpenAICompletionsReasoningQwen,
 			level:  sigma.ThinkingLevelLow,
 			assert: func(t *testing.T, body map[string]any) {
 				t.Helper()
 				if got := body["enable_thinking"]; got != true {
 					t.Fatalf("enable_thinking = %#v, want true", got)
+				}
+				if got, want := body["reasoning_effort"], "low"; got != want {
+					t.Fatalf("reasoning_effort = %#v, want %q", got, want)
 				}
 			},
 			thinking: map[sigma.ThinkingLevel]string{sigma.ThinkingLevelLow: "low"},

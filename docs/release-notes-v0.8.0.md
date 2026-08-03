@@ -11,6 +11,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
+Qwen Token Plan requests now preserve supported Qwen3.8 Max Preview reasoning
+levels across both regional routes while keeping Qwen3.7 Max toggle-only.
 
 ## Added
 
@@ -24,6 +26,10 @@ also retain their requested model and AWS request ID for diagnostic correlation.
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   while preserving existing stop reasons and retry classification.
+- Qwen Token Plan Qwen3.8 Max Preview requests now send supported reasoning
+  levels through native `reasoning_effort` controls alongside Qwen thinking
+  toggles on the international and China routes. Qwen3.7 Max remains
+  toggle-only.
 
 ## Deferred work
 

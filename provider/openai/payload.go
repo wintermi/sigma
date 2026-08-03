@@ -856,7 +856,7 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningQwen {
-		addToggleReasoning(payload, model, opts)
+		addQwenReasoning(payload, model, opts, compat)
 		return
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
@@ -904,11 +904,15 @@ func addTogetherReasoning(payload map[string]any, model sigma.Model, opts sigma.
 	}
 }
 
-func addToggleReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+func addQwenReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
 	if !model.SupportsReasoning() {
 		return
 	}
-	payload["enable_thinking"] = reasoningEffort(model, opts) != ""
+	effort := reasoningEffort(model, opts)
+	payload["enable_thinking"] = effort != ""
+	if effort != "" && compat.supportsReasoningEffort {
+		payload["reasoning_effort"] = effort
+	}
 }
 
 func addZAIReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {

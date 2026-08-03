@@ -20132,6 +20132,7 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "qwen"
       }
     },
@@ -20147,6 +20148,11 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
       "cost": {
         "inputPerMillion": 0,
         "outputPerMillion": 0,
@@ -20162,9 +20168,15 @@
       "providerMetadata": {
         "modelFamily": "qwen"
       },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "high"
+      ],
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
         "reasoningFormat": "qwen"
       }
     },
@@ -20197,6 +20209,7 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "qwen"
       }
     },
@@ -20212,6 +20225,11 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
       "cost": {
         "inputPerMillion": 0,
         "outputPerMillion": 0,
@@ -20227,9 +20245,15 @@
       "providerMetadata": {
         "modelFamily": "qwen"
       },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "high"
+      ],
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
         "reasoningFormat": "qwen"
       }
     },
