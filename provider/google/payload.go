@@ -664,9 +664,10 @@ type googleToolCallIDNormalizer struct {
 }
 
 func newGoogleToolCallIDNormalizer(model sigma.Model) *googleToolCallIDNormalizer {
+	required := requiresGoogleToolCallID(model)
 	return &googleToolCallIDNormalizer{
-		emit:     model.API != sigma.APIGoogleVertex,
-		required: requiresGoogleToolCallID(model),
+		emit:     model.API != sigma.APIGoogleVertex || required,
+		required: required,
 		ids:      make(map[string]string),
 		used:     make(map[string]string),
 	}
@@ -724,11 +725,12 @@ func googleSafeToolCallID(id string) string {
 }
 
 func requiresGoogleToolCallID(model sigma.Model) bool {
-	if model.API == sigma.APIGoogleVertex {
-		return false
-	}
 	id := strings.ToLower(string(model.ID))
-	return strings.HasPrefix(id, "claude-") || strings.HasPrefix(id, "gpt-oss-")
+	if strings.HasPrefix(id, "claude-") || strings.HasPrefix(id, "gpt-oss-") {
+		return true
+	}
+	major, ok := geminiMajorVersion(model.ID)
+	return ok && major >= 3
 }
 
 func geminiMajorVersion(modelID sigma.ModelID) (int, bool) {

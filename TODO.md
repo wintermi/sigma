@@ -669,6 +669,9 @@ should still come through the catalog refresh workflow.
 - [x] Normalize Google replayed tool-call IDs for model families that require
       explicit function-call IDs, and omit empty function-response IDs for
       native Gemini requests.
+- [x] Preserve normalized function-call IDs across direct Google and native
+      Vertex Gemini 3 replay while older Vertex Gemini requests continue
+      omitting unsupported IDs.
 - [x] Add deterministic Google stream coverage for `thoughtSignature`-only
       chunks, empty signature deltas, and signature updates on existing blocks.
 - [x] Harden Google replay and image-generation request shapes by omitting

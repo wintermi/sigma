@@ -10,6 +10,13 @@ still change before `v1.0.0`, with breaking changes called out in release notes.
 
 See [release notes](docs/release-notes-v0.8.0.md).
 
+### Fixed
+
+- Google Generative AI and native Vertex Gemini 3 requests now preserve
+  normalized tool-call IDs on replayed function calls and matching tool
+  results, while older Vertex Gemini requests continue omitting unsupported
+  IDs.
+
 ## [0.7.0] - 2026-08-02
 
 See [release notes](docs/release-notes-v0.7.0.md).

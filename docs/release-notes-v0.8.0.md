@@ -7,7 +7,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
-`sigma` v0.8.0 is open for development.
+`sigma` v0.8.0 begins by tightening native Gemini 3 replay compatibility across
+Google Generative AI and Vertex AI so function calls and matching tool results
+retain stable normalized IDs.
 
 ## Added
 
@@ -15,7 +17,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Compatibility
 
-- No compatibility changes yet.
+- Google Generative AI and native Vertex Gemini 3 requests now preserve
+  normalized tool-call IDs on replayed function calls and matching tool
+  results. Older Vertex Gemini requests continue omitting unsupported IDs.
 
 ## Deferred work
 

@@ -779,53 +779,60 @@ func TestNativeGeminiOmitsEmptyFunctionResponseID(t *testing.T) {
 	}
 }
 
-func TestHostedGoogleToolCallIDsAreNormalizedForReplay(t *testing.T) {
+func TestRequiredGoogleToolCallIDsAreNormalizedForReplay(t *testing.T) {
 	t.Parallel()
 
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		writeGoogleSSE(t, w, completedEvent)
-	}))
-	t.Cleanup(server.Close)
+	for _, modelID := range []sigma.ModelID{"claude-test", "gemini-3.5-flash"} {
+		modelID := modelID
+		t.Run(string(modelID), func(t *testing.T) {
+			t.Parallel()
 
-	providerID := sigma.ProviderID("google-hosted-tool-id-test")
-	model := googleTestModel(providerID)
-	model.ID = "claude-test"
-	client := googleTestClient(t, providerID, model, server.URL)
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeGoogleSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
 
-	_, err := client.Complete(context.Background(), model, sigma.Request{
-		Messages: []sigma.Message{
-			sigma.UserText("read"),
-			{
-				Role:    sigma.RoleAssistant,
-				Content: []sigma.ContentBlock{sigma.ToolCallBlock("call:prev/with spaces", "read", map[string]any{"path": "a.txt"})},
-			},
-			{
-				Role:       sigma.RoleTool,
-				ToolCallID: "call:prev/with spaces",
-				ToolName:   "read",
-				Content:    []sigma.ContentBlock{sigma.Text("alpha")},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
-	}
+			providerID := sigma.ProviderID("google-required-tool-id-test-" + modelID)
+			model := googleTestModel(providerID)
+			model.ID = modelID
+			client := googleTestClient(t, providerID, model, server.URL)
 
-	payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
-	contents := payload["contents"].([]any)
-	modelTurn := contents[1].(map[string]any)
-	modelParts := modelTurn["parts"].([]any)
-	call := modelParts[0].(map[string]any)["functionCall"].(map[string]any)
-	if got, want := call["id"], "call_prev_with_spaces"; got != want {
-		t.Fatalf("function call id = %v, want %v", got, want)
-	}
-	toolTurn := contents[2].(map[string]any)
-	toolParts := toolTurn["parts"].([]any)
-	response := toolParts[0].(map[string]any)["functionResponse"].(map[string]any)
-	if got, want := response["id"], "call_prev_with_spaces"; got != want {
-		t.Fatalf("function response id = %v, want %v", got, want)
+			_, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{
+					sigma.UserText("read"),
+					{
+						Role:    sigma.RoleAssistant,
+						Content: []sigma.ContentBlock{sigma.ToolCallBlock("call:prev/with spaces", "read", map[string]any{"path": "a.txt"})},
+					},
+					{
+						Role:       sigma.RoleTool,
+						ToolCallID: "call:prev/with spaces",
+						ToolName:   "read",
+						Content:    []sigma.ContentBlock{sigma.Text("alpha")},
+					},
+				},
+			})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+			contents := payload["contents"].([]any)
+			modelTurn := contents[1].(map[string]any)
+			modelParts := modelTurn["parts"].([]any)
+			call := modelParts[0].(map[string]any)["functionCall"].(map[string]any)
+			if got, want := call["id"], "call_prev_with_spaces"; got != want {
+				t.Fatalf("function call id = %v, want %v", got, want)
+			}
+			toolTurn := contents[2].(map[string]any)
+			toolParts := toolTurn["parts"].([]any)
+			response := toolParts[0].(map[string]any)["functionResponse"].(map[string]any)
+			if got, want := response["id"], "call_prev_with_spaces"; got != want {
+				t.Fatalf("function response id = %v, want %v", got, want)
+			}
+		})
 	}
 }
 
