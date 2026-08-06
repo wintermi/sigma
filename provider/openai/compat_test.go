@@ -831,6 +831,184 @@ func TestOpenAICompletionsCompatMapsFireworksReasoning(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/fireworks_thinking_budget.json")
 }
 
+func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
+	t.Parallel()
+
+	positiveBudget := 2048
+	largeBudget := 8192
+	zeroBudget := 0
+	requestCeiling := 4096
+	smallCeiling := 1024
+	reasoningModel := sigma.Model{
+		SupportsThinking: true,
+		MaxOutputTokens:  4096,
+	}
+	tests := []struct {
+		name   string
+		model  sigma.Model
+		opts   sigma.Options
+		compat completionsCompat
+		want   int
+	}{
+		{
+			name:  "explicit budget",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			want:   2048,
+		},
+		{
+			name:  "request ceiling",
+			model: sigma.Model{SupportsThinking: true, MaxOutputTokens: 16384},
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &largeBudget,
+				MaxTokens:            &requestCeiling,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			want:   3072,
+		},
+		{
+			name:  "model ceiling",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &largeBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			want:   3072,
+		},
+		{
+			name:  "unsupported compatibility",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+		},
+		{
+			name:  "reasoning unset",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+		{
+			name:  "reasoning off",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelOff,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+		{
+			name:  "model without reasoning",
+			model: sigma.Model{MaxOutputTokens: 4096},
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+		{
+			name:  "zero budget",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &zeroBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+		{
+			name:  "unknown ceiling",
+			model: sigma.Model{SupportsThinking: true},
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+		{
+			name:  "ceiling cannot preserve answer",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+				MaxTokens:            &smallCeiling,
+			},
+			compat: completionsCompat{supportsThinkingTokenBudget: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			payload := map[string]any{}
+			addThinkingTokenBudget(payload, tt.model, tt.opts, tt.compat)
+			got, ok := payload["thinking_token_budget"]
+			if tt.want == 0 {
+				if ok {
+					t.Fatalf("thinking_token_budget = %v, want absent", got)
+				}
+				return
+			}
+			if !ok || got != tt.want {
+				t.Fatalf("thinking_token_budget = %v, present %v; want %d", got, ok, tt.want)
+			}
+		})
+	}
+}
+
+func TestOpenAICompletionsThinkingTokenBudgetOverridePrecedence(t *testing.T) {
+	t.Parallel()
+
+	budget := 8192
+	maxTokens := 4096
+	model := sigma.Model{
+		ID:               "local-vllm",
+		Provider:         sigma.ProviderCustom,
+		API:              sigma.APIOpenAICompletions,
+		SupportsThinking: true,
+		ThinkingLevels:   []sigma.ThinkingLevel{sigma.ThinkingLevelHigh},
+		MaxOutputTokens:  16384,
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
+		sigma.Options{
+			ReasoningLevel:       sigma.ThinkingLevelHigh,
+			ThinkingBudgetTokens: &budget,
+			MaxTokens:            &maxTokens,
+			OpenAIOptions: &sigma.OpenAIOptions{SamplingParameters: map[string]any{
+				"thinking_token_budget": 2048,
+			}},
+			ProviderOptions: map[sigma.ProviderID]map[string]any{
+				sigma.ProviderCustom: {
+					"extra_body": map[string]any{"thinking_token_budget": 512},
+				},
+			},
+		},
+		completionsCompat{
+			supportsThinkingTokenBudget:      true,
+			supportsJSONSchemaResponseFormat: true,
+			supportsRequiredToolChoice:       true,
+			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
+		},
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload returned error: %v", err)
+	}
+	if got, want := payload["thinking_token_budget"], 512; got != want {
+		t.Fatalf("thinking_token_budget = %v, want raw override %v", got, want)
+	}
+}
+
 func TestOpenAICompletionsCompatSuppressesReasoningEffort(t *testing.T) {
 	t.Parallel()
 

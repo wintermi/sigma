@@ -350,10 +350,11 @@ func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 		OutputCostPerMillion: 0.2,
 		CostCurrency:         "USD",
 		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			SupportsStreamingUsage: sigma.OpenAICompatSupported,
-			MaxTokensField:         sigma.OpenAICompletionsMaxCompletionTokens,
-			ReasoningFormat:        sigma.OpenAICompletionsReasoningObject,
-			SupportsStore:          sigma.OpenAICompatUnsupported,
+			SupportsStreamingUsage:      sigma.OpenAICompatSupported,
+			SupportsThinkingTokenBudget: sigma.OpenAICompatSupported,
+			MaxTokensField:              sigma.OpenAICompletionsMaxCompletionTokens,
+			ReasoningFormat:             sigma.OpenAICompletionsReasoningObject,
+			SupportsStore:               sigma.OpenAICompatUnsupported,
 		},
 	})
 
@@ -375,8 +376,9 @@ func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 		context.Background(),
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithMaxTokens(42),
+		sigma.WithMaxTokens(4096),
 		sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+		sigma.WithThinkingBudgetTokens(8192),
 		sigma.WithHeader("X-Model", "request"),
 		sigma.WithHeader("Authorization", "Bearer request"),
 		sigma.WithProviderOptions(providerID, map[string]any{
@@ -402,8 +404,9 @@ func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 		"messages":              []any{map[string]any{"role": "user", "content": "hi"}},
 		"stream":                true,
 		"stream_options":        map[string]any{"include_usage": true},
-		"max_completion_tokens": float64(42),
+		"max_completion_tokens": float64(4096),
 		"reasoning":             map[string]any{"effort": "deep"},
+		"thinking_token_budget": float64(3072),
 	})
 	if _, ok := request.Body["store"]; ok {
 		t.Fatal("store was sent despite compatibility override disabling it")

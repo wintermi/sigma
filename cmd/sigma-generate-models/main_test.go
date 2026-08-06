@@ -100,6 +100,24 @@ func TestRenderTextModelsIncludesFinishReasonCompatibility(t *testing.T) {
 	}
 }
 
+func TestRenderTextModelsIncludesThinkingTokenBudgetCompatibility(t *testing.T) {
+	t.Parallel()
+
+	catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{{
+		ID:       "thinking-budget-compatible",
+		Provider: "custom",
+		API:      "openai-completions",
+		OpenAICompletionsCompat: &modeldata.OpenAICompletionsCompat{
+			SupportsThinkingTokenBudget: "supported",
+		},
+	}}}
+
+	rendered := string(renderTextModels(catalog))
+	if !strings.Contains(rendered, "SupportsThinkingTokenBudget: OpenAICompatSupport(\"supported\")") {
+		t.Fatalf("generated text models omitted thinking-token-budget compatibility: %s", rendered)
+	}
+}
+
 func TestRenderTextModelsIncludesExplicitPromptCacheCompatibility(t *testing.T) {
 	t.Parallel()
 

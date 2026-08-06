@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	openAIPromptCacheKeyMaxLength = 64
+	openAIPromptCacheKeyMaxLength  = 64
+	openAICompletionsAnswerReserve = 1024
 
 	providerOptionBaseURL         = "base_url"
 	providerOptionBaseURLCamel    = "baseURL"
@@ -71,6 +72,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addChatPromptCache(payload, opts, compat)
 	addReasoning(payload, model, opts, compat)
+	addThinkingTokenBudget(payload, model, opts, compat)
 	addChatOpenAIOptions(payload, opts, compat)
 	if len(deferredTools.Immediate) > 0 {
 		tools, err := chatTools(model, deferredTools.Immediate, compat, grammarToolInputProperties)
@@ -900,6 +902,24 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 			}
 			payload["reasoning"] = map[string]any{"effort": effort}
 		}
+	}
+}
+
+func addThinkingTokenBudget(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
+	if !compat.supportsThinkingTokenBudget || !model.SupportsReasoning() || opts.ThinkingBudgetTokens == nil || *opts.ThinkingBudgetTokens <= 0 {
+		return
+	}
+	level := requestedReasoningLevel(opts)
+	if level == "" || level == sigma.ThinkingLevelOff {
+		return
+	}
+	ceiling := model.MaxOutputTokens
+	if opts.MaxTokens != nil {
+		ceiling = *opts.MaxTokens
+	}
+	budget := min(*opts.ThinkingBudgetTokens, ceiling-openAICompletionsAnswerReserve)
+	if budget > 0 {
+		payload["thinking_token_budget"] = budget
 	}
 }
 

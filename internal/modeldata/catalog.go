@@ -135,6 +135,7 @@ type OpenAICompletionsCompat struct {
 	SupportsToolStream                          string                            `json:"supportsToolStream,omitempty"`
 	SupportsGrammarTools                        string                            `json:"supportsGrammarTools,omitempty"`
 	SupportsFinishReason                        string                            `json:"supportsFinishReason,omitempty"`
+	SupportsThinkingTokenBudget                 string                            `json:"supportsThinkingTokenBudget,omitempty"`
 	SupportsJSONSchemaResponseFormat            string                            `json:"supportsJSONSchemaResponseFormat,omitempty"`
 	MaxTokensField                              string                            `json:"maxTokensField,omitempty"`
 	CacheControlFormat                          string                            `json:"cacheControlFormat,omitempty"`

@@ -51,6 +51,7 @@ ID, and a model ID.
 - how reasoning is represented
 - whether streaming usage is emitted
 - whether strict tool schemas are accepted
+- whether the endpoint accepts a top-level thinking-token budget
 - whether the endpoint expects `max_tokens` or `max_completion_tokens`
 - how prompt cache markers are represented
 - whether tool-result messages need a tool name
@@ -60,6 +61,36 @@ ID, and a model ID.
 Leave fields at zero values when provider/base-URL detection is enough. Set
 fields for local servers and routers whose compatibility is known to differ
 from OpenAI.
+
+For a reasoning model served by a compatible inference server, opt into its
+top-level thinking-token budget explicitly:
+
+```go
+model := sigma.OpenAICompatibleModel(sigma.OpenAICompatibleModelConfig{
+	ID:               "reasoning-model",
+	Provider:         providerID,
+	BaseURL:          "http://localhost:8000/v1",
+	MaxOutputTokens:  16384,
+	SupportsThinking: true,
+	OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+		SupportsThinkingTokenBudget: sigma.OpenAICompatSupported,
+	},
+})
+
+text, err := client.CompleteText(
+	ctx,
+	model,
+	"Solve this carefully.",
+	sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+	sigma.WithThinkingBudgetTokens(8192),
+)
+```
+
+Sigma sends `thinking_token_budget` only when the model supports reasoning, a
+non-off reasoning level is selected, and the explicit budget is positive. The
+budget is clamped against request `MaxTokens`, or the model output limit when no
+request limit is set, leaving 1,024 tokens for visible output. Sampling
+parameters and provider `extra_body` can still override the computed value.
 
 ## Headers And Credentials
 

@@ -337,6 +337,9 @@ work until their API boundaries are explicit.
 - [x] Add request-scoped arbitrary sampling parameters for OpenAI-compatible
       Chat Completions, Responses, and Azure Responses while preserving raw
       `extra_body` override precedence.
+- [x] Add capability-gated top-level `thinking_token_budget` support for custom
+      OpenAI-compatible Chat Completions models, using explicit reasoning and
+      budget options with a 1,024-token visible-output reserve.
 - [ ] Add broader provider-neutral sampling controls such as top-p, top-k,
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes

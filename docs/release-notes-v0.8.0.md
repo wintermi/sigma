@@ -22,6 +22,8 @@ OpenAI-compatible Chat Completions models can also opt into successful
 OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
 now carry request-scoped arbitrary sampling parameters with explicit override
 precedence.
+Custom OpenAI-compatible Chat Completions models can also opt into safely
+clamped top-level thinking-token budgets for compatible inference servers.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
@@ -33,6 +35,12 @@ evaluations.
   Responses. These fields override typed request values, while raw provider
   `extra_body` values retain final precedence; unsupported APIs reject non-empty
   sampling maps before dispatch.
+- `OpenAICompletionsCompat.SupportsThinkingTokenBudget` now enables top-level
+  `thinking_token_budget` payloads for custom compatible models when callers
+  select reasoning and provide an explicit positive budget. Sigma clamps the
+  budget against the request or model output ceiling to preserve 1,024 tokens
+  for visible output; sampling parameters and raw `extra_body` values retain
+  their existing override precedence.
 - `cmd/sigma-evals-runner` now defaults each case/model/repetition run to an
   independent one-minute timeout bounded by the overall command deadline.
   Timed-out runs remain operational failures with partial artifacts and
