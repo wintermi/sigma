@@ -85,6 +85,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		payload["tools"] = []map[string]any{}
 	}
 
+	addOpenAISamplingParameters(payload, opts)
 	for key, value := range extraBody(opts, model.Provider) {
 		if key == "store" && !compat.supportsStore {
 			continue
@@ -96,6 +97,15 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	}
 	addRouting(payload, opts, model.Provider, compat)
 	return payload, nil
+}
+
+func addOpenAISamplingParameters(payload map[string]any, opts sigma.Options) {
+	if opts.OpenAIOptions == nil {
+		return
+	}
+	for key, value := range opts.OpenAIOptions.SamplingParameters {
+		payload[key] = value
+	}
 }
 
 func chatGrammarToolsEnabled(opts sigma.Options, compat completionsCompat) bool {

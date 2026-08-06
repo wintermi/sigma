@@ -115,12 +115,14 @@ Release scope values:
 - Caller-defined custom and local OpenAI-compatible endpoints are covered by the
   MVP `openai-completions` row when they use explicit compatibility metadata.
 - OpenAI-compatible Chat Completions supports typed `tool_choice`, opt-in
-  Anthropic-style cache markers, and opt-in `tool_stream`; GitHub Copilot and
-  Cloudflare AI Gateway provider-specific headers plus Cloudflare Workers AI
-  account placeholder resolution are fixture-tested through their wrappers.
-- OpenAI Responses and Codex Responses support typed prompt cache retention,
-  parallel tool calls, text verbosity, bounded replay IDs, and image-capable
-  tool-result replay through fixture-tested payload coverage.
+  Anthropic-style cache markers, opt-in `tool_stream`, and request-scoped
+  arbitrary sampling parameters; GitHub Copilot and Cloudflare AI Gateway
+  provider-specific headers plus Cloudflare Workers AI account placeholder
+  resolution are fixture-tested through their wrappers.
+- OpenAI Responses and Azure Responses support request-scoped arbitrary sampling
+  parameters. OpenAI Responses and Codex Responses also support typed prompt
+  cache retention, parallel tool calls, text verbosity, bounded replay IDs, and
+  image-capable tool-result replay through fixture-tested payload coverage.
 - Vercel AI Gateway uses the shared Anthropic Messages adapter through a thin
   provider wrapper. Its first-class coverage is limited to direct route
   registration, request shape, generated metadata reuse, provider errors, and

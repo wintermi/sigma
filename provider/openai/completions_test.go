@@ -214,6 +214,93 @@ func TestChatCompletionsSendsTypedResponseFormatAndLogprobs(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsSendsSamplingParametersWithPrecedence(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-sampling-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("sample")}},
+		sigma.WithTemperature(0.2),
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{
+			"temperature":       0.6,
+			"top_p":             0.8,
+			"top_k":             0,
+			"min_p":             0.0,
+			"frequency_penalty": 0,
+		}}),
+		sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+			"temperature": 0.9,
+			"top_p":       0.95,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	for key, want := range map[string]any{
+		"temperature":       0.9,
+		"top_p":             0.95,
+		"top_k":             float64(0),
+		"min_p":             float64(0),
+		"frequency_penalty": float64(0),
+	} {
+		if got := payload[key]; got != want {
+			t.Errorf("%s = %v, want %v", key, got, want)
+		}
+	}
+}
+
+func TestChatCompletionsOmitsEmptySamplingParameters(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-empty-sampling-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("sample")}},
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{}}),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if _, ok := payload["sampling_parameters"]; ok {
+		t.Fatalf("sampling_parameters = %v, want absent", payload["sampling_parameters"])
+	}
+	if _, ok := payload["top_p"]; ok {
+		t.Fatalf("top_p = %v, want absent", payload["top_p"])
+	}
+}
+
 func TestChatCompletionsSendsNeutralStructuredOutputAndLogprobs(t *testing.T) {
 	t.Parallel()
 

@@ -686,6 +686,7 @@ func addResponsesProviderOptions(payload map[string]any, provider sigma.Provider
 	if value, ok := stringOption(options, providerOptionPromptCacheKey); ok {
 		payload["prompt_cache_key"] = value
 	}
+	addOpenAISamplingParameters(payload, opts)
 	for key, value := range extraBody(opts, provider) {
 		payload[key] = value
 	}

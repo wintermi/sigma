@@ -19,12 +19,20 @@ Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
 OpenAI-compatible Chat Completions models can also opt into successful
 `[DONE]` termination when their endpoint does not emit `finish_reason`.
+OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
+now carry request-scoped arbitrary sampling parameters with explicit override
+precedence.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
 
 ## Added
 
+- `OpenAIOptions.SamplingParameters` now carries arbitrary request-scoped
+  sampling fields for OpenAI-compatible Chat Completions, Responses, and Azure
+  Responses. These fields override typed request values, while raw provider
+  `extra_body` values retain final precedence; unsupported APIs reject non-empty
+  sampling maps before dispatch.
 - `cmd/sigma-evals-runner` now defaults each case/model/repetition run to an
   independent one-minute timeout bounded by the overall command deadline.
   Timed-out runs remain operational failures with partial artifacts and

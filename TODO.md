@@ -334,6 +334,9 @@ work until their API boundaries are explicit.
       unsupported replay content.
 - [x] Add metadata-gated deferred client-tool loading for Anthropic Messages
       tool references and OpenAI/Codex Responses client tool-search replay.
+- [x] Add request-scoped arbitrary sampling parameters for OpenAI-compatible
+      Chat Completions, Responses, and Azure Responses while preserving raw
+      `extra_body` override precedence.
 - [ ] Add broader provider-neutral sampling controls such as top-p, top-k,
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes

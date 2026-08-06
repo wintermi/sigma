@@ -25,6 +25,7 @@ type OpenAIOptions struct {
 	ToolChoice                   any
 	ResponseFormat               any
 	TopLogprobs                  int
+	SamplingParameters           map[string]any
 	PromptCacheRetention         string
 	ParallelToolCalls            *bool
 	EnableGrammarTools           *bool
@@ -583,6 +584,7 @@ func cloneOpenAIOptions(options *OpenAIOptions) *OpenAIOptions {
 	copied.ParallelToolCalls = cloneBoolPtr(options.ParallelToolCalls)
 	copied.EnableGrammarTools = cloneBoolPtr(options.EnableGrammarTools)
 	copied.CodexWebSocketConnectTimeout = cloneDurationPtr(options.CodexWebSocketConnectTimeout)
+	copied.SamplingParameters = copyStringAnyMap(options.SamplingParameters)
 	return &copied
 }
 

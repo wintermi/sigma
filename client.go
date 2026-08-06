@@ -658,6 +658,9 @@ func validateOpenAIOptions(model Model, api API, options *OpenAIOptions) error {
 	if options.EnableGrammarTools != nil && *options.EnableGrammarTools && !supportsOpenAIGrammarTools(api) {
 		return invalidOptionsError(model, "openai grammar tools are only supported by OpenAI-compatible APIs")
 	}
+	if len(options.SamplingParameters) > 0 && !supportsOpenAISamplingParameters(api) {
+		return invalidOptionsError(model, "openai sampling parameters are only supported by openai-completions, openai-responses, and azure-openai-responses")
+	}
 	return nil
 }
 
@@ -790,6 +793,15 @@ func supportsOpenAIResponseFormat(api API) bool {
 func supportsOpenAIGrammarTools(api API) bool {
 	switch api {
 	case APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses, APIOpenAICodexResponses:
+		return true
+	default:
+		return false
+	}
+}
+
+func supportsOpenAISamplingParameters(api API) bool {
+	switch api {
+	case APIOpenAICompletions, APIOpenAIResponses, APIAzureOpenAIResponses:
 		return true
 	default:
 		return false

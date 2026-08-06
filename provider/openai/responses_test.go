@@ -101,6 +101,50 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-sampling-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("sample")}},
+		sigma.WithTemperature(0.2),
+		sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{
+			"temperature": 0.6,
+			"top_p":       0.8,
+			"seed":        0,
+		}}),
+		sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+			"top_p": 0.95,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+	for key, want := range map[string]any{
+		"temperature": 0.6,
+		"top_p":       0.95,
+		"seed":        float64(0),
+	} {
+		if got := payload[key]; got != want {
+			t.Errorf("%s = %v, want %v", key, got, want)
+		}
+	}
+}
+
 func TestResponsesPromptCacheDoesNotUseSessionIDAsPreviousResponseID(t *testing.T) {
 	t.Parallel()
 

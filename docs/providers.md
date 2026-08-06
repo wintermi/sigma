@@ -111,6 +111,29 @@ set endpoint, deployment, API version, and credential source with the Azure
 option helpers. Use `openai.RegisterAzureResponses` when registering a custom
 provider ID instead of the built-in Azure OpenAI Responses provider ID.
 
+### OpenAI-Compatible Sampling Parameters
+
+OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
+send provider-supported sampling fields without adding them to Sigma's
+provider-neutral option surface:
+
+```go
+sampling := sigma.WithOpenAIOptions(sigma.OpenAIOptions{
+	SamplingParameters: map[string]any{
+		"top_p": 0.95,
+		"top_k": 40,
+		"seed":  0,
+	},
+})
+```
+
+Sampling parameters are applied after typed request fields, so they can
+override values such as `temperature`. Provider `extra_body` values are applied
+after sampling parameters and retain final precedence. Sigma does not validate
+arbitrary parameter names or values; the upstream provider owns that contract.
+Non-empty sampling parameters are rejected for Codex Responses and non-OpenAI
+APIs.
+
 ### OpenAI Codex Responses
 
 ```go

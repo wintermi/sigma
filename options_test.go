@@ -580,17 +580,26 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	parallelToolCalls := true
 	enableGrammarTools := true
 	connectTimeout := 50 * time.Millisecond
+	samplingParameters := map[string]any{
+		"top_p": 0.8,
+		"nested": map[string]any{
+			"mode": "original",
+		},
+	}
 	client, provider, model := newOptionsTestClient(t,
 		sigma.WithDefaultOptions(sigma.WithOpenAIOptions(sigma.OpenAIOptions{
 			ParallelToolCalls:            &parallelToolCalls,
 			EnableGrammarTools:           &enableGrammarTools,
 			CodexWebSocketConnectTimeout: &connectTimeout,
+			SamplingParameters:           samplingParameters,
 		})),
 	)
 	model.API = sigma.APIOpenAIResponses
 	parallelToolCalls = false
 	enableGrammarTools = false
 	connectTimeout = time.Second
+	samplingParameters["top_p"] = 0.2
+	samplingParameters["nested"].(map[string]any)["mode"] = "mutated"
 
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -608,10 +617,18 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	if gotTimeout, want := valueOf(got.CodexWebSocketConnectTimeout), 50*time.Millisecond; gotTimeout != want {
 		t.Fatalf("openai codex websocket connect timeout = %s, want %s", gotTimeout, want)
 	}
+	if gotTopP, want := got.SamplingParameters["top_p"], 0.8; gotTopP != want {
+		t.Fatalf("openai sampling top_p = %v, want %v", gotTopP, want)
+	}
+	if gotMode, want := got.SamplingParameters["nested"].(map[string]any)["mode"], "original"; gotMode != want {
+		t.Fatalf("openai nested sampling mode = %v, want %v", gotMode, want)
+	}
 
 	*provider.opts.OpenAIOptions.ParallelToolCalls = false
 	*provider.opts.OpenAIOptions.EnableGrammarTools = false
 	*provider.opts.OpenAIOptions.CodexWebSocketConnectTimeout = 2 * time.Second
+	provider.opts.OpenAIOptions.SamplingParameters["top_p"] = 0.1
+	provider.opts.OpenAIOptions.SamplingParameters["nested"].(map[string]any)["mode"] = "provider-mutated"
 	if _, err := client.Complete(context.Background(), model, sigma.Request{}); err != nil {
 		t.Fatalf("second Complete returned error: %v", err)
 	}
@@ -624,6 +641,12 @@ func TestOpenAIOptionsAreCopied(t *testing.T) {
 	}
 	if gotTimeout, want := valueOf(got.CodexWebSocketConnectTimeout), 50*time.Millisecond; gotTimeout != want {
 		t.Fatalf("openai codex websocket connect timeout after mutation = %s, want %s", gotTimeout, want)
+	}
+	if gotTopP, want := got.SamplingParameters["top_p"], 0.8; gotTopP != want {
+		t.Fatalf("openai sampling top_p after mutation = %v, want %v", gotTopP, want)
+	}
+	if gotMode, want := got.SamplingParameters["nested"].(map[string]any)["mode"], "original"; gotMode != want {
+		t.Fatalf("openai nested sampling mode after mutation = %v, want %v", gotMode, want)
 	}
 }
 
@@ -1001,6 +1024,20 @@ func TestOpenAIOptionsValidateAPICompatibility(t *testing.T) {
 			},
 			options: sigma.OpenAIOptions{
 				TopLogprobs: 2,
+			},
+		},
+		{
+			name: "sampling parameters reject codex responses api",
+			api:  sigma.APIOpenAICodexResponses,
+			options: sigma.OpenAIOptions{
+				SamplingParameters: map[string]any{"top_p": 0.8},
+			},
+		},
+		{
+			name: "sampling parameters reject non openai api",
+			api:  sigma.APIAnthropicMessages,
+			options: sigma.OpenAIOptions{
+				SamplingParameters: map[string]any{"top_p": 0.8},
 			},
 		},
 	}

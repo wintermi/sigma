@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- OpenAI-compatible Chat Completions, Responses, and Azure Responses requests
+  now accept arbitrary request-scoped sampling parameters through
+  `OpenAIOptions.SamplingParameters`; sampling values override typed request
+  fields, while provider `extra_body` values retain final precedence.
 - `cmd/sigma-evals-runner` now applies an independent, configurable timeout to
   each case/model/repetition run so one stalled provider call is recorded as an
   operational failure without cancelling later evaluations; the existing
