@@ -205,7 +205,7 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			for _, modelID := range []sigma.ModelID{"qwen3.7-max", "qwen3.8-max-preview"} {
+			for _, modelID := range []sigma.ModelID{"qwen3.7-max", "qwen3.8-max"} {
 				model, ok := sigma.DefaultRegistry().Model(tt.provider, modelID)
 				if !ok {
 					t.Fatalf("default registry missing %s model %q", tt.provider, modelID)
@@ -236,7 +236,7 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 		{
 			name:       "international qwen3.8 sends effort",
 			provider:   sigma.ProviderQwenTokenPlan,
-			modelID:    "qwen3.8-max-preview",
+			modelID:    "qwen3.8-max",
 			level:      sigma.ThinkingLevelXHigh,
 			wantEffort: "xhigh",
 			register: func(registry *sigma.Registry) error {
@@ -246,7 +246,7 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 		{
 			name:       "china qwen3.8 sends effort",
 			provider:   sigma.ProviderQwenTokenPlanCN,
-			modelID:    "qwen3.8-max-preview",
+			modelID:    "qwen3.8-max",
 			level:      sigma.ThinkingLevelXHigh,
 			wantEffort: "xhigh",
 			register: func(registry *sigma.Registry) error {

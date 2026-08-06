@@ -11,8 +11,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
-Qwen Token Plan requests now preserve supported Qwen3.8 Max Preview reasoning
-levels across both regional routes while keeping Qwen3.7 Max toggle-only.
+Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
+across both regional routes while preserving supported reasoning levels and
+keeping Qwen3.7 Max toggle-only. Fireworks GLM 5.2 routes now use session
+affinity for automatic prompt caching without unsupported long-cache retention.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -39,10 +41,12 @@ evaluations.
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   while preserving existing stop reasons and retry classification.
-- Qwen Token Plan Qwen3.8 Max Preview requests now send supported reasoning
-  levels through native `reasoning_effort` controls alongside Qwen thinking
-  toggles on the international and China routes. Qwen3.7 Max remains
-  toggle-only.
+- Qwen Token Plan now replaces the retired Qwen3.8 Max Preview ID with
+  Qwen3.8 Max while preserving supported reasoning levels through native
+  `reasoning_effort` controls on the international and China routes. Qwen3.7
+  Max remains toggle-only.
+- Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
+  prompt caching is enabled and omit unsupported explicit long-cache retention.
 - Anthropic Messages streams now emit non-empty text and thinking delivered by
   content-block start events as ordered initial deltas while retaining
   signatures, citations, and complete final blocks.

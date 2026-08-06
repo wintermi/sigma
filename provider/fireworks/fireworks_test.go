@@ -220,6 +220,46 @@ func TestCompleteStreamsTextWithFireworksDefaults(t *testing.T) {
 	assertJSONPath(t, request.Body, []string{"tools", "0", "function", "strict"}, true)
 }
 
+func TestGLM52UsesSessionAffinityWithoutLongRetention(t *testing.T) {
+	t.Parallel()
+
+	for _, modelID := range []sigma.ModelID{
+		"accounts/fireworks/models/glm-5p2",
+		"accounts/fireworks/routers/glm-5p2-fast",
+	} {
+		t.Run(string(modelID), func(t *testing.T) {
+			t.Parallel()
+
+			model, ok := sigma.DefaultRegistry().Model(sigma.ProviderFireworks, modelID)
+			if !ok {
+				t.Fatalf("default registry missing Fireworks model %q", modelID)
+			}
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			client := fireworksTestClient(t, model, server.URL)
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithCacheRetention(sigma.CacheRetentionLong),
+				sigma.WithSessionID("fireworks-glm-session"),
+				sigma.WithProviderOption(sigma.ProviderFireworks, "baseURL", server.URL),
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			assertHeader(t, request.Headers, "X-Session-Affinity", "fireworks-glm-session")
+			assertNoJSONPath(t, request.Body, []string{"prompt_cache_retention"})
+		})
+	}
+}
+
 func TestToolCallStreamingProducesFinalArguments(t *testing.T) {
 	t.Parallel()
 

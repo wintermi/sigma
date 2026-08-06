@@ -364,9 +364,9 @@ Environment: `QWEN_TOKEN_PLAN_API_KEY` for `ProviderQwenTokenPlan` and
 
 The Qwen Token Plan wrappers use Sigma's shared OpenAI-compatible Chat
 Completions adapter with international and China regional base URL defaults.
-Built-in metadata includes `qwen3.7-max` for text requests and
-`qwen3.8-max-preview` for text and image requests. Both include tool and Qwen
-thinking compatibility metadata.
+Built-in metadata includes `qwen3.7-max` for text requests and `qwen3.8-max`
+for text and image requests. Both include tool and Qwen thinking compatibility
+metadata.
 
 ### Xiaomi MiMo
 

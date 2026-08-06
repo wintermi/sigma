@@ -8649,7 +8649,9 @@
         "reasoningFormat": "fireworks",
         "supportsStreamingUsage": "supported",
         "supportsStrictTools": "supported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
       },
       "providerMetadata": {
         "disabledThinkingFormat": "object-disabled",
@@ -8777,7 +8779,9 @@
         "reasoningFormat": "fireworks",
         "supportsStreamingUsage": "supported",
         "supportsStrictTools": "supported",
-        "maxTokensField": "max_tokens"
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
       },
       "providerMetadata": {
         "disabledThinkingFormat": "object-disabled",
@@ -20137,8 +20141,8 @@
       }
     },
     {
-      "id": "qwen3.8-max-preview",
-      "name": "Qwen3.8 Max Preview",
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
       "provider": "qwen-token-plan",
       "api": "openai-completions",
       "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
@@ -20214,8 +20218,8 @@
       }
     },
     {
-      "id": "qwen3.8-max-preview",
-      "name": "Qwen3.8 Max Preview",
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
       "provider": "qwen-token-plan-cn",
       "api": "openai-completions",
       "baseURL": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",

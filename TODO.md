@@ -419,9 +419,9 @@ metadata-only and backed by compatibility checks.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
 - [x] Qwen Token Plan — promote focused international and China regional
       Chat Completions rows with generated metadata and fixtures.
-- [x] Qwen Token Plan — preserve Qwen3.8 Max Preview reasoning levels through
-      native reasoning-effort controls across both regional routes while
-      keeping Qwen3.7 Max toggle-only.
+- [x] Qwen Token Plan — replace the retired Qwen3.8 Max Preview rows with
+      Qwen3.8 Max and preserve native reasoning-effort controls across both
+      regional routes while keeping Qwen3.7 Max toggle-only.
 - [ ] Qwen Token Plan — expand the remaining catalog and add provider-specific
       hosted-tool behavior only after those contracts have deterministic
       request-shape coverage.
@@ -653,6 +653,9 @@ evidence bar.
 - [x] Harden Fireworks Kimi K3 Chat Completions behavior with native reasoning
       effort, cache affinity, replay, long-cache compatibility, and
       metadata-gated deferred client-tool loading.
+- [x] Correct Fireworks GLM 5.2 Chat Completions cache compatibility so the
+      standard and fast routes use session affinity without unsupported
+      long-cache retention.
 - [ ] Keep broader Fireworks catalog discovery, unrequested payload/error
       behavior, and live-provider coverage deferred until specific routes need
       evidence beyond the shared adapters.

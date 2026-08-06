@@ -131,7 +131,7 @@ Release scope values:
   provider errors, and stream cancellation.
 - Qwen Token Plan uses the shared OpenAI-compatible Chat Completions adapter
   through regional thin wrappers. Its first-class catalog is focused on
-  Qwen3.7 Max and Qwen3.8 Max Preview; broader catalog coverage and
+  Qwen3.7 Max and Qwen3.8 Max; broader catalog coverage and
   provider-specific hosted-tool behavior remain deferred.
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
 - Codex Responses includes browser callback and device-code OAuth login, refresh

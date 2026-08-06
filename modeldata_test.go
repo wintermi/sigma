@@ -137,6 +137,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 			fireworksOpenAI.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
 			t.Fatalf("Fireworks OpenAI-compatible %s compat = %#v, want Fireworks OpenAI completions compat", tt.id, fireworksOpenAI.OpenAICompletionsCompat)
 		}
+		if tt.family == "glm" &&
+			(fireworksOpenAI.OpenAICompletionsCompat.SupportsSessionAffinity != OpenAICompatSupported ||
+				fireworksOpenAI.OpenAICompletionsCompat.SupportsLongCacheRetention != OpenAICompatUnsupported) {
+			t.Fatalf("Fireworks GLM %s cache compat = %#v, want session affinity without long retention", tt.id, fireworksOpenAI.OpenAICompletionsCompat)
+		}
 		if fireworksOpenAI.InputCostPerMillion != tt.inputCost ||
 			fireworksOpenAI.OutputCostPerMillion != tt.outputCost ||
 			fireworksOpenAI.CacheReadInputCostPerMillion != tt.cacheReadCost {
@@ -1713,9 +1718,12 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		if !ok {
 			t.Fatalf("fresh registry missing generated %s qwen3.7-max model", tt.provider)
 		}
-		qwenPreview, ok := registry.Model(tt.provider, "qwen3.8-max-preview")
+		if _, ok := registry.Model(tt.provider, "qwen3.8-max-preview"); ok {
+			t.Fatalf("fresh registry retained retired %s qwen3.8-max-preview model", tt.provider)
+		}
+		qwen38, ok := registry.Model(tt.provider, "qwen3.8-max")
 		if !ok {
-			t.Fatalf("fresh registry missing generated %s qwen3.8-max-preview model", tt.provider)
+			t.Fatalf("fresh registry missing generated %s qwen3.8-max model", tt.provider)
 		}
 		if qwenMax.API != APIOpenAICompletions ||
 			qwenMax.DefaultTransport != TransportSSE ||
@@ -1728,18 +1736,18 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			qwenMax.OutputCostPerMillion != 0 {
 			t.Fatalf("%s qwen3.7-max metadata = %+v", tt.provider, qwenMax)
 		}
-		if qwenPreview.API != APIOpenAICompletions ||
-			qwenPreview.DefaultTransport != TransportSSE ||
-			!qwenPreview.SupportsImages() ||
-			!qwenPreview.SupportsTools ||
-			!qwenPreview.SupportsReasoning() ||
-			qwenPreview.ContextWindow != 1000000 ||
-			qwenPreview.MaxOutputTokens != 65536 ||
-			qwenPreview.InputCostPerMillion != 0 ||
-			qwenPreview.OutputCostPerMillion != 0 {
-			t.Fatalf("%s qwen3.8-max-preview metadata = %+v", tt.provider, qwenPreview)
+		if qwen38.API != APIOpenAICompletions ||
+			qwen38.DefaultTransport != TransportSSE ||
+			!qwen38.SupportsImages() ||
+			!qwen38.SupportsTools ||
+			!qwen38.SupportsReasoning() ||
+			qwen38.ContextWindow != 1000000 ||
+			qwen38.MaxOutputTokens != 65536 ||
+			qwen38.InputCostPerMillion != 0 ||
+			qwen38.OutputCostPerMillion != 0 {
+			t.Fatalf("%s qwen3.8-max metadata = %+v", tt.provider, qwen38)
 		}
-		for _, model := range []Model{qwenMax, qwenPreview} {
+		for _, model := range []Model{qwenMax, qwen38} {
 			assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
 			assertMetadataString(t, model.ProviderMetadata, "modelFamily", "qwen")
 			assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
@@ -1753,21 +1761,21 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		if qwenMax.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
 			t.Fatalf("%s qwen3.7-max reasoning effort support = %q, want unsupported", tt.provider, qwenMax.OpenAICompletionsCompat.SupportsReasoningEffort)
 		}
-		if qwenPreview.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
-			t.Fatalf("%s qwen3.8-max-preview reasoning effort support = %q, want supported", tt.provider, qwenPreview.OpenAICompletionsCompat.SupportsReasoningEffort)
+		if qwen38.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
+			t.Fatalf("%s qwen3.8-max reasoning effort support = %q, want supported", tt.provider, qwen38.OpenAICompletionsCompat.SupportsReasoningEffort)
 		}
 		for level, want := range map[ThinkingLevel]string{
 			ThinkingLevelLow:    "low",
 			ThinkingLevelMedium: "medium",
 			ThinkingLevelXHigh:  "xhigh",
 		} {
-			if got, ok := qwenPreview.ProviderThinkingLevel(level); !ok || got != want {
-				t.Fatalf("%s qwen3.8-max-preview reasoning level %q = %q, %t, want %q, true", tt.provider, level, got, ok, want)
+			if got, ok := qwen38.ProviderThinkingLevel(level); !ok || got != want {
+				t.Fatalf("%s qwen3.8-max reasoning level %q = %q, %t, want %q, true", tt.provider, level, got, ok, want)
 			}
 		}
 		for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelHigh} {
-			if qwenPreview.SupportsThinkingLevel(level) {
-				t.Fatalf("%s qwen3.8-max-preview unexpectedly supports reasoning level %q", tt.provider, level)
+			if qwen38.SupportsThinkingLevel(level) {
+				t.Fatalf("%s qwen3.8-max unexpectedly supports reasoning level %q", tt.provider, level)
 			}
 		}
 	}
