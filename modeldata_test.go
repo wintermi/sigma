@@ -1576,6 +1576,7 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 		ProviderOpenCodeGo,
 		ProviderOpenRouter,
 		ProviderQwenTokenPlan,
+		ProviderQwenTokenPlanIndividual,
 		ProviderQwenTokenPlanCN,
 		ProviderTogether,
 		ProviderVercelAIGateway,
@@ -1778,6 +1779,76 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 				t.Fatalf("%s qwen3.8-max unexpectedly supports reasoning level %q", tt.provider, level)
 			}
 		}
+	}
+
+	individualModels := map[ModelID]struct {
+		family          string
+		maxOutputTokens int
+		images          bool
+		efforts         map[ThinkingLevel]string
+		offUnsupported  bool
+	}{
+		"deepseek-v4-flash-0731": {family: "deepseek-flash", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"deepseek-v4-pro":        {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"glm-5.2":                {family: "glm", maxOutputTokens: 131072, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"qwen3.6-flash":          {family: "qwen3.6", maxOutputTokens: 65536, images: true},
+		"qwen3.7-max":            {family: "qwen", maxOutputTokens: 131072},
+		"qwen3.7-plus":           {family: "qwen", maxOutputTokens: 65536, images: true},
+		"qwen3.8-max":            {family: "qwen", maxOutputTokens: 131072, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelMedium: "medium", ThinkingLevelXHigh: "xhigh"}, offUnsupported: true},
+	}
+	individualCount := 0
+	for _, model := range registry.ListModels() {
+		if model.Provider != ProviderQwenTokenPlanIndividual {
+			continue
+		}
+		individualCount++
+		want, ok := individualModels[model.ID]
+		if !ok {
+			t.Fatalf("unexpected Qwen Token Plan Individual model %q", model.ID)
+		}
+		if model.API != APIOpenAICompletions ||
+			model.DefaultTransport != TransportSSE ||
+			!model.SupportsTools ||
+			!model.SupportsReasoning() ||
+			model.SupportsImages() != want.images ||
+			model.ContextWindow != 1000000 ||
+			model.MaxOutputTokens != want.maxOutputTokens ||
+			model.InputCostPerMillion != 0 ||
+			model.OutputCostPerMillion != 0 {
+			t.Fatalf("Qwen Token Plan Individual model %s metadata = %+v", model.ID, model)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", want.family)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"QWEN_TOKEN_PLAN_API_KEY"})
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningQwen ||
+			model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported {
+			t.Fatalf("Qwen Token Plan Individual model %s compat = %#v", model.ID, model.OpenAICompletionsCompat)
+		}
+		if len(want.efforts) == 0 {
+			if model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported || len(model.ThinkingLevelMap) != 0 {
+				t.Fatalf("Qwen Token Plan Individual model %s should be toggle-only: %+v", model.ID, model)
+			}
+			continue
+		}
+		if model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
+			t.Fatalf("Qwen Token Plan Individual model %s reasoning effort support = %q, want supported", model.ID, model.OpenAICompletionsCompat.SupportsReasoningEffort)
+		}
+		for level, effort := range want.efforts {
+			if got, supported := model.ProviderThinkingLevel(level); !supported || got != effort {
+				t.Fatalf("Qwen Token Plan Individual model %s level %q = %q, %t, want %q, true", model.ID, level, got, supported, effort)
+			}
+		}
+		if model.SupportsThinkingLevel(ThinkingLevelOff) == want.offUnsupported {
+			t.Fatalf("Qwen Token Plan Individual model %s off support = %t, want %t", model.ID, model.SupportsThinkingLevel(ThinkingLevelOff), !want.offUnsupported)
+		}
+	}
+	if individualCount != len(individualModels) {
+		t.Fatalf("Qwen Token Plan Individual model count = %d, want %d", individualCount, len(individualModels))
+	}
+	if _, ok := registry.Model(ProviderQwenTokenPlanIndividual, "qwen3.8-max-preview"); ok {
+		t.Fatal("Qwen Token Plan Individual retained retired qwen3.8-max-preview model")
 	}
 
 	for _, provider := range []ProviderID{ProviderMoonshotAI, ProviderMoonshotAICN} {

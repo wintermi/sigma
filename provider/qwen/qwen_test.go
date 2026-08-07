@@ -37,6 +37,9 @@ func TestRegistersReportOpenAICompletionsAPI(t *testing.T) {
 		{name: "international", provider: sigma.ProviderQwenTokenPlan, register: func(registry *sigma.Registry) error {
 			return qwen.Register(registry)
 		}},
+		{name: "individual", provider: sigma.ProviderQwenTokenPlanIndividual, register: func(registry *sigma.Registry) error {
+			return qwen.RegisterIndividual(registry)
+		}},
 		{name: "china", provider: sigma.ProviderQwenTokenPlanCN, register: func(registry *sigma.Registry) error {
 			return qwen.RegisterCN(registry)
 		}},
@@ -75,10 +78,10 @@ func TestCompleteUsesConfiguredOpenAICompatibleBaseURL(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	model := qwenTestModel(sigma.ProviderQwenTokenPlanCN)
+	model := qwenTestModel(sigma.ProviderQwenTokenPlanIndividual)
 	registry := sigma.NewRegistry()
-	if err := qwen.RegisterCN(registry, qwen.WithBaseURL(server.URL+"/v1")); err != nil {
-		t.Fatalf("RegisterCN returned error: %v", err)
+	if err := qwen.RegisterIndividual(registry, qwen.WithBaseURL(server.URL+"/v1")); err != nil {
+		t.Fatalf("RegisterIndividual returned error: %v", err)
 	}
 	if err := registry.RegisterModel(model); err != nil {
 		t.Fatalf("RegisterModel returned error: %v", err)
@@ -125,6 +128,14 @@ func TestCompleteUsesRegionalDefaultBaseURLs(t *testing.T) {
 			baseURL:  qwen.DefaultBaseURL,
 			register: func(registry *sigma.Registry, client *http.Client) error {
 				return qwen.Register(registry, qwen.WithHTTPClient(client))
+			},
+		},
+		{
+			name:     "individual",
+			provider: sigma.ProviderQwenTokenPlanIndividual,
+			baseURL:  qwen.DefaultBaseURL,
+			register: func(registry *sigma.Registry, client *http.Client) error {
+				return qwen.RegisterIndividual(registry, qwen.WithHTTPClient(client))
 			},
 		},
 		{
@@ -191,12 +202,24 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 	tests := []struct {
 		name     string
 		provider sigma.ProviderID
+		modelIDs []sigma.ModelID
 		register func(*sigma.Registry) error
 	}{
-		{name: "international", provider: sigma.ProviderQwenTokenPlan, register: func(registry *sigma.Registry) error {
+		{name: "international", provider: sigma.ProviderQwenTokenPlan, modelIDs: []sigma.ModelID{"qwen3.7-max", "qwen3.8-max"}, register: func(registry *sigma.Registry) error {
 			return qwen.Register(registry)
 		}},
-		{name: "china", provider: sigma.ProviderQwenTokenPlanCN, register: func(registry *sigma.Registry) error {
+		{name: "individual", provider: sigma.ProviderQwenTokenPlanIndividual, modelIDs: []sigma.ModelID{
+			"deepseek-v4-flash-0731",
+			"deepseek-v4-pro",
+			"glm-5.2",
+			"qwen3.6-flash",
+			"qwen3.7-max",
+			"qwen3.7-plus",
+			"qwen3.8-max",
+		}, register: func(registry *sigma.Registry) error {
+			return qwen.RegisterIndividual(registry)
+		}},
+		{name: "china", provider: sigma.ProviderQwenTokenPlanCN, modelIDs: []sigma.ModelID{"qwen3.7-max", "qwen3.8-max"}, register: func(registry *sigma.Registry) error {
 			return qwen.RegisterCN(registry)
 		}},
 	}
@@ -205,7 +228,7 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			for _, modelID := range []sigma.ModelID{"qwen3.7-max", "qwen3.8-max"} {
+			for _, modelID := range tt.modelIDs {
 				model, ok := sigma.DefaultRegistry().Model(tt.provider, modelID)
 				if !ok {
 					t.Fatalf("default registry missing %s model %q", tt.provider, modelID)
@@ -254,6 +277,26 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 			},
 		},
 		{
+			name:       "individual qwen3.8 sends effort",
+			provider:   sigma.ProviderQwenTokenPlanIndividual,
+			modelID:    "qwen3.8-max",
+			level:      sigma.ThinkingLevelXHigh,
+			wantEffort: "xhigh",
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterIndividual(registry)
+			},
+		},
+		{
+			name:       "individual glm5.2 sends high effort",
+			provider:   sigma.ProviderQwenTokenPlanIndividual,
+			modelID:    "glm-5.2",
+			level:      sigma.ThinkingLevelHigh,
+			wantEffort: "high",
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterIndividual(registry)
+			},
+		},
+		{
 			name:     "international qwen3.7 remains toggle only",
 			provider: sigma.ProviderQwenTokenPlan,
 			modelID:  "qwen3.7-max",
@@ -269,6 +312,15 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 			level:    sigma.ThinkingLevelHigh,
 			register: func(registry *sigma.Registry) error {
 				return qwen.RegisterCN(registry)
+			},
+		},
+		{
+			name:     "individual qwen3.7 remains toggle only",
+			provider: sigma.ProviderQwenTokenPlanIndividual,
+			modelID:  "qwen3.7-max",
+			level:    sigma.ThinkingLevelHigh,
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterIndividual(registry)
 			},
 		},
 	}
@@ -325,6 +377,20 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 				t.Fatalf("thinking = %#v, want absent", body["thinking"])
 			}
 		})
+	}
+}
+
+func TestRegistersRejectNilRegistry(t *testing.T) {
+	t.Parallel()
+
+	for _, register := range []func(*sigma.Registry) error{
+		func(registry *sigma.Registry) error { return qwen.Register(registry) },
+		func(registry *sigma.Registry) error { return qwen.RegisterIndividual(registry) },
+		func(registry *sigma.Registry) error { return qwen.RegisterCN(registry) },
+	} {
+		if err := register(nil); err == nil {
+			t.Fatal("register returned nil error")
+		}
 	}
 }
 

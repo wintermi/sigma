@@ -245,6 +245,14 @@ func openAICompatibleProviderRows() []openAICompatibleProviderRow {
 			},
 		},
 		{
+			name:       "qwen token plan individual",
+			providerID: sigma.ProviderQwenTokenPlanIndividual,
+			modelID:    "qwen3.7-max",
+			register: func(registry *sigma.Registry, baseURL string) error {
+				return qwen.RegisterIndividual(registry, qwen.WithBaseURL(baseURL), qwen.WithHeader("X-Provider", "provider"))
+			},
+		},
+		{
 			name:       "qwen token plan china",
 			providerID: sigma.ProviderQwenTokenPlanCN,
 			modelID:    "qwen3.7-max",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-02",
+  "snapshotDate": "2026-08-07",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -20176,6 +20176,281 @@
         "off",
         "minimal",
         "high"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash-0731",
+      "name": "DeepSeek V4 Flash 0731",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek-flash"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek-thinking"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "glm-5.2",
+      "name": "GLM-5.2",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.6-flash",
+      "name": "Qwen3.6 Flash",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen3.6"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.7-max",
+      "name": "Qwen3.7 Max",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.7-plus",
+      "name": "Qwen3.7 Plus",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "high",
+        "max"
       ],
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",

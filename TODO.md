@@ -428,6 +428,9 @@ metadata-only and backed by compatibility checks.
 - [x] Qwen Token Plan — replace the retired Qwen3.8 Max Preview rows with
       Qwen3.8 Max and preserve native reasoning-effort controls across both
       regional routes while keeping Qwen3.7 Max toggle-only.
+- [x] Qwen Token Plan — add the Individual subscription route with a curated
+      seven-model catalog, shared international credentials and endpoint, and
+      deterministic toggle and reasoning-effort coverage.
 - [ ] Qwen Token Plan — expand the remaining catalog and add provider-specific
       hosted-tool behavior only after those contracts have deterministic
       request-shape coverage.

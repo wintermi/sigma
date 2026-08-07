@@ -13,8 +13,11 @@ retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
 Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
 across both regional routes while preserving supported reasoning levels and
-keeping Qwen3.7 Max toggle-only. Fireworks GLM 5.2 routes now use session
-affinity for automatic prompt caching without unsupported long-cache retention.
+keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
+seven curated models through the shared international endpoint and credential,
+with each model's thinking controls preserved. Fireworks GLM 5.2 routes now use
+session affinity for automatic prompt caching without unsupported long-cache
+retention.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -48,6 +51,11 @@ evaluations.
   remains active; callers can configure the duration or disable it.
 - `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
   end streams with `[DONE]` but do not emit `finish_reason`.
+- Qwen Token Plan Individual now provides a distinct registration route for
+  DeepSeek V4 Flash 0731, DeepSeek V4 Pro, GLM-5.2, Qwen3.6 Flash, Qwen3.7 Max,
+  Qwen3.7 Plus, and Qwen3.8 Max. It reuses the international endpoint,
+  `QWEN_TOKEN_PLAN_API_KEY`, and the shared OpenAI-compatible Chat Completions
+  adapter.
 
 ## Compatibility
 
@@ -60,7 +68,9 @@ evaluations.
 - Qwen Token Plan now replaces the retired Qwen3.8 Max Preview ID with
   Qwen3.8 Max while preserving supported reasoning levels through native
   `reasoning_effort` controls on the international and China routes. Qwen3.7
-  Max remains toggle-only.
+  Max remains toggle-only. The Individual route preserves mapped reasoning
+  efforts for DeepSeek V4, GLM-5.2, and Qwen3.8 Max while keeping Qwen3.6 Flash
+  and both Qwen3.7 models toggle-only.
 - Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
   prompt caching is enabled and omit unsupported explicit long-cache retention.
 - Anthropic Messages streams now emit non-empty text and thinking delivered by

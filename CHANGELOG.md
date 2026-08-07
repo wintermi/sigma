@@ -27,6 +27,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 - OpenAI-compatible Chat Completions models can now opt out of terminal
   `finish_reason` support through `OpenAICompletionsCompat`, accepting an
   explicit `[DONE]` marker while continuing to reject unmarked stream EOF.
+- Qwen Token Plan Individual is now available as a distinct subscription route
+  with seven curated models, the shared international credential and endpoint,
+  and model-specific Qwen thinking controls.
 
 ### Fixed
 
