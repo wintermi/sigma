@@ -123,6 +123,8 @@ const (
 	ProviderXAI ProviderID = "xai"
 	// ProviderTogether identifies Together AI.
 	ProviderTogether ProviderID = "together"
+	// ProviderBaseten identifies Baseten.
+	ProviderBaseten ProviderID = "baseten"
 	// ProviderHuggingFace identifies Hugging Face Router.
 	ProviderHuggingFace ProviderID = "huggingface"
 	// ProviderCloudflareAIGateway identifies Cloudflare AI Gateway.
@@ -297,6 +299,9 @@ const (
 	// OpenAICompletionsReasoningTogether sends Together's reasoning toggle
 	// plus optional reasoning_effort.
 	OpenAICompletionsReasoningTogether OpenAICompletionsReasoningFormat = "together"
+	// OpenAICompletionsReasoningBaseten sends Baseten chat-template arguments
+	// plus optional reasoning_effort.
+	OpenAICompletionsReasoningBaseten OpenAICompletionsReasoningFormat = "baseten"
 	// OpenAICompletionsReasoningQwen sends a top-level Qwen enable_thinking flag.
 	OpenAICompletionsReasoningQwen OpenAICompletionsReasoningFormat = "qwen"
 	// OpenAICompletionsReasoningZAI sends a Z.ai thinking object with an

@@ -336,6 +336,22 @@ The built-in Fireworks Anthropic-compatible routes are
 against Fireworks' `/messages` endpoint and carry compatibility metadata for
 image input, thinking levels, cache behavior, and tool use.
 
+### Baseten
+
+```go
+registry := sigma.DefaultRegistry()
+_ = baseten.Register(registry)
+client := sigma.NewClient(sigma.WithRegistry(registry))
+```
+
+Environment: `BASETEN_API_KEY`.
+
+The Baseten wrapper uses Sigma's shared OpenAI-compatible Chat Completions
+adapter with the direct model API base URL. Focused built-in metadata covers
+`zai-org/GLM-5.2` for text and `moonshotai/Kimi-K2.6` for text and image input.
+Both support tools and explicit thinking toggles; GLM 5.2 also maps off, high,
+and max reasoning efforts.
+
 ### NVIDIA NIM
 
 ```go

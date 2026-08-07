@@ -139,6 +139,7 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "cerebras", provider: sigma.ProviderCerebras, env: "CEREBRAS_API_KEY"},
 		{name: "xai", provider: sigma.ProviderXAI, env: "XAI_API_KEY"},
 		{name: "together", provider: sigma.ProviderTogether, env: "TOGETHER_API_KEY"},
+		{name: "baseten", provider: sigma.ProviderBaseten, env: "BASETEN_API_KEY"},
 		{name: "cloudflare ai gateway", provider: sigma.ProviderCloudflareAIGateway, env: "CLOUDFLARE_API_KEY"},
 		{name: "github copilot", provider: sigma.ProviderGitHubCopilot, env: "COPILOT_GITHUB_TOKEN"},
 		{name: "nvidia", provider: sigma.ProviderNVIDIA, env: "NVIDIA_API_KEY"},

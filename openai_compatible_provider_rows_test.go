@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/provider/baseten"
 	"github.com/wintermi/sigma/provider/cerebras"
 	"github.com/wintermi/sigma/provider/deepseek"
 	"github.com/wintermi/sigma/provider/groq"
@@ -218,6 +219,14 @@ func openAICompatibleProviderRows() []openAICompatibleProviderRow {
 			modelID:    "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
 			register: func(registry *sigma.Registry, baseURL string) error {
 				return together.Register(registry, together.WithBaseURL(baseURL), together.WithHeader("X-Provider", "provider"))
+			},
+		},
+		{
+			name:       "baseten",
+			providerID: sigma.ProviderBaseten,
+			modelID:    "zai-org/GLM-5.2",
+			register: func(registry *sigma.Registry, baseURL string) error {
+				return baseten.Register(registry, baseten.WithBaseURL(baseURL), baseten.WithHeader("X-Provider", "provider"))
 			},
 		},
 		{

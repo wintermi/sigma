@@ -11,6 +11,7 @@
 // - Ant Ling model catalog: https://api.ant-ling.com/v1/models
 // - Anthropic models and pricing: https://docs.anthropic.com/en/docs/about-claude/models/overview
 // - Azure OpenAI model catalog: https://learn.microsoft.com/azure/ai-services/openai/concepts/models
+// - Baseten model APIs: https://docs.baseten.co/inference/model-apis/overview
 // - Cloudflare AI Gateway models: https://developers.cloudflare.com/ai-gateway/
 // - Cloudflare Workers AI models: https://developers.cloudflare.com/workers-ai/models/
 // - Fireworks Fire Pass setup: https://docs.fireworks.ai/firepass

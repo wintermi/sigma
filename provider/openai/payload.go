@@ -867,6 +867,10 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 		addTogetherReasoning(payload, model, opts, compat)
 		return
 	}
+	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningBaseten {
+		addBasetenReasoning(payload, model, opts, compat)
+		return
+	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningQwen {
 		addQwenReasoning(payload, model, opts, compat)
 		return
@@ -930,6 +934,28 @@ func addTogetherReasoning(payload map[string]any, model sigma.Model, opts sigma.
 	effort := reasoningEffort(model, opts)
 	payload["reasoning"] = map[string]any{"enabled": effort != ""}
 	if effort != "" && compat.supportsReasoningEffort {
+		payload["reasoning_effort"] = effort
+	}
+}
+
+func addBasetenReasoning(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
+	if !model.SupportsReasoning() {
+		return
+	}
+	level := requestedReasoningLevel(opts)
+	enabled := level != "" && level != sigma.ThinkingLevelOff
+	payload["chat_template_args"] = map[string]any{"enable_thinking": enabled}
+	if !compat.supportsReasoningEffort {
+		return
+	}
+
+	effort := ""
+	if enabled {
+		effort = reasoningEffort(model, opts)
+	} else if off, ok := model.ThinkingLevelMap[sigma.ThinkingLevelOff]; ok {
+		effort = off
+	}
+	if effort != "" {
 		payload["reasoning_effort"] = effort
 	}
 }

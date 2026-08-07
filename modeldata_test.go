@@ -1550,6 +1550,7 @@ func assertProviderConstantsHaveGeneratedTextMetadata(t *testing.T, registry *Re
 		ProviderAntLing,
 		ProviderAnthropic,
 		ProviderAzureOpenAIResponses,
+		ProviderBaseten,
 		ProviderCerebras,
 		ProviderCloudflareAIGateway,
 		ProviderCloudflareWorkersAI,
@@ -1655,6 +1656,93 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		together.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
 		together.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
 		t.Fatalf("Together compat = %#v, want conservative OpenAI-compatible overrides", together.OpenAICompletionsCompat)
+	}
+
+	basetenModels := map[ModelID]struct {
+		family          string
+		images          bool
+		contextWindow   int
+		maxOutputTokens int
+		inputCost       float64
+		outputCost      float64
+		cacheReadCost   float64
+		supportsEffort  OpenAICompatSupport
+	}{
+		"moonshotai/Kimi-K2.6": {
+			family: "kimi-k2", images: true, contextWindow: 262000, maxOutputTokens: 262000,
+			inputCost: 0.95, outputCost: 4, cacheReadCost: 0.16, supportsEffort: OpenAICompatUnsupported,
+		},
+		"zai-org/GLM-5.2": {
+			family: "glm", contextWindow: 1048576, maxOutputTokens: 262144,
+			inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.3, supportsEffort: OpenAICompatSupported,
+		},
+	}
+	basetenCount := 0
+	for _, model := range registry.ListModels() {
+		if model.Provider != ProviderBaseten {
+			continue
+		}
+		basetenCount++
+		want, ok := basetenModels[model.ID]
+		if !ok {
+			t.Fatalf("unexpected generated Baseten model %q", model.ID)
+		}
+		if model.API != APIOpenAICompletions || model.DefaultTransport != TransportSSE ||
+			!model.SupportsTools || !model.SupportsReasoning() || model.SupportsImages() != want.images {
+			t.Fatalf("Baseten %s capabilities = %+v", model.ID, model)
+		}
+		if model.ContextWindow != want.contextWindow || model.MaxOutputTokens != want.maxOutputTokens {
+			t.Fatalf("Baseten %s limits = %d/%d, want %d/%d", model.ID, model.ContextWindow, model.MaxOutputTokens, want.contextWindow, want.maxOutputTokens)
+		}
+		if model.InputCostPerMillion != want.inputCost ||
+			model.OutputCostPerMillion != want.outputCost ||
+			model.CacheReadInputCostPerMillion != want.cacheReadCost {
+			t.Fatalf("Baseten %s costs = %f/%f/%f, want %f/%f/%f", model.ID, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, want.inputCost, want.outputCost, want.cacheReadCost)
+		}
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://inference.baseten.co/v1")
+		assertMetadataString(t, model.ProviderMetadata, "modelFamily", want.family)
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"BASETEN_API_KEY"})
+		if model.OpenAICompletionsCompat == nil ||
+			model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+			model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningBaseten ||
+			model.OpenAICompletionsCompat.SupportsReasoningEffort != want.supportsEffort ||
+			model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
+			model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
+			model.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat != OpenAICompatSupported ||
+			model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens ||
+			model.OpenAICompletionsCompat.SupportsLongCacheRetention != OpenAICompatUnsupported {
+			t.Fatalf("Baseten %s compat = %#v", model.ID, model.OpenAICompletionsCompat)
+		}
+	}
+	if basetenCount != len(basetenModels) {
+		t.Fatalf("generated Baseten model count = %d, want %d", basetenCount, len(basetenModels))
+	}
+	basetenGLM, ok := registry.Model(ProviderBaseten, "zai-org/GLM-5.2")
+	if !ok {
+		t.Fatal("fresh registry missing generated Baseten GLM 5.2 model")
+	}
+	for level, effort := range map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"} {
+		if got, ok := basetenGLM.ProviderThinkingLevel(level); !ok || got != effort {
+			t.Fatalf("Baseten GLM level %q = %q, %t, want %q, true", level, got, ok, effort)
+		}
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelXHigh} {
+		if basetenGLM.SupportsThinkingLevel(level) {
+			t.Fatalf("Baseten GLM unexpectedly supports level %q", level)
+		}
+	}
+	basetenKimi, ok := registry.Model(ProviderBaseten, "moonshotai/Kimi-K2.6")
+	if !ok {
+		t.Fatal("fresh registry missing generated Baseten Kimi K2.6 model")
+	}
+	if !basetenKimi.SupportsThinkingLevel(ThinkingLevelOff) || !basetenKimi.SupportsThinkingLevel(ThinkingLevelHigh) {
+		t.Fatalf("Baseten Kimi thinking support = %+v, want off/high", basetenKimi)
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelXHigh, ThinkingLevel("max")} {
+		if basetenKimi.SupportsThinkingLevel(level) {
+			t.Fatalf("Baseten Kimi unexpectedly supports level %q", level)
+		}
 	}
 
 	xiaomi, ok := registry.Model(ProviderXiaomi, "mimo-v2.5")

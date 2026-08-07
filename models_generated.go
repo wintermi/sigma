@@ -11,6 +11,7 @@
 // - Ant Ling model catalog: https://api.ant-ling.com/v1/models
 // - Anthropic models and pricing: https://docs.anthropic.com/en/docs/about-claude/models/overview
 // - Azure OpenAI model catalog: https://learn.microsoft.com/azure/ai-services/openai/concepts/models
+// - Baseten model APIs: https://docs.baseten.co/inference/model-apis/overview
 // - Cloudflare AI Gateway models: https://developers.cloudflare.com/ai-gateway/
 // - Cloudflare Workers AI models: https://developers.cloudflare.com/workers-ai/models/
 // - Fireworks Fire Pass setup: https://docs.fireworks.ai/firepass
@@ -5069,6 +5070,83 @@ var builtinTextModels = []Model{
 			"baseURL":             "https://{resource}.openai.azure.com",
 			"headers":             map[string]string{},
 			"modelFamily":         "azure-openai-responses",
+		},
+	},
+	{
+		ID:               ModelID("moonshotai/Kimi-K2.6"),
+		Provider:         ProviderID("baseten"),
+		API:              API("openai-completions"),
+		Name:             "Kimi K2.6",
+		ContextWindow:    262000,
+		MaxOutputTokens:  262000,
+		SupportedInputs:  []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
+		SupportsTools:    true,
+		SupportsThinking: true,
+		ThinkingLevelMap: map[ThinkingLevel]string{
+			ThinkingLevel("high"): "high",
+			ThinkingLevel("off"):  "off",
+		},
+		UnsupportedThinkingLevels:    []ThinkingLevel{ThinkingLevel("minimal"), ThinkingLevel("low"), ThinkingLevel("medium"), ThinkingLevel("xhigh"), ThinkingLevel("max")},
+		InputCostPerMillion:          0.95,
+		OutputCostPerMillion:         4,
+		CacheReadInputCostPerMillion: 0.16,
+		CostCurrency:                 "USD",
+		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			SupportsStore:                    OpenAICompatSupport("unsupported"),
+			SupportsDeveloperRole:            OpenAICompatSupport("unsupported"),
+			ReasoningFormat:                  OpenAICompletionsReasoningFormat("baseten"),
+			SupportsReasoningEffort:          OpenAICompatSupport("unsupported"),
+			SupportsStreamingUsage:           OpenAICompatSupport("supported"),
+			SupportsStrictTools:              OpenAICompatSupport("supported"),
+			SupportsJSONSchemaResponseFormat: OpenAICompatSupport("supported"),
+			MaxTokensField:                   OpenAICompletionsMaxTokensField("max_tokens"),
+			SupportsLongCacheRetention:       OpenAICompatSupport("unsupported"),
+		},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"BASETEN_API_KEY"},
+			"baseURL":             "https://inference.baseten.co/v1",
+			"headers":             map[string]string{},
+			"modelFamily":         "kimi-k2",
+		},
+	},
+	{
+		ID:               ModelID("zai-org/GLM-5.2"),
+		Provider:         ProviderID("baseten"),
+		API:              API("openai-completions"),
+		Name:             "GLM 5.2",
+		ContextWindow:    1048576,
+		MaxOutputTokens:  262144,
+		SupportedInputs:  []ContentBlockType{ContentBlockType("text")},
+		SupportsTools:    true,
+		SupportsThinking: true,
+		ThinkingLevelMap: map[ThinkingLevel]string{
+			ThinkingLevel("high"): "high",
+			ThinkingLevel("max"):  "max",
+			ThinkingLevel("off"):  "none",
+		},
+		UnsupportedThinkingLevels:    []ThinkingLevel{ThinkingLevel("minimal"), ThinkingLevel("low"), ThinkingLevel("medium"), ThinkingLevel("xhigh")},
+		InputCostPerMillion:          1.4,
+		OutputCostPerMillion:         4.4,
+		CacheReadInputCostPerMillion: 0.3,
+		CostCurrency:                 "USD",
+		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			SupportsStore:                    OpenAICompatSupport("unsupported"),
+			SupportsDeveloperRole:            OpenAICompatSupport("unsupported"),
+			ReasoningFormat:                  OpenAICompletionsReasoningFormat("baseten"),
+			SupportsReasoningEffort:          OpenAICompatSupport("supported"),
+			SupportsStreamingUsage:           OpenAICompatSupport("supported"),
+			SupportsStrictTools:              OpenAICompatSupport("supported"),
+			SupportsJSONSchemaResponseFormat: OpenAICompatSupport("supported"),
+			MaxTokensField:                   OpenAICompletionsMaxTokensField("max_tokens"),
+			SupportsLongCacheRetention:       OpenAICompatSupport("unsupported"),
+		},
+		ProviderMetadata: map[string]any{
+			MetadataAPIKeyEnvVars: []string{"BASETEN_API_KEY"},
+			"baseURL":             "https://inference.baseten.co/v1",
+			"headers":             map[string]string{},
+			"modelFamily":         "glm",
 		},
 	},
 	{

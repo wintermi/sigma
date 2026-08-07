@@ -159,6 +159,11 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.supportsRequiredToolChoice = true
 		compat.maxTokensField = sigma.OpenAICompletionsMaxTokens
 	case provider == sigma.ProviderTogether || strings.Contains(host, "together.ai"):
+	case provider == sigma.ProviderBaseten || host == "inference.baseten.co":
+		compat.supportsReasoningEffort = false
+		compat.supportsStreamingUsage = true
+		compat.supportsStrictTools = true
+		compat.supportsLongCacheRetention = false
 	case provider == sigma.ProviderCerebras || strings.Contains(host, "cerebras.ai"):
 	case provider == sigma.ProviderXAI || strings.Contains(host, "x.ai"):
 		compat.supportsReasoningEffort = false

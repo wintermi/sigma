@@ -19,6 +19,10 @@
       "url": "https://learn.microsoft.com/azure/ai-services/openai/concepts/models"
     },
     {
+      "name": "Baseten model APIs",
+      "url": "https://docs.baseten.co/inference/model-apis/overview"
+    },
+    {
       "name": "Cloudflare AI Gateway models",
       "url": "https://developers.cloudflare.com/ai-gateway/"
     },
@@ -6796,6 +6800,107 @@
         "apiVersion": "2025-04-01-preview",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
+      }
+    },
+    {
+      "id": "moonshotai/Kimi-K2.6",
+      "name": "Kimi K2.6",
+      "provider": "baseten",
+      "api": "openai-completions",
+      "baseURL": "https://inference.baseten.co/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "off": "off",
+        "high": "high"
+      },
+      "cost": {
+        "inputPerMillion": 0.95,
+        "outputPerMillion": 4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.16
+      },
+      "contextWindow": 262000,
+      "maxOutputTokens": 262000,
+      "headers": {},
+      "authEnvNames": [
+        "BASETEN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi-k2"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh",
+        "max"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "supportsJSONSchemaResponseFormat": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsLongCacheRetention": "unsupported",
+        "reasoningFormat": "baseten"
+      }
+    },
+    {
+      "id": "zai-org/GLM-5.2",
+      "name": "GLM 5.2",
+      "provider": "baseten",
+      "api": "openai-completions",
+      "baseURL": "https://inference.baseten.co/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "off": "none",
+        "high": "high",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 0.3
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "BASETEN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "supportsJSONSchemaResponseFormat": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsLongCacheRetention": "unsupported",
+        "reasoningFormat": "baseten"
       }
     },
     {

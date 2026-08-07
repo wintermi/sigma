@@ -369,6 +369,15 @@ metadata-only and backed by compatibility checks.
 - [x] Groq — promote to a first-class provider row with fixtures.
 - [x] Cerebras — promote to a first-class provider row with fixtures.
 - [x] Together — promote to a first-class provider row with fixtures.
+- [x] Baseten — promote a focused GLM 5.2 and Kimi K2.6 OpenAI-compatible
+      provider row with deterministic thinking, streaming, error, redaction,
+      and cancellation coverage.
+- [ ] Baseten — expand the remaining catalog, hosted-tool behavior, and live
+      provider coverage only after those contracts have reviewable metadata
+      and deterministic request-shape evidence.
+- [ ] Keep generic chat-template argument configuration and provider-neutral
+      deferred/background response lifecycles out of the focused Baseten route
+      until multiple production providers require shared public contracts.
 - [x] Hugging Face Router — promote to a first-class provider row with
       fixtures and focused generated metadata.
 - [ ] Hugging Face Router — add broader live-provider and hosted-tool coverage
