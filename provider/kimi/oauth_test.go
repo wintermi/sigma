@@ -283,6 +283,7 @@ func TestKimiCodingOAuthTokenProviderRefreshesAndStoredAuthPreservesConfig(t *te
 	t.Parallel()
 
 	now := time.Date(2026, 7, 24, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	client := kimiCodingOAuthTestHTTPClient(t, func(*http.Request) *http.Response {
 		return kimiCodingOAuthJSONResponse(http.StatusOK, `{"access_token":"refreshed-access","refresh_token":"refreshed-refresh","expires_in":3600}`)
 	})
@@ -290,7 +291,7 @@ func TestKimiCodingOAuthTokenProviderRefreshesAndStoredAuthPreservesConfig(t *te
 	provider := NewKimiCodingOAuthTokenProvider(KimiCodingOAuthCredentials{
 		AccessToken:  "old-access",
 		RefreshToken: "old-refresh",
-		Expiry:       now,
+		Expiry:       now.Add(10 * time.Minute),
 	}, KimiCodingOAuthTokenProviderOptions{
 		HTTPClient: client,
 		Now:        func() time.Time { return now },
@@ -299,7 +300,7 @@ func TestKimiCodingOAuthTokenProviderRefreshesAndStoredAuthPreservesConfig(t *te
 			return nil
 		},
 	})
-	credential, err := provider.Token(context.Background(), sigma.Model{Provider: sigma.ProviderKimiCoding, ID: "k3"}, sigma.Options{})
+	credential, err := provider.Token(context.Background(), sigma.Model{Provider: sigma.ProviderKimiCoding, ID: "k3"}, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Token returned error: %v", err)
 	}

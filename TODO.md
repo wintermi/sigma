@@ -27,6 +27,10 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add request-scoped final header suppression across text, image, and
       embedding calls without adding generic environment overrides or changing
       credential resolution.
+- [x] Add request-scoped minimum OAuth lifetime controls across text, image, and
+      embedding calls so stored credentials and built-in caller-owned token
+      providers can refresh before long-running work without changing default
+      refresh windows.
 - [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
       unless they get separate public API contracts.
 

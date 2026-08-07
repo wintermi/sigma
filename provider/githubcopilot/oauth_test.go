@@ -397,10 +397,11 @@ func TestRefreshGitHubCopilotTokenParsesExpiryAndRedactsErrors(t *testing.T) {
 	}
 }
 
-func TestGitHubCopilotOAuthTokenProviderRefreshesAndResolves(t *testing.T) {
+func TestGitHubCopilotOAuthTokenProviderHonorsMinimumValidityAndResolves(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
 		if r.URL.Path != "/copilot_internal/v2/token" {
 			t.Fatalf("unexpected OAuth path %q", r.URL.Path)
@@ -415,7 +416,7 @@ func TestGitHubCopilotOAuthTokenProviderRefreshesAndResolves(t *testing.T) {
 	provider := githubcopilot.NewGitHubCopilotOAuthTokenProvider(githubcopilot.GitHubCopilotOAuthCredentials{
 		AccessToken:  "old-copilot-token",
 		RefreshToken: "github-refresh",
-		Expiry:       now.Add(30 * time.Second),
+		Expiry:       now.Add(10 * time.Minute),
 	}, githubcopilot.GitHubCopilotOAuthTokenProviderOptions{
 		HTTPClient:    client,
 		Now:           func() time.Time { return now },
@@ -429,7 +430,7 @@ func TestGitHubCopilotOAuthTokenProviderRefreshesAndResolves(t *testing.T) {
 	credential, err := provider.Resolve(context.Background(), sigma.Model{
 		Provider: sigma.ProviderGitHubCopilot,
 		ID:       "gpt-test",
-	}, sigma.Options{})
+	}, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Resolve returned error: %v", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/sigmatest"
@@ -19,11 +20,12 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 	t.Parallel()
 
 	registry := sigma.NewRegistry()
-	provider := sigmatest.NewFauxProvider(sigmatest.Script{
+	script := sigmatest.Script{
 		Final: sigma.AssistantMessage{
 			Content: []sigma.ContentBlock{sigma.Text("hello")},
 		},
-	})
+	}
+	provider := sigmatest.NewFauxProvider(script, script)
 	providerID := sigma.ProviderID("dispatch-provider")
 	model := sigma.Model{ID: "dispatch-model", Provider: providerID, API: sigmatest.TextAPI}
 	if err := registry.RegisterTextProvider(providerID, provider); err != nil {
@@ -49,10 +51,22 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 		sigma.WithDefaultOptions(
 			sigma.WithHeader("x-option", "default-option"),
 			sigma.WithHeader("x-override", "default-option"),
+			sigma.WithOAuthMinimumValidity(30*time.Minute),
 		),
 	)
 
 	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}
+	if _, err := client.Complete(context.Background(), model, req); err != nil {
+		t.Fatalf("Complete with client defaults returned error: %v", err)
+	}
+	defaultCapture, ok := provider.LastRequest()
+	if !ok {
+		t.Fatal("provider did not capture default request")
+	}
+	if defaultCapture.Options.OAuthMinimumValidity == nil || *defaultCapture.Options.OAuthMinimumValidity != 30*time.Minute {
+		t.Fatalf("default OAuth minimum validity = %v, want 30m", defaultCapture.Options.OAuthMinimumValidity)
+	}
+
 	final, err := client.Complete(
 		context.Background(),
 		model,
@@ -60,6 +74,7 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 		sigma.WithHeader("x-request", "request"),
 		sigma.WithHeader("x-override", "request"),
 		sigma.WithRequestHTTPClient(requestHTTPClient),
+		sigma.WithOAuthMinimumValidity(10*time.Minute),
 	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -91,6 +106,33 @@ func TestClientCompleteDispatchesProviderWithMergedOptions(t *testing.T) {
 	assertHeader(t, capture.Options.Headers, "x-option", "default-option")
 	assertHeader(t, capture.Options.Headers, "x-request", "request")
 	assertHeader(t, capture.Options.Headers, "x-override", "request")
+	if capture.Options.OAuthMinimumValidity == nil || *capture.Options.OAuthMinimumValidity != 10*time.Minute {
+		t.Fatalf("OAuth minimum validity = %v, want 10m", capture.Options.OAuthMinimumValidity)
+	}
+}
+
+func TestClientCompleteRejectsNegativeOAuthMinimumValidityBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxProvider()
+	registry, err := sigmatest.Registry(provider)
+	if err != nil {
+		t.Fatalf("Registry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err = client.Complete(
+		context.Background(),
+		sigmatest.TextModel(),
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithOAuthMinimumValidity(-time.Second),
+	)
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("Complete error = %v, want ErrInvalidOptions", err)
+	}
+	if got := len(provider.Requests()); got != 0 {
+		t.Fatalf("provider request count = %d, want 0", got)
+	}
 }
 
 func TestClientModelLookupAndFilters(t *testing.T) {

@@ -67,6 +67,40 @@ _, _ = names, configured
 Do not put credentials in `Request`, `ProviderMetadata`, tool arguments, or
 persisted JSON. See [Security](security.md) for redaction behavior.
 
+### Request-scoped OAuth lifetime
+
+Long-running streams and tool workflows can require an OAuth credential to
+retain a minimum lifetime before dispatch. The request minimum only lengthens a
+provider's existing refresh window; omitting it, or setting it to zero, keeps
+the current refresh timing. Credentials without a known expiry are unchanged.
+
+```go
+client := sigma.NewClient(
+	sigma.WithCredentialStore(store),
+	sigma.WithStoredProviderAuth(),
+	sigma.WithDefaultOptions(
+		sigma.WithOAuthMinimumValidity(5*time.Minute),
+	),
+)
+
+_, _ = client.Complete(ctx, model, request,
+	sigma.WithOAuthMinimumValidity(30*time.Minute),
+)
+_, _ = client.GenerateImages(ctx, imageModel, imageRequest,
+	sigma.WithImageOAuthMinimumValidity(15*time.Minute),
+)
+_, _ = client.Embed(ctx, embeddingModel, embeddingRequest,
+	sigma.WithEmbeddingOAuthMinimumValidity(10*time.Minute),
+)
+```
+
+Stored OAuth credentials use the registered provider refresh function and
+persist the rotation through the caller-supplied credential store. Sigma's
+built-in Anthropic, OpenAI Codex, GitHub Copilot, Kimi Coding, Radius, and xAI
+in-memory OAuth token providers honor the same option and continue reporting
+rotations through their existing callbacks. Negative durations fail locally
+before provider dispatch.
+
 ## Setup Snippets
 
 ### OpenAI Chat Completions

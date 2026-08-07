@@ -59,6 +59,12 @@ func WithImageAPIKey(apiKey string) ImageOption {
 	return imageOptionFromOption(WithAPIKey(apiKey))
 }
 
+// WithImageOAuthMinimumValidity requires an OAuth credential to retain at
+// least the requested lifetime before image dispatch.
+func WithImageOAuthMinimumValidity(minimumValidity time.Duration) ImageOption {
+	return imageOptionFromOption(WithOAuthMinimumValidity(minimumValidity))
+}
+
 // WithImageHTTPClient configures the HTTP client exposed to image providers.
 func WithImageHTTPClient(httpClient *http.Client) ImageOption {
 	return func(options *Options) {
@@ -344,6 +350,9 @@ func validateImageOptions(model ImageModel, options Options) error {
 	}
 	if options.MaxRetryDelay != nil && *options.MaxRetryDelay < 0 {
 		return invalidImageOptionsError(model, "max retry delay must be non-negative")
+	}
+	if options.OAuthMinimumValidity != nil && *options.OAuthMinimumValidity < 0 {
+		return invalidImageOptionsError(model, "oauth minimum validity must be non-negative")
 	}
 	return nil
 }

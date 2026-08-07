@@ -29,12 +29,20 @@ now carry request-scoped arbitrary sampling parameters with explicit override
 precedence.
 Custom OpenAI-compatible Chat Completions models can also opt into safely
 clamped top-level thinking-token budgets for compatible inference servers.
+Text, image, and embedding requests can now ask stored credentials and built-in
+caller-owned OAuth token providers to refresh before dispatch when too little
+token lifetime remains, without changing existing refresh defaults.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
 
 ## Added
 
+- `WithOAuthMinimumValidity`, `WithImageOAuthMinimumValidity`, and
+  `WithEmbeddingOAuthMinimumValidity` now let callers require additional OAuth
+  lifetime before dispatch. Stored credentials refresh serially and persist
+  rotations, while built-in caller-owned token providers update their in-memory
+  credentials through the existing refresh callbacks.
 - `OpenAIOptions.SamplingParameters` now carries arbitrary request-scoped
   sampling fields for OpenAI-compatible Chat Completions, Responses, and Azure
   Responses. These fields override typed request values, while raw provider
@@ -65,6 +73,10 @@ evaluations.
 
 ## Compatibility
 
+- Omitted or zero OAuth minimum-validity options retain existing provider
+  refresh timing. Request requirements can lengthen but cannot shorten a
+  provider's configured refresh window, and credentials without a known expiry
+  remain usable without an early refresh.
 - Google Generative AI and native Vertex Gemini 3 requests now preserve
   normalized tool-call IDs on replayed function calls and matching tool
   results. Older Vertex Gemini requests continue omitting unsupported IDs.

@@ -281,13 +281,15 @@ func TestStoredCredentialAuthResolverStoredMismatchBlocksEnvironmentFallback(t *
 func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 	t.Parallel()
 
+	now := time.Date(2026, 8, 7, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	store := sigma.NewInMemoryCredentialStore()
 	_, _, err := store.ModifyCredential(context.Background(), sigma.ProviderAnthropic, func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
 		return sigma.StoredCredential{
 			Type:         sigma.CredentialTypeOAuthToken,
 			Value:        "old-token",
 			RefreshToken: "refresh-token",
-			Expiry:       time.Unix(1, 0),
+			Expiry:       now.Add(10 * time.Minute),
 		}, true, nil
 	})
 	if err != nil {
@@ -299,6 +301,7 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 	registry := sigma.NewRegistry()
 	if err := sigma.RegisterProviderAuth(registry, sigma.ProviderAnthropic, sigma.ProviderAuth{
 		OAuth: &sigma.OAuthAuth{
+			RefreshBefore: time.Minute,
 			Refresh: func(context.Context, sigma.StoredCredential) (sigma.StoredCredential, error) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -308,7 +311,7 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 					Type:         sigma.CredentialTypeOAuthToken,
 					Value:        "new-token",
 					RefreshToken: "next-refresh",
-					Expiry:       time.Now().Add(time.Hour),
+					Expiry:       now.Add(5 * time.Minute),
 				}, nil
 			},
 			Credential: func(_ context.Context, _ sigma.Model, _ sigma.Options, stored sigma.StoredCredential) (sigma.Credential, error) {
@@ -318,8 +321,9 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RegisterProviderAuth returned error: %v", err)
 	}
-	resolver := sigma.StoredCredentialAuthResolver{Store: store, Registry: registry}
+	resolver := sigma.StoredCredentialAuthResolver{Store: store, Registry: registry, Now: func() time.Time { return now }}
 	model := sigma.Model{Provider: sigma.ProviderAnthropic, ID: "claude-test"}
+	options := sigma.Options{OAuthMinimumValidity: &minimumValidity}
 
 	var wg sync.WaitGroup
 	values := make(chan string, 2)
@@ -327,7 +331,7 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			credential, err := resolver.Resolve(context.Background(), model, sigma.Options{})
+			credential, err := resolver.Resolve(context.Background(), model, options)
 			if err != nil {
 				t.Errorf("Resolve returned error: %v", err)
 				return

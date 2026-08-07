@@ -168,6 +168,12 @@ func WithEmbeddingAPIKey(apiKey string) EmbeddingOption {
 	return embeddingOptionFromOption(WithAPIKey(apiKey))
 }
 
+// WithEmbeddingOAuthMinimumValidity requires an OAuth credential to retain at
+// least the requested lifetime before embedding dispatch.
+func WithEmbeddingOAuthMinimumValidity(minimumValidity time.Duration) EmbeddingOption {
+	return embeddingOptionFromOption(WithOAuthMinimumValidity(minimumValidity))
+}
+
 // WithEmbeddingHTTPClient configures the HTTP client exposed to embedding providers.
 func WithEmbeddingHTTPClient(httpClient *http.Client) EmbeddingOption {
 	return func(options *Options) {
@@ -1294,6 +1300,9 @@ func validateEmbeddingOptions(model EmbeddingModel, req EmbeddingRequest, option
 	}
 	if options.MaxRetryDelay != nil && *options.MaxRetryDelay < 0 {
 		return invalidEmbeddingOptionsError(model, "max retry delay must be non-negative")
+	}
+	if options.OAuthMinimumValidity != nil && *options.OAuthMinimumValidity < 0 {
+		return invalidEmbeddingOptionsError(model, "oauth minimum validity must be non-negative")
 	}
 	return nil
 }

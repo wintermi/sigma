@@ -272,10 +272,11 @@ func TestRefreshAnthropicTokenFailureRedactsBody(t *testing.T) {
 	}
 }
 
-func TestAnthropicOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
+func TestAnthropicOAuthTokenProviderHonorsMinimumValidityAndCallsBack(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	refreshed := make(chan AnthropicOAuthCredentials, 1)
 	client := anthropicOAuthTestClient(t, func(*http.Request) *http.Response {
 		return anthropicOAuthJSONResponse(http.StatusOK, map[string]any{
@@ -288,7 +289,7 @@ func TestAnthropicOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
 	provider := NewAnthropicOAuthTokenProvider(AnthropicOAuthCredentials{
 		AccessToken:  "sk-ant-oat01-expired",
 		RefreshToken: "refresh-token",
-		Expiry:       now.Add(30 * time.Second),
+		Expiry:       now.Add(10 * time.Minute),
 	}, AnthropicOAuthTokenProviderOptions{
 		HTTPClient: client,
 		Now:        func() time.Time { return now },
@@ -299,7 +300,7 @@ func TestAnthropicOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
 	})
 
 	model := sigma.Model{ID: "claude-test", Provider: sigma.ProviderAnthropic}
-	credential, err := provider.Token(context.Background(), model, sigma.Options{})
+	credential, err := provider.Token(context.Background(), model, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Token returned error: %v", err)
 	}

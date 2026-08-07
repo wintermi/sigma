@@ -107,9 +107,10 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 		Model:    sigmatest.EmbeddingModelID,
 		Provider: sigmatest.ProviderID,
 	}
-	provider := sigmatest.NewFauxEmbeddingProvider(sigmatest.EmbeddingScript{
+	script := sigmatest.EmbeddingScript{
 		Response: expected,
-	})
+	}
+	provider := sigmatest.NewFauxEmbeddingProvider(script, script)
 	registry, err := sigmatest.EmbeddingRegistry(provider)
 	if err != nil {
 		t.Fatalf("EmbeddingRegistry returned error: %v", err)
@@ -117,6 +118,7 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 	client := sigma.NewClient(
 		sigma.WithRegistry(registry),
 		sigma.WithDefaultHeader("x-default", "default"),
+		sigma.WithDefaultOptions(sigma.WithOAuthMinimumValidity(30*time.Minute)),
 	)
 
 	req := sigma.EmbeddingRequest{
@@ -124,6 +126,17 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 		Dimensions: 3,
 		InputType:  sigma.EmbeddingInputTypeDocument,
 	}
+	if _, err := client.Embed(context.Background(), sigmatest.EmbeddingModel(), req); err != nil {
+		t.Fatalf("Embed with client defaults returned error: %v", err)
+	}
+	defaultCapture, ok := provider.LastRequest()
+	if !ok {
+		t.Fatal("LastRequest returned no default request")
+	}
+	if defaultCapture.Options.OAuthMinimumValidity == nil || *defaultCapture.Options.OAuthMinimumValidity != 30*time.Minute {
+		t.Fatalf("default OAuth minimum validity = %v, want 30m", defaultCapture.Options.OAuthMinimumValidity)
+	}
+
 	got, err := client.Embed(
 		context.Background(),
 		sigmatest.EmbeddingModel(),
@@ -131,6 +144,7 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 		sigma.WithEmbeddingHeader("x-call", "call"),
 		sigma.WithEmbeddingMetadataValue("trace", "enabled"),
 		sigma.WithEmbeddingProviderOption(sigmatest.ProviderID, "payloadHook", "test-hook"),
+		sigma.WithEmbeddingOAuthMinimumValidity(10*time.Minute),
 	)
 	if err != nil {
 		t.Fatalf("Embed returned error: %v", err)
@@ -160,6 +174,33 @@ func TestEmbedWithFauxProvider(t *testing.T) {
 	}
 	if got, want := capture.Options.ProviderOptions[sigmatest.ProviderID]["payloadHook"], "test-hook"; got != want {
 		t.Fatalf("provider option = %v, want %v", got, want)
+	}
+	if capture.Options.OAuthMinimumValidity == nil || *capture.Options.OAuthMinimumValidity != 10*time.Minute {
+		t.Fatalf("OAuth minimum validity = %v, want 10m", capture.Options.OAuthMinimumValidity)
+	}
+}
+
+func TestEmbedRejectsNegativeOAuthMinimumValidityBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxEmbeddingProvider()
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatalf("EmbeddingRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err = client.Embed(
+		context.Background(),
+		sigmatest.EmbeddingModel(),
+		sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
+		sigma.WithEmbeddingOAuthMinimumValidity(-time.Second),
+	)
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("Embed error = %v, want ErrInvalidOptions", err)
+	}
+	if got := len(provider.Requests()); got != 0 {
+		t.Fatalf("provider request count = %d, want 0", got)
 	}
 }
 

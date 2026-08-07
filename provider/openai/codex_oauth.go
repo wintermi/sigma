@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -382,7 +383,7 @@ func storedStringMetadata(metadata map[string]any, key string) string {
 	return ""
 }
 
-func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -394,7 +395,7 @@ func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, 
 		}
 	}
 
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 
@@ -420,8 +421,8 @@ func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, 
 	}, nil
 }
 
-func (p *codexOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *codexOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {
@@ -447,11 +448,8 @@ func (p *codexOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sig
 	return nil
 }
 
-func (p *codexOAuthTokenProvider) shouldRefresh() bool {
-	if p.credentials.Expiry.IsZero() {
-		return false
-	}
-	return !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *codexOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
 func newOpenAICodexBrowserAuthorizationFlow(state string, redirectURI string) (codexBrowserAuthorizationFlow, error) {

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -214,7 +215,7 @@ func (p *XAIOAuthTokenProvider) Resolve(ctx context.Context, model sigma.Model, 
 }
 
 // Token implements sigma.OAuthTokenProvider.
-func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -225,7 +226,7 @@ func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ 
 			Sources:  []string{"xai-oauth"},
 		}
 	}
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 	return sigma.Credential{
@@ -236,8 +237,8 @@ func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ 
 	}, nil
 }
 
-func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {
@@ -264,8 +265,8 @@ func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma
 	return nil
 }
 
-func (p *XAIOAuthTokenProvider) shouldRefresh() bool {
-	return !p.credentials.Expiry.IsZero() && !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *XAIOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
 func storedXAIOAuthCredential(credentials XAIOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {

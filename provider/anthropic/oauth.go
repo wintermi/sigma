@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -266,7 +267,7 @@ func copyStringMap(values map[string]string) map[string]string {
 	return copied
 }
 
-func (p *anthropicOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *anthropicOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -278,7 +279,7 @@ func (p *anthropicOAuthTokenProvider) Token(ctx context.Context, model sigma.Mod
 		}
 	}
 
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 
@@ -290,8 +291,8 @@ func (p *anthropicOAuthTokenProvider) Token(ctx context.Context, model sigma.Mod
 	}, nil
 }
 
-func (p *anthropicOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *anthropicOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {
@@ -317,11 +318,8 @@ func (p *anthropicOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model
 	return nil
 }
 
-func (p *anthropicOAuthTokenProvider) shouldRefresh() bool {
-	if p.credentials.Expiry.IsZero() {
-		return false
-	}
-	return !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *anthropicOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
 func anthropicAuthorizationURL(challenge string, state string, redirectURI string) (string, error) {

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -270,7 +271,7 @@ func NewRadiusOAuthTokenProvider(credentials RadiusOAuthCredentials, opts Radius
 }
 
 // Token implements sigma.OAuthTokenProvider.
-func (p *RadiusOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *RadiusOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	if p == nil {
 		return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"radius-oauth"}}
 	}
@@ -279,7 +280,7 @@ func (p *RadiusOAuthTokenProvider) Token(ctx context.Context, model sigma.Model,
 	if p.credentials.AccessToken == "" {
 		return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"radius-oauth"}}
 	}
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 	return sigma.Credential{
@@ -290,12 +291,12 @@ func (p *RadiusOAuthTokenProvider) Token(ctx context.Context, model sigma.Model,
 	}, nil
 }
 
-func (p *RadiusOAuthTokenProvider) shouldRefresh() bool {
-	return !p.credentials.Expiry.IsZero() && !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *RadiusOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
-func (p *RadiusOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *RadiusOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {

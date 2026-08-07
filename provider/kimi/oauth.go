@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -198,7 +199,7 @@ func (p *KimiCodingOAuthTokenProvider) Resolve(ctx context.Context, model sigma.
 }
 
 // Token implements sigma.OAuthTokenProvider.
-func (p *KimiCodingOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *KimiCodingOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -209,7 +210,7 @@ func (p *KimiCodingOAuthTokenProvider) Token(ctx context.Context, model sigma.Mo
 			Sources:  []string{"kimi-coding-oauth"},
 		}
 	}
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 	return sigma.Credential{
@@ -220,8 +221,8 @@ func (p *KimiCodingOAuthTokenProvider) Token(ctx context.Context, model sigma.Mo
 	}, nil
 }
 
-func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {
@@ -245,8 +246,8 @@ func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, mode
 	return nil
 }
 
-func (p *KimiCodingOAuthTokenProvider) shouldRefresh() bool {
-	return !p.credentials.Expiry.IsZero() && !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *KimiCodingOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
 func storedKimiCodingOAuthCredential(credentials KimiCodingOAuthCredentials, previous sigma.StoredCredential) sigma.StoredCredential {

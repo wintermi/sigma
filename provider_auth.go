@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 )
 
 const defaultOAuthRefreshBefore = time.Minute
@@ -199,11 +201,11 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 	if now == nil {
 		now = time.Now
 	}
-	if credentialNeedsOAuthRefresh(credential, now, refreshBefore) {
+	if oauthvalidity.NeedsRefresh(now(), credential.Expiry, refreshBefore, opts.OAuthMinimumValidity) {
 		if oauth.Refresh == nil {
 			return Credential{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)
 		}
-		post, ok, err := r.refreshStoredOAuth(ctx, model.Provider, oauth, now, refreshBefore)
+		post, ok, err := r.refreshStoredOAuth(ctx, model.Provider, oauth, credential, now, refreshBefore, opts.OAuthMinimumValidity)
 		if err != nil {
 			return Credential{}, fmt.Errorf("provider oauth: refresh %s: %w", model.Provider, err)
 		}
@@ -229,14 +231,19 @@ func (r StoredCredentialAuthResolver) refreshStoredOAuth(
 	ctx context.Context,
 	provider ProviderID,
 	oauth OAuthAuth,
+	observed StoredCredential,
 	now func() time.Time,
 	refreshBefore time.Duration,
+	minimumValidity *time.Duration,
 ) (StoredCredential, bool, error) {
 	credential, ok, err := r.Store.ModifyCredential(ctx, provider, func(current StoredCredential, currentOK bool) (StoredCredential, bool, error) {
 		if !currentOK || current.Type != CredentialTypeOAuthToken {
 			return StoredCredential{}, false, nil
 		}
-		if !credentialNeedsOAuthRefresh(current, now, refreshBefore) {
+		if !sameOAuthCredential(current, observed) {
+			return StoredCredential{}, false, nil
+		}
+		if !oauthvalidity.NeedsRefresh(now(), current.Expiry, refreshBefore, minimumValidity) {
 			return StoredCredential{}, false, nil
 		}
 		refreshed, err := oauth.Refresh(ctx, current)
@@ -252,8 +259,11 @@ func (r StoredCredentialAuthResolver) refreshStoredOAuth(
 	return credential, ok, nil
 }
 
-func credentialNeedsOAuthRefresh(credential StoredCredential, now func() time.Time, refreshBefore time.Duration) bool {
-	return !credential.Expiry.IsZero() && !now().Add(refreshBefore).Before(credential.Expiry)
+func sameOAuthCredential(left StoredCredential, right StoredCredential) bool {
+	return left.Type == right.Type &&
+		left.Value == right.Value &&
+		left.RefreshToken == right.RefreshToken &&
+		left.Expiry.Equal(right.Expiry)
 }
 
 func (r StoredCredentialAuthResolver) resolveFallbackResolution(ctx context.Context, model Model, opts Options, source string) (AuthResolution, error) {

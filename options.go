@@ -190,6 +190,7 @@ type Options struct {
 	MaxTokens                    *int
 	AutomaticMaxTokensForContext *bool
 	APIKey                       string
+	OAuthMinimumValidity         *time.Duration
 	HTTPClient                   *http.Client
 	AuthResolver                 AuthResolver
 	Transport                    Transport
@@ -251,6 +252,15 @@ func WithAutomaticMaxTokensForContext(enabled bool) Option {
 func WithAPIKey(apiKey string) Option {
 	return func(options *Options) {
 		options.APIKey = apiKey
+	}
+}
+
+// WithOAuthMinimumValidity requires an OAuth credential to retain at least the
+// requested lifetime before dispatch. It may trigger an early refresh but does
+// not shorten provider-configured refresh windows.
+func WithOAuthMinimumValidity(minimumValidity time.Duration) Option {
+	return func(options *Options) {
+		options.OAuthMinimumValidity = durationPtr(minimumValidity)
 	}
 }
 
@@ -523,6 +533,7 @@ func cloneOptions(options Options) Options {
 		MaxTokens:                    cloneIntPtr(options.MaxTokens),
 		AutomaticMaxTokensForContext: cloneBoolPtr(options.AutomaticMaxTokensForContext),
 		APIKey:                       options.APIKey,
+		OAuthMinimumValidity:         cloneDurationPtr(options.OAuthMinimumValidity),
 		HTTPClient:                   options.HTTPClient,
 		AuthResolver:                 options.AuthResolver,
 		Transport:                    options.Transport,

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -363,7 +364,7 @@ func (p *GitHubCopilotOAuthTokenProvider) Resolve(ctx context.Context, model sig
 }
 
 // Token implements sigma.OAuthTokenProvider.
-func (p *GitHubCopilotOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, _ sigma.Options) (sigma.Credential, error) {
+func (p *GitHubCopilotOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -374,7 +375,7 @@ func (p *GitHubCopilotOAuthTokenProvider) Token(ctx context.Context, model sigma
 			Sources:  []string{"github-copilot-oauth"},
 		}
 	}
-	if err := p.refreshIfNeeded(ctx, model); err != nil {
+	if err := p.refreshIfNeeded(ctx, model, opts); err != nil {
 		return sigma.Credential{}, err
 	}
 	metadata := map[string]any{}
@@ -393,8 +394,8 @@ func (p *GitHubCopilotOAuthTokenProvider) Token(ctx context.Context, model sigma
 	}, nil
 }
 
-func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model) error {
-	if !p.shouldRefresh() {
+func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	if !p.shouldRefresh(opts) {
 		return nil
 	}
 	if p.credentials.RefreshToken == "" {
@@ -421,11 +422,8 @@ func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, m
 	return nil
 }
 
-func (p *GitHubCopilotOAuthTokenProvider) shouldRefresh() bool {
-	if p.credentials.Expiry.IsZero() {
-		return false
-	}
-	return !p.now().Add(p.refreshBefore).Before(p.credentials.Expiry)
+func (p *GitHubCopilotOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
+	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
 }
 
 // EnableGitHubCopilotModel enables one GitHub Copilot model policy for the

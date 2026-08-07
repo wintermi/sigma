@@ -328,6 +328,9 @@ func mergeOptions(base Options, override Options) Options {
 	if override.APIKey != "" {
 		merged.APIKey = override.APIKey
 	}
+	if override.OAuthMinimumValidity != nil {
+		merged.OAuthMinimumValidity = cloneDurationPtr(override.OAuthMinimumValidity)
+	}
 	if override.HTTPClient != nil {
 		merged.HTTPClient = override.HTTPClient
 	}
@@ -584,6 +587,9 @@ func validateOptions(model Model, options Options) error {
 	}
 	if options.MaxRetryDelay != nil && *options.MaxRetryDelay < 0 {
 		return invalidOptionsError(model, "max retry delay must be non-negative")
+	}
+	if options.OAuthMinimumValidity != nil && *options.OAuthMinimumValidity < 0 {
+		return invalidOptionsError(model, "oauth minimum validity must be non-negative")
 	}
 	if options.ThinkingBudgetTokens != nil && *options.ThinkingBudgetTokens < 0 {
 		return invalidOptionsError(model, "thinking budget tokens must be non-negative")

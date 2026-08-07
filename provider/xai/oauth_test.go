@@ -288,6 +288,7 @@ func TestXAIOAuthTokenProviderRefreshesAndReportsCallbackFailure(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 7, 18, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	client := xaiOAuthTestHTTPClient(t, func(*http.Request) *http.Response {
 		return xaiOAuthJSONResponse(http.StatusOK, `{"access_token":"refreshed-access"}`)
 	})
@@ -295,7 +296,7 @@ func TestXAIOAuthTokenProviderRefreshesAndReportsCallbackFailure(t *testing.T) {
 	provider := NewXAIOAuthTokenProvider(XAIOAuthCredentials{
 		AccessToken:  "old-access",
 		RefreshToken: "old-refresh",
-		Expiry:       now,
+		Expiry:       now.Add(10 * time.Minute),
 	}, XAIOAuthTokenProviderOptions{
 		Client:     xaiOAuthTestClientConfig,
 		HTTPClient: client,
@@ -305,7 +306,7 @@ func TestXAIOAuthTokenProviderRefreshesAndReportsCallbackFailure(t *testing.T) {
 			return nil
 		},
 	})
-	credential, err := provider.Token(context.Background(), sigma.Model{Provider: sigma.ProviderXAI, ID: "grok-test"}, sigma.Options{})
+	credential, err := provider.Token(context.Background(), sigma.Model{Provider: sigma.ProviderXAI, ID: "grok-test"}, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Token returned error: %v", err)
 	}

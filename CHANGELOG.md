@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Text, image, and embedding requests can now require a minimum remaining OAuth
+  lifetime before dispatch, triggering an early serialized refresh for stored
+  credentials and Sigma's built-in caller-owned token providers without
+  shortening provider refresh windows or changing omitted-option behavior.
 - OpenAI-compatible Chat Completions, Responses, and Azure Responses requests
   now accept arbitrary request-scoped sampling parameters through
   `OpenAIOptions.SamplingParameters`; sampling values override typed request

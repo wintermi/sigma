@@ -714,10 +714,11 @@ func TestCodexAccountIDFromToken(t *testing.T) {
 	}
 }
 
-func TestCodexOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
+func TestCodexOAuthTokenProviderHonorsMinimumValidityAndCallsBack(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 5, 31, 12, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	accessToken := codexTestJWT("acct_refreshed")
 	client := codexOAuthTestClient(t, func(*http.Request) *http.Response {
 		return codexOAuthJSONResponse(http.StatusOK, map[string]any{
@@ -730,7 +731,7 @@ func TestCodexOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
 	provider := NewCodexOAuthTokenProvider(CodexOAuthCredentials{
 		AccessToken:  codexTestJWT("acct_old"),
 		RefreshToken: "old-refresh-token",
-		Expiry:       now.Add(30 * time.Second),
+		Expiry:       now.Add(10 * time.Minute),
 		AccountID:    "acct_old",
 	}, CodexOAuthTokenProviderOptions{
 		HTTPClient:    client,
@@ -742,7 +743,7 @@ func TestCodexOAuthTokenProviderRefreshesAndCallsBack(t *testing.T) {
 		},
 	})
 
-	credential, err := provider.Token(context.Background(), sigma.Model{ID: "codex", Provider: sigma.ProviderOpenAI}, sigma.Options{})
+	credential, err := provider.Token(context.Background(), sigma.Model{ID: "codex", Provider: sigma.ProviderOpenAI}, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Token returned error: %v", err)
 	}

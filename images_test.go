@@ -95,9 +95,10 @@ func TestGenerateImagesWithFauxProvider(t *testing.T) {
 		Model:    sigmatest.ImageModelID,
 		Provider: sigmatest.ProviderID,
 	}
-	provider := sigmatest.NewFauxImageProvider(sigmatest.ImageScript{
+	script := sigmatest.ImageScript{
 		Response: expected,
-	})
+	}
+	provider := sigmatest.NewFauxImageProvider(script, script)
 	registry, err := sigmatest.ImageRegistry(provider)
 	if err != nil {
 		t.Fatalf("ImageRegistry returned error: %v", err)
@@ -105,6 +106,7 @@ func TestGenerateImagesWithFauxProvider(t *testing.T) {
 	client := sigma.NewClient(
 		sigma.WithRegistry(registry),
 		sigma.WithDefaultHeader("x-default", "default"),
+		sigma.WithDefaultOptions(sigma.WithOAuthMinimumValidity(30*time.Minute)),
 	)
 
 	req := sigma.ImageRequest{
@@ -114,6 +116,17 @@ func TestGenerateImagesWithFauxProvider(t *testing.T) {
 		MIMEType: "image/png",
 		Count:    1,
 	}
+	if _, err := client.GenerateImages(context.Background(), sigmatest.ImageModel(), req); err != nil {
+		t.Fatalf("GenerateImages with client defaults returned error: %v", err)
+	}
+	defaultCapture, ok := provider.LastRequest()
+	if !ok {
+		t.Fatal("LastRequest returned no default request")
+	}
+	if defaultCapture.Options.OAuthMinimumValidity == nil || *defaultCapture.Options.OAuthMinimumValidity != 30*time.Minute {
+		t.Fatalf("default OAuth minimum validity = %v, want 30m", defaultCapture.Options.OAuthMinimumValidity)
+	}
+
 	got, err := client.GenerateImages(
 		context.Background(),
 		sigmatest.ImageModel(),
@@ -121,6 +134,7 @@ func TestGenerateImagesWithFauxProvider(t *testing.T) {
 		sigma.WithImageHeader("x-call", "call"),
 		sigma.WithImageMetadataValue("trace", "enabled"),
 		sigma.WithImageProviderOption(sigmatest.ProviderID, "payloadHook", "test-hook"),
+		sigma.WithImageOAuthMinimumValidity(10*time.Minute),
 	)
 	if err != nil {
 		t.Fatalf("GenerateImages returned error: %v", err)
@@ -147,6 +161,33 @@ func TestGenerateImagesWithFauxProvider(t *testing.T) {
 	}
 	if got, want := capture.Options.ProviderOptions[sigmatest.ProviderID]["payloadHook"], "test-hook"; got != want {
 		t.Fatalf("provider option = %v, want %v", got, want)
+	}
+	if capture.Options.OAuthMinimumValidity == nil || *capture.Options.OAuthMinimumValidity != 10*time.Minute {
+		t.Fatalf("OAuth minimum validity = %v, want 10m", capture.Options.OAuthMinimumValidity)
+	}
+}
+
+func TestGenerateImagesRejectsNegativeOAuthMinimumValidityBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxImageProvider()
+	registry, err := sigmatest.ImageRegistry(provider)
+	if err != nil {
+		t.Fatalf("ImageRegistry returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err = client.GenerateImages(
+		context.Background(),
+		sigmatest.ImageModel(),
+		sigma.ImageRequest{Prompt: "draw a square"},
+		sigma.WithImageOAuthMinimumValidity(-time.Second),
+	)
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("GenerateImages error = %v, want ErrInvalidOptions", err)
+	}
+	if got := len(provider.Requests()); got != 0 {
+		t.Fatalf("provider request count = %d, want 0", got)
 	}
 }
 

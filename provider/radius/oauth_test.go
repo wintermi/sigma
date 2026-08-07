@@ -254,11 +254,12 @@ func TestRadiusOAuthRefreshAndTokenProvider(t *testing.T) {
 	}
 
 	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)
+	minimumValidity := 30 * time.Minute
 	refreshed := make(chan RadiusOAuthCredentials, 1)
 	provider := NewRadiusOAuthTokenProvider(RadiusOAuthCredentials{
 		AccessToken:  "expired-access",
 		RefreshToken: "old-refresh",
-		Expiry:       now.Add(30 * time.Second),
+		Expiry:       now.Add(10 * time.Minute),
 	}, RadiusOAuthTokenProviderOptions{
 		Client: radiusOAuthTestClientConfig(server.URL),
 		Now:    func() time.Time { return now },
@@ -267,7 +268,7 @@ func TestRadiusOAuthRefreshAndTokenProvider(t *testing.T) {
 			return nil
 		},
 	})
-	credential, err := provider.Token(context.Background(), sigma.Model{ID: "radius-model", Provider: sigma.ProviderRadius}, sigma.Options{})
+	credential, err := provider.Token(context.Background(), sigma.Model{ID: "radius-model", Provider: sigma.ProviderRadius}, sigma.Options{OAuthMinimumValidity: &minimumValidity})
 	if err != nil {
 		t.Fatalf("Token returned error: %v", err)
 	}
