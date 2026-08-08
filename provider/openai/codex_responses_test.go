@@ -1609,6 +1609,42 @@ func TestCodexResponsesIncompletePreservesEndTurnAndMaxTokens(t *testing.T) {
 	if got, want := final.ProviderMetadata["end_turn"], false; got != want {
 		t.Fatalf("end_turn = %v, want %v", got, want)
 	}
+	if got, want := final.ProviderMetadata["incomplete_reason"], "max_output_tokens"; got != want {
+		t.Fatalf("incomplete reason = %v, want %v", got, want)
+	}
+}
+
+func TestCodexResponsesUnknownIncompleteReasonIsProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"codex_incomplete_unknown","status":"incomplete","end_turn":false,"incomplete_details":{"reason":"max_time_limit"},"output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"txt_incomplete","text":"partial"}]}],"usage":{"input_tokens":20,"output_tokens":8,"total_tokens":28}}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-incomplete-unknown")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("Complete error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("content = %#v, want partial text", final.Content)
+	}
+	if final.Usage == nil || final.Usage.OutputTokens != 8 {
+		t.Fatalf("usage = %#v, want 8 output tokens", final.Usage)
+	}
+	if got, want := final.ProviderMetadata["end_turn"], false; got != want {
+		t.Fatalf("end_turn = %v, want %v", got, want)
+	}
+	if got, want := final.ProviderMetadata["incomplete_reason"], "max_time_limit"; got != want {
+		t.Fatalf("incomplete reason = %v, want %v", got, want)
+	}
 }
 
 func TestCodexResponsesToolCallStreaming(t *testing.T) {

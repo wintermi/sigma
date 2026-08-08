@@ -41,10 +41,16 @@ retained only when their loading context can be replayed safely. Codex Responses
 SSE and WebSocket streams also recognize `response.done` completion and retain
 explicit `end_turn` values as opaque diagnostics. Provider failures that report
 an exhausted upstream request buffer are now classified as retryable for
-caller-owned recovery.
+caller-owned recovery. Responses incomplete terminals now distinguish
+max-output and content-filter stops from missing or unknown reasons, with a
+provider-neutral helper for bounded caller-owned max-token recovery.
 
 ## Added
 
+- `IsRecoverableMaxTokens` reports when a max-token completion used fewer
+  output tokens than the caller's original requested or model limit. It is
+  advisory only; callers retain control of compaction, retry budgets, and
+  request replay.
 - The reviewed GPT-5.4, GPT-5.4 Mini/Pro, GPT-5.5, and GPT-5.6 OpenAI Responses
   rows plus GPT-5.6 Codex Responses rows now encode deferred client tools as
   native developer-role `additional_tools` items immediately after the matching
@@ -85,6 +91,10 @@ caller-owned recovery.
 
 ## Compatibility
 
+- OpenAI, Azure, and Codex Responses map incomplete `max_output_tokens` and
+  `content_filter` reasons to successful normalized stops. Missing and unknown
+  reasons return typed provider errors while preserving partial content, usage,
+  cost, terminal status, Codex `end_turn`, and raw incomplete diagnostics.
 - Upstream request-buffer exhaustion now produces a transient classification
   and same-model retry advice even when accompanied by a bad-request status.
   Sigma preserves partial finals and does not automatically replay post-body

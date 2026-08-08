@@ -459,6 +459,37 @@ func TestAzureResponsesModelConfigJSONOmitEmptyAndRoundTrip(t *testing.T) {
 	}
 }
 
+func TestAzureResponsesUnknownIncompleteReasonIsProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"azure_incomplete_unknown","status":"incomplete","incomplete_details":{"reason":"max_time_limit"},"output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"txt_incomplete","text":"partial"}]}],"usage":{"input_tokens":20,"output_tokens":8,"total_tokens":28}}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("azure-incomplete-unknown")
+	model := azureResponsesTestModel(providerID)
+	model.AzureOpenAIResponses.Endpoint = server.URL
+	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("Complete error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("content = %#v, want partial text", final.Content)
+	}
+	if final.Usage == nil || final.Usage.OutputTokens != 8 {
+		t.Fatalf("usage = %#v, want 8 output tokens", final.Usage)
+	}
+	if got, want := final.ProviderMetadata["incomplete_reason"], "max_time_limit"; got != want {
+		t.Fatalf("incomplete reason = %v, want %v", got, want)
+	}
+}
+
 func azureResponsesTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.Model, resolver sigma.AuthResolver) *sigma.Client {
 	t.Helper()
 

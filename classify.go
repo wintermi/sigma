@@ -252,6 +252,16 @@ func IsContextOverflow(message AssistantMessage, contextWindow int) bool {
 		inputTokens*100 >= contextWindow*99
 }
 
+// IsRecoverableMaxTokens reports whether a max-token stop ended below the
+// caller's intended output limit. Callers should pass the original requested
+// or model limit before any context-based clamping.
+func IsRecoverableMaxTokens(message AssistantMessage, desiredMaxOutput int) bool {
+	return message.StopReason == StopReasonMaxTokens &&
+		desiredMaxOutput > 0 &&
+		message.Usage != nil &&
+		message.Usage.OutputTokens < desiredMaxOutput
+}
+
 func diagnosticClass(diagnostic Diagnostic) ErrorClass {
 	code := normalizedErrorText(diagnostic.ProviderCode)
 	if class, ok := classForProviderCode(code); ok {

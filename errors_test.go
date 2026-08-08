@@ -515,6 +515,70 @@ func TestIsContextOverflow(t *testing.T) {
 	}
 }
 
+func TestIsRecoverableMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		message          AssistantMessage
+		desiredMaxOutput int
+		want             bool
+	}{
+		{
+			name:             "short output",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{OutputTokens: 16}},
+			desiredMaxOutput: 128000,
+			want:             true,
+		},
+		{
+			name:             "zero output",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{}},
+			desiredMaxOutput: 128000,
+			want:             true,
+		},
+		{
+			name:             "exact limit",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{OutputTokens: 1024}},
+			desiredMaxOutput: 1024,
+		},
+		{
+			name:             "above limit",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{OutputTokens: 1025}},
+			desiredMaxOutput: 1024,
+		},
+		{
+			name:             "missing usage",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens},
+			desiredMaxOutput: 1024,
+		},
+		{
+			name:             "zero desired output",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{}},
+			desiredMaxOutput: 0,
+		},
+		{
+			name:             "negative desired output",
+			message:          AssistantMessage{StopReason: StopReasonMaxTokens, Usage: &Usage{}},
+			desiredMaxOutput: -1,
+		},
+		{
+			name:             "other stop reason",
+			message:          AssistantMessage{StopReason: StopReasonEndTurn, Usage: &Usage{OutputTokens: 16}},
+			desiredMaxOutput: 128000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsRecoverableMaxTokens(tt.message, tt.desiredMaxOutput); got != tt.want {
+				t.Fatalf("IsRecoverableMaxTokens() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRedactionCoversHeadersQueriesJSONAndMultilineBodies(t *testing.T) {
 	t.Parallel()
 

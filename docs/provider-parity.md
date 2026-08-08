@@ -130,8 +130,12 @@ Release scope values:
   reviewed GPT-5.6 Codex models do the same, while older capable Codex models
   retain client tool-search replay. Tool-call namespaces are opaque provider
   metadata and are replayed only with a compatible model or matching deferred
-  tool load. Hosted-tool execution, namespace-definition authoring, and
-  background Responses remain deferred.
+  tool load. Shared incomplete terminals have fixture-tested max-output and
+  content-filter normalization, reject missing or unknown reasons while
+  preserving partial diagnostics, and expose advisory bounded max-token
+  recovery without automatic replay. Hosted-tool execution,
+  namespace-definition authoring, agent-driven compaction, and background
+  Responses remain deferred.
 - Vercel AI Gateway uses the shared Anthropic Messages adapter through a thin
   provider wrapper. Its first-class coverage is limited to direct route
   registration, request shape, generated metadata reuse, provider errors, and

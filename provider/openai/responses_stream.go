@@ -131,6 +131,7 @@ type responsesStreamParser struct {
 	providerModel       string
 	responseServiceTier string
 	terminalStatus      string
+	incompleteReason    string
 	terminalEndTurn     *bool
 	usage               *sigma.Usage
 	stopReason          sigma.StopReason
@@ -257,7 +258,7 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
 		}
 		if p.stopReason == "" || p.stopReason == sigma.StopReasonUnknown {
-			p.stopReason = sigma.StopReasonMaxTokens
+			return false, openAIResponsesIncompleteError(p.model, p.incompleteReason)
 		}
 		return true, p.emitStart(ctx)
 	case "response.failed":
@@ -379,6 +380,17 @@ func openAIResponsesStreamProviderError(model sigma.Model, err *responsesError) 
 	)
 }
 
+func openAIResponsesIncompleteError(model sigma.Model, reason string) *sigma.ProviderError {
+	message := "response incomplete without a provider reason"
+	if reason != "" {
+		message = "response incomplete: " + reason
+	}
+	return openAIResponsesStreamProviderError(model, &responsesError{
+		Code:    "response_incomplete",
+		Message: message,
+	})
+}
+
 func (p *responsesStreamParser) captureEventMetadata(event responsesEvent) {
 	if event.ResponseID != "" {
 		p.responseID = event.ResponseID
@@ -403,9 +415,6 @@ func (p *responsesStreamParser) captureResponse(response responsesResponse) {
 		usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*response.Usage))
 		p.usage = &usage
 	}
-	if response.IncompleteDetails != nil && response.IncompleteDetails.Reason != "" {
-		p.stopReason = responsesStopReason(response.IncompleteDetails.Reason)
-	}
 	for index, item := range response.Output {
 		p.captureOutputItem(index, item)
 	}
@@ -413,6 +422,11 @@ func (p *responsesStreamParser) captureResponse(response responsesResponse) {
 
 func (p *responsesStreamParser) captureTerminalResponse(response responsesResponse) {
 	p.terminalStatus = response.Status
+	p.incompleteReason = ""
+	if response.IncompleteDetails != nil && response.IncompleteDetails.Reason != "" {
+		p.incompleteReason = response.IncompleteDetails.Reason
+		p.stopReason = responsesStopReason(response.IncompleteDetails.Reason)
+	}
 	if p.options.codexTerminalSignals {
 		p.terminalEndTurn = response.EndTurn
 	}
@@ -843,7 +857,7 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		p.final.Usage = &usage
 		p.final.Cost = &cost
 	}
-	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.terminalEndTurn, p.model.ID)
+	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.incompleteReason, p.terminalEndTurn, p.model.ID)
 	return p.final
 }
 
@@ -1055,7 +1069,7 @@ func (p *responsesStreamParser) toolItemID(state *streamblocks.ToolCall) string 
 	return ""
 }
 
-func responseMetadata(responseID string, providerModel string, terminalStatus string, endTurn *bool, modelID sigma.ModelID) map[string]any {
+func responseMetadata(responseID string, providerModel string, terminalStatus string, incompleteReason string, endTurn *bool, modelID sigma.ModelID) map[string]any {
 	metadata := make(map[string]any)
 	if responseID != "" {
 		metadata["id"] = responseID
@@ -1065,6 +1079,9 @@ func responseMetadata(responseID string, providerModel string, terminalStatus st
 	}
 	if terminalStatus != "" {
 		metadata["status"] = terminalStatus
+	}
+	if incompleteReason != "" {
+		metadata["incomplete_reason"] = incompleteReason
 	}
 	if endTurn != nil {
 		metadata["end_turn"] = *endTurn

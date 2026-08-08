@@ -66,6 +66,10 @@ cancellation/error coverage (see the coverage standards in
 - [x] Classify exhausted upstream request-buffer failures as transient and
       retryable so routing can advise a same-model retry while post-body replay
       remains caller-owned.
+- [x] Normalize shared Responses incomplete terminals for max-output and
+      content-filter reasons, preserve raw incomplete diagnostics, reject
+      missing or unknown reasons, and expose bounded caller-owned max-token
+      recovery detection without automatic compaction or replay.
 - [x] Require Google Generative AI finish reasons, Mistral Conversations done
       events, and Bedrock Converse Stream message-stop events before accepting a
       clean stream ending, preserving partial finals and retry classification.

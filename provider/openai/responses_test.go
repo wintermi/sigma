@@ -2569,19 +2569,147 @@ data: {"type":"response.output_text.delta","response_id":"resp_early","output_in
 	}
 }
 
-func TestResponsesStreamIncompleteFinalizesAsMaxTokens(t *testing.T) {
+func TestResponsesStreamIncompleteReasonHandling(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		reasonJSON       string
+		errorJSON        string
+		wantStop         sigma.StopReason
+		wantError        bool
+		wantProviderCode string
+		wantRetryable    bool
+		wantReason       string
+	}{
+		{
+			name:       "max output tokens",
+			reasonJSON: `,"incomplete_details":{"reason":"max_output_tokens"}`,
+			wantStop:   sigma.StopReasonMaxTokens,
+			wantReason: "max_output_tokens",
+		},
+		{
+			name:       "content filter",
+			reasonJSON: `,"incomplete_details":{"reason":"content_filter"}`,
+			wantStop:   sigma.StopReasonContentFilter,
+			wantReason: "content_filter",
+		},
+		{
+			name:             "unknown reason",
+			reasonJSON:       `,"incomplete_details":{"reason":"max_time_limit"}`,
+			wantStop:         sigma.StopReasonError,
+			wantError:        true,
+			wantProviderCode: "response_incomplete",
+			wantReason:       "max_time_limit",
+		},
+		{
+			name:             "omitted reason",
+			wantStop:         sigma.StopReasonError,
+			wantError:        true,
+			wantProviderCode: "response_incomplete",
+		},
+		{
+			name:             "explicit error takes precedence",
+			reasonJSON:       `,"incomplete_details":{"reason":"max_output_tokens"}`,
+			errorJSON:        `,"error":{"code":"server_error","message":"provider failed"}`,
+			wantStop:         sigma.StopReasonError,
+			wantError:        true,
+			wantProviderCode: "server_error",
+			wantRetryable:    true,
+			wantReason:       "max_output_tokens",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var attempts int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				attempts++
+				writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"resp_incomplete","model":"gpt-test-2026","status":"incomplete"`+tt.reasonJSON+tt.errorJSON+`,"output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"text_incomplete","text":"truncated"}]}],"usage":{"input_tokens":30,"input_tokens_details":{"cached_tokens":5},"output_tokens":12,"total_tokens":42}}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-incomplete-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := responsesTestModel(providerID)
+			client := responsesTestClient(t, providerID, model, server.URL)
+			final, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithMaxRetries(1),
+				sigma.WithMaxRetryDelay(0),
+			)
+			if tt.wantError {
+				if !errors.Is(err, sigma.ErrProviderResponse) {
+					t.Fatalf("Complete error = %v, want ErrProviderResponse", err)
+				}
+				classification := sigma.ClassifyError(err)
+				if got, want := classification.ProviderCode, tt.wantProviderCode; got != want {
+					t.Fatalf("provider code = %q, want %q", got, want)
+				}
+				if got, want := classification.RetryHint.Retryable, tt.wantRetryable; got != want {
+					t.Fatalf("retryable = %v, want %v", got, want)
+				}
+			} else if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if got, want := final.StopReason, tt.wantStop; got != want {
+				t.Fatalf("stop reason = %q, want %q", got, want)
+			}
+			if got, want := final.Content[0].Text, "truncated"; got != want {
+				t.Fatalf("text = %q, want %q", got, want)
+			}
+			if got, want := final.ProviderMetadata["status"], "incomplete"; got != want {
+				t.Fatalf("response status = %v, want %v", got, want)
+			}
+			if got, want := final.ProviderMetadata["id"], "resp_incomplete"; got != want {
+				t.Fatalf("response id = %v, want %v", got, want)
+			}
+			if got, want := final.ProviderMetadata["model"], "gpt-test-2026"; got != want {
+				t.Fatalf("provider model = %v, want %v", got, want)
+			}
+			gotReason, hasReason := final.ProviderMetadata["incomplete_reason"]
+			if tt.wantReason == "" {
+				if hasReason {
+					t.Fatalf("incomplete reason = %v, want absent", gotReason)
+				}
+			} else if gotReason != tt.wantReason {
+				t.Fatalf("incomplete reason = %v, want %q", gotReason, tt.wantReason)
+			}
+			if final.Usage == nil || final.Cost == nil {
+				t.Fatalf("usage or cost missing: usage=%#v cost=%#v", final.Usage, final.Cost)
+			}
+			if got, want := final.Usage.InputTokens, 25; got != want {
+				t.Fatalf("input tokens = %d, want %d", got, want)
+			}
+			if got, want := final.Usage.CacheReadInputTokens, 5; got != want {
+				t.Fatalf("cache read tokens = %d, want %d", got, want)
+			}
+			if got, want := final.Usage.OutputTokens, 12; got != want {
+				t.Fatalf("output tokens = %d, want %d", got, want)
+			}
+			if got, want := attempts, 1; got != want {
+				t.Fatalf("attempts = %d, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestResponsesIncompleteMaxTokensOverridesToolCalls(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"resp_incomplete","model":"gpt-test-2026","status":"incomplete","output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"text_incomplete","text":"truncated"}]}],"usage":{"input_tokens":30,"input_tokens_details":{"cached_tokens":5},"output_tokens":12,"total_tokens":42}}}
+		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"resp_incomplete_tool","status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[{"type":"function_call","id":"fc_incomplete","call_id":"call_incomplete","name":"shell","arguments":"{\"cmd\":\"go test\"}"}],"usage":{"input_tokens":20,"output_tokens":8,"total_tokens":28}}}
 `)
 	}))
 	t.Cleanup(server.Close)
 
-	providerID := sigma.ProviderID("responses-incomplete-test")
+	providerID := sigma.ProviderID("responses-incomplete-tool-test")
 	model := responsesTestModel(providerID)
 	client := responsesTestClient(t, providerID, model, server.URL)
-
 	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
@@ -2589,29 +2717,8 @@ func TestResponsesStreamIncompleteFinalizesAsMaxTokens(t *testing.T) {
 	if got, want := final.StopReason, sigma.StopReasonMaxTokens; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
-	if got, want := final.Content[0].Text, "truncated"; got != want {
-		t.Fatalf("text = %q, want %q", got, want)
-	}
-	if got, want := final.ProviderMetadata["id"], "resp_incomplete"; got != want {
-		t.Fatalf("response id = %v, want %v", got, want)
-	}
-	if got, want := final.ProviderMetadata["model"], "gpt-test-2026"; got != want {
-		t.Fatalf("provider model = %v, want %v", got, want)
-	}
-	if got, want := final.ProviderMetadata["status"], "incomplete"; got != want {
-		t.Fatalf("response status = %v, want %v", got, want)
-	}
-	if final.Usage == nil {
-		t.Fatal("usage was nil")
-	}
-	if got, want := final.Usage.InputTokens, 25; got != want {
-		t.Fatalf("input tokens = %d, want %d", got, want)
-	}
-	if got, want := final.Usage.CacheReadInputTokens, 5; got != want {
-		t.Fatalf("cache read tokens = %d, want %d", got, want)
-	}
-	if got, want := final.Usage.OutputTokens, 12; got != want {
-		t.Fatalf("output tokens = %d, want %d", got, want)
+	if len(final.Content) != 1 || final.Content[0].Type != sigma.ContentBlockToolCall {
+		t.Fatalf("content = %#v, want one tool call", final.Content)
 	}
 }
 

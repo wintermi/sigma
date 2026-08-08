@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- `IsRecoverableMaxTokens` now lets callers detect max-token completions that
+  ended below the original requested or model output limit before any
+  context-based clamping, without automatically replaying the request.
 - Reviewed OpenAI Responses and Codex Responses models now load deferred client
   tools through native, message-anchored `additional_tools` items, while older
   capable models retain the existing client tool-search replay fallback.
@@ -43,6 +46,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI, Azure, and Codex Responses now normalize incomplete terminals as
+  max-token or content-filter stops only for recognized reasons. Missing and
+  unknown reasons return typed provider errors while preserving partial output,
+  usage, status, and raw incomplete diagnostics.
 - Provider failures reporting an exhausted upstream request buffer now classify
   as transient and retryable, allowing caller-owned policies to retry the same
   model without automatic post-body request replay.
