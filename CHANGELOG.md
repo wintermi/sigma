@@ -43,6 +43,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Provider failures reporting an exhausted upstream request buffer now classify
+  as transient and retryable, allowing caller-owned policies to retry the same
+  model without automatic post-body request replay.
 - Codex Responses SSE and WebSocket streams now accept `response.done` as a
   successful terminal signal and retain explicit `end_turn` values in opaque
   assistant provider metadata without changing normalized stop reasons.

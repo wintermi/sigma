@@ -269,6 +269,30 @@ func TestFallbackTransientRetriesSameModel(t *testing.T) {
 	}
 }
 
+func TestFallbackUpstreamRequestBufferExhaustionRetriesSameModel(t *testing.T) {
+	t.Parallel()
+
+	policy := testRoutePolicy()
+	decision := sigma.RouteDecision{Model: routeRef("fast", "flash-1"), Tier: sigma.RouteTierSimple}
+	err := sigma.NewProviderError(
+		"fast",
+		sigma.APIOpenAIResponses,
+		"flash-1",
+		400,
+		"req_buffer",
+		0,
+		[]byte(`{"error":{"message":"exceeded request buffer limit while retrying upstream"}}`),
+		sigma.ErrProviderResponse,
+	)
+	advice := policy.Fallback(decision, nil, err)
+	if advice.Action != sigma.RouteActionRetry || advice.Model != decision.Model {
+		t.Fatalf("advice = %+v, want retry of the same model", advice)
+	}
+	if got, want := advice.Classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("classification class = %q, want %q", got, want)
+	}
+}
+
 func TestFallbackAuthSkipsAttemptedAndEscalates(t *testing.T) {
 	t.Parallel()
 

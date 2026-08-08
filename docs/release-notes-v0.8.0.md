@@ -39,7 +39,9 @@ Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
 retained only when their loading context can be replayed safely. Codex Responses
 SSE and WebSocket streams also recognize `response.done` completion and retain
-explicit `end_turn` values as opaque diagnostics.
+explicit `end_turn` values as opaque diagnostics. Provider failures that report
+an exhausted upstream request buffer are now classified as retryable for
+caller-owned recovery.
 
 ## Added
 
@@ -83,6 +85,10 @@ explicit `end_turn` values as opaque diagnostics.
 
 ## Compatibility
 
+- Upstream request-buffer exhaustion now produces a transient classification
+  and same-model retry advice even when accompanied by a bad-request status.
+  Sigma preserves partial finals and does not automatically replay post-body
+  failures.
 - Codex Responses accepts `response.done` as a successful terminal alias across
   SSE and WebSocket transports and retains an explicitly supplied `end_turn`
   boolean in assistant provider metadata. The value remains diagnostic and does

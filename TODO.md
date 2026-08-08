@@ -63,6 +63,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Classify premature OpenAI Responses and Anthropic Messages terminal-event
       gaps as transient and retryable while preserving partial finals and
       keeping post-body retry execution caller-owned.
+- [x] Classify exhausted upstream request-buffer failures as transient and
+      retryable so routing can advise a same-model retry while post-body replay
+      remains caller-owned.
 - [x] Require Google Generative AI finish reasons, Mistral Conversations done
       events, and Bedrock Converse Stream message-stop events before accepting a
       clean stream ending, preserving partial finals and retry classification.

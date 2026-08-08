@@ -179,6 +179,17 @@ func TestClassifyError(t *testing.T) {
 			retryable: true,
 		},
 		{
+			name:      "upstream request buffer exhaustion overrides bad request status",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "req_buffer", 0, []byte(`{"error":{"message":"Error: EXCEEDED REQUEST BUFFER LIMIT WHILE RETRYING UPSTREAM; try later"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:  "different request buffer wording remains invalid",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"request buffer limit exceeded"}}`), ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+		},
+		{
 			name:  "context overflow",
 			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"code":"context_length_exceeded","message":"too many tokens"}}`), ErrContextOverflow),
 			class: ErrorClassContextOverflow,
@@ -337,6 +348,60 @@ func TestClassifyError(t *testing.T) {
 				t.Fatalf("provider code = %q, want %q", classification.ProviderCode, tt.code)
 			}
 		})
+	}
+}
+
+func TestClassifyUpstreamRequestBufferGenerationErrorPreservesFinal(t *testing.T) {
+	t.Parallel()
+
+	providerErr := NewProviderError(
+		ProviderOpenAI,
+		APIOpenAIResponses,
+		"gpt-test",
+		400,
+		"req_buffer",
+		0,
+		[]byte(`{"error":{"message":"exceeded request buffer limit while retrying upstream"}}`),
+		ErrProviderResponse,
+	)
+	err := &GenerationError{
+		Final: AssistantMessage{
+			Content:    []ContentBlock{Text("partial answer")},
+			StopReason: StopReasonError,
+			Model:      "gpt-test",
+			Provider:   ProviderOpenAI,
+		},
+		Err: providerErr,
+	}
+
+	classification := ClassifyError(err)
+	if got, want := classification.Class, ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if !classification.RetryHint.Retryable {
+		t.Fatal("request buffer exhaustion was not retryable")
+	}
+	if got, want := classification.Provider, ProviderOpenAI; got != want {
+		t.Fatalf("provider = %q, want %q", got, want)
+	}
+	if got, want := classification.API, APIOpenAIResponses; got != want {
+		t.Fatalf("API = %q, want %q", got, want)
+	}
+	if got, want := classification.Model, ModelID("gpt-test"); got != want {
+		t.Fatalf("model = %q, want %q", got, want)
+	}
+	if got, want := classification.StatusCode, 400; got != want {
+		t.Fatalf("status = %d, want %d", got, want)
+	}
+	if got, want := classification.RequestID, "req_buffer"; got != want {
+		t.Fatalf("request ID = %q, want %q", got, want)
+	}
+	final, ok := err.FinalMessage()
+	if !ok {
+		t.Fatal("GenerationError missing final message")
+	}
+	if got, want := final.Content[0].Text, "partial answer"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
 	}
 }
 

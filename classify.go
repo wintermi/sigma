@@ -306,6 +306,7 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "service unavailable") ||
 		strings.Contains(message, "server error") ||
 		strings.Contains(message, "internal error") ||
+		strings.Contains(message, "exceeded request buffer limit while retrying upstream") ||
 		strings.Contains(message, "upstream connect") ||
 		strings.Contains(message, "connection refused")
 }

@@ -2483,6 +2483,51 @@ data: {"type":"error","error":{"code":"rate_limit_exceeded","message":"rate limi
 	}
 }
 
+func TestResponsesRequestBufferErrorIsRetryableWithoutAutomaticReplay(t *testing.T) {
+	t.Parallel()
+
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		writeResponsesSSE(t, w, `event: error
+data: {"type":"error","error":{"code":"upstream_error","message":"Error: exceeded request buffer limit while retrying upstream"}}
+
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-request-buffer-error-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithMaxRetries(2),
+		sigma.WithMaxRetryDelay(0),
+	)
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	classification := sigma.ClassifyError(err)
+	if got, want := classification.Class, sigma.ErrorClassTransient; got != want {
+		t.Fatalf("class = %q, want %q", got, want)
+	}
+	if !classification.RetryHint.Retryable {
+		t.Fatal("request buffer exhaustion was not retryable")
+	}
+	if got, want := attempts, 1; got != want {
+		t.Fatalf("attempts = %d, want %d", got, want)
+	}
+}
+
 func TestResponsesStreamEarlyEOFReturnsErrorWithPartialContent(t *testing.T) {
 	t.Parallel()
 
