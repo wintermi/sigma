@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Reviewed OpenAI Responses and Codex Responses models now load deferred client
+  tools through native, message-anchored `additional_tools` items, while older
+  capable models retain the existing client tool-search replay fallback.
 - Text, image, and embedding requests can now require a minimum remaining OAuth
   lifetime before dispatch, triggering an early serialized refresh for stored
   credentials and Sigma's built-in caller-owned token providers without
@@ -40,6 +43,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Responses and Codex Responses tool-call namespaces now survive
+  streaming and compatible replay through provider metadata without leaking
+  them into incompatible provider, API, or model histories.
 - Google Generative AI and native Vertex Gemini 3 requests now preserve
   normalized tool-call IDs on replayed function calls and matching tool
   results, while older Vertex Gemini requests continue omitting unsupported

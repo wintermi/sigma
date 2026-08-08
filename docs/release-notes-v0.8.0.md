@@ -35,9 +35,17 @@ token lifetime remains, without changing existing refresh defaults.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
+Reviewed OpenAI Responses and Codex Responses models now use native,
+message-anchored additional-tool input, and streamed tool-call namespaces are
+retained only when their loading context can be replayed safely.
 
 ## Added
 
+- The reviewed GPT-5.4, GPT-5.4 Mini/Pro, GPT-5.5, and GPT-5.6 OpenAI Responses
+  rows plus GPT-5.6 Codex Responses rows now encode deferred client tools as
+  native developer-role `additional_tools` items immediately after the matching
+  tool result. Older tool-search-capable models retain the existing paired
+  client search replay.
 - `WithOAuthMinimumValidity`, `WithImageOAuthMinimumValidity`, and
   `WithEmbeddingOAuthMinimumValidity` now let callers require additional OAuth
   lifetime before dispatch. Stored credentials refresh serially and persist
@@ -73,6 +81,11 @@ evaluations.
 
 ## Compatibility
 
+- OpenAI Responses and Codex Responses now retain function and custom-tool
+  namespaces in opaque provider metadata through streaming and same-model
+  replay. Cross-model replay keeps a namespace only when the matching deferred
+  tool is loaded in the replayed request; incompatible providers and APIs omit
+  it.
 - Omitted or zero OAuth minimum-validity options retain existing provider
   refresh timing. Request requirements can lengthen but cannot shorten a
   provider's configured refresh window, and credentials without a known expiry

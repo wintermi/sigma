@@ -65,9 +65,9 @@ Release scope values:
 - Xiaomi MiMo `openai-completions`: [provider/xiaomi/xiaomi_test.go](../provider/xiaomi/xiaomi_test.go), [modeldata_test.go](../modeldata_test.go).
 - Qwen Token Plan regional and Individual `openai-completions`: [provider/qwen/qwen_test.go](../provider/qwen/qwen_test.go), [openai_compatible_provider_rows_test.go](../openai_compatible_provider_rows_test.go), [modeldata_test.go](../modeldata_test.go).
 - OpenCode routed text APIs: [provider/opencode/opencode_test.go](../provider/opencode/opencode_test.go), [modeldata_test.go](../modeldata_test.go).
-- `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go).
+- `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go), [modeldata_test.go](../modeldata_test.go).
 - `azure-openai-responses`: [provider/azure/azure_test.go](../provider/azure/azure_test.go), [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
-- `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go).
+- `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go), [modeldata_test.go](../modeldata_test.go).
 - GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
@@ -126,6 +126,12 @@ Release scope values:
   parameters. OpenAI Responses and Codex Responses also support typed prompt
   cache retention, parallel tool calls, text verbosity, bounded replay IDs, and
   image-capable tool-result replay through fixture-tested payload coverage.
+  Reviewed direct OpenAI models use native message-anchored additional tools;
+  reviewed GPT-5.6 Codex models do the same, while older capable Codex models
+  retain client tool-search replay. Tool-call namespaces are opaque provider
+  metadata and are replayed only with a compatible model or matching deferred
+  tool load. Hosted-tool execution, namespace-definition authoring, and
+  background Responses remain deferred.
 - Vercel AI Gateway uses the shared Anthropic Messages adapter through a thin
   provider wrapper. Its first-class coverage is limited to direct route
   registration, request shape, generated metadata reuse, provider errors, and

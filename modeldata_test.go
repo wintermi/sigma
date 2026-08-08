@@ -2432,6 +2432,9 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		azure.AzureOpenAIResponses.APIKeyEnvVar != "AZURE_OPENAI_API_KEY" {
 		t.Fatalf("Azure OpenAI metadata = %+v, want deployment and API key metadata", azure)
 	}
+	if azure.OpenAIResponsesCompat != nil && azure.OpenAIResponsesCompat.SupportsAdditionalTools {
+		t.Fatalf("Azure OpenAI Responses compatibility = %#v, want additional tools disabled", azure.OpenAIResponsesCompat)
+	}
 	assertMetadataString(t, azure.ProviderMetadata, "baseURL", "https://{resource}.openai.azure.com")
 	assertMetadataStrings(t, azure.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AZURE_OPENAI_API_KEY"})
 
@@ -2453,8 +2456,10 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		if !ok {
 			t.Fatalf("fresh registry missing generated OpenAI Responses model %s", id)
 		}
-		if responses.OpenAIResponsesCompat == nil || !responses.OpenAIResponsesCompat.SupportsToolSearch {
-			t.Fatalf("OpenAI Responses %s metadata = %#v, want tool search enabled", id, responses.OpenAIResponsesCompat)
+		if responses.OpenAIResponsesCompat == nil ||
+			!responses.OpenAIResponsesCompat.SupportsToolSearch ||
+			!responses.OpenAIResponsesCompat.SupportsAdditionalTools {
+			t.Fatalf("OpenAI Responses %s metadata = %#v, want tool search and additional tools enabled", id, responses.OpenAIResponsesCompat)
 		}
 	}
 	for _, id := range []ModelID{
@@ -2467,6 +2472,10 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 		if responses.OpenAICodexResponses == nil || !responses.OpenAICodexResponses.SupportsToolSearch {
 			t.Fatalf("OpenAI Codex Responses %s metadata = %#v, want tool search enabled", id, responses.OpenAICodexResponses)
+		}
+		wantAdditionalTools := id == "gpt-5.6-luna" || id == "gpt-5.6-sol" || id == "gpt-5.6-terra"
+		if responses.OpenAICodexResponses.SupportsAdditionalTools != wantAdditionalTools {
+			t.Fatalf("OpenAI Codex Responses %s additional tools = %v, want %v", id, responses.OpenAICodexResponses.SupportsAdditionalTools, wantAdditionalTools)
 		}
 	}
 
@@ -2486,6 +2495,12 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 		if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.SupportsToolSearch {
 			t.Fatalf("%s/%s Codex compatibility = %#v, want tool search disabled", tt.provider, tt.id, model.OpenAICodexResponses)
+		}
+		if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsAdditionalTools {
+			t.Fatalf("%s/%s Responses compatibility = %#v, want additional tools disabled", tt.provider, tt.id, model.OpenAIResponsesCompat)
+		}
+		if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.SupportsAdditionalTools {
+			t.Fatalf("%s/%s Codex compatibility = %#v, want additional tools disabled", tt.provider, tt.id, model.OpenAICodexResponses)
 		}
 	}
 

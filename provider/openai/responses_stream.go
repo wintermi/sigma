@@ -61,6 +61,7 @@ type responsesOutputItem struct {
 	Summary          []responsesSummaryPart `json:"summary"`
 	CallID           string                 `json:"call_id"`
 	Name             string                 `json:"name"`
+	Namespace        string                 `json:"namespace"`
 	Input            string                 `json:"input"`
 	Arguments        string                 `json:"arguments"`
 	Result           string                 `json:"result"`
@@ -449,6 +450,7 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 		}
 	case "function_call":
 		state := p.toolCallState(outputIndex)
+		captureResponsesToolNamespace(state, item.Namespace)
 		if item.ID != "" {
 			p.toolItemIDs[outputIndex] = item.ID
 		}
@@ -504,6 +506,8 @@ func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event
 	if event.Item.ID != "" {
 		p.toolItemIDs[event.OutputIndex] = event.Item.ID
 	}
+	state := p.toolCallState(event.OutputIndex)
+	captureResponsesToolNamespace(state, event.Item.Namespace)
 	delta := streamToolCallDelta{
 		ID: event.Item.CallID,
 		Function: streamFunctionDelta{
@@ -531,6 +535,7 @@ func (p *responsesStreamParser) configureCustomToolCall(outputIndex int, item re
 		p.toolItemIDs[outputIndex] = item.ID
 	}
 	state := p.toolCallState(outputIndex)
+	captureResponsesToolNamespace(state, item.Namespace)
 	state.SetID(firstNonEmpty(state.ID(), item.CallID, item.ID))
 	state.SetName(firstNonEmpty(state.Name(), item.Name))
 	return true
@@ -783,6 +788,12 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		call := state.ToolCall()
 		block := sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
 		block.ProviderMetadata = responsesMetadata(p.toolItemID(state), "", state.ID())
+		for key, value := range call.ProviderMetadata {
+			if block.ProviderMetadata == nil {
+				block.ProviderMetadata = make(map[string]any)
+			}
+			block.ProviderMetadata[key] = value
+		}
 		contentByIndex[state.ContentIndex] = block
 	}
 	_ = p.emitEndEvents(ctx, nil)
@@ -1137,6 +1148,16 @@ func responsesMetadata(itemID string, partID string, callID string) map[string]a
 		return nil
 	}
 	return metadata
+}
+
+func captureResponsesToolNamespace(state *streamblocks.ToolCall, namespace string) {
+	if namespace == "" {
+		return
+	}
+	if state.ProviderMetadata == nil {
+		state.ProviderMetadata = make(map[string]any)
+	}
+	state.ProviderMetadata["namespace"] = namespace
 }
 
 func (u responsesUsage) sigmaUsage() sigma.Usage {

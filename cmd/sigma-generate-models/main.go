@@ -618,6 +618,7 @@ func writeOpenAIResponsesCompatField(b *bytes.Buffer, compat *modeldata.OpenAIRe
 		return
 	}
 	b.WriteString("\t\tOpenAIResponsesCompat: &OpenAIResponsesCompat{\n")
+	writeBoolField(b, "SupportsAdditionalTools", compat.SupportsAdditionalTools)
 	writeBoolField(b, "SupportsToolSearch", compat.SupportsToolSearch)
 	writeBoolField(b, "SupportsGrammarTools", compat.SupportsGrammarTools)
 	writeBoolField(b, "SupportsExplicitPromptCacheMode", compat.SupportsExplicitPromptCacheMode)
@@ -679,6 +680,7 @@ func writeCodexField(b *bytes.Buffer, config *modeldata.OpenAICodexResponses) {
 	}
 	b.WriteString("\t\tOpenAICodexResponses: &OpenAICodexResponsesConfig{\n")
 	writeStringField(b, "Model", "", config.Model)
+	writeBoolField(b, "SupportsAdditionalTools", config.SupportsAdditionalTools)
 	writeBoolField(b, "SupportsToolSearch", config.SupportsToolSearch)
 	b.WriteString("\t\t},\n")
 }

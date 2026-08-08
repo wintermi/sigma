@@ -695,7 +695,7 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 		API:      model.API,
 		Model:    final.Model,
 	}
-	items, err := responsesAssistantItems(model, message, 0, grammarToolInputProperties)
+	items, err := responsesAssistantItems(model, message, 0, nil, grammarToolInputProperties)
 	if err != nil {
 		return nil
 	}

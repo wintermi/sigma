@@ -115,6 +115,30 @@ func TestCodexResponsesDefersMarkedClientTools(t *testing.T) {
 	assertDeferredToolsPayload(t, receiveRequest(t, requests).Body)
 }
 
+func TestCodexResponsesUsesAdditionalToolsWhenSupported(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-additional-tools")
+	model := codexResponsesTestModel(providerID)
+	model.OpenAICodexResponses.SupportsAdditionalTools = true
+	model.OpenAICodexResponses.SupportsToolSearch = true
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertAdditionalToolsPayload(t, receiveRequest(t, requests).Body)
+}
+
 func TestCodexResponsesKeepsDeferredToolMarkersEagerWhenUnsupported(t *testing.T) {
 	t.Parallel()
 

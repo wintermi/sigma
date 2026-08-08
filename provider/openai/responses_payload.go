@@ -30,14 +30,23 @@ const (
 	providerOptionPromptCacheOptions   = "prompt_cache_options"
 )
 
+type responsesDeferredToolsMode int
+
+const (
+	responsesDeferredToolsNone responsesDeferredToolsMode = iota
+	responsesDeferredToolsSearch
+	responsesDeferredToolsAdditional
+)
+
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
 	cleaned := transform.DropUnansweredToolCalls(req)
-	deferredTools := transform.PlanDeferredTools(cleaned, supportsResponsesToolSearch(model), nil)
+	deferredToolsMode := responsesDeferredToolsModeForModel(model)
+	deferredTools := transform.PlanDeferredTools(cleaned, deferredToolsMode != responsesDeferredToolsNone, nil)
 	grammarToolInputProperties, err := responsesGrammarToolInputProperties(model, cleaned, opts)
 	if err != nil {
 		return nil, err
 	}
-	input, err := responsesInput(model, cleaned, deferredTools.Deferred, grammarToolInputProperties)
+	input, err := responsesInput(model, cleaned, deferredToolsMode, deferredTools.Deferred, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -148,11 +157,23 @@ func grammarToolInputProperty(api string, tool sigma.Tool) (string, error) {
 	return property, nil
 }
 
-func supportsResponsesToolSearch(model sigma.Model) bool {
+func responsesDeferredToolsModeForModel(model sigma.Model) responsesDeferredToolsMode {
 	if model.OpenAICodexResponses != nil {
-		return model.OpenAICodexResponses.SupportsToolSearch
+		if model.OpenAICodexResponses.SupportsAdditionalTools {
+			return responsesDeferredToolsAdditional
+		}
+		if model.OpenAICodexResponses.SupportsToolSearch {
+			return responsesDeferredToolsSearch
+		}
+		return responsesDeferredToolsNone
 	}
-	return model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsToolSearch
+	if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsAdditionalTools {
+		return responsesDeferredToolsAdditional
+	}
+	if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsToolSearch {
+		return responsesDeferredToolsSearch
+	}
+	return responsesDeferredToolsNone
 }
 
 func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, opts sigma.Options) {
@@ -201,12 +222,12 @@ func responsesSupportsLongCacheRetention(model sigma.Model) bool {
 		model.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported
 }
 
-func responsesInput(model sigma.Model, req sigma.Request, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
 	loadedToolNames := make(map[string]struct{})
 	toolNamesByCallID := responsesToolNamesByCallID(req.Messages)
 	for index, message := range req.Messages {
-		converted, err := responsesMessage(model, message, index, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
+		converted, err := responsesMessage(model, message, index, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +253,7 @@ func responsesToolNamesByCallID(messages []sigma.Message) map[string]string {
 	return names
 }
 
-func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(model, message)
@@ -240,21 +261,21 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 			return nil, err
 		}
 		return []map[string]any{{
-			"role":    string(message.Role),
-			"content": content,
+			providerOptionRole: string(message.Role),
+			"content":          content,
 		}}, nil
 	case sigma.RoleAssistant:
-		return responsesAssistantItems(model, message, messageIndex, grammarToolInputProperties)
+		return responsesAssistantItems(model, message, messageIndex, deferredTools, grammarToolInputProperties)
 	case sigma.RoleTool:
 		output, err := responsesToolOutput(model, message)
 		if err != nil {
 			return nil, err
 		}
-		searchItems, err := responsesToolSearchItems(message, deferredTools, loadedToolNames, grammarToolInputProperties)
+		deferredItems, err := responsesDeferredToolItems(message, deferredToolsMode, deferredTools, loadedToolNames, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
-		items := make([]map[string]any, 1, 1+len(searchItems))
+		items := make([]map[string]any, 1, 1+len(deferredItems))
 		toolName := firstNonEmpty(message.ToolName, toolNamesByCallID[message.ToolCallID], toolNamesByCallID[responsesCallID(message.ToolCallID)])
 		outputType := "function_call_output"
 		if _, ok := grammarToolInputProperties[toolName]; ok {
@@ -265,7 +286,7 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 			"call_id":                 responsesCallID(message.ToolCallID),
 			"output":                  output,
 		}
-		return append(items, searchItems...), nil
+		return append(items, deferredItems...), nil
 	default:
 		return nil, fmt.Errorf("openai responses: unsupported message role %q", message.Role)
 	}
@@ -321,7 +342,7 @@ func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
 	return file, nil
 }
 
-func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
@@ -333,7 +354,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 		}
 		item := map[string]any{
 			providerToolOptionTypeKey: "message",
-			"role":                    "assistant",
+			providerOptionRole:        "assistant",
 			"content":                 content,
 		}
 		item["id"] = responsesBoundedID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
@@ -381,6 +402,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			items = append(items, item)
 		case sigma.ContentBlockToolCall:
 			flushMessage()
+			namespace := replayableResponsesNamespace(model, message, block, deferredTools)
 			if property, ok := grammarToolInputProperties[block.ToolName]; ok {
 				input, err := grammarToolCallInput("openai responses", block.ToolName, block.ToolArguments, property)
 				if err != nil {
@@ -396,6 +418,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 				item["id"] = itemID
 				if block.ProviderSignature != "" {
 					item["encrypted_content"] = block.ProviderSignature
+				}
+				if namespace != "" {
+					item["namespace"] = namespace
 				}
 				items = append(items, item)
 				continue
@@ -417,6 +442,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			if block.ProviderSignature != "" {
 				item["encrypted_content"] = block.ProviderSignature
 			}
+			if namespace != "" {
+				item["namespace"] = namespace
+			}
 			items = append(items, item)
 		default:
 			return nil, fmt.Errorf("openai responses: unsupported assistant content block %q", block.Type)
@@ -431,6 +459,18 @@ func sameProviderDifferentModel(model sigma.Model, message sigma.Message) bool {
 		message.API == model.API &&
 		message.Model != "" &&
 		message.Model != model.ID
+}
+
+func replayableResponsesNamespace(model sigma.Model, message sigma.Message, block sigma.ContentBlock, deferredTools map[string]sigma.Tool) string {
+	if message.Provider != model.Provider || message.API != model.API {
+		return ""
+	}
+	if message.Model != model.ID {
+		if _, ok := deferredTools[block.ToolName]; !ok {
+			return ""
+		}
+	}
+	return providerMetadataString(block.ProviderMetadata, "namespace")
 }
 
 func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
@@ -488,7 +528,7 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 	return converted, nil
 }
 
-func responsesToolSearchItems(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesDeferredToolItems(message sigma.Message, mode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	if len(deferredTools) == 0 {
 		return nil, nil
 	}
@@ -509,9 +549,16 @@ func responsesToolSearchItems(message sigma.Message, deferredTools map[string]si
 	if len(tools) == 0 {
 		return nil, nil
 	}
-	converted, err := responsesTools(tools, true, grammarToolInputProperties)
+	converted, err := responsesTools(tools, mode == responsesDeferredToolsSearch, grammarToolInputProperties)
 	if err != nil {
 		return nil, err
+	}
+	if mode == responsesDeferredToolsAdditional {
+		return []map[string]any{{
+			providerToolOptionTypeKey: "additional_tools",
+			providerOptionRole:        "developer",
+			"tools":                   converted,
+		}}, nil
 	}
 	callID := responsesToolSearchCallID(message.ToolCallID, names)
 	return []map[string]any{

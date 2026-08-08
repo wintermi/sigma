@@ -23,11 +23,48 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "e5fae7a5eb707860931eebe4d0f969b5348d7e6d2e75d08249bf29fa219d566f"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "1bdbb24dd75e04c1229df8900a8a156a0c219e683de8a1b93495ed9019e8a777"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
 		t.Fatalf("Decode returned error: %v", err)
+	}
+}
+
+func TestCatalogAdditionalToolsCapabilityCohorts(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := Load("catalog.json")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	var responsesModels []string
+	var codexModels []string
+	for _, model := range catalog.TextModels {
+		if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsAdditionalTools {
+			responsesModels = append(responsesModels, model.Provider+"/"+model.ID)
+		}
+		if model.OpenAICodexResponses != nil && model.OpenAICodexResponses.SupportsAdditionalTools {
+			codexModels = append(codexModels, model.Provider+"/"+model.ID)
+		}
+	}
+	if want := []string{
+		"openai/gpt-5.4",
+		"openai/gpt-5.4-mini",
+		"openai/gpt-5.4-pro",
+		"openai/gpt-5.5",
+		"openai/gpt-5.6-luna",
+		"openai/gpt-5.6-sol",
+		"openai/gpt-5.6-terra",
+	}; !reflect.DeepEqual(responsesModels, want) {
+		t.Fatalf("Responses additional-tools cohort = %v, want %v", responsesModels, want)
+	}
+	if want := []string{
+		"openai-codex/gpt-5.6-luna",
+		"openai-codex/gpt-5.6-sol",
+		"openai-codex/gpt-5.6-terra",
+	}; !reflect.DeepEqual(codexModels, want) {
+		t.Fatalf("Codex additional-tools cohort = %v, want %v", codexModels, want)
 	}
 }
 

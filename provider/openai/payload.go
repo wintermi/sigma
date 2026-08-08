@@ -31,6 +31,7 @@ const (
 	providerOptionExtraBodyGo     = "extraBody"
 	providerOptionOrganization    = "organization"
 	providerOptionProject         = "project"
+	providerOptionRole            = "role"
 )
 
 func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]any, error) {

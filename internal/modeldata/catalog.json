@@ -15655,6 +15655,7 @@
       },
       "openAICodexResponses": {
         "model": "gpt-5.6-luna",
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -15703,6 +15704,7 @@
       },
       "openAICodexResponses": {
         "model": "gpt-5.6-sol",
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -15751,6 +15753,7 @@
       },
       "openAICodexResponses": {
         "model": "gpt-5.6-terra",
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -16705,6 +16708,7 @@
         "xhigh": "xhigh"
       },
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true,
         "supportsGrammarTools": true
       }
@@ -16742,6 +16746,7 @@
         "xhigh": "xhigh"
       },
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -16819,6 +16824,7 @@
         "off"
       ],
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -16866,6 +16872,7 @@
         "minimal"
       ],
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true
       }
     },
@@ -16956,6 +16963,7 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true,
         "supportsExplicitPromptCacheMode": true
       }
@@ -17004,6 +17012,7 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true,
         "supportsExplicitPromptCacheMode": true
       }
@@ -17052,6 +17061,7 @@
         "max": "max"
       },
       "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
         "supportsToolSearch": true,
         "supportsExplicitPromptCacheMode": true
       }

@@ -164,6 +164,7 @@ type AnthropicMessagesCompat struct {
 
 // OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
 type OpenAIResponsesCompat struct {
+	SupportsAdditionalTools         bool   `json:"supportsAdditionalTools,omitempty"`
 	SupportsToolSearch              bool   `json:"supportsToolSearch,omitempty"`
 	SupportsGrammarTools            bool   `json:"supportsGrammarTools,omitempty"`
 	SupportsExplicitPromptCacheMode bool   `json:"supportsExplicitPromptCacheMode,omitempty"`
@@ -208,8 +209,9 @@ type AzureOpenAIResponses struct {
 
 // OpenAICodexResponses mirrors sigma.OpenAICodexResponsesConfig.
 type OpenAICodexResponses struct {
-	Model              string `json:"model,omitempty"`
-	SupportsToolSearch bool   `json:"supportsToolSearch,omitempty"`
+	Model                   string `json:"model,omitempty"`
+	SupportsAdditionalTools bool   `json:"supportsAdditionalTools,omitempty"`
+	SupportsToolSearch      bool   `json:"supportsToolSearch,omitempty"`
 }
 
 // Load reads and validates a catalog JSON file.

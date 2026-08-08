@@ -478,6 +478,131 @@ func TestResponsesDefersMarkedClientTools(t *testing.T) {
 	assertDeferredToolsPayload(t, receiveRequest(t, requests).Body)
 }
 
+func TestResponsesUsesAdditionalToolsWhenSupported(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-additional-tools")
+	model := responsesTestModel(providerID)
+	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
+		SupportsAdditionalTools: true,
+		SupportsToolSearch:      true,
+	}
+	client := responsesTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(context.Background(), model, deferredToolsRequest())
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertAdditionalToolsPayload(t, receiveRequest(t, requests).Body)
+}
+
+func TestResponsesReplaysToolCallNamespaceOnlyWithCompatibleContext(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name               string
+		additionalTools    bool
+		messageProvider    sigma.ProviderID
+		messageAPI         sigma.API
+		messageModel       sigma.ModelID
+		withLoadMarker     bool
+		namespace          string
+		wantNamespace      bool
+		wantAdditionalItem bool
+	}{
+		{name: "same model", messageModel: "target", namespace: "dynamic", wantNamespace: true},
+		{name: "compatible deferred tool", additionalTools: true, messageModel: "previous", withLoadMarker: true, namespace: "dynamic", wantNamespace: true, wantAdditionalItem: true},
+		{name: "unsupported target", messageModel: "previous", withLoadMarker: true, namespace: "dynamic"},
+		{name: "different api", additionalTools: true, messageAPI: sigma.APIOpenAICompletions, messageModel: "previous", withLoadMarker: true, namespace: "dynamic", wantAdditionalItem: true},
+		{name: "different provider", additionalTools: true, messageProvider: "other", messageModel: "previous", withLoadMarker: true, namespace: "dynamic", wantAdditionalItem: true},
+		{name: "ordinary call", messageModel: "target"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-namespace-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := responsesTestModel(providerID)
+			model.ID = "target"
+			if tt.additionalTools {
+				model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsAdditionalTools: true}
+			}
+			messageProvider := tt.messageProvider
+			if messageProvider == "" {
+				messageProvider = providerID
+			}
+			messageAPI := tt.messageAPI
+			if messageAPI == "" {
+				messageAPI = sigma.APIOpenAIResponses
+			}
+			lateCall := sigma.ToolCallBlock("call_late", "late", map[string]any{})
+			if tt.namespace != "" {
+				lateCall.ProviderMetadata = map[string]any{"namespace": tt.namespace}
+			}
+			addedToolNames := []string(nil)
+			if tt.withLoadMarker {
+				addedToolNames = []string{"late"}
+			}
+			request := sigma.Request{
+				Tools: []sigma.Tool{
+					{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+					{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+				},
+				Messages: []sigma.Message{
+					{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+					{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("base result")}, AddedToolNames: addedToolNames},
+					{Role: sigma.RoleAssistant, Provider: messageProvider, API: messageAPI, Model: tt.messageModel, Content: []sigma.ContentBlock{lateCall}},
+					{Role: sigma.RoleTool, ToolCallID: "call_late", Content: []sigma.ContentBlock{sigma.Text("late result")}},
+				},
+			}
+			client := responsesTestClient(t, providerID, model, server.URL)
+			if _, err := client.Complete(context.Background(), model, request); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			var replayed map[string]any
+			for _, item := range payload["input"].([]any) {
+				typed := item.(map[string]any)
+				if typed["type"] == "function_call" && typed["name"] == "late" {
+					replayed = typed
+					break
+				}
+			}
+			if replayed == nil {
+				t.Fatalf("payload omitted replayed late tool call: %#v", payload["input"])
+			}
+			gotNamespace, hasNamespace := replayed["namespace"]
+			if tt.wantNamespace {
+				if !hasNamespace || gotNamespace != tt.namespace {
+					t.Fatalf("namespace = %v, present %v; want %q", gotNamespace, hasNamespace, tt.namespace)
+				}
+			} else if hasNamespace {
+				t.Fatalf("namespace = %v, want absent", gotNamespace)
+			}
+			if got := hasResponsesItemType(payload, "additional_tools"); got != tt.wantAdditionalItem {
+				t.Fatalf("additional_tools present = %v, want %v", got, tt.wantAdditionalItem)
+			}
+		})
+	}
+}
+
 func TestResponsesKeepsDeferredToolMarkersEagerWhenUnsupported(t *testing.T) {
 	t.Parallel()
 
@@ -1609,12 +1734,12 @@ func TestResponsesGrammarToolsReplayAndDeferredLoading(t *testing.T) {
 	providerID := sigma.ProviderID("responses-grammar-replay")
 	model := responsesTestModel(providerID)
 	model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{
-		SupportsGrammarTools: true,
-		SupportsToolSearch:   true,
+		SupportsGrammarTools:    true,
+		SupportsAdditionalTools: true,
 	}
 	client := responsesTestClient(t, providerID, model, server.URL)
 	parseCall := sigma.ToolCallBlock("call_parse", "parse", map[string]any{"command": "go test"})
-	parseCall.ProviderMetadata = map[string]any{"id": "ctc_parse"}
+	parseCall.ProviderMetadata = map[string]any{"id": "ctc_parse", "namespace": "dynamic"}
 	request := sigma.Request{
 		Tools: []sigma.Tool{
 			{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
@@ -1627,7 +1752,7 @@ func TestResponsesGrammarToolsReplayAndDeferredLoading(t *testing.T) {
 				Role:     sigma.RoleAssistant,
 				Provider: providerID,
 				API:      sigma.APIOpenAIResponses,
-				Model:    "different-responses-model",
+				Model:    model.ID,
 				Content:  []sigma.ContentBlock{parseCall},
 			},
 			{
@@ -1656,19 +1781,22 @@ func TestResponsesGrammarToolsReplayAndDeferredLoading(t *testing.T) {
 			if got, want := typed["id"], "ctc_parse"; got != want {
 				t.Fatalf("custom tool item id = %v, want %q", got, want)
 			}
+			if got, want := typed["namespace"], "dynamic"; got != want {
+				t.Fatalf("custom tool namespace = %v, want %q", got, want)
+			}
 		case "custom_tool_call_output":
 			sawCustomOutput = true
 			if got, want := typed["output"], "ok"; got != want {
 				t.Fatalf("custom tool output = %v, want %q", got, want)
 			}
-		case "tool_search_output":
+		case "additional_tools":
 			sawDeferredTool = true
 			tools := typed["tools"].([]any)
 			if got, want := tools[0].(map[string]any)["type"], "custom"; got != want {
 				t.Fatalf("deferred tool type = %v, want %q", got, want)
 			}
-			if got, want := tools[0].(map[string]any)["defer_loading"], true; got != want {
-				t.Fatalf("deferred grammar tool flag = %v, want %v", got, want)
+			if _, ok := tools[0].(map[string]any)["defer_loading"]; ok {
+				t.Fatalf("additional grammar tool retained defer_loading: %#v", tools[0])
 			}
 		}
 	}
@@ -1690,7 +1818,7 @@ data: {"type":"response.custom_tool_call_input.delta","response_id":"resp_gramma
 
 data: {"type":"response.custom_tool_call_input.done","response_id":"resp_grammar","output_index":0,"input":"go test"}
 
-data: {"type":"response.output_item.done","response_id":"resp_grammar","output_index":0,"item":{"type":"custom_tool_call","id":"ctc_1","call_id":"call_1","name":"parse","input":"go test"}}
+data: {"type":"response.output_item.done","response_id":"resp_grammar","output_index":0,"item":{"type":"custom_tool_call","id":"ctc_1","call_id":"call_1","name":"parse","namespace":"dynamic","input":"go test"}}
 
 data: {"type":"response.completed","response":{"id":"resp_grammar","status":"completed","output":[{"type":"custom_tool_call","id":"ctc_1","call_id":"call_1","name":"parse","input":"go test"}]}}
 `,
@@ -1722,6 +1850,9 @@ data: {"type":"response.completed","response":{"id":"resp_grammar","status":"com
 	}
 	if got, want := final.Content[0].ProviderMetadata["call_id"], "call_1"; got != want {
 		t.Fatalf("tool call id metadata = %v, want %q", got, want)
+	}
+	if got, want := final.Content[0].ProviderMetadata["namespace"], "dynamic"; got != want {
+		t.Fatalf("tool namespace = %v, want %q", got, want)
 	}
 	if got, want := eventKinds(events), []sigma.EventKind{
 		sigma.EventKindStart,
@@ -2023,7 +2154,7 @@ data: {"type":"response.function_call_arguments.delta","response_id":"resp_tool"
 
 data: {"type":"response.function_call_arguments.done","response_id":"resp_tool","item_id":"fc_1","output_index":0,"arguments":"{\"city\":\"Melbourne\"}"}
 
-data: {"type":"response.output_item.done","response_id":"resp_tool","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"weather","arguments":"{\"city\":\"Melbourne\"}"}}
+data: {"type":"response.output_item.done","response_id":"resp_tool","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"weather","namespace":"dynamic","arguments":"{\"city\":\"Melbourne\"}"}}
 
 data: {"type":"response.completed","response":{"id":"resp_tool","status":"completed","output":[{"type":"function_call","id":"fc_1","call_id":"call_1","name":"weather","arguments":"{\"city\":\"Melbourne\"}"}]}}
 `,
@@ -2065,6 +2196,9 @@ data: {"type":"response.completed","response":{"id":"resp_tool","status":"comple
 	if got, want := final.Content[0].ProviderMetadata["id"], "fc_1"; got != want {
 		t.Fatalf("tool item id = %v, want %v", got, want)
 	}
+	if got, want := final.Content[0].ProviderMetadata["namespace"], "dynamic"; got != want {
+		t.Fatalf("tool namespace = %v, want %q", got, want)
+	}
 	args := final.Content[0].ToolArguments.(map[string]any)
 	if got, want := args["city"], "Melbourne"; got != want {
 		t.Fatalf("tool city = %v, want %v", got, want)
@@ -2077,6 +2211,11 @@ data: {"type":"response.completed","response":{"id":"resp_tool","status":"comple
 
 	var sawIncompleteArguments, sawCompletedArguments bool
 	for _, event := range events {
+		if event.Kind == sigma.EventKindToolCallEnd && event.ToolCall != nil {
+			if got, want := event.ToolCall.ProviderMetadata["namespace"], "dynamic"; got != want {
+				t.Fatalf("tool-call end namespace = %v, want %q", got, want)
+			}
+		}
 		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil {
 			continue
 		}
@@ -2805,6 +2944,54 @@ func assertDeferredToolsPayload(t *testing.T, body []byte) {
 	}
 	if got, want := deferred["defer_loading"], true; got != want {
 		t.Fatalf("deferred tool flag = %v, want %v", got, want)
+	}
+}
+
+func assertAdditionalToolsPayload(t *testing.T, body []byte) {
+	t.Helper()
+
+	payload := decodeResponsesPayload(t, body)
+	tools := payload["tools"].([]any)
+	if got, want := len(tools), 2; got != want {
+		t.Fatalf("root tools = %#v, want %d immediate tools", tools, want)
+	}
+	if got, want := tools[0].(map[string]any)["name"], "base"; got != want {
+		t.Fatalf("first root tool = %v, want %q", got, want)
+	}
+	if got, want := tools[1].(map[string]any)["type"], "web_search_preview"; got != want {
+		t.Fatalf("provider-defined root tool = %v, want %q", got, want)
+	}
+
+	input := payload["input"].([]any)
+	additionalCount := 0
+	for index, item := range input {
+		typed := item.(map[string]any)
+		switch typed["type"] {
+		case "tool_search_call", "tool_search_output":
+			t.Fatalf("additional-tools payload included synthetic search item: %#v", typed)
+		case "additional_tools":
+			additionalCount++
+			if index == 0 || input[index-1].(map[string]any)["type"] != "function_call_output" {
+				t.Fatalf("additional tools at input[%d] do not follow their tool output: %#v", index, input)
+			}
+			if got, want := typed["role"], "developer"; got != want {
+				t.Fatalf("additional tools role = %v, want %q", got, want)
+			}
+			loaded := typed["tools"].([]any)
+			if got, want := len(loaded), 1; got != want {
+				t.Fatalf("additional tools = %#v, want %d", loaded, want)
+			}
+			tool := loaded[0].(map[string]any)
+			if got, want := tool["name"], "late"; got != want {
+				t.Fatalf("additional tool name = %v, want %q", got, want)
+			}
+			if _, ok := tool["defer_loading"]; ok {
+				t.Fatalf("additional tool retained defer_loading: %#v", tool)
+			}
+		}
+	}
+	if got, want := additionalCount, 1; got != want {
+		t.Fatalf("additional tool items = %d, want %d", got, want)
 	}
 }
 

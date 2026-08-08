@@ -224,6 +224,7 @@ const (
 // OpenAIResponsesCompat describes OpenAI Responses API capabilities that vary
 // by model or compatible endpoint.
 type OpenAIResponsesCompat struct {
+	SupportsAdditionalTools         bool                                 `json:"supportsAdditionalTools,omitempty"`
 	SupportsToolSearch              bool                                 `json:"supportsToolSearch,omitempty"`
 	SupportsGrammarTools            bool                                 `json:"supportsGrammarTools,omitempty"`
 	SupportsExplicitPromptCacheMode bool                                 `json:"supportsExplicitPromptCacheMode,omitempty"`
@@ -234,8 +235,9 @@ type OpenAIResponsesCompat struct {
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model
 // is the model name sent to OpenAI when it differs from sigma's model ID.
 type OpenAICodexResponsesConfig struct {
-	Model              string `json:"model,omitempty"`
-	SupportsToolSearch bool   `json:"supportsToolSearch,omitempty"`
+	Model                   string `json:"model,omitempty"`
+	SupportsAdditionalTools bool   `json:"supportsAdditionalTools,omitempty"`
+	SupportsToolSearch      bool   `json:"supportsToolSearch,omitempty"`
 }
 
 // ImageModel describes a provider image model available through sigma.

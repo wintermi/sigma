@@ -337,7 +337,12 @@ work until their API boundaries are explicit.
       arguments, Google tool-call signature filtering, and Bedrock malformed or
       unsupported replay content.
 - [x] Add metadata-gated deferred client-tool loading for Anthropic Messages
-      tool references and OpenAI/Codex Responses client tool-search replay.
+      tool references and OpenAI/Codex Responses, including native
+      message-anchored additional tools, older-model client tool-search replay,
+      and namespace-safe compatible history replay.
+- [ ] Keep Responses hosted-tool execution, namespace-definition authoring,
+      background response lifecycles, and provider-neutral agent orchestration
+      outside the focused deferred client-tool surface.
 - [x] Add request-scoped arbitrary sampling parameters for OpenAI-compatible
       Chat Completions, Responses, and Azure Responses while preserving raw
       `extra_body` override precedence.
