@@ -37,7 +37,9 @@ an independent deadline so a stalled provider call does not cancel later
 evaluations.
 Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
-retained only when their loading context can be replayed safely.
+retained only when their loading context can be replayed safely. Codex Responses
+SSE and WebSocket streams also recognize `response.done` completion and retain
+explicit `end_turn` values as opaque diagnostics.
 
 ## Added
 
@@ -81,6 +83,10 @@ retained only when their loading context can be replayed safely.
 
 ## Compatibility
 
+- Codex Responses accepts `response.done` as a successful terminal alias across
+  SSE and WebSocket transports and retains an explicitly supplied `end_turn`
+  boolean in assistant provider metadata. The value remains diagnostic and does
+  not alter normalized stop reasons or agent control flow.
 - OpenAI Responses and Codex Responses now retain function and custom-tool
   namespaces in opaque provider metadata through streaming and same-model
   replay. Cross-model replay keeps a namespace only when the matching deferred

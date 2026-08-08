@@ -98,6 +98,46 @@ func TestAzureResponsesCompleteSendsDeploymentURLHeadersAndPayload(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/openai/azure_responses/basic_payload.json")
 }
 
+func TestAzureResponsesRejectsCodexTerminalSignals(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		eventType string
+		wantError bool
+	}{
+		{name: "metadata", eventType: "response.completed"},
+		{name: "done alias", eventType: "response.done", wantError: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeResponsesSSE(t, w, `data: {"type":"`+tt.eventType+`","response":{"id":"azure_terminal","status":"completed","end_turn":false,"output":[{"type":"message","id":"msg_terminal","role":"assistant","content":[{"type":"output_text","id":"txt_terminal","text":"done"}]}]}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("azure-terminal-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := azureResponsesTestModel(providerID)
+			model.AzureOpenAIResponses.Endpoint = server.URL
+			client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if tt.wantError {
+				if err == nil || !strings.Contains(err.Error(), "stream ended before terminal response event") {
+					t.Fatalf("Complete error = %v, want missing terminal response", err)
+				}
+			} else if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if _, ok := final.ProviderMetadata["end_turn"]; ok {
+				t.Fatalf("end_turn = %v, want absent", final.ProviderMetadata["end_turn"])
+			}
+		})
+	}
+}
+
 func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	t.Parallel()
 

@@ -270,6 +270,10 @@ work until their API boundaries are explicit.
 - [x] Preserve non-empty terminal OpenAI Responses status values in assistant
       provider metadata without changing normalized stop reasons or provider
       error behavior.
+- [x] Accept Codex Responses `response.done` terminal signals and preserve
+      explicit `end_turn` diagnostics across SSE and WebSocket transports.
+- [ ] Keep provider-neutral end-turn control semantics deferred until agent
+      orchestration has an explicit typed contract.
 - [x] Preserve non-empty terminal OpenAI-compatible Chat Completions
       `finish_reason` values in assistant provider metadata without changing
       normalized stop reasons or provider error behavior.

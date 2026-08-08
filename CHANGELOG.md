@@ -43,6 +43,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Codex Responses SSE and WebSocket streams now accept `response.done` as a
+  successful terminal signal and retain explicit `end_turn` values in opaque
+  assistant provider metadata without changing normalized stop reasons.
 - OpenAI Responses and Codex Responses tool-call namespaces now survive
   streaming and compatible replay through provider metadata without leaking
   them into incompatible provider, API, or model histories.

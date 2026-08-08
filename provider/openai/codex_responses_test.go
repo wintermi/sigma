@@ -478,11 +478,12 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 			"delta":        "Hello",
 		})
 		ws.writeJSON(t, map[string]any{
-			"type": "response.completed",
+			"type": "response.done",
 			"response": map[string]any{
-				"id":     "ws_resp",
-				"model":  "codex-provider-model",
-				"status": "completed",
+				"id":       "ws_resp",
+				"model":    "codex-provider-model",
+				"status":   "completed",
+				"end_turn": false,
 				"output": []any{map[string]any{
 					"type": "message",
 					"id":   "msg_ws",
@@ -522,6 +523,9 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 	}
 	if got, want := final.Content[0].Text, "Hello"; got != want {
 		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["end_turn"], false; got != want {
+		t.Fatalf("end_turn = %v, want %v", got, want)
 	}
 	if final.Usage == nil {
 		t.Fatal("usage was nil")
@@ -1493,7 +1497,7 @@ data: {"type":"response.output_text.delta","response_id":"codex_resp","model":"c
 
 data: {"type":"response.output_text.delta","response_id":"codex_resp","model":"codex-provider-model","item_id":"msg_codex","output_index":0,"content_index":0,"delta":" ready"}
 
-data: {"type":"response.completed","response":{"status":"completed","output":[{"type":"message","id":"msg_codex","role":"assistant","content":[{"type":"output_text","id":"txt_codex","text":"Codex ready"}]}],"usage":{"input_tokens":4,"output_tokens":3,"total_tokens":7}}}
+data: {"type":"response.completed","response":{"status":"completed","end_turn":false,"output":[{"type":"message","id":"msg_codex","role":"assistant","content":[{"type":"output_text","id":"txt_codex","text":"Codex ready"}]}],"usage":{"input_tokens":4,"output_tokens":3,"total_tokens":7}}}
 `,
 		)
 	}))
@@ -1532,11 +1536,78 @@ data: {"type":"response.completed","response":{"status":"completed","output":[{"
 	if got, want := final.ProviderMetadata["model"], "codex-provider-model"; got != want {
 		t.Fatalf("provider model = %v, want %v", got, want)
 	}
+	if got, want := final.ProviderMetadata["end_turn"], false; got != want {
+		t.Fatalf("end_turn = %v, want %v", got, want)
+	}
 	if final.Usage == nil {
 		t.Fatal("final usage was nil")
 	}
 	if got, want := final.Usage.TotalTokens, 7; got != want {
 		t.Fatalf("total tokens = %d, want %d", got, want)
+	}
+}
+
+func TestCodexResponsesDoneTerminalPreservesOptionalEndTurn(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		endTurnJSON string
+		wantEndTurn any
+		wantPresent bool
+	}{
+		{name: "true", endTurnJSON: `,"end_turn":true`, wantEndTurn: true, wantPresent: true},
+		{name: "omitted"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeResponsesSSE(t, w, `data: {"type":"response.done","response":{"id":"codex_done","status":"completed"`+tt.endTurnJSON+`,"output":[{"type":"message","id":"msg_done","role":"assistant","content":[{"type":"output_text","id":"txt_done","text":"done"}]}]}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("codex-done-" + tt.name)
+			model := codexResponsesTestModel(providerID)
+			client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if got, want := final.StopReason, sigma.StopReasonEndTurn; got != want {
+				t.Fatalf("stop reason = %q, want %q", got, want)
+			}
+			gotEndTurn, present := final.ProviderMetadata["end_turn"]
+			if present != tt.wantPresent || gotEndTurn != tt.wantEndTurn {
+				t.Fatalf("end_turn = %v, present %v; want %v, present %v", gotEndTurn, present, tt.wantEndTurn, tt.wantPresent)
+			}
+		})
+	}
+}
+
+func TestCodexResponsesIncompletePreservesEndTurnAndMaxTokens(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.incomplete","response":{"id":"codex_incomplete","status":"incomplete","end_turn":false,"incomplete_details":{"reason":"max_output_tokens"},"output":[{"type":"message","id":"msg_incomplete","role":"assistant","content":[{"type":"output_text","id":"txt_incomplete","text":"partial"}]}]}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-incomplete-end-turn")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonMaxTokens; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["end_turn"], false; got != want {
+		t.Fatalf("end_turn = %v, want %v", got, want)
 	}
 }
 
@@ -1553,7 +1624,7 @@ data: {"type":"response.function_call_arguments.delta","response_id":"codex_tool
 
 data: {"type":"response.output_item.done","response_id":"codex_tool","output_index":0,"item":{"type":"function_call","id":"fc_codex","call_id":"call_codex","name":"shell","arguments":"{\"cmd\":\"go test\"}"}}
 
-data: {"type":"response.completed","response":{"status":"completed","output":[{"type":"function_call","id":"fc_codex","call_id":"call_codex","name":"shell","arguments":"{\"cmd\":\"go test\"}"}]}}
+data: {"type":"response.completed","response":{"status":"completed","end_turn":true,"output":[{"type":"function_call","id":"fc_codex","call_id":"call_codex","name":"shell","arguments":"{\"cmd\":\"go test\"}"}]}}
 `,
 		)
 	}))
@@ -1589,6 +1660,12 @@ data: {"type":"response.completed","response":{"status":"completed","output":[{"
 	}
 	if got, want := final.Content[0].ProviderMetadata["id"], "fc_codex"; got != want {
 		t.Fatalf("tool item id = %v, want %v", got, want)
+	}
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["end_turn"], true; got != want {
+		t.Fatalf("end_turn = %v, want %v", got, want)
 	}
 	args := final.Content[0].ToolArguments.(map[string]any)
 	if got, want := args["cmd"], "go test"; got != want {

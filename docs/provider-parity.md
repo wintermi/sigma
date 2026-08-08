@@ -67,7 +67,7 @@ Release scope values:
 - OpenCode routed text APIs: [provider/opencode/opencode_test.go](../provider/opencode/opencode_test.go), [modeldata_test.go](../modeldata_test.go).
 - `openai-responses`: [provider/openai/responses_test.go](../provider/openai/responses_test.go), [modeldata_test.go](../modeldata_test.go).
 - `azure-openai-responses`: [provider/azure/azure_test.go](../provider/azure/azure_test.go), [provider/openai/azure_responses_test.go](../provider/openai/azure_responses_test.go).
-- `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go), [modeldata_test.go](../modeldata_test.go).
+- `openai-codex-responses`: [provider/openai/codex_responses_test.go](../provider/openai/codex_responses_test.go), [provider/openai/responses_stream.go](../provider/openai/responses_stream.go), [modeldata_test.go](../modeldata_test.go).
 - GitHub Copilot compatible text routes: [provider/githubcopilot/githubcopilot_test.go](../provider/githubcopilot/githubcopilot_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare AI Gateway compatible text routes: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go), [provider/openai/responses_test.go](../provider/openai/responses_test.go).
 - Cloudflare Workers AI direct Chat Completions: [provider/cloudflare/cloudflare_test.go](../provider/cloudflare/cloudflare_test.go), [provider/openai/completions_test.go](../provider/openai/completions_test.go).
@@ -153,8 +153,10 @@ Release scope values:
 - Google Vertex reuses the Google payload and stream parser, but only a narrower Vertex-specific fixture set exists today.
 - Codex Responses includes browser callback and device-code OAuth login, refresh
   helpers, a caller-wrapped token provider, and fixture-tested direct
-  WebSocket transport with session caching and SSE fallback. Token persistence
-  and proxy-aware WebSocket dialing are out of scope.
+  WebSocket transport with session caching and SSE fallback. Both Codex
+  transports recognize `response.done` and retain explicit `end_turn` values as
+  opaque diagnostics; provider-neutral end-turn orchestration remains deferred.
+  Durable token persistence remains caller-owned.
 - Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers. Typed Bedrock request controls, custom non-reserved headers, retry behavior, and response debug hooks have deterministic fixture coverage.
 - The Anthropic-compatible routing in the Anthropic row title covers Kimi,
   Kimi Coding, Fireworks, and Xiaomi compat branches. Each branch has

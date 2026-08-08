@@ -2610,7 +2610,7 @@ func TestResponsesStreamDoesNotRetainTransientStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeResponsesSSE(t, w, `data: {"type":"response.created","response":{"id":"resp_status","status":"in_progress"}}
 
-data: {"type":"response.completed","response":{"id":"resp_status","output":[{"type":"message","id":"msg_status","role":"assistant","content":[{"type":"output_text","id":"text_status","text":"done"}]}]}}
+data: {"type":"response.completed","response":{"id":"resp_status","end_turn":false,"output":[{"type":"message","id":"msg_status","role":"assistant","content":[{"type":"output_text","id":"text_status","text":"done"}]}]}}
 `)
 	}))
 	t.Cleanup(server.Close)
@@ -2625,6 +2625,33 @@ data: {"type":"response.completed","response":{"id":"resp_status","output":[{"ty
 	}
 	if _, ok := final.ProviderMetadata["status"]; ok {
 		t.Fatalf("response status = %v, want absent", final.ProviderMetadata["status"])
+	}
+	if _, ok := final.ProviderMetadata["end_turn"]; ok {
+		t.Fatalf("end_turn = %v, want absent", final.ProviderMetadata["end_turn"])
+	}
+}
+
+func TestResponsesRejectsCodexDoneTerminalAlias(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, `data: {"type":"response.done","response":{"id":"resp_done","status":"completed","end_turn":true}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-codex-done-alias-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err == nil || !strings.Contains(err.Error(), "stream ended before terminal response event") {
+		t.Fatalf("Complete error = %v, want missing terminal response", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonError; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if _, ok := final.ProviderMetadata["end_turn"]; ok {
+		t.Fatalf("end_turn = %v, want absent", final.ProviderMetadata["end_turn"])
 	}
 }
 

@@ -45,6 +45,7 @@ type responsesResponse struct {
 	ID                string                `json:"id"`
 	Model             string                `json:"model"`
 	Status            string                `json:"status"`
+	EndTurn           *bool                 `json:"end_turn"`
 	ServiceTier       string                `json:"service_tier"`
 	Output            []responsesOutputItem `json:"output"`
 	Usage             *responsesUsage       `json:"usage"`
@@ -130,6 +131,7 @@ type responsesStreamParser struct {
 	providerModel       string
 	responseServiceTier string
 	terminalStatus      string
+	terminalEndTurn     *bool
 	usage               *sigma.Usage
 	stopReason          sigma.StopReason
 	terminalResponse    bool
@@ -139,6 +141,7 @@ type responsesStreamOptions struct {
 	requestServiceTier          string
 	applyServiceTierCosts       bool
 	useCodexServiceTierFallback bool
+	codexTerminalSignals        bool
 	grammarToolInputProperties  map[string]string
 }
 
@@ -238,13 +241,18 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		return false, p.emitStart(ctx)
 	case "response.completed":
 		p.terminalResponse = true
-		p.terminalStatus = parsed.Response.Status
-		p.captureResponse(parsed.Response)
+		p.captureTerminalResponse(parsed.Response)
+		return true, p.emitStart(ctx)
+	case "response.done":
+		if !p.options.codexTerminalSignals {
+			return false, nil
+		}
+		p.terminalResponse = true
+		p.captureTerminalResponse(parsed.Response)
 		return true, p.emitStart(ctx)
 	case "response.incomplete":
 		p.terminalResponse = true
-		p.terminalStatus = parsed.Response.Status
-		p.captureResponse(parsed.Response)
+		p.captureTerminalResponse(parsed.Response)
 		if parsed.Response.Error != nil {
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Response.Error)
 		}
@@ -401,6 +409,14 @@ func (p *responsesStreamParser) captureResponse(response responsesResponse) {
 	for index, item := range response.Output {
 		p.captureOutputItem(index, item)
 	}
+}
+
+func (p *responsesStreamParser) captureTerminalResponse(response responsesResponse) {
+	p.terminalStatus = response.Status
+	if p.options.codexTerminalSignals {
+		p.terminalEndTurn = response.EndTurn
+	}
+	p.captureResponse(response)
 }
 
 func (p *responsesStreamParser) captureOutputItem(outputIndex int, item responsesOutputItem) {
@@ -827,7 +843,7 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		p.final.Usage = &usage
 		p.final.Cost = &cost
 	}
-	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.model.ID)
+	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.terminalEndTurn, p.model.ID)
 	return p.final
 }
 
@@ -1039,7 +1055,7 @@ func (p *responsesStreamParser) toolItemID(state *streamblocks.ToolCall) string 
 	return ""
 }
 
-func responseMetadata(responseID string, providerModel string, terminalStatus string, modelID sigma.ModelID) map[string]any {
+func responseMetadata(responseID string, providerModel string, terminalStatus string, endTurn *bool, modelID sigma.ModelID) map[string]any {
 	metadata := make(map[string]any)
 	if responseID != "" {
 		metadata["id"] = responseID
@@ -1049,6 +1065,9 @@ func responseMetadata(responseID string, providerModel string, terminalStatus st
 	}
 	if terminalStatus != "" {
 		metadata["status"] = terminalStatus
+	}
+	if endTurn != nil {
+		metadata["end_turn"] = *endTurn
 	}
 	if len(metadata) == 0 {
 		return nil
@@ -1068,6 +1087,7 @@ func codexResponsesStreamOptions(model sigma.Model, req sigma.Request, opts sigm
 		requestServiceTier:          openAIRequestServiceTier(opts),
 		applyServiceTierCosts:       true,
 		useCodexServiceTierFallback: true,
+		codexTerminalSignals:        true,
 	})
 }
 
