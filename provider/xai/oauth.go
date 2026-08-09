@@ -92,8 +92,9 @@ func ProviderAuth(opts XAIOAuthTokenProviderOptions) sigma.ProviderAuth {
 	return sigma.ProviderAuth{
 		APIKey: sigma.EnvironmentAPIKeyAuth("xAI API key", "XAI_API_KEY"),
 		OAuth: &sigma.OAuthAuth{
-			Name:          "xAI OAuth",
-			RefreshBefore: opts.RefreshBefore,
+			Name:           "xAI OAuth",
+			IsSubscription: true,
+			RefreshBefore:  opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
 				refreshed, err := RefreshXAIToken(ctx, stored.RefreshToken, opts)
 				if err != nil {

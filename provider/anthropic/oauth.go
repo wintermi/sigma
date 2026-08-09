@@ -86,8 +86,9 @@ func ProviderAuth(opts AnthropicOAuthTokenProviderOptions) sigma.ProviderAuth {
 	return sigma.ProviderAuth{
 		APIKey: sigma.EnvironmentAPIKeyAuth("Anthropic API key", "ANTHROPIC_API_KEY"),
 		OAuth: &sigma.OAuthAuth{
-			Name:          "Anthropic OAuth",
-			RefreshBefore: opts.RefreshBefore,
+			Name:           "Anthropic OAuth",
+			IsSubscription: true,
+			RefreshBefore:  opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
 				refreshed, err := RefreshAnthropicToken(ctx, stored.RefreshToken, opts)
 				if err != nil {

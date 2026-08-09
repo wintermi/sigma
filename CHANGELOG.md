@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Provider OAuth descriptors and registry auth summaries now identify known
+  subscription-backed flows, allowing applications to distinguish them from
+  generic OAuth sign-in without changing credential resolution or dispatch.
 - `IsRecoverableMaxTokens` now lets callers detect max-token completions that
   ended below the original requested or model output limit before any
   context-based clamping, without automatically replaying the request.

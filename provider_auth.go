@@ -45,10 +45,13 @@ type APIKeyAuthResolver func(context.Context, Model, Options, StoredCredential, 
 
 // OAuthAuth describes a provider OAuth credential flow.
 type OAuthAuth struct {
-	Name          string
-	RefreshBefore time.Duration
-	Refresh       OAuthRefreshFunc
-	Credential    OAuthCredentialFunc
+	Name string
+	// IsSubscription reports whether this OAuth flow is backed by a provider
+	// subscription. It is informational and does not affect auth resolution.
+	IsSubscription bool
+	RefreshBefore  time.Duration
+	Refresh        OAuthRefreshFunc
+	Credential     OAuthCredentialFunc
 }
 
 // OAuthRefreshFunc refreshes stored OAuth credentials.

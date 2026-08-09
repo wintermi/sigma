@@ -32,6 +32,9 @@ clamped top-level thinking-token budgets for compatible inference servers.
 Text, image, and embedding requests can now ask stored credentials and built-in
 caller-owned OAuth token providers to refresh before dispatch when too little
 token lifetime remains, without changing existing refresh defaults.
+Provider OAuth descriptors and registry summaries now also identify known
+subscription-backed flows so applications can distinguish them from generic
+OAuth sign-in without inferring from provider names or credential types.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
@@ -47,6 +50,11 @@ provider-neutral helper for bounded caller-owned max-token recovery.
 
 ## Added
 
+- `OAuthAuth.IsSubscription` and `ProviderAuthInfo.OAuthSubscription` expose
+  advisory subscription metadata through detailed provider auth descriptors,
+  registry listings, and snapshots. Anthropic, GitHub Copilot, Kimi Coding,
+  OpenAI Codex, and xAI mark their OAuth flows as subscription-backed; Radius
+  and unmarked custom OAuth flows retain the zero-value generic classification.
 - `IsRecoverableMaxTokens` reports when a max-token completion used fewer
   output tokens than the caller's original requested or model limit. It is
   advisory only; callers retain control of compaction, retry budgets, and
@@ -91,6 +99,9 @@ provider-neutral helper for bounded caller-owned max-token recovery.
 
 ## Compatibility
 
+- Subscription metadata is informational only. It does not change OAuth login,
+  credential selection, refresh timing, persistence, or provider dispatch, and
+  custom OAuth descriptors remain generic unless callers opt in explicitly.
 - OpenAI, Azure, and Codex Responses map incomplete `max_output_tokens` and
   `content_filter` reasons to successful normalized stops. Missing and unknown
   reasons return typed provider errors while preserving partial content, usage,

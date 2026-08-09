@@ -111,8 +111,9 @@ type CodexOAuthTokenProviderOptions struct {
 func CodexProviderAuth(provider sigma.ProviderID, opts CodexOAuthTokenProviderOptions) sigma.ProviderAuth {
 	return sigma.ProviderAuth{
 		OAuth: &sigma.OAuthAuth{
-			Name:          "OpenAI Codex OAuth",
-			RefreshBefore: opts.RefreshBefore,
+			Name:           "OpenAI Codex OAuth",
+			IsSubscription: true,
+			RefreshBefore:  opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
 				refreshed, err := RefreshOpenAICodexToken(ctx, stored.RefreshToken, opts)
 				if err != nil {

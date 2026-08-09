@@ -31,6 +31,9 @@ cancellation/error coverage (see the coverage standards in
       embedding calls so stored credentials and built-in caller-owned token
       providers can refresh before long-running work without changing default
       refresh windows.
+- [x] Add advisory subscription metadata to OAuth descriptors and registry auth
+      summaries so applications can distinguish known subscription-backed flows
+      from generic OAuth sign-in without changing auth behavior.
 - [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
       unless they get separate public API contracts.
 

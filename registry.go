@@ -110,6 +110,9 @@ type ProviderAuthInfo struct {
 	ID     ProviderID `json:"id"`
 	APIKey bool       `json:"apiKey,omitempty"`
 	OAuth  bool       `json:"oauth,omitempty"`
+	// OAuthSubscription reports whether the registered OAuth flow is backed by
+	// a provider subscription.
+	OAuthSubscription bool `json:"oauthSubscription,omitempty"`
 }
 
 // RegistrySnapshot is an immutable-by-convention copy of registry state.
@@ -766,9 +769,10 @@ func (r *Registry) ListProviderAuths() []ProviderAuthInfo {
 	for _, id := range r.providerAuthOrder {
 		auth := r.providerAuths[id]
 		auths = append(auths, ProviderAuthInfo{
-			ID:     id,
-			APIKey: auth.APIKey != nil,
-			OAuth:  auth.OAuth != nil,
+			ID:                id,
+			APIKey:            auth.APIKey != nil,
+			OAuth:             auth.OAuth != nil,
+			OAuthSubscription: auth.OAuth != nil && auth.OAuth.IsSubscription,
 		})
 	}
 	return auths

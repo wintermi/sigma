@@ -72,8 +72,9 @@ func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAut
 	return sigma.ProviderAuth{
 		APIKey: sigma.EnvironmentAPIKeyAuth("GitHub Copilot token", "COPILOT_GITHUB_TOKEN"),
 		OAuth: &sigma.OAuthAuth{
-			Name:          "GitHub Copilot OAuth",
-			RefreshBefore: opts.RefreshBefore,
+			Name:           "GitHub Copilot OAuth",
+			IsSubscription: true,
+			RefreshBefore:  opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
 				refreshOpts := opts
 				// The stored credential's domain is a fallback only: an

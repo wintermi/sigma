@@ -82,8 +82,9 @@ func ProviderAuth(opts KimiCodingOAuthTokenProviderOptions) sigma.ProviderAuth {
 	return sigma.ProviderAuth{
 		APIKey: sigma.EnvironmentAPIKeyAuth("Kimi API key", "KIMI_API_KEY"),
 		OAuth: &sigma.OAuthAuth{
-			Name:          "Kimi Coding OAuth",
-			RefreshBefore: opts.RefreshBefore,
+			Name:           "Kimi Coding OAuth",
+			IsSubscription: true,
+			RefreshBefore:  opts.RefreshBefore,
 			Refresh: func(ctx context.Context, stored sigma.StoredCredential) (sigma.StoredCredential, error) {
 				refreshed, err := RefreshKimiCodingToken(ctx, stored.RefreshToken, opts)
 				if err != nil {

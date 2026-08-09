@@ -1360,7 +1360,7 @@ func TestRegistryProviderAuthRegistrationCloneAndSnapshot(t *testing.T) {
 	}
 	withOAuth := sigma.ProviderAuth{
 		APIKey: sigma.EnvironmentAPIKeyAuth("Test API key", "TEST_API_KEY"),
-		OAuth:  &sigma.OAuthAuth{Name: "Test OAuth"},
+		OAuth:  &sigma.OAuthAuth{Name: "Test OAuth", IsSubscription: true},
 	}
 	if err := registry.RegisterProviderAuth(sigma.ProviderOpenAI, withOAuth, sigma.WithOverride()); err != nil {
 		t.Fatalf("override provider auth registration returned error: %v", err)
@@ -1373,13 +1373,20 @@ func TestRegistryProviderAuthRegistrationCloneAndSnapshot(t *testing.T) {
 	if registered.APIKey == nil || registered.OAuth == nil {
 		t.Fatalf("registered auth = %#v, want api-key and oauth", registered)
 	}
+	if !registered.OAuth.IsSubscription {
+		t.Fatalf("registered oauth subscription = false, want true")
+	}
 	registered.APIKey.EnvVars[0] = "MUTATED"
+	registered.OAuth.IsSubscription = false
 	again, ok := registry.ProviderAuth(sigma.ProviderOpenAI)
 	if !ok {
 		t.Fatal("provider auth was not registered after mutation")
 	}
 	if got, want := again.APIKey.EnvVars[0], "TEST_API_KEY"; got != want {
 		t.Fatalf("provider auth env var = %q, want %q", got, want)
+	}
+	if !again.OAuth.IsSubscription {
+		t.Fatalf("provider auth oauth subscription changed through returned copy")
 	}
 
 	clone := registry.Clone()
@@ -1390,11 +1397,19 @@ func TestRegistryProviderAuthRegistrationCloneAndSnapshot(t *testing.T) {
 		t.Fatal("clone provider auth leaked into original registry")
 	}
 
+	listed := registry.ListProviderAuths()
+	if got, want := len(listed), 1; got != want {
+		t.Fatalf("listed provider auth count = %d, want %d", got, want)
+	}
+	if !listed[0].OAuthSubscription {
+		t.Fatalf("listed oauth subscription = false, want true")
+	}
+
 	snapshot := registry.Snapshot()
 	if got, want := len(snapshot.ProviderAuths), 1; got != want {
 		t.Fatalf("snapshot provider auth count = %d, want %d", got, want)
 	}
-	if got := snapshot.ProviderAuths[0]; got.ID != sigma.ProviderOpenAI || !got.APIKey || !got.OAuth {
+	if got := snapshot.ProviderAuths[0]; got.ID != sigma.ProviderOpenAI || !got.APIKey || !got.OAuth || !got.OAuthSubscription {
 		t.Fatalf("snapshot provider auth = %#v, want openai api-key+oauth", got)
 	}
 }
