@@ -15,6 +15,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/providertext"
+	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
 )
 
@@ -306,19 +307,17 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 			converted = append(converted, providerTool)
 			continue
 		}
-		parameters, err := jsonValue(tool.InputSchema)
+		strict, hasStrict := tool.ProviderMetadata["strict"].(bool)
+		parameters, err := mistralToolParameters(tool, strict)
 		if err != nil {
-			return nil, fmt.Errorf("mistral conversations: tool %q schema: %w", tool.Name, err)
-		}
-		if parameters == nil {
-			parameters = map[string]any{"type": "object"}
+			return nil, err
 		}
 		function := map[string]any{
 			"name":        tool.Name,
 			"description": tool.Description,
 			"parameters":  parameters,
 		}
-		if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
+		if hasStrict {
 			function["strict"] = strict
 		}
 		converted = append(converted, map[string]any{
@@ -327,6 +326,24 @@ func conversationTools(model sigma.Model, tools []sigma.Tool) ([]map[string]any,
 		})
 	}
 	return converted, nil
+}
+
+func mistralToolParameters(tool sigma.Tool, strict bool) (any, error) {
+	if strict {
+		parameters, err := toolschema.MakeStrict(tool.InputSchema)
+		if err != nil {
+			return nil, fmt.Errorf("mistral conversations: tool %q strict schema: %w", tool.Name, err)
+		}
+		return parameters, nil
+	}
+	parameters, err := jsonValue(tool.InputSchema)
+	if err != nil {
+		return nil, fmt.Errorf("mistral conversations: tool %q schema: %w", tool.Name, err)
+	}
+	if parameters == nil {
+		parameters = map[string]any{"type": "object"}
+	}
+	return parameters, nil
 }
 
 func mistralProviderTool(model sigma.Model, tool sigma.Tool) (map[string]any, error) {

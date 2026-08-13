@@ -12,6 +12,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Existing strict function-tool opt-ins now derive provider-compatible closed
+  schemas for supported OpenAI-compatible Chat Completions, Responses, and
+  Mistral Conversations routes. Local validation also treats provider-emitted
+  `null` placeholders for optional non-nullable arguments as omitted without
+  mutating caller-owned schemas or arguments.
 - Provider OAuth descriptors and registry auth summaries now identify known
   subscription-backed flows, allowing applications to distinguish them from
   generic OAuth sign-in without changing credential resolution or dispatch.

@@ -8,6 +8,7 @@ package sigma_test
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -1211,6 +1212,100 @@ func TestValidateToolCallRejectsCyclicReferenceAndMalformedConditional(t *testin
 				t.Fatalf("error = %v, want malformed schema validation error", err)
 			}
 		})
+	}
+}
+
+func TestValidateStrictToolCallTreatsOptionalNullsAsOmitted(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"path":   map[string]any{"type": "string"},
+			"offset": map[string]any{"type": "number"},
+			"nullable": map[string]any{
+				"anyOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "null"}},
+			},
+			"metadata": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"enabled": map[string]any{"type": "boolean"},
+				},
+			},
+			"items": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type":       "object",
+					"properties": map[string]any{"enabled": map[string]any{"type": "boolean"}},
+				},
+			},
+			"referenced": map[string]any{"$ref": "#/$defs/nullableValue"},
+		},
+		"required": []any{"path", "metadata", "items"},
+		"$defs": map[string]any{
+			"nullableValue": map[string]any{
+				"anyOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "null"}},
+			},
+		},
+	}
+	arguments := map[string]any{
+		"path":       "file.txt",
+		"offset":     nil,
+		"nullable":   nil,
+		"metadata":   map[string]any{"enabled": nil},
+		"items":      []any{map[string]any{"enabled": nil}},
+		"referenced": nil,
+	}
+
+	decoded, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{
+			Name:             "lookup",
+			InputSchema:      schema,
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+		sigma.ToolCall{Name: "lookup", Arguments: arguments},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCall returned error: %v", err)
+	}
+	want := map[string]any{
+		"path":       "file.txt",
+		"nullable":   nil,
+		"metadata":   map[string]any{},
+		"items":      []any{map[string]any{}},
+		"referenced": nil,
+	}
+	if !reflect.DeepEqual(decoded, want) {
+		t.Fatalf("decoded arguments = %#v, want %#v", decoded, want)
+	}
+	if arguments["offset"] != nil {
+		t.Fatalf("original offset = %#v, want unchanged nil", arguments["offset"])
+	}
+	if _, exists := arguments["metadata"].(map[string]any)["enabled"]; !exists {
+		t.Fatal("ValidateToolCall mutated original nested arguments")
+	}
+	if _, exists := arguments["items"].([]any)[0].(map[string]any)["enabled"]; !exists {
+		t.Fatal("ValidateToolCall mutated original array arguments")
+	}
+}
+
+func TestValidateStrictToolCallKeepsRequiredNullInvalid(t *testing.T) {
+	t.Parallel()
+
+	_, err := sigma.ValidateToolCall(
+		[]sigma.Tool{{
+			Name: "lookup",
+			InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"offset": map[string]any{"type": "number"}},
+				"required":   []any{"offset"},
+			},
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+		sigma.ToolCall{Name: "lookup", Arguments: map[string]any{"offset": nil}},
+	)
+	if err == nil {
+		t.Fatal("ValidateToolCall returned nil error")
 	}
 }
 

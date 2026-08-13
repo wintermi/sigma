@@ -101,6 +101,106 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
 }
 
+func TestResponsesDerivesStrictToolSchemaWithoutMutatingRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-strict-schema-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"city":  map[string]any{"type": "string"},
+			"units": map[string]any{"type": "string"},
+		},
+		"required": []any{"city"},
+	}
+	wantOriginal := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"city":  map[string]any{"type": "string"},
+			"units": map[string]any{"type": "string"},
+		},
+		"required": []any{"city"},
+	}
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use the weather tool.")},
+		Tools: []sigma.Tool{{
+			Name:             "weather",
+			InputSchema:      schema,
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if !reflect.DeepEqual(schema, wantOriginal) {
+		t.Fatalf("Complete mutated schema: got %#v, want %#v", schema, wantOriginal)
+	}
+
+	payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+	tool := payload["tools"].([]any)[0].(map[string]any)
+	if got, want := tool["strict"], true; got != want {
+		t.Fatalf("strict = %#v, want %v", got, want)
+	}
+	parameters := tool["parameters"].(map[string]any)
+	if got, want := parameters["required"], []any{"city", "units"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("required = %#v, want %#v", got, want)
+	}
+	if got := parameters["additionalProperties"]; got != false {
+		t.Fatalf("additionalProperties = %#v, want false", got)
+	}
+	units := parameters["properties"].(map[string]any)["units"].(map[string]any)["anyOf"].([]any)
+	if got, want := units[1], map[string]any{"type": "null"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("units null schema = %#v, want %#v", got, want)
+	}
+}
+
+func TestResponsesRejectsUnsafeStrictSchemaBeforeRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests <- struct{}{}
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-strict-schema-error-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use the lookup tool.")},
+		Tools: []sigma.Tool{{
+			Name: "lookup",
+			InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"value": map[string]any{"$ref": "#/$defs/value"}},
+			},
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+	})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if got := err.Error(); !strings.Contains(got, `tool "lookup" strict schema`) || !strings.Contains(got, "$ref schemas are unsupported") {
+		t.Fatalf("Complete error = %q, want strict tool schema context", got)
+	}
+	select {
+	case <-requests:
+		t.Fatal("strict schema error reached provider")
+	default:
+	}
+}
+
 func TestResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	t.Parallel()
 

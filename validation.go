@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/toolschema"
 )
 
 // ValidateModelRef validates the minimum fields needed to identify a model.
@@ -119,6 +120,9 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 	args, err := decodeToolArguments(call.Arguments)
 	if err != nil {
 		return nil, toolValidationError(call.Name, "$", "JSON object arguments", call.Arguments, "arguments are malformed", err)
+	}
+	if toolschema.Enabled(tool.ProviderMetadata) {
+		toolschema.NormalizeOptionalNulls(args, schema)
 	}
 
 	if options.CoercePrimitives {

@@ -16,6 +16,26 @@
         "description": "",
         "name": "weather",
         "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "type": "string"
+            },
+            "units": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "city",
+            "units"
+          ],
           "type": "object"
         },
         "strict": true

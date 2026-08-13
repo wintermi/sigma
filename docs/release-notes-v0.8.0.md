@@ -48,10 +48,21 @@ explicit `end_turn` values as opaque diagnostics. Provider failures that report
 an exhausted upstream request buffer are now classified as retryable for
 caller-owned recovery. Responses incomplete terminals now distinguish
 max-output and content-filter stops from missing or unknown reasons, with a
-provider-neutral helper for bounded caller-owned max-token recovery.
+provider-neutral helper for bounded caller-owned max-token recovery. Existing
+strict function-tool opt-ins now derive provider-compatible closed schemas for
+supported OpenAI-compatible Chat Completions, Responses, and Mistral routes,
+while local validation maps optional non-nullable `null` placeholders back to
+omission without mutating caller-owned data.
 
 ## Added
 
+- Strict function tools now receive derived provider schemas with closed
+  objects, all properties required, and originally optional non-nullable
+  properties represented as nullable. The existing boolean
+  `Tool.ProviderMetadata["strict"]` opt-in drives this behavior on supported
+  OpenAI-compatible Chat Completions, Responses, and Mistral Conversations
+  routes; `ValidateToolCall` removes matching provider-emitted `null`
+  placeholders from its decoded argument copy.
 - `OAuthAuth.IsSubscription` and `ProviderAuthInfo.OAuthSubscription` expose
   advisory subscription metadata through detailed provider auth descriptors,
   registry listings, and snapshots. Anthropic, GitHub Copilot, Kimi Coding,
@@ -101,6 +112,13 @@ provider-neutral helper for bounded caller-owned max-token recovery.
 
 ## Compatibility
 
+- Strict schema derivation does not add public types or promote strict support
+  on other provider routes. Omitted or false strict metadata and unsupported
+  Chat Completions routes preserve their existing payloads. Explicit strict
+  schemas that use references, composed object or array unions, tuples,
+  conditionals, pattern properties, or schema-valued additional properties now
+  fail before dispatch rather than relying on provider rejection; caller-owned
+  schemas and tool-call arguments remain unchanged.
 - Subscription metadata is informational only. It does not change OAuth login,
   credential selection, refresh timing, persistence, or provider dispatch, and
   custom OAuth descriptors remain generic unless callers opt in explicitly.

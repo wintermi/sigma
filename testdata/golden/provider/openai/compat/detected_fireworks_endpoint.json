@@ -16,6 +16,9 @@
         "description": "",
         "name": "weather",
         "parameters": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
           "type": "object"
         },
         "strict": true

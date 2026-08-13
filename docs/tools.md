@@ -89,6 +89,40 @@ It strictly evaluates `date`, `time`, `date-time`, `email`, `uri`, `uuid`,
 External, file, and network references are rejected locally. Other unsupported
 JSON Schema keywords remain outside Sigma's validation contract.
 
+## Strict Tool Schemas
+
+For routes that already support strict function tools, opt in with boolean
+provider metadata:
+
+```go
+tool := sigma.Tool{
+	Name: "weather",
+	InputSchema: sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"city":  map[string]any{"type": "string"},
+			"units": map[string]any{"type": "string"},
+		},
+		"required": []any{"city"},
+	},
+	ProviderMetadata: map[string]any{"strict": true},
+}
+```
+
+Sigma sends a derived schema copy with closed objects and every property
+required. Originally optional non-nullable properties become nullable on the
+wire, and `ValidateToolCall` maps provider-emitted `null` placeholders for
+those properties back to omission. The original schema and arguments are not
+mutated.
+
+Strict derivation is available on strict-capable OpenAI-compatible Chat
+Completions models, Responses routes, and Mistral Conversations. It rejects
+schemas that cannot be converted safely, including references, composed
+object or array unions, tuples, conditionals, pattern properties, and
+schema-valued additional properties, before provider dispatch. Omitted or
+false strict metadata preserves the original schema, and other provider routes
+remain unchanged.
+
 ## Streaming Tool Calls
 
 Tool calls can stream as `toolcall_delta` events. The arguments are not

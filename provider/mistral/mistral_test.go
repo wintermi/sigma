@@ -650,21 +650,62 @@ func TestConversationsSerializesStrictFunctionToolMetadata(t *testing.T) {
 			providerID := sigma.ProviderID("mistral-strict-function-tools-test")
 			model := mistralTestModel(providerID)
 			client := mistralTestClient(t, providerID, model, server.URL)
+			schema := sigma.Schema{
+				"type": "object",
+				"properties": map[string]any{
+					"path":   map[string]any{"type": "string"},
+					"offset": map[string]any{"type": "number"},
+				},
+				"required": []any{"path"},
+			}
+			wantOriginal := sigma.Schema{
+				"type": "object",
+				"properties": map[string]any{
+					"path":   map[string]any{"type": "string"},
+					"offset": map[string]any{"type": "number"},
+				},
+				"required": []any{"path"},
+			}
 			if _, err := client.Complete(context.Background(), model, sigma.Request{
 				Messages: []sigma.Message{sigma.UserText("Use the lookup tool.")},
 				Tools: []sigma.Tool{{
 					Name:             "lookup",
 					Description:      "Lookup a record",
-					InputSchema:      sigma.Schema{"type": "object", "additionalProperties": false},
+					InputSchema:      schema,
 					ProviderMetadata: tt.metadata,
 				}},
 			}); err != nil {
 				t.Fatalf("Complete returned error: %v", err)
 			}
+			if !reflect.DeepEqual(schema, wantOriginal) {
+				t.Fatalf("Complete mutated schema: got %#v, want %#v", schema, wantOriginal)
+			}
 
 			payload := decodePayload(t, receiveRequest(t, requests).Body)
 			function := payload["tools"].([]any)[0].(map[string]any)["function"].(map[string]any)
-			if got, want := function["parameters"], map[string]any{"type": "object", "additionalProperties": false}; !reflect.DeepEqual(got, want) {
+			wantParameters := map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"path":   map[string]any{"type": "string"},
+					"offset": map[string]any{"type": "number"},
+				},
+				"required": []any{"path"},
+			}
+			if tt.wantStrict {
+				wantParameters = map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"path": map[string]any{"type": "string"},
+						"offset": map[string]any{"anyOf": []any{
+							map[string]any{"type": "number"},
+							map[string]any{"type": "null"},
+						}},
+					},
+					"required":             []any{"offset", "path"},
+					"additionalProperties": false,
+				}
+			}
+			if got, want := function["parameters"], wantParameters; !reflect.DeepEqual(got, want) {
 				t.Fatalf("function parameters = %#v, want %#v", got, want)
 			}
 			strict, ok := function["strict"]

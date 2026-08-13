@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
 )
 
@@ -504,12 +505,10 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 			converted = append(converted, convertedTool)
 			continue
 		}
-		parameters, err := jsonValue(tool.InputSchema)
+		strict, hasStrict := tool.ProviderMetadata["strict"].(bool)
+		parameters, err := responsesToolParameters(tool, strict)
 		if err != nil {
-			return nil, fmt.Errorf("openai responses: tool %q schema: %w", tool.Name, err)
-		}
-		if parameters == nil {
-			parameters = map[string]any{providerToolOptionTypeKey: "object"}
+			return nil, err
 		}
 		convertedTool := map[string]any{
 			providerToolOptionTypeKey: "function",
@@ -517,7 +516,7 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 			"description":             tool.Description,
 			"parameters":              parameters,
 		}
-		if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
+		if hasStrict {
 			convertedTool["strict"] = strict
 		}
 		if deferLoading {
@@ -526,6 +525,24 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 		converted = append(converted, convertedTool)
 	}
 	return converted, nil
+}
+
+func responsesToolParameters(tool sigma.Tool, strict bool) (any, error) {
+	if strict {
+		parameters, err := toolschema.MakeStrict(tool.InputSchema)
+		if err != nil {
+			return nil, fmt.Errorf("openai responses: tool %q strict schema: %w", tool.Name, err)
+		}
+		return parameters, nil
+	}
+	parameters, err := jsonValue(tool.InputSchema)
+	if err != nil {
+		return nil, fmt.Errorf("openai responses: tool %q schema: %w", tool.Name, err)
+	}
+	if parameters == nil {
+		parameters = map[string]any{providerToolOptionTypeKey: "object"}
+	}
+	return parameters, nil
 }
 
 func responsesDeferredToolItems(message sigma.Message, mode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {

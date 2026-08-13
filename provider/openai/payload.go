@@ -13,6 +13,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/providertext"
+	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
 )
 
@@ -758,22 +759,18 @@ func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat, 
 			})
 			continue
 		}
-		parameters, err := jsonValue(tool.InputSchema)
+		strict, hasStrict := tool.ProviderMetadata["strict"].(bool)
+		parameters, err := chatToolParameters(tool, compat.supportsStrictTools && strict)
 		if err != nil {
-			return nil, fmt.Errorf("openai completions: tool %q schema: %w", tool.Name, err)
-		}
-		if parameters == nil {
-			parameters = map[string]any{providerToolOptionTypeKey: "object"}
+			return nil, err
 		}
 		function := map[string]any{
 			"name":        tool.Name,
 			"description": tool.Description,
 			"parameters":  parameters,
 		}
-		if compat.supportsStrictTools {
-			if strict, ok := tool.ProviderMetadata["strict"].(bool); ok {
-				function["strict"] = strict
-			}
+		if compat.supportsStrictTools && hasStrict {
+			function["strict"] = strict
 		}
 		converted = append(converted, map[string]any{
 			providerToolOptionTypeKey: "function",
@@ -781,6 +778,24 @@ func chatTools(model sigma.Model, tools []sigma.Tool, compat completionsCompat, 
 		})
 	}
 	return converted, nil
+}
+
+func chatToolParameters(tool sigma.Tool, strict bool) (any, error) {
+	if strict {
+		parameters, err := toolschema.MakeStrict(tool.InputSchema)
+		if err != nil {
+			return nil, fmt.Errorf("openai completions: tool %q strict schema: %w", tool.Name, err)
+		}
+		return parameters, nil
+	}
+	parameters, err := jsonValue(tool.InputSchema)
+	if err != nil {
+		return nil, fmt.Errorf("openai completions: tool %q schema: %w", tool.Name, err)
+	}
+	if parameters == nil {
+		parameters = map[string]any{providerToolOptionTypeKey: "object"}
+	}
+	return parameters, nil
 }
 
 func unsupportedProviderToolError(model sigma.Model, tool sigma.Tool) error {

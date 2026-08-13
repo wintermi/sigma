@@ -8,6 +8,7 @@ package openai
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -112,8 +113,15 @@ func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 			req: sigma.Request{
 				Messages: []sigma.Message{sigma.UserText("weather")},
 				Tools: []sigma.Tool{{
-					Name:             "weather",
-					InputSchema:      sigma.Schema{"type": "object"},
+					Name: "weather",
+					InputSchema: sigma.Schema{
+						"type": "object",
+						"properties": map[string]any{
+							"city":  map[string]any{"type": "string"},
+							"units": map[string]any{"type": "string"},
+						},
+						"required": []any{"city"},
+					},
 					ProviderMetadata: map[string]any{"strict": true},
 				}},
 			},
@@ -205,6 +213,44 @@ func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 			}
 			goldentest.AssertJSON(t, payload, tt.golden)
 		})
+	}
+}
+
+func TestOpenAICompletionsStrictToolSchemaRequiresSafeConversion(t *testing.T) {
+	t.Parallel()
+
+	schema := sigma.Schema{
+		"type":       "object",
+		"properties": map[string]any{"value": map[string]any{"$ref": "#/$defs/value"}},
+	}
+	request := sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("lookup")},
+		Tools: []sigma.Tool{{
+			Name:             "lookup",
+			InputSchema:      schema,
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+	}
+	model := compatTestModel(sigma.OpenAICompletionsCompat{SupportsStrictTools: sigma.OpenAICompatSupported})
+	_, err := chatCompletionsPayload(model, request, sigma.Options{}, openAICompletionsCompat(model, "https://custom.example/v1"))
+	if err == nil {
+		t.Fatal("chatCompletionsPayload returned nil error")
+	}
+	if got := err.Error(); !strings.Contains(got, `tool "lookup" strict schema`) || !strings.Contains(got, "$ref schemas are unsupported") {
+		t.Fatalf("chatCompletionsPayload error = %q, want strict tool schema context", got)
+	}
+
+	model = compatTestModel(sigma.OpenAICompletionsCompat{SupportsStrictTools: sigma.OpenAICompatUnsupported})
+	payload, err := chatCompletionsPayload(model, request, sigma.Options{}, openAICompletionsCompat(model, "https://custom.example/v1"))
+	if err != nil {
+		t.Fatalf("unsupported strict route returned error: %v", err)
+	}
+	function := payload["tools"].([]map[string]any)[0]["function"].(map[string]any)
+	if _, exists := function["strict"]; exists {
+		t.Fatalf("strict = %#v, want omitted", function["strict"])
+	}
+	if got := function["parameters"]; !reflect.DeepEqual(got, map[string]any(schema)) {
+		t.Fatalf("parameters = %#v, want original schema %#v", got, schema)
 	}
 }
 
