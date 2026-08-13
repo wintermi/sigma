@@ -1299,6 +1299,29 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 	}
 }
 
+func TestOpenAICompletionsCompatMapsDirectDeepSeekLowReasoning(t *testing.T) {
+	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderDeepSeek, "deepseek-v4-flash")
+	if !ok {
+		t.Fatal("generated registry missing direct DeepSeek V4 Flash")
+	}
+	payload, err := chatCompletionsPayload(
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Options{ReasoningLevel: sigma.ThinkingLevelLow},
+		openAICompletionsCompat(model, "https://api.deepseek.com"),
+	)
+	if err != nil {
+		t.Fatalf("chatCompletionsPayload for direct DeepSeek low reasoning returned error: %v", err)
+	}
+	thinking, ok := payload["thinking"].(map[string]any)
+	if !ok || thinking["type"] != "enabled" {
+		t.Fatalf("thinking = %#v, want enabled object", payload["thinking"])
+	}
+	if got, want := payload["reasoning_effort"], "low"; got != want {
+		t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+	}
+}
+
 func TestOpenAICompletionsCompatDowngradesUnsupportedJSONSchemaResponseFormat(t *testing.T) {
 	t.Parallel()
 

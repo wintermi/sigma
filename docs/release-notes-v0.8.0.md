@@ -20,6 +20,8 @@ a first-class OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6
 metadata and native chat-template thinking controls. Fireworks GLM 5.2 routes
 now use session affinity for automatic prompt caching without unsupported
 long-cache retention.
+Direct DeepSeek V4 Flash requests now support the provider's low reasoning
+effort while retaining the existing high and maximum-effort mappings.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -140,6 +142,9 @@ provider-neutral helper for bounded caller-owned max-token recovery.
   thinking toggle without sending unsupported reasoning-effort values.
 - Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
   prompt caching is enabled and omit unsupported explicit long-cache retention.
+- Direct DeepSeek V4 Flash now maps `ThinkingLevelLow` to the provider's `low`
+  reasoning effort. DeepSeek V4 Pro and DeepSeek models exposed through other
+  routes retain their existing independently reviewed level mappings.
 - Anthropic Messages streams now emit non-empty text and thinking delivered by
   content-block start events as ordered initial deltas while retaining
   signatures, citations, and complete final blocks.

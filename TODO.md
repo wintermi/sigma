@@ -247,6 +247,8 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add opt-in structured-output capability probes for OpenAI-compatible
       routes so JSON object and strict JSON Schema support can be refreshed
       from live evidence without making provider calls part of `mise run ci`.
+- [x] Expose low reasoning effort for direct DeepSeek V4 Flash requests while
+      preserving independently reviewed reasoning levels on routed copies.
 
 ## Vertex MaaS
 

@@ -1157,15 +1157,8 @@ func (c *codexWebSocketConnection) readFrame(ctx context.Context) (byte, bool, [
 		c.Close()
 		return 0, false, nil, err
 	}
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			c.Close()
-		case <-done:
-		}
-	}()
-	defer close(done)
+	stopCancel := context.AfterFunc(ctx, c.Close)
+	defer stopCancel()
 
 	header := make([]byte, 2)
 	if _, err := io.ReadFull(c.reader, header); err != nil {

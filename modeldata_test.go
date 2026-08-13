@@ -1634,6 +1634,9 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("DeepSeek xhigh level = %q, %v; want max, true", got, ok)
 	}
+	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
+		t.Fatalf("DeepSeek low level = %q, %v; want low, true", got, ok)
+	}
 	deepSeekPro, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-pro")
 	if !ok {
 		t.Fatal("fresh registry missing generated DeepSeek V4 Pro model")

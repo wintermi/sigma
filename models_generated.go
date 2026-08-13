@@ -6498,9 +6498,10 @@ var builtinTextModels = []Model{
 		SupportsThinking: true,
 		ThinkingLevelMap: map[ThinkingLevel]string{
 			ThinkingLevel("high"):  "high",
+			ThinkingLevel("low"):   "low",
 			ThinkingLevel("xhigh"): "max",
 		},
-		UnsupportedThinkingLevels:    []ThinkingLevel{ThinkingLevel("minimal"), ThinkingLevel("low"), ThinkingLevel("medium")},
+		UnsupportedThinkingLevels:    []ThinkingLevel{ThinkingLevel("minimal"), ThinkingLevel("medium")},
 		InputCostPerMillion:          0.14,
 		OutputCostPerMillion:         0.28,
 		CacheReadInputCostPerMillion: 0.0028,
