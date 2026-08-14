@@ -11,6 +11,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
+Replayed Bedrock tool inputs now remove provider-rejected empty object-member
+names without altering stored or streamed tool arguments.
 Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
 across both regional routes while preserving supported reasoning levels and
 keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
@@ -149,6 +151,10 @@ omission without mutating caller-owned data.
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   while preserving existing stop reasons and retry classification.
+- Amazon Bedrock Converse Stream removes empty object-member names recursively
+  only from outbound replayed tool inputs. Provider-emitted tool arguments,
+  caller-owned messages, arrays, scalar values, `null`, and non-empty keys
+  remain unchanged.
 - Qwen Token Plan now replaces the retired Qwen3.8 Max Preview ID with
   Qwen3.8 Max while preserving supported reasoning levels through native
   `reasoning_effort` controls on the international and China routes. Qwen3.7

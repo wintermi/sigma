@@ -511,6 +511,7 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 			if input == nil {
 				input = map[string]any{}
 			}
+			input = sanitizeBedrockDocument(input)
 			content = append(content, ConverseContentBlock{
 				Type: converseBlockToolUse,
 				ToolUse: &ConverseToolUseBlock{
@@ -524,6 +525,21 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 		}
 	}
 	return content, nil
+}
+
+func sanitizeBedrockDocument(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		delete(typed, "")
+		for key, nested := range typed {
+			typed[key] = sanitizeBedrockDocument(nested)
+		}
+	case []any:
+		for index, nested := range typed {
+			typed[index] = sanitizeBedrockDocument(nested)
+		}
+	}
+	return value
 }
 
 func converseImage(block sigma.ContentBlock) (*ConverseImageBlock, error) {

@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"hash/crc32"
 	"io"
@@ -678,6 +679,121 @@ func TestToolCallIDsAreNormalizedForReplay(t *testing.T) {
 	}
 	if got, want := toolResults[1].ToolResult.ToolUseID, secondID; got != want {
 		t.Fatalf("second tool result id = %q, want %q", got, want)
+	}
+}
+
+func TestReplayToolArgumentsDropEmptyKeysOnlyFromBedrockPayload(t *testing.T) {
+	t.Parallel()
+
+	toolArguments := map[string]any{
+		"":     "drop root",
+		"path": "/workspace/file.js",
+		"edits": []any{
+			map[string]any{"old": "first", "new": "updated first"},
+			map[string]any{
+				"":    "drop nested",
+				"old": "second",
+				"new": "updated second",
+				"metadata": map[string]any{
+					"":     "drop deep",
+					"note": nil,
+				},
+			},
+			"unchanged scalar",
+			nil,
+		},
+		"empty": map[string]any{"": "drop only value"},
+	}
+	originalJSON, err := json.Marshal(toolArguments)
+	if err != nil {
+		t.Fatalf("encode original tool arguments: %v", err)
+	}
+
+	payload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("tool_edit", "edit", toolArguments),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_edit",
+				ToolName:   "edit",
+				Content:    []sigma.ContentBlock{sigma.Text("done")},
+			},
+			sigma.UserText("continue"),
+		}},
+		sigma.Options{},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("conversePayload returned error: %v", err)
+	}
+	input, err := awsConverseInput(payload)
+	if err != nil {
+		t.Fatalf("awsConverseInput returned error: %v", err)
+	}
+	messages := input["messages"].([]map[string]any)
+	content := messages[0]["content"].([]map[string]any)
+	toolUse := content[0]["toolUse"].(map[string]any)
+	wantInput := map[string]any{
+		"path": "/workspace/file.js",
+		"edits": []any{
+			map[string]any{"old": "first", "new": "updated first"},
+			map[string]any{
+				"old": "second",
+				"new": "updated second",
+				"metadata": map[string]any{
+					"note": nil,
+				},
+			},
+			"unchanged scalar",
+			nil,
+		},
+		"empty": map[string]any{},
+	}
+	if got := toolUse["input"]; !reflect.DeepEqual(got, wantInput) {
+		t.Fatalf("tool input = %#v, want %#v", got, wantInput)
+	}
+	afterJSON, err := json.Marshal(toolArguments)
+	if err != nil {
+		t.Fatalf("encode caller tool arguments after conversion: %v", err)
+	}
+	if !bytes.Equal(afterJSON, originalJSON) {
+		t.Fatalf("caller tool arguments mutated: %s, want %s", afterJSON, originalJSON)
+	}
+}
+
+func TestReplayToolArgumentsRetainMalformedJSONError(t *testing.T) {
+	t.Parallel()
+
+	_, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("tool_lookup", "lookup", json.RawMessage(`{"query":`)),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_lookup",
+				ToolName:   "lookup",
+				Content:    []sigma.ContentBlock{sigma.Text("done")},
+			},
+		}},
+		sigma.Options{},
+		Config{ModelID: "model"},
+	)
+	if err == nil {
+		t.Fatal("conversePayload returned nil error")
+	}
+	if !strings.Contains(err.Error(), `tool "lookup" input`) {
+		t.Fatalf("conversePayload error = %v, want tool input context", err)
 	}
 }
 
@@ -1795,6 +1911,51 @@ func TestStreamingMapsThinkingToolCallsUsageAndStopReason(t *testing.T) {
 	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.Raw["inputTokens"] != float64(7) {
 		t.Fatalf("terminal usage = %#v, want raw input tokens", events[len(events)-1].Usage)
 	}
+}
+
+func TestStreamingPreservesEmptyToolArgumentKeys(t *testing.T) {
+	t.Parallel()
+
+	stream := fakeStream(
+		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+		ConverseEvent{Kind: ConverseEventContentBlockStart, ContentBlockIndex: 0, ToolUseID: "tool_edit", ToolName: "edit"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, ToolInputDelta: `{"path":"/workspace/file.js","edits":[{"old":"first","new":"updated first"},{"old":"second","new":"updated second","":""}]}`},
+		ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "tool_use"},
+	)
+	fakeClient := &fakeConverseClient{stream: stream}
+	providerID := sigma.ProviderID("bedrock-empty-tool-keys")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	sigmaStream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("use the tool")}})
+	events := collectEvents(t, sigmaStream)
+	if err := sigmaStream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := sigmaStream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	want := map[string]any{
+		"path": "/workspace/file.js",
+		"edits": []any{
+			map[string]any{"old": "first", "new": "updated first"},
+			map[string]any{"old": "second", "new": "updated second", "": ""},
+		},
+	}
+	if got := final.Content[0].ToolArguments; !reflect.DeepEqual(got, want) {
+		t.Fatalf("final tool arguments = %#v, want %#v", got, want)
+	}
+	for _, event := range events {
+		if event.Kind != sigma.EventKindToolCallEnd {
+			continue
+		}
+		if event.ToolCall == nil || !reflect.DeepEqual(event.ToolCall.Arguments, want) {
+			t.Fatalf("tool-call end = %#v, want arguments %#v", event.ToolCall, want)
+		}
+		return
+	}
+	t.Fatal("tool-call end event was not emitted")
 }
 
 func TestStreamingResponseFormatToolConvertsToText(t *testing.T) {

@@ -300,6 +300,8 @@ work until their API boundaries are explicit.
       Gemini API and Vertex AI grounded responses.
 - [x] Synthesize Bedrock Converse tool specs from replayed assistant/tool
       history when the current request has no active tools.
+- [x] Remove provider-rejected empty object keys from replayed Bedrock tool-call
+      inputs without changing streamed arguments or caller-owned history.
 - [x] Add typed Bedrock structured-output requests through a synthetic schema
       tool that is hidden from callers while preserving real tool calls.
 - [x] Drop abandoned local assistant tool-call blocks during provider replay

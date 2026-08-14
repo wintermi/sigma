@@ -74,6 +74,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
   normalized tool-call IDs on replayed function calls and matching tool
   results, while older Vertex Gemini requests continue omitting unsupported
   IDs.
+- Amazon Bedrock Converse Stream replay now removes empty object-member names
+  from outbound tool inputs, avoiding provider rejection while preserving
+  caller-owned and provider-emitted tool arguments.
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   without changing retry classification.
