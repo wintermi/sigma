@@ -39,6 +39,8 @@ token lifetime remains, without changing existing refresh defaults.
 Provider OAuth descriptors and registry summaries now also identify known
 subscription-backed flows so applications can distinguish them from generic
 OAuth sign-in without inferring from provider names or credential types.
+Kimi and Kimi Coding requests now use a Sigma-owned coding-endpoint identity
+from their shared provider wrapper instead of duplicated model-catalog headers.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
 evaluations.
@@ -114,6 +116,9 @@ omission without mutating caller-owned data.
 
 ## Compatibility
 
+- `kimi.DefaultUserAgent` now identifies requests as `sigma/kimi-coding` for
+  both Kimi provider IDs. Provider, model, and request header overrides retain
+  their existing precedence, and API-key and OAuth authentication are unchanged.
 - Strict schema derivation does not add public types or promote strict support
   on other provider routes. Omitted or false strict metadata and unsupported
   Chat Completions routes preserve their existing payloads. Explicit strict

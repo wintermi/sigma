@@ -52,6 +52,13 @@ See [release notes](docs/release-notes-v0.8.0.md).
   focused GLM 5.2 and Kimi K2.6 metadata, `BASETEN_API_KEY` discovery, and
   model-specific chat-template thinking controls.
 
+### Changed
+
+- Kimi and Kimi Coding requests now use the Sigma-owned `sigma/kimi-coding`
+  default user agent from the shared provider wrapper instead of duplicated
+  model-catalog headers. Explicit provider, model, and request header overrides
+  retain their existing precedence.
+
 ### Fixed
 
 - Direct DeepSeek V4 Flash metadata now exposes its supported low reasoning

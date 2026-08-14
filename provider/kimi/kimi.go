@@ -15,8 +15,8 @@ import (
 const (
 	// DefaultCodingBaseURL is the Kimi Coding Anthropic-compatible API base URL.
 	DefaultCodingBaseURL = "https://api.kimi.com/coding/v1"
-	// DefaultUserAgent is the user agent expected by the Kimi Coding endpoint.
-	DefaultUserAgent = "KimiCLI/1.5"
+	// DefaultUserAgent identifies Sigma requests to the Kimi Coding endpoint.
+	DefaultUserAgent = "sigma/kimi-coding"
 )
 
 // Provider adapts Kimi's Anthropic-compatible Messages endpoint.

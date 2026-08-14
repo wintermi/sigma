@@ -12707,9 +12707,6 @@
       },
       "contextWindow": 262144,
       "maxOutputTokens": 32768,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
       "authEnvNames": [
         "KIMI_API_KEY"
       ],
@@ -12742,9 +12739,6 @@
       },
       "contextWindow": 1048576,
       "maxOutputTokens": 131072,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
       "authEnvNames": [
         "KIMI_API_KEY"
       ],
@@ -12789,9 +12783,6 @@
       },
       "contextWindow": 262144,
       "maxOutputTokens": 32768,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
       "authEnvNames": [
         "KIMI_API_KEY"
       ],
@@ -12825,9 +12816,6 @@
       },
       "contextWindow": 262144,
       "maxOutputTokens": 32768,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
       "authEnvNames": [
         "KIMI_API_KEY"
       ],
@@ -12859,9 +12847,6 @@
       },
       "contextWindow": 262144,
       "maxOutputTokens": 32768,
-      "headers": {
-        "User-Agent": "KimiCLI/1.5"
-      },
       "authEnvNames": [
         "KIMI_API_KEY"
       ],

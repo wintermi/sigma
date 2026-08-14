@@ -9457,7 +9457,7 @@ var builtinTextModels = []Model{
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"KIMI_API_KEY"},
 			"baseURL":             "https://api.kimi.com/coding/v1",
-			"headers":             map[string]string{"User-Agent": "KimiCLI/1.5"},
+			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
 	},
@@ -9490,7 +9490,7 @@ var builtinTextModels = []Model{
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"KIMI_API_KEY"},
 			"baseURL":             "https://api.kimi.com/coding/v1",
-			"headers":             map[string]string{"User-Agent": "KimiCLI/1.5"},
+			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
 	},
@@ -9517,7 +9517,7 @@ var builtinTextModels = []Model{
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"KIMI_API_KEY"},
 			"baseURL":             "https://api.kimi.com/coding/v1",
-			"headers":             map[string]string{"User-Agent": "KimiCLI/1.5"},
+			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
 	},
@@ -9543,7 +9543,7 @@ var builtinTextModels = []Model{
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"KIMI_API_KEY"},
 			"baseURL":             "https://api.kimi.com/coding/v1",
-			"headers":             map[string]string{"User-Agent": "KimiCLI/1.5"},
+			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
 	},
@@ -9569,7 +9569,7 @@ var builtinTextModels = []Model{
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"KIMI_API_KEY"},
 			"baseURL":             "https://api.kimi.com/coding/v1",
-			"headers":             map[string]string{"User-Agent": "KimiCLI/1.5"},
+			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
 	},

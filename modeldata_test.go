@@ -2421,7 +2421,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
 		headers, ok := model.ProviderMetadata["headers"].(map[string]string)
-		if !ok || headers["Copilot-Integration-Id"] != "vscode-chat" {
+		if !ok || headers["Copilot-Integration-Id"] != "vscode-chat" || headers["User-Agent"] != "GitHubCopilotChat/0.35.0" {
 			t.Fatalf("GitHub Copilot %s headers = %#v, want Copilot headers", tt.id, model.ProviderMetadata["headers"])
 		}
 	}
@@ -2560,6 +2560,9 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 	}
 	assertMetadataString(t, kimi.ProviderMetadata, "baseURL", "https://api.kimi.com/coding/v1")
 	assertMetadataStrings(t, kimi.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"KIMI_API_KEY"})
+	if headers, ok := kimi.ProviderMetadata["headers"].(map[string]string); !ok || len(headers) != 0 {
+		t.Fatalf("Kimi headers metadata = %#v, want no catalog headers", kimi.ProviderMetadata["headers"])
+	}
 
 	for _, tt := range []struct {
 		id                          ModelID
@@ -2621,12 +2624,8 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		}
 		assertMetadataString(t, kimiCoding.ProviderMetadata, "baseURL", "https://api.kimi.com/coding/v1")
 		assertMetadataStrings(t, kimiCoding.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"KIMI_API_KEY"})
-		headers, ok := kimiCoding.ProviderMetadata["headers"].(map[string]string)
-		if !ok {
-			t.Fatalf("Kimi Coding model %q headers metadata type = %T, want map[string]string", tt.id, kimiCoding.ProviderMetadata["headers"])
-		}
-		if got, want := headers["User-Agent"], "KimiCLI/1.5"; got != want {
-			t.Fatalf("Kimi Coding model %q User-Agent metadata = %q, want %q", tt.id, got, want)
+		if headers, ok := kimiCoding.ProviderMetadata["headers"].(map[string]string); !ok || len(headers) != 0 {
+			t.Fatalf("Kimi Coding model %q headers metadata = %#v, want no catalog headers", tt.id, kimiCoding.ProviderMetadata["headers"])
 		}
 	}
 

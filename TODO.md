@@ -629,6 +629,9 @@ upstream.
       limits and estimated costs, K3 low/high/max adaptive-thinking controls,
       empty-signature replay compatibility, and retirement of the stale `k2p7`
       row while preserving the existing adapter.
+- [x] Centralize the Kimi and Kimi Coding default request identity in the shared
+      provider wrapper and remove duplicated user-agent metadata from generated
+      catalog models while preserving caller header overrides.
 - [x] Add focused Hugging Face Router metadata after settling provider ID,
       credential env var, compatibility metadata, and first-class provider-row
       requirements.

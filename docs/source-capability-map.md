@@ -60,9 +60,9 @@ packages and metadata fields. It should be read with
 | Fireworks | `fireworks`, `fireworks-anthropic` | `openai-completions`, `anthropic-messages` | Generated metadata includes curated GLM, Nemotron, and Kimi routes, including Kimi K3 on the OpenAI-compatible endpoint, plus broader Anthropic-compatible DeepSeek, GPT-OSS, MiniMax, and Qwen routes. |
 | Moonshot AI | `moonshotai`, `moonshotai-cn` | `openai-completions` | Use [provider/moonshot](../provider/moonshot). Generated metadata includes direct Kimi K2 rows with `MOONSHOT_API_KEY` credential metadata and K2.7 disabled-thinking compatibility metadata. |
 | Qwen Token Plan | `qwen-token-plan`, `qwen-token-plan-cn` | `openai-completions` | Use [provider/qwen](../provider/qwen). Generated metadata includes focused Qwen3.7 Max and Qwen3.8 Max rows with regional API-key fallback and Qwen thinking compatibility metadata. |
-| Kimi Coding | `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). Generated metadata includes Kimi Coding Anthropic-compatible routes with Kimi CLI headers, API-key auth, and opt-in device-code OAuth. |
+| Kimi Coding | `kimi`, `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). The shared wrapper supplies Sigma-owned request identity for both provider IDs; generated metadata includes API-key auth and Kimi Coding opt-in device-code OAuth. |
 | Vercel AI Gateway | `vercel-ai-gateway` | `anthropic-messages` | Use [provider/vercel](../provider/vercel). Generated metadata includes curated gateway routes with `AI_GATEWAY_API_KEY` credential metadata and route-specific Anthropic compatibility metadata. |
-| Kimi, Xiaomi | `kimi`, `xiaomi` | `anthropic-messages` or `openai-completions` when caller registers compatible providers | Generated metadata includes representative metadata-only routes with compatibility metadata. |
+| Xiaomi | `xiaomi` | `openai-completions` when callers register a compatible provider | Generated metadata includes a representative metadata-only route with compatibility metadata. |
 | Custom/local endpoints | `custom` or caller-defined | Usually `openai-completions` | Use explicit registry entries, `WithBaseURL`, and compatibility metadata. |
 
 ## Metadata flags

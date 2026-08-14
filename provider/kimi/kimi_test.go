@@ -240,7 +240,7 @@ func TestCompleteUsesDefaults(t *testing.T) {
 			if got, want := request.Path, "/coding/v1/messages"; got != want {
 				t.Fatalf("path = %q, want %q", got, want)
 			}
-			if got, want := request.Headers.Get("User-Agent"), kimi.DefaultUserAgent; got != want {
+			if got, want := request.Headers.Get("User-Agent"), "sigma/kimi-coding"; got != want {
 				t.Fatalf("User-Agent = %q, want %q", got, want)
 			}
 			if got, want := request.Headers.Get("X-Api-Key"), "request-key"; got != want {
@@ -291,8 +291,70 @@ func TestKimiCodingOAuthUsesBearerAuth(t *testing.T) {
 	if got := request.Headers.Get("X-Api-Key"); got != "" {
 		t.Fatalf("X-Api-Key header = %q, want empty", got)
 	}
-	if got, want := request.Headers.Get("User-Agent"), kimi.DefaultUserAgent; got != want {
+	if got, want := request.Headers.Get("User-Agent"), "sigma/kimi-coding"; got != want {
 		t.Fatalf("User-Agent = %q, want %q", got, want)
+	}
+}
+
+func TestConfiguredHeadersOverrideDefaultUserAgent(t *testing.T) {
+	t.Parallel()
+
+	for _, provider := range providerCases() {
+		for _, override := range []struct {
+			name           string
+			providerHeader string
+			modelHeader    string
+			want           string
+		}{
+			{name: "provider header", providerHeader: "provider-agent/1.0", want: "provider-agent/1.0"},
+			{name: "model header", modelHeader: "model-agent/1.0", want: "model-agent/1.0"},
+		} {
+			t.Run(provider.name+"/"+override.name, func(t *testing.T) {
+				t.Parallel()
+
+				requests := make(chan capturedRequest, 1)
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					captureRequest(t, requests, r)
+					writeCompleted(t, w)
+				}))
+				t.Cleanup(server.Close)
+
+				model := kimiTestModel(provider.provider)
+				if override.modelHeader != "" {
+					model.ProviderMetadata = map[string]any{
+						"headers": map[string]string{"User-Agent": override.modelHeader},
+					}
+				}
+				providerOpts := []kimi.ProviderOption{kimi.WithBaseURL(server.URL)}
+				if override.providerHeader != "" {
+					providerOpts = append(providerOpts, kimi.WithHeader("User-Agent", override.providerHeader))
+				}
+
+				registry := sigma.NewRegistry()
+				if err := provider.register(registry, providerOpts...); err != nil {
+					t.Fatalf("register returned error: %v", err)
+				}
+				if err := registry.RegisterModel(model); err != nil {
+					t.Fatalf("RegisterModel returned error: %v", err)
+				}
+				client := sigma.NewClient(sigma.WithRegistry(registry))
+
+				_, err := client.Complete(
+					context.Background(),
+					model,
+					sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+					sigma.WithAPIKey("request-key"),
+				)
+				if err != nil {
+					t.Fatalf("Complete returned error: %v", err)
+				}
+
+				request := receiveRequest(t, requests)
+				if got := request.Headers.Get("User-Agent"); got != override.want {
+					t.Fatalf("User-Agent = %q, want %q", got, override.want)
+				}
+			})
+		}
 	}
 }
 
