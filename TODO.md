@@ -173,6 +173,9 @@ integrations remain future work until they have the same local evidence bar.
       requests and keep the built-in GPT-5.6 Codex context limits at 272K.
 - [x] Send OpenRouter cache affinity through `x-session-id`, preserving caller
       header overrides and avoiding generic OpenAI session-affinity headers.
+- [x] Advance Anthropic-style OpenRouter conversation cache breakpoints to the
+      latest non-empty tool result while preserving bounded system and final
+      tool-definition markers.
 - [x] Keep OpenAI and Azure OpenAI Responses `previous_response_id` payloads
       explicit so cache-affinity `sigma.WithSessionID` values are not sent as
       provider continuation IDs.

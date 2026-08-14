@@ -21,7 +21,8 @@ with each model's thinking controls preserved. Baseten is now available through
 a first-class OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6
 metadata and native chat-template thinking controls. Fireworks GLM 5.2 routes
 now use session affinity for automatic prompt caching without unsupported
-long-cache retention.
+long-cache retention. Anthropic-routed OpenRouter agent loops now advance their
+final conversation cache breakpoint through the latest non-empty tool result.
 Direct DeepSeek V4 Flash requests now support the provider's low reasoning
 effort while retaining the existing high and maximum-effort mappings.
 Anthropic Messages streams now surface text and thinking delivered with
@@ -116,6 +117,11 @@ omission without mutating caller-owned data.
 
 ## Compatibility
 
+- Anthropic-style OpenRouter Chat Completions cache markers now treat non-empty
+  tool-result messages as eligible final conversation breakpoints. Empty tool
+  results fall back to the preceding eligible message; disabled caching, other
+  cache-control formats, tool-result fields, and the bounded system and final
+  tool-definition markers remain unchanged.
 - `kimi.DefaultUserAgent` now identifies requests as `sigma/kimi-coding` for
   both Kimi provider IDs. Provider, model, and request header overrides retain
   their existing precedence, and API-key and OAuth authentication are unchanged.

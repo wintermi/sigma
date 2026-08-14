@@ -1196,7 +1196,7 @@ func addAnthropicCacheControl(payload map[string]any, cacheControl map[string]an
 	}
 	for index := len(messages) - 1; index >= 0; index-- {
 		role, _ := messages[index]["role"].(string)
-		if role != "user" && role != "assistant" {
+		if role != "user" && role != "assistant" && role != "tool" {
 			continue
 		}
 		if addContentPartCacheControl(messages[index], cacheControl) {

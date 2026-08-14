@@ -61,6 +61,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenRouter Anthropic-routed Chat Completions now place the final conversation
+  prompt-cache marker on the latest non-empty tool result instead of the
+  preceding assistant or user message, while retaining the bounded system and
+  tool-definition markers.
 - Direct DeepSeek V4 Flash metadata now exposes its supported low reasoning
   effort while preserving the existing high and `xhigh`-to-`max` mappings;
   routed DeepSeek models retain their independently reviewed level support.

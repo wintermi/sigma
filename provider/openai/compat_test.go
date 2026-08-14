@@ -700,7 +700,18 @@ func TestOpenAICompletionsCompatDetectsOpenRouterAnthropicCacheControl(t *testin
 		model,
 		sigma.Request{
 			SystemPrompt: "policy",
-			Messages:     []sigma.Message{sigma.UserText("hi")},
+			Messages: []sigma.Message{
+				sigma.UserText("hi"),
+				{
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.ToolCallBlock("call_1", "lookup", map[string]any{"id": "first"}),
+						sigma.ToolCallBlock("call_2", "lookup", map[string]any{"id": "second"}),
+					},
+				},
+				sigma.ToolResult("call_1", "first result"),
+				sigma.ToolResult("call_2", "second result"),
+			},
 			Tools: []sigma.Tool{{
 				Name:        "lookup",
 				Description: "Lookup records",
@@ -714,6 +725,75 @@ func TestOpenAICompletionsCompatDetectsOpenRouterAnthropicCacheControl(t *testin
 		t.Fatalf("chatCompletionsPayload returned error: %v", err)
 	}
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/detected_openrouter_anthropic_cache.json")
+}
+
+func TestAddAnthropicCacheControlUsesLatestEligibleConversationMessage(t *testing.T) {
+	t.Parallel()
+
+	cacheControl := map[string]any{"type": "ephemeral"}
+	messages := []map[string]any{
+		{"role": "user", "content": "request"},
+		{"role": "assistant", "content": "working"},
+		{"role": "tool", "tool_call_id": "call_1", "name": "lookup", "content": "first result"},
+		{"role": "tool", "tool_call_id": "call_2", "name": "lookup", "content": "second result"},
+	}
+	addAnthropicCacheControl(map[string]any{"messages": messages}, cacheControl)
+
+	for index := 0; index < len(messages)-1; index++ {
+		if got, ok := messages[index]["content"].(string); !ok {
+			t.Fatalf("message[%d] content = %#v, want unmarked string", index, messages[index]["content"])
+		} else if got == "" {
+			t.Fatalf("message[%d] content is unexpectedly empty", index)
+		}
+	}
+	want := []map[string]any{{
+		"type":          "text",
+		"text":          "second result",
+		"cache_control": cacheControl,
+	}}
+	if got := messages[len(messages)-1]["content"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("latest tool result content = %#v, want %#v", got, want)
+	}
+	if got, want := messages[len(messages)-1]["tool_call_id"], any("call_2"); got != want {
+		t.Fatalf("latest tool result ID = %#v, want %#v", got, want)
+	}
+	if got, want := messages[len(messages)-1]["name"], any("lookup"); got != want {
+		t.Fatalf("latest tool result name = %#v, want %#v", got, want)
+	}
+}
+
+func TestAddAnthropicCacheControlSkipsEmptyToolResult(t *testing.T) {
+	t.Parallel()
+
+	cacheControl := map[string]any{"type": "ephemeral"}
+	messages := []map[string]any{
+		{"role": "assistant", "content": "working"},
+		{"role": "tool", "tool_call_id": "call_1", "content": ""},
+	}
+	addAnthropicCacheControl(map[string]any{"messages": messages}, cacheControl)
+
+	want := []map[string]any{{
+		"type":          "text",
+		"text":          "working",
+		"cache_control": cacheControl,
+	}}
+	if got := messages[0]["content"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("assistant fallback content = %#v, want %#v", got, want)
+	}
+	if got, want := messages[1]["content"], any(""); got != want {
+		t.Fatalf("empty tool result content = %#v, want %#v", got, want)
+	}
+}
+
+func TestAnthropicCacheControlRequiresEnabledMatchingFormat(t *testing.T) {
+	t.Parallel()
+
+	if got := anthropicCacheControl(sigma.CacheRetentionNone, sigma.OpenAICompletionsCacheControlAnthropic); got != nil {
+		t.Fatalf("disabled cache control = %#v, want nil", got)
+	}
+	if got := anthropicCacheControl(sigma.CacheRetentionEphemeral, sigma.OpenAICompletionsCacheControlMessage); got != nil {
+		t.Fatalf("non-Anthropic cache control = %#v, want nil", got)
+	}
 }
 
 func TestOpenAICompletionsCompatDetectsFireworksEndpoint(t *testing.T) {

@@ -550,6 +550,9 @@ Environment: `OPENROUTER_API_KEY`.
 OpenRouter text generation uses the shared OpenAI-compatible Chat Completions
 adapter with OpenRouter base URL defaults, generated model metadata, prompt
 cache markers, nested reasoning requests, and request-scoped routing options.
+For Anthropic-routed models, the final conversation cache marker advances to
+the latest non-empty tool result after a tool call; empty results are skipped,
+and the system-prompt and final tool-definition markers remain bounded.
 
 ### OpenRouter Images
 
