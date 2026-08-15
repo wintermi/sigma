@@ -28,6 +28,10 @@ const (
 	githubCopilotOAuthDefaultPollInterval   = 5 * time.Second
 	githubCopilotOAuthSlowDownPollIncrement = 5 * time.Second
 	githubCopilotOAuthDefaultRefreshBefore  = time.Minute
+	githubCopilotModelsAPIVersion           = "2026-06-01"
+	githubCopilotModelsMaxBodyBytes         = 1 << 20
+	githubCopilotModelsDefaultRetryAfter    = time.Second
+	githubCopilotModelsMaxRetryAfter        = 10 * time.Second
 )
 
 // GitHubCopilotOAuthCredentials carries GitHub Copilot OAuth tokens. Callers
@@ -154,6 +158,36 @@ type GitHubCopilotModelEnableOptions struct {
 	EnterpriseDomain string
 }
 
+// GitHubCopilotModelDiscoveryOptions configures account-aware model
+// discovery.
+type GitHubCopilotModelDiscoveryOptions struct {
+	HTTPClient       *http.Client
+	BaseURL          string
+	EnterpriseDomain string
+}
+
+// GitHubCopilotModelAvailability reports model IDs available to an
+// authenticated GitHub Copilot account.
+type GitHubCopilotModelAvailability struct {
+	ModelIDs []sigma.ModelID
+}
+
+// ModelFilter returns a snapshot filter for the discovered GitHub Copilot
+// model IDs. An empty availability matches no models.
+func (availability GitHubCopilotModelAvailability) ModelFilter() sigma.ModelFilter {
+	available := make(map[sigma.ModelID]struct{}, len(availability.ModelIDs))
+	for _, modelID := range availability.ModelIDs {
+		available[modelID] = struct{}{}
+	}
+	return func(model sigma.Model) bool {
+		if model.Provider != sigma.ProviderGitHubCopilot {
+			return false
+		}
+		_, ok := available[model.ID]
+		return ok
+	}
+}
+
 // GitHubCopilotModelEnableResult reports the outcome for one model-policy
 // enablement request.
 type GitHubCopilotModelEnableResult struct {
@@ -182,6 +216,23 @@ const (
 type githubCopilotDevicePollResult struct {
 	status githubCopilotDevicePollStatus
 	token  string
+}
+
+type githubCopilotModelsResponse struct {
+	Data *[]githubCopilotModelAvailability `json:"data"`
+}
+
+type githubCopilotModelAvailability struct {
+	ID                 string `json:"id"`
+	ModelPickerEnabled bool   `json:"model_picker_enabled"`
+	Policy             struct {
+		State string `json:"state"`
+	} `json:"policy"`
+	Capabilities struct {
+		Supports struct {
+			ToolCalls *bool `json:"tool_calls"`
+		} `json:"supports"`
+	} `json:"capabilities"`
 }
 
 // GitHubCopilotOAuthTokenProvider resolves and refreshes caller-owned GitHub
@@ -425,6 +476,109 @@ func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, m
 
 func (p *GitHubCopilotOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool {
 	return oauthvalidity.NeedsRefresh(p.now(), p.credentials.Expiry, p.refreshBefore, opts.OAuthMinimumValidity)
+}
+
+// DiscoverGitHubCopilotModels fetches the model IDs currently available to an
+// authenticated GitHub Copilot account. Discovery is advisory and does not
+// enable model policies or mutate a Sigma registry.
+func DiscoverGitHubCopilotModels(ctx context.Context, accessToken string, opts GitHubCopilotModelDiscoveryOptions) (GitHubCopilotModelAvailability, error) {
+	if accessToken == "" {
+		return GitHubCopilotModelAvailability{}, &sigma.CredentialUnavailableError{Sources: []string{"github-copilot-oauth"}}
+	}
+	domain, err := githubCopilotDomain(opts.EnterpriseDomain)
+	if err != nil {
+		return GitHubCopilotModelAvailability{}, err
+	}
+	accountBaseURL := GitHubCopilotBaseURL(accessToken, domain)
+	baseURL := accountBaseURL
+	if opts.BaseURL != "" {
+		baseURL = opts.BaseURL
+	}
+	endpoint := strings.TrimRight(baseURL, "/") + "/models"
+
+	for attempt := 0; attempt < 2; attempt++ {
+		status, headers, body, err := requestGitHubCopilotModels(ctx, accessToken, endpoint, opts.HTTPClient)
+		if err != nil {
+			return GitHubCopilotModelAvailability{}, err
+		}
+		if status == http.StatusTooManyRequests && attempt == 0 {
+			if err := githubCopilotSleepContext(ctx, githubCopilotModelsRetryAfter(headers)); err != nil {
+				return GitHubCopilotModelAvailability{}, err
+			}
+			continue
+		}
+		if status < http.StatusOK || status >= http.StatusMultipleChoices {
+			return GitHubCopilotModelAvailability{}, fmt.Errorf("github copilot oauth: discover models failed (%d): %s", status, redact.Preview(string(body), 1024))
+		}
+		modelIDs, err := parseGitHubCopilotModelIDs(body, accountBaseURL == DefaultBaseURL)
+		if err != nil {
+			return GitHubCopilotModelAvailability{}, err
+		}
+		return GitHubCopilotModelAvailability{ModelIDs: modelIDs}, nil
+	}
+	return GitHubCopilotModelAvailability{}, fmt.Errorf("github copilot oauth: discover models failed")
+}
+
+func requestGitHubCopilotModels(ctx context.Context, accessToken string, endpoint string, client *http.Client) (int, http.Header, []byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return 0, nil, nil, fmt.Errorf("github copilot oauth: create models request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("X-GitHub-Api-Version", githubCopilotModelsAPIVersion)
+	addGitHubCopilotOAuthHeaders(req.Header)
+
+	resp, err := githubCopilotHTTPClient(client).Do(req)
+	if err != nil {
+		return 0, nil, nil, githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: discover models: %w", err))
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, githubCopilotModelsMaxBodyBytes+1))
+	if err != nil {
+		return 0, nil, nil, githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: read models response: %w", err))
+	}
+	if len(body) > githubCopilotModelsMaxBodyBytes {
+		return 0, nil, nil, fmt.Errorf("github copilot oauth: models response exceeds %d bytes", githubCopilotModelsMaxBodyBytes)
+	}
+	return resp.StatusCode, resp.Header.Clone(), body, nil
+}
+
+func githubCopilotModelsRetryAfter(headers http.Header) time.Duration {
+	delay := sigma.RetryAfter(headers)
+	if delay <= 0 {
+		delay = githubCopilotModelsDefaultRetryAfter
+	}
+	return min(delay, githubCopilotModelsMaxRetryAfter)
+}
+
+func parseGitHubCopilotModelIDs(body []byte, allowPolicyFallback bool) ([]sigma.ModelID, error) {
+	var response githubCopilotModelsResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("github copilot oauth: decode models response: %w", err)
+	}
+	if response.Data == nil {
+		return nil, fmt.Errorf("github copilot oauth: invalid models response")
+	}
+
+	pickerIDs := make([]sigma.ModelID, 0, len(*response.Data))
+	policyIDs := make([]sigma.ModelID, 0, len(*response.Data))
+	for _, model := range *response.Data {
+		if model.ID == "" || model.Capabilities.Supports.ToolCalls != nil && !*model.Capabilities.Supports.ToolCalls {
+			continue
+		}
+		modelID := sigma.ModelID(model.ID)
+		if model.ModelPickerEnabled && model.Policy.State != "disabled" {
+			pickerIDs = append(pickerIDs, modelID)
+		}
+		if model.Policy.State == "enabled" {
+			policyIDs = append(policyIDs, modelID)
+		}
+	}
+	if len(pickerIDs) > 0 || !allowPolicyFallback {
+		return pickerIDs, nil
+	}
+	return policyIDs, nil
 }
 
 // EnableGitHubCopilotModel enables one GitHub Copilot model policy for the

@@ -445,6 +445,311 @@ func TestGitHubCopilotOAuthTokenProviderHonorsMinimumValidityAndResolves(t *test
 	}
 }
 
+func TestDiscoverGitHubCopilotModelsFiltersAccountCatalog(t *testing.T) {
+	t.Parallel()
+
+	const accessToken = "tid=test;proxy-ep=proxy.individual.githubcopilot.com;"
+	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
+		if got, want := r.Method, http.MethodGet; got != want {
+			t.Fatalf("method = %q, want %q", got, want)
+		}
+		if got, want := r.URL.String(), "https://copilot.test/models"; got != want {
+			t.Fatalf("URL = %q, want %q", got, want)
+		}
+		assertHeader(t, r.Header, "Accept", "application/json")
+		assertHeader(t, r.Header, "Authorization", "Bearer "+accessToken)
+		assertHeader(t, r.Header, "X-GitHub-Api-Version", "2026-06-01")
+		assertHeader(t, r.Header, "Copilot-Integration-Id", "vscode-chat")
+		return githubCopilotJSONResponse(http.StatusOK, `{"data":[
+			{"id":"gpt-picker","model_picker_enabled":true,"capabilities":{"supports":{"tool_calls":true}}},
+			{"id":"claude-picker","model_picker_enabled":true},
+			{"id":"disabled-picker","model_picker_enabled":true,"policy":{"state":"disabled"}},
+			{"id":"no-tools","model_picker_enabled":true,"capabilities":{"supports":{"tool_calls":false}}},
+			{"id":"policy-only","model_picker_enabled":false,"policy":{"state":"enabled"}},
+			{"model_picker_enabled":true}
+		]}`)
+	})
+
+	availability, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		accessToken,
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{
+			HTTPClient: client,
+			BaseURL:    "https://copilot.test/",
+		},
+	)
+	if err != nil {
+		t.Fatalf("DiscoverGitHubCopilotModels returned error: %v", err)
+	}
+	if got, want := len(availability.ModelIDs), 2; got != want {
+		t.Fatalf("available model count = %d, want %d", got, want)
+	}
+	if got, want := availability.ModelIDs[0], sigma.ModelID("gpt-picker"); got != want {
+		t.Fatalf("first available model = %q, want %q", got, want)
+	}
+	if got, want := availability.ModelIDs[1], sigma.ModelID("claude-picker"); got != want {
+		t.Fatalf("second available model = %q, want %q", got, want)
+	}
+
+	filter := availability.ModelFilter()
+	availability.ModelIDs[0] = "mutated"
+	registry := sigma.NewRegistry()
+	for _, model := range []sigma.Model{
+		{ID: "claude-picker", Provider: sigma.ProviderGitHubCopilot, API: sigma.APIAnthropicMessages},
+		{ID: "not-available", Provider: sigma.ProviderGitHubCopilot, API: sigma.APIOpenAICompletions},
+		{ID: "gpt-picker", Provider: sigma.ProviderGitHubCopilot, API: sigma.APIOpenAICompletions},
+		{ID: "gpt-picker", Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAICompletions},
+	} {
+		if err := registry.RegisterModel(model, sigma.WithMetadataOnly()); err != nil {
+			t.Fatalf("RegisterModel(%s/%s) returned error: %v", model.Provider, model.ID, err)
+		}
+	}
+	models := sigma.NewClient(sigma.WithRegistry(registry)).Models(filter)
+	if got, want := len(models), 2; got != want {
+		t.Fatalf("filtered model count = %d, want %d", got, want)
+	}
+	if got, want := models[0].ID, sigma.ModelID("claude-picker"); got != want {
+		t.Fatalf("first filtered model = %q, want %q", got, want)
+	}
+	if got, want := models[1].ID, sigma.ModelID("gpt-picker"); got != want {
+		t.Fatalf("second filtered model = %q, want %q", got, want)
+	}
+	if got := sigma.NewClient(sigma.WithRegistry(registry)).Models((githubcopilot.GitHubCopilotModelAvailability{}).ModelFilter()); len(got) != 0 {
+		t.Fatalf("empty availability matched models: %+v", got)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsPolicyFallbackIsIndividualOnly(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		token     string
+		wantCount int
+	}{
+		{
+			name:      "individual",
+			token:     "tid=test;proxy-ep=proxy.individual.githubcopilot.com;",
+			wantCount: 1,
+		},
+		{
+			name:  "business",
+			token: "tid=test;proxy-ep=proxy.business.githubcopilot.com;",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+				return githubCopilotJSONResponse(http.StatusOK, `{"data":[
+					{"id":"policy-model","policy":{"state":"enabled"}},
+					{"id":"disabled-model","policy":{"state":"disabled"}},
+					{"id":"no-tools","policy":{"state":"enabled"},"capabilities":{"supports":{"tool_calls":false}}}
+				]}`)
+			})
+			availability, err := githubcopilot.DiscoverGitHubCopilotModels(
+				context.Background(),
+				tt.token,
+				githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+			)
+			if err != nil {
+				t.Fatalf("DiscoverGitHubCopilotModels returned error: %v", err)
+			}
+			if got := len(availability.ModelIDs); got != tt.wantCount {
+				t.Fatalf("available model count = %d, want %d", got, tt.wantCount)
+			}
+			if tt.wantCount == 1 && availability.ModelIDs[0] != "policy-model" {
+				t.Fatalf("available models = %v, want policy-model", availability.ModelIDs)
+			}
+		})
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsUsesEnterpriseEndpoint(t *testing.T) {
+	t.Parallel()
+
+	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
+		if got, want := r.URL.String(), "https://copilot-api.ghe.example.test/models"; got != want {
+			t.Fatalf("URL = %q, want %q", got, want)
+		}
+		return githubCopilotJSONResponse(http.StatusOK, `{"data":[]}`)
+	})
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{
+			HTTPClient:       client,
+			EnterpriseDomain: "https://ghe.example.test/",
+		},
+	)
+	if err != nil {
+		t.Fatalf("DiscoverGitHubCopilotModels returned error: %v", err)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsValidatesResponses(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		body    string
+		wantErr bool
+	}{
+		{name: "empty", body: `{"data":[]}`},
+		{name: "missing data", body: `{}`, wantErr: true},
+		{name: "null data", body: `{"data":null}`, wantErr: true},
+		{name: "wrong data type", body: `{"data":{}}`, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+				return githubCopilotJSONResponse(http.StatusOK, tt.body)
+			})
+			availability, err := githubcopilot.DiscoverGitHubCopilotModels(
+				context.Background(),
+				"copilot-token",
+				githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+			)
+			if tt.wantErr && err == nil {
+				t.Fatal("DiscoverGitHubCopilotModels returned nil error")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("DiscoverGitHubCopilotModels returned error: %v", err)
+			}
+			if !tt.wantErr && len(availability.ModelIDs) != 0 {
+				t.Fatalf("available models = %v, want empty", availability.ModelIDs)
+			}
+		})
+	}
+
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{},
+	)
+	if !errors.Is(err, sigma.ErrCredentialUnavailable) {
+		t.Fatalf("empty token error = %v, want ErrCredentialUnavailable", err)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsBoundsResponseBody(t *testing.T) {
+	t.Parallel()
+
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		return githubCopilotJSONResponse(http.StatusOK, strings.Repeat("x", (1<<20)+1))
+	})
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil || !strings.Contains(err.Error(), "response exceeds") {
+		t.Fatalf("DiscoverGitHubCopilotModels error = %v, want bounded response error", err)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsRetriesOneRateLimit(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		if requests == 1 {
+			response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{"error":"slow down"}`)
+			response.Header.Set("Retry-After-Ms", "1")
+			return response
+		}
+		return githubCopilotJSONResponse(http.StatusOK, `{"data":[{"id":"gpt-retry","model_picker_enabled":true}]}`)
+	})
+	availability, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err != nil {
+		t.Fatalf("DiscoverGitHubCopilotModels returned error: %v", err)
+	}
+	if got, want := requests, 2; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+	if got, want := availability.ModelIDs[0], sigma.ModelID("gpt-retry"); got != want {
+		t.Fatalf("available model = %q, want %q", got, want)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsDoesNotRetryTwiceOrLeakErrors(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{"access_token":"leaked-token"}`)
+		response.Header.Set("Retry-After-Ms", "1")
+		return response
+	})
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil {
+		t.Fatal("DiscoverGitHubCopilotModels returned nil error")
+	}
+	if got, want := requests, 2; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+	if strings.Contains(err.Error(), "leaked-token") {
+		t.Fatalf("discovery error leaked token: %v", err)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsDoesNotRetryOtherFailures(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		return githubCopilotJSONResponse(http.StatusServiceUnavailable, `{"error":"unavailable"}`)
+	})
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		context.Background(),
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil {
+		t.Fatal("DiscoverGitHubCopilotModels returned nil error")
+	}
+	if got, want := requests, 1; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+}
+
+func TestDiscoverGitHubCopilotModelsCancelsRateLimitWait(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		cancel()
+		response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{}`)
+		response.Header.Set("Retry-After", "30")
+		return response
+	})
+	_, err := githubcopilot.DiscoverGitHubCopilotModels(
+		ctx,
+		"copilot-token",
+		githubcopilot.GitHubCopilotModelDiscoveryOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("DiscoverGitHubCopilotModels error = %v, want context.Canceled", err)
+	}
+	if got, want := requests, 1; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+}
+
 func TestEnableGitHubCopilotModelsReportsPerModelResults(t *testing.T) {
 	t.Parallel()
 

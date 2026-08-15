@@ -882,6 +882,9 @@ should still come through the catalog refresh workflow.
 - [x] Add explicit GitHub Copilot model-policy enablement helpers with
       per-model result reporting, without making model enablement an automatic
       login side effect.
+- [x] Add opt-in GitHub Copilot account model discovery and catalog filtering,
+      including Individual policy fallback and bounded rate-limit recovery,
+      without changing login, refresh, persistence, or registry ownership.
 - [x] Add a focused OpenAI Codex credential-store bridge for storing OAuth login
       results through caller-supplied `CredentialStore` implementations.
 - [ ] Keep file-backed, encrypted, OS keychain, UI-driven, and broader
