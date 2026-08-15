@@ -521,6 +521,9 @@ upstream.
 - [x] Route package-level helpers and default routing through the live shared
       registry without cloning the generated catalog per call, while preserving
       public registry/client isolation and concurrent read behavior.
+- [x] Make overlapping runtime text, image, and embedding model-source
+      publications latest-started-wins per provider, including competition
+      between text catalog refresh and cached restore operations.
 - [x] Refresh the curated v0.3 generated catalog with current rows for
       supported provider IDs while preserving Sigma runtime contracts and
       metadata-only default registration.

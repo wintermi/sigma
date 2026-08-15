@@ -64,6 +64,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Runtime text, image, and embedding model sources now publish overlapping
+  refresh results in latest-started order, preventing slower superseded
+  refreshes or text catalog restores from overwriting newer registry state.
 - OpenRouter Anthropic-routed Chat Completions now place the final conversation
   prompt-cache marker on the latest non-empty tool result instead of the
   preceding assistant or user message, while retaining the bounded system and

@@ -137,21 +137,24 @@ type providerRegistration struct {
 }
 
 type textModelSourceRegistration struct {
-	source       TextModelSource
-	metadataOnly bool
-	revision     uint64
+	source              TextModelSource
+	metadataOnly        bool
+	revision            uint64
+	publicationRevision uint64
 }
 
 type imageModelSourceRegistration struct {
-	source       ImageModelSource
-	metadataOnly bool
-	revision     uint64
+	source              ImageModelSource
+	metadataOnly        bool
+	revision            uint64
+	publicationRevision uint64
 }
 
 type embeddingModelSourceRegistration struct {
-	source       EmbeddingModelSource
-	metadataOnly bool
-	revision     uint64
+	source              EmbeddingModelSource
+	metadataOnly        bool
+	revision            uint64
+	publicationRevision uint64
 }
 
 // Registry stores provider implementations and model metadata.
@@ -351,11 +354,11 @@ func (r *Registry) RegisterTextModelSource(provider ProviderID, source TextModel
 	if _, ok := r.textModelSources[provider]; !ok {
 		r.textModelSourceOrder = append(r.textModelSourceOrder, provider)
 	}
-	r.modelSourceRevision++
+	revision := r.nextModelSourceRevisionLocked()
 	r.textModelSources[provider] = textModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
-		revision:     r.modelSourceRevision,
+		revision:     revision,
 	}
 	return nil
 }
@@ -381,11 +384,11 @@ func (r *Registry) RegisterImageModelSource(provider ProviderID, source ImageMod
 	if _, ok := r.imageModelSources[provider]; !ok {
 		r.imageModelSourceOrder = append(r.imageModelSourceOrder, provider)
 	}
-	r.modelSourceRevision++
+	revision := r.nextModelSourceRevisionLocked()
 	r.imageModelSources[provider] = imageModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
-		revision:     r.modelSourceRevision,
+		revision:     revision,
 	}
 	return nil
 }
@@ -411,11 +414,11 @@ func (r *Registry) RegisterEmbeddingModelSource(provider ProviderID, source Embe
 	if _, ok := r.embeddingModelSources[provider]; !ok {
 		r.embeddingModelSourceOrder = append(r.embeddingModelSourceOrder, provider)
 	}
-	r.modelSourceRevision++
+	revision := r.nextModelSourceRevisionLocked()
 	r.embeddingModelSources[provider] = embeddingModelSourceRegistration{
 		source:       source,
 		metadataOnly: options.metadataOnly,
-		revision:     r.modelSourceRevision,
+		revision:     revision,
 	}
 	return nil
 }
@@ -593,13 +596,15 @@ func (r *Registry) RegisterEmbeddingModel(model EmbeddingModel, opts ...Register
 }
 
 // RefreshTextModels refreshes text models from registered runtime sources.
+// When operations overlap for a provider, only the latest-started operation
+// can publish; a superseded operation returns an error.
 func (r *Registry) RefreshTextModels(ctx context.Context, providers ...ProviderID) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	r.ensure()
 
-	sources, err := r.textSourcesForRefresh(providers)
+	sources, err := r.textSourcesForRefresh(providers, false)
 	if err != nil {
 		return err
 	}
@@ -622,13 +627,15 @@ func (r *Registry) RefreshTextModels(ctx context.Context, providers ...ProviderI
 //
 // When providers are omitted, sources without cached-model support are skipped.
 // An explicitly requested source must implement CachedTextModelSource.
+// Restore and refresh operations share the same latest-started publication
+// ordering for each provider.
 func (r *Registry) RestoreTextModels(ctx context.Context, providers ...ProviderID) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	r.ensure()
 
-	sources, err := r.textSourcesForRefresh(providers)
+	sources, err := r.textSourcesForRefresh(providers, true)
 	if err != nil {
 		return err
 	}
@@ -655,6 +662,8 @@ func (r *Registry) RestoreTextModels(ctx context.Context, providers ...ProviderI
 }
 
 // RefreshImageModels refreshes image models from registered runtime sources.
+// When refreshes overlap for a provider, only the latest-started refresh can
+// publish; a superseded refresh returns an error.
 func (r *Registry) RefreshImageModels(ctx context.Context, providers ...ProviderID) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -681,6 +690,8 @@ func (r *Registry) RefreshImageModels(ctx context.Context, providers ...Provider
 }
 
 // RefreshEmbeddingModels refreshes embedding models from registered runtime sources.
+// When refreshes overlap for a provider, only the latest-started refresh can
+// publish; a superseded refresh returns an error.
 func (r *Registry) RefreshEmbeddingModels(ctx context.Context, providers ...ProviderID) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -1028,9 +1039,14 @@ type embeddingSourceForRefresh struct {
 	registration embeddingModelSourceRegistration
 }
 
-func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceForRefresh, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+func (r *Registry) nextModelSourceRevisionLocked() uint64 {
+	r.modelSourceRevision++
+	return r.modelSourceRevision
+}
+
+func (r *Registry) textSourcesForRefresh(providers []ProviderID, cachedOnly bool) ([]textSourceForRefresh, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if len(providers) == 0 {
 		sources := make([]textSourceForRefresh, 0, len(r.textModelSourceOrder))
@@ -1039,6 +1055,13 @@ func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceFo
 			if !ok {
 				continue
 			}
+			if cachedOnly {
+				if _, ok := registration.source.(CachedTextModelSource); !ok {
+					continue
+				}
+			}
+			registration.publicationRevision = r.nextModelSourceRevisionLocked()
+			r.textModelSources[provider] = registration
 			sources = append(sources, textSourceForRefresh{
 				provider:     provider,
 				registration: registration,
@@ -1061,12 +1084,27 @@ func (r *Registry) textSourcesForRefresh(providers []ProviderID) ([]textSourceFo
 			registration: registration,
 		})
 	}
+	publicationRevisions := make(map[ProviderID]uint64, len(providers))
+	for index := range sources {
+		if cachedOnly {
+			if _, ok := sources[index].registration.source.(CachedTextModelSource); !ok {
+				continue
+			}
+		}
+		publicationRevision, ok := publicationRevisions[sources[index].provider]
+		if !ok {
+			publicationRevision = r.nextModelSourceRevisionLocked()
+			publicationRevisions[sources[index].provider] = publicationRevision
+		}
+		sources[index].registration.publicationRevision = publicationRevision
+		r.textModelSources[sources[index].provider] = sources[index].registration
+	}
 	return sources, nil
 }
 
 func (r *Registry) imageSourcesForRefresh(providers []ProviderID) ([]imageSourceForRefresh, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if len(providers) == 0 {
 		sources := make([]imageSourceForRefresh, 0, len(r.imageModelSourceOrder))
@@ -1075,6 +1113,8 @@ func (r *Registry) imageSourcesForRefresh(providers []ProviderID) ([]imageSource
 			if !ok {
 				continue
 			}
+			registration.publicationRevision = r.nextModelSourceRevisionLocked()
+			r.imageModelSources[provider] = registration
 			sources = append(sources, imageSourceForRefresh{
 				provider:     provider,
 				registration: registration,
@@ -1097,12 +1137,22 @@ func (r *Registry) imageSourcesForRefresh(providers []ProviderID) ([]imageSource
 			registration: registration,
 		})
 	}
+	publicationRevisions := make(map[ProviderID]uint64, len(providers))
+	for index := range sources {
+		publicationRevision, ok := publicationRevisions[sources[index].provider]
+		if !ok {
+			publicationRevision = r.nextModelSourceRevisionLocked()
+			publicationRevisions[sources[index].provider] = publicationRevision
+		}
+		sources[index].registration.publicationRevision = publicationRevision
+		r.imageModelSources[sources[index].provider] = sources[index].registration
+	}
 	return sources, nil
 }
 
 func (r *Registry) embeddingSourcesForRefresh(providers []ProviderID) ([]embeddingSourceForRefresh, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if len(providers) == 0 {
 		sources := make([]embeddingSourceForRefresh, 0, len(r.embeddingModelSourceOrder))
@@ -1111,6 +1161,8 @@ func (r *Registry) embeddingSourcesForRefresh(providers []ProviderID) ([]embeddi
 			if !ok {
 				continue
 			}
+			registration.publicationRevision = r.nextModelSourceRevisionLocked()
+			r.embeddingModelSources[provider] = registration
 			sources = append(sources, embeddingSourceForRefresh{
 				provider:     provider,
 				registration: registration,
@@ -1133,6 +1185,16 @@ func (r *Registry) embeddingSourcesForRefresh(providers []ProviderID) ([]embeddi
 			registration: registration,
 		})
 	}
+	publicationRevisions := make(map[ProviderID]uint64, len(providers))
+	for index := range sources {
+		publicationRevision, ok := publicationRevisions[sources[index].provider]
+		if !ok {
+			publicationRevision = r.nextModelSourceRevisionLocked()
+			publicationRevisions[sources[index].provider] = publicationRevision
+		}
+		sources[index].registration.publicationRevision = publicationRevision
+		r.embeddingModelSources[sources[index].provider] = sources[index].registration
+	}
 	return sources, nil
 }
 
@@ -1147,6 +1209,9 @@ func (r *Registry) applyTextModelRefresh(provider ProviderID, source textModelSo
 	current, ok := r.textModelSources[provider]
 	if !ok || current.revision != source.revision {
 		return registryConflict("text model source changed during refresh")
+	}
+	if current.publicationRevision != source.publicationRevision {
+		return registryConflict("text model refresh superseded by newer refresh")
 	}
 
 	owned := r.textModelSourceRefs[provider]
@@ -1185,6 +1250,9 @@ func (r *Registry) applyImageModelRefresh(provider ProviderID, source imageModel
 	if !ok || current.revision != source.revision {
 		return registryConflict("image model source changed during refresh")
 	}
+	if current.publicationRevision != source.publicationRevision {
+		return registryConflict("image model refresh superseded by newer refresh")
+	}
 
 	owned := r.imageModelSourceRefs[provider]
 	for _, ref := range refs {
@@ -1221,6 +1289,9 @@ func (r *Registry) applyEmbeddingModelRefresh(provider ProviderID, source embedd
 	current, ok := r.embeddingModelSources[provider]
 	if !ok || current.revision != source.revision {
 		return registryConflict("embedding model source changed during refresh")
+	}
+	if current.publicationRevision != source.publicationRevision {
+		return registryConflict("embedding model refresh superseded by newer refresh")
 	}
 
 	owned := r.embeddingModelSourceRefs[provider]

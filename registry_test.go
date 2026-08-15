@@ -9,6 +9,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -71,6 +72,13 @@ type testCachedTextModelSource struct {
 	cachedErr    error
 }
 
+type blockingCachedTextModelSource struct {
+	refreshStarted chan struct{}
+	releaseRefresh chan struct{}
+	refreshModels  []sigma.Model
+	cachedModels   []sigma.Model
+}
+
 type testImageModelSource struct {
 	mu     sync.Mutex
 	models []sigma.ImageModel
@@ -126,6 +134,16 @@ func (s *testCachedTextModelSource) SetCachedError(err error) {
 	defer s.mu.Unlock()
 
 	s.cachedErr = err
+}
+
+func (s *blockingCachedTextModelSource) TextModels(context.Context) ([]sigma.Model, error) {
+	close(s.refreshStarted)
+	<-s.releaseRefresh
+	return append([]sigma.Model(nil), s.refreshModels...), nil
+}
+
+func (s *blockingCachedTextModelSource) CachedTextModels(context.Context) ([]sigma.Model, error) {
+	return append([]sigma.Model(nil), s.cachedModels...), nil
 }
 
 func (s *testImageModelSource) ImageModels(context.Context) ([]sigma.ImageModel, error) {
@@ -1859,6 +1877,381 @@ func TestRegistryConcurrentReads(t *testing.T) {
 	wg.Wait()
 }
 
+func TestRegistryLatestTextModelRefreshWins(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("latest-text-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	source := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			return []sigma.Model{{ID: "stale", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+		}
+		return []sigma.Model{
+			{ID: "fresh-first", Provider: provider, API: sigma.APIOpenAICompletions},
+			{ID: "fresh-second", Provider: provider, API: sigma.APIOpenAICompletions},
+		}, nil
+	})
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterModel(sigma.Model{ID: "manual", Provider: provider, API: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	staleErr := make(chan error, 1)
+	go func() { staleErr <- registry.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("newer RefreshTextModels returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, staleErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("older RefreshTextModels error = %v, want superseded conflict", err)
+	}
+
+	models := registry.ListModels()
+	got := make([]sigma.ModelID, 0, len(models))
+	for _, model := range models {
+		got = append(got, model.ID)
+	}
+	want := []sigma.ModelID{"manual", "fresh-first", "fresh-second"}
+	if len(got) != len(want) {
+		t.Fatalf("model ids = %v, want %v", got, want)
+	}
+	for index := range want {
+		if got[index] != want[index] {
+			t.Fatalf("model ids = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestRegistryFailedNewerTextRefreshStillSupersedesOlderRefresh(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("failed-latest-text-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	source := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		switch calls.Add(1) {
+		case 1:
+			return []sigma.Model{{ID: "baseline", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+		case 2:
+			close(started)
+			<-release
+			return []sigma.Model{{ID: "stale", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+		default:
+			return nil, context.DeadlineExceeded
+		}
+	})
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("initial RefreshTextModels returned error: %v", err)
+	}
+
+	staleErr := make(chan error, 1)
+	go func() { staleErr <- registry.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RefreshTextModels(context.Background(), provider); err == nil {
+		t.Fatal("newer failed RefreshTextModels returned nil error")
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, staleErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("older RefreshTextModels error = %v, want superseded conflict", err)
+	}
+	if _, ok := registry.Model(provider, "baseline"); !ok {
+		t.Fatal("baseline model was removed after newer refresh failed")
+	}
+	if _, ok := registry.Model(provider, "stale"); ok {
+		t.Fatal("superseded model was published after newer refresh failed")
+	}
+}
+
+func TestRegistryTextRestoreSupersedesOlderRefresh(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("refresh-restore-text-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	source := &blockingCachedTextModelSource{
+		refreshStarted: started,
+		releaseRefresh: release,
+		refreshModels:  []sigma.Model{{ID: "network", Provider: provider, API: sigma.APIOpenAICompletions}},
+		cachedModels:   []sigma.Model{{ID: "cached", Provider: provider, API: sigma.APIOpenAICompletions}},
+	}
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	refreshErr := make(chan error, 1)
+	go func() { refreshErr <- registry.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RestoreTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("newer RestoreTextModels returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, refreshErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("older RefreshTextModels error = %v, want superseded conflict", err)
+	}
+	if _, ok := registry.Model(provider, "cached"); !ok {
+		t.Fatal("cached model was not retained after superseding refresh")
+	}
+	if _, ok := registry.Model(provider, "network"); ok {
+		t.Fatal("superseded network model was published")
+	}
+}
+
+func TestRegistryRestoreAllDoesNotSupersedeUnsupportedTextSourceRefresh(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("non-cached-refresh-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	source := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		close(started)
+		<-release
+		return []sigma.Model{{ID: "network", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+	})
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+		t.Fatalf("RegisterTextProvider returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+
+	refreshErr := make(chan error, 1)
+	go func() { refreshErr <- registry.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RestoreTextModels(context.Background()); err != nil {
+		t.Fatalf("RestoreTextModels(all) returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, refreshErr); err != nil {
+		t.Fatalf("RefreshTextModels returned error after unsupported restore: %v", err)
+	}
+	if _, ok := registry.Model(provider, "network"); !ok {
+		t.Fatal("unsupported restore superseded the in-flight refresh")
+	}
+}
+
+func TestRegistryLatestImageModelRefreshWins(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("latest-image-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	source := sigma.ImageModelSourceFunc(func(context.Context) ([]sigma.ImageModel, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			return []sigma.ImageModel{{ID: "stale", Provider: provider, API: sigma.ImageAPIOpenAIImages}}, nil
+		}
+		return []sigma.ImageModel{{ID: "fresh", Provider: provider, API: sigma.ImageAPIOpenAIImages}}, nil
+	})
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterImageProvider(provider, testImageProvider{api: sigma.ImageAPIOpenAIImages}); err != nil {
+		t.Fatalf("RegisterImageProvider returned error: %v", err)
+	}
+	if err := registry.RegisterImageModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterImageModelSource returned error: %v", err)
+	}
+
+	staleErr := make(chan error, 1)
+	go func() { staleErr <- registry.RefreshImageModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RefreshImageModels(context.Background(), provider); err != nil {
+		t.Fatalf("newer RefreshImageModels returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, staleErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("older RefreshImageModels error = %v, want superseded conflict", err)
+	}
+	if _, ok := registry.ImageModel(provider, "fresh"); !ok {
+		t.Fatal("newer image model was not published")
+	}
+	if _, ok := registry.ImageModel(provider, "stale"); ok {
+		t.Fatal("superseded image model was published")
+	}
+}
+
+func TestRegistryLatestEmbeddingModelRefreshWins(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("latest-embedding-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	source := sigma.EmbeddingModelSourceFunc(func(context.Context) ([]sigma.EmbeddingModel, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			return []sigma.EmbeddingModel{{ID: "stale", Provider: provider, API: sigma.EmbeddingAPIOpenAIEmbeddings}}, nil
+		}
+		return []sigma.EmbeddingModel{{ID: "fresh", Provider: provider, API: sigma.EmbeddingAPIOpenAIEmbeddings}}, nil
+	})
+
+	registry := sigma.NewRegistry()
+	if err := registry.RegisterEmbeddingProvider(provider, testEmbeddingProvider{api: sigma.EmbeddingAPIOpenAIEmbeddings}); err != nil {
+		t.Fatalf("RegisterEmbeddingProvider returned error: %v", err)
+	}
+	if err := registry.RegisterEmbeddingModelSource(provider, source); err != nil {
+		t.Fatalf("RegisterEmbeddingModelSource returned error: %v", err)
+	}
+
+	staleErr := make(chan error, 1)
+	go func() { staleErr <- registry.RefreshEmbeddingModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	if err := registry.RefreshEmbeddingModels(context.Background(), provider); err != nil {
+		t.Fatalf("newer RefreshEmbeddingModels returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, staleErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("older RefreshEmbeddingModels error = %v, want superseded conflict", err)
+	}
+	if _, ok := registry.EmbeddingModel(provider, "fresh"); !ok {
+		t.Fatal("newer embedding model was not published")
+	}
+	if _, ok := registry.EmbeddingModel(provider, "stale"); ok {
+		t.Fatal("superseded embedding model was published")
+	}
+}
+
+func TestRegistryProviderSpecificRefreshSupersedesOnlyMatchingAllSourceRefresh(t *testing.T) {
+	t.Parallel()
+
+	firstProvider := sigma.ProviderID("all-refresh-first")
+	secondProvider := sigma.ProviderID("all-refresh-second")
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	firstSource := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		close(firstStarted)
+		<-releaseFirst
+		return []sigma.Model{{ID: "first-fresh", Provider: firstProvider, API: sigma.APIOpenAICompletions}}, nil
+	})
+	var secondCalls atomic.Int32
+	secondSource := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		if secondCalls.Add(1) == 1 {
+			return []sigma.Model{{ID: "second-fresh", Provider: secondProvider, API: sigma.APIOpenAICompletions}}, nil
+		}
+		return []sigma.Model{{ID: "second-stale", Provider: secondProvider, API: sigma.APIOpenAICompletions}}, nil
+	})
+
+	registry := sigma.NewRegistry()
+	for _, provider := range []sigma.ProviderID{firstProvider, secondProvider} {
+		if err := registry.RegisterTextProvider(provider, testTextProvider{api: sigma.APIOpenAICompletions}); err != nil {
+			t.Fatalf("RegisterTextProvider(%s) returned error: %v", provider, err)
+		}
+	}
+	if err := registry.RegisterTextModelSource(firstProvider, firstSource); err != nil {
+		t.Fatalf("RegisterTextModelSource(first) returned error: %v", err)
+	}
+	if err := registry.RegisterTextModelSource(secondProvider, secondSource); err != nil {
+		t.Fatalf("RegisterTextModelSource(second) returned error: %v", err)
+	}
+
+	allErr := make(chan error, 1)
+	go func() { allErr <- registry.RefreshTextModels(context.Background()) }()
+	waitForModelRefreshStart(t, firstStarted)
+	if err := registry.RefreshTextModels(context.Background(), secondProvider); err != nil {
+		t.Fatalf("provider-specific RefreshTextModels returned error: %v", err)
+	}
+	close(releaseFirst)
+	if err := waitForModelRefreshError(t, allErr); err == nil || !strings.Contains(err.Error(), "superseded by newer refresh") {
+		t.Fatalf("all-source RefreshTextModels error = %v, want superseded conflict", err)
+	}
+	if _, ok := registry.Model(firstProvider, "first-fresh"); !ok {
+		t.Fatal("unrelated provider result was not published")
+	}
+	if _, ok := registry.Model(secondProvider, "second-fresh"); !ok {
+		t.Fatal("provider-specific result was not retained")
+	}
+	if _, ok := registry.Model(secondProvider, "second-stale"); ok {
+		t.Fatal("superseded all-source result was published")
+	}
+}
+
+func TestRegistryCloneUsesIndependentRefreshGenerations(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("clone-refresh-source")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+	source := sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			return []sigma.Model{{ID: "base", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+		}
+		return []sigma.Model{{ID: "clone", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+	})
+
+	base := sigma.NewRegistry()
+	if err := base.RegisterTextModelSource(provider, source, sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	baseErr := make(chan error, 1)
+	go func() { baseErr <- base.RefreshTextModels(context.Background(), provider) }()
+	waitForModelRefreshStart(t, started)
+	clone := base.Clone()
+	if err := clone.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("clone RefreshTextModels returned error: %v", err)
+	}
+	close(release)
+	if err := waitForModelRefreshError(t, baseErr); err != nil {
+		t.Fatalf("base RefreshTextModels returned error: %v", err)
+	}
+	if _, ok := base.Model(provider, "base"); !ok {
+		t.Fatal("base registry refresh was superseded by clone refresh")
+	}
+	if _, ok := clone.Model(provider, "clone"); !ok {
+		t.Fatal("clone registry did not publish its independent refresh")
+	}
+}
+
+func TestZeroValueRegistryTracksRefreshGenerations(t *testing.T) {
+	t.Parallel()
+
+	provider := sigma.ProviderID("zero-value-refresh-source")
+	var registry sigma.Registry
+	if err := registry.RegisterTextModelSource(provider, sigma.TextModelSourceFunc(func(context.Context) ([]sigma.Model, error) {
+		return []sigma.Model{{ID: "fresh", Provider: provider, API: sigma.APIOpenAICompletions}}, nil
+	}), sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterTextModelSource returned error: %v", err)
+	}
+	if err := registry.RefreshTextModels(context.Background(), provider); err != nil {
+		t.Fatalf("RefreshTextModels returned error: %v", err)
+	}
+	if _, ok := registry.Model(provider, "fresh"); !ok {
+		t.Fatal("zero-value registry did not publish refreshed model")
+	}
+}
+
 func TestCompleteCollectsTextProviderStream(t *testing.T) {
 	t.Parallel()
 
@@ -2000,5 +2393,17 @@ func waitForModelRefreshStart(t *testing.T, started <-chan struct{}) {
 	case <-started:
 	case <-time.After(time.Second):
 		t.Fatal("model refresh did not start")
+	}
+}
+
+func waitForModelRefreshError(t *testing.T, result <-chan error) error {
+	t.Helper()
+
+	select {
+	case err := <-result:
+		return err
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for model refresh")
+		return nil
 	}
 }

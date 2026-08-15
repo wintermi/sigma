@@ -43,6 +43,9 @@ OAuth sign-in without inferring from provider names or credential types.
 GitHub Copilot callers can also discover the authenticated account's available
 model IDs and filter Sigma's curated catalog without enabling policies or
 mutating registry state.
+Overlapping runtime text, image, and embedding model-source operations now
+publish per-provider registry state in latest-started order, so a slower older
+refresh cannot overwrite a newer refresh or cached text restore.
 Kimi and Kimi Coding requests now use a Sigma-owned coding-endpoint identity
 from their shared provider wrapper instead of duplicated model-catalog headers.
 The opt-in evaluation runner now isolates every case/model/repetition run with
@@ -81,6 +84,10 @@ omission without mutating caller-owned data.
   creates a snapshot filter for `Client.Models`. Discovery excludes explicitly
   tool-incompatible models and recovers Individual account availability from
   enabled policies only when the picker catalog is empty.
+- Runtime text, image, and embedding model-source publication now uses
+  independent per-provider latest-started generations. Text refresh and cached
+  restore operations share the same ordering rule, while operations for other
+  providers continue independently.
 - `IsRecoverableMaxTokens` reports when a max-token completion used fewer
   output tokens than the caller's original requested or model limit. It is
   advisory only; callers retain control of compaction, retry budgets, and
@@ -148,6 +155,11 @@ omission without mutating caller-owned data.
   during login or refresh, enable model policies, persist availability, mutate
   registries, or replace generated catalog metadata. A valid empty account
   catalog produces a filter that matches no models.
+- A superseded runtime model-source operation returns Sigma's existing conflict
+  error and cannot replace the winning registry catalog, even when the newer
+  operation fails. Source interfaces, source-owned network and cache side
+  effects, automatic refresh behavior, persistence policy, and generated
+  catalogs remain unchanged.
 - OpenAI, Azure, and Codex Responses map incomplete `max_output_tokens` and
   `content_filter` reasons to successful normalized stops. Missing and unknown
   reasons return typed provider errors while preserving partial content, usage,
