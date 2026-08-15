@@ -67,6 +67,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Google Generative AI and Vertex replay now retain blank text and thinking
+  parts only when they carry a valid same-provider/API/model thought signature,
+  omitting whitespace-only or unusably signed blanks without changing nonblank
+  content or caller-owned history.
 - Runtime text, image, and embedding model sources now publish overlapping
   refresh results in latest-started order, preventing slower superseded
   refreshes or text catalog restores from overwriting newer registry state.

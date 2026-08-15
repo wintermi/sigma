@@ -191,22 +191,24 @@ func googleAssistantParts(model sigma.Model, message sigma.Message, ids *googleT
 		switch block.Type {
 		case sigma.ContentBlockText:
 			text := providertext.Clean(block.Text)
-			if text == "" && block.ProviderSignature == "" {
+			signature := replayThoughtSignature(model, message, block.ProviderSignature)
+			if strings.TrimSpace(text) == "" && signature == "" {
 				continue
 			}
 			part := map[string]any{"text": text}
-			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
+			addThoughtSignature(part, signature)
 			parts = append(parts, part)
 		case sigma.ContentBlockThinking:
 			thinking := providertext.Clean(block.ThinkingText)
-			if thinking == "" && block.ProviderSignature == "" {
+			signature := replayThoughtSignature(model, message, block.ProviderSignature)
+			if strings.TrimSpace(thinking) == "" && signature == "" {
 				continue
 			}
 			part := map[string]any{
 				"text":    thinking,
 				"thought": true,
 			}
-			addThoughtSignature(part, replayThoughtSignature(model, message, block.ProviderSignature))
+			addThoughtSignature(part, signature)
 			parts = append(parts, part)
 		case sigma.ContentBlockToolCall:
 			args, err := jsonValue(block.ToolArguments)

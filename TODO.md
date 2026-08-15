@@ -746,6 +746,9 @@ should still come through the catalog refresh workflow.
       omitting unsupported IDs.
 - [x] Add deterministic Google stream coverage for `thoughtSignature`-only
       chunks, empty signature deltas, and signature updates on existing blocks.
+- [x] Preserve valid same-provider/API/model thought signatures on blank replayed
+      text and thinking parts while dropping unsigned, invalid, or foreign
+      whitespace-only parts.
 - [x] Harden Google replay and image-generation request shapes by omitting
       empty assistant/model blocks, mapping malformed function-call finish
       reasons to provider errors, and rejecting unsupported Gemini multi-image

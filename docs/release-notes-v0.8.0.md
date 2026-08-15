@@ -11,6 +11,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
 also retain their requested model and AWS request ID for diagnostic correlation.
+Google and Vertex replay now also retain blank signature-only text and thinking
+parts only when the signature is valid for the same provider, API, and model.
 Replayed Bedrock tool inputs now remove provider-rejected empty object-member
 names without altering stored or streamed tool arguments.
 Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
@@ -69,6 +71,11 @@ omission without mutating caller-owned data.
 
 ## Added
 
+- Google Generative AI and Vertex assistant replay now preserve blank text and
+  thinking parts when their thought signature passes the existing
+  provider/API/model and base64 checks. Unsigned whitespace and blank parts with
+  invalid or foreign signatures are omitted, while nonblank content and tool
+  calls retain their original order.
 - `StopReasonPending` now identifies in-progress assistant output. Every
   non-terminal text event carries a `PartialMessage`; the initial start event
   receives an empty pending snapshot, and accumulated content snapshots remain
@@ -139,6 +146,11 @@ omission without mutating caller-owned data.
 
 ## Compatibility
 
+- Blank or whitespace-only Google and Vertex assistant text or thinking with a
+  missing, invalid, or cross-provider/API/model thought signature is no longer
+  serialized as an empty part. Valid same-model signature-only parts remain
+  replayable, and nonblank content remains present without an unusable
+  signature. Caller-owned history and tool-call replay are unchanged.
 - Non-terminal text events that previously omitted `PartialMessage` or left its
   stop reason empty now expose an empty or accumulated snapshot with
   `StopReasonPending`. Provider-supplied non-empty partial reasons and all
