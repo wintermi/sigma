@@ -2,8 +2,9 @@
 
 `internal/evals` contains Sigma's repository-only framework for behavioral,
 model-backed checks. It provides generic harness and judge contracts, a Sigma
-text harness, paired baseline/candidate summaries, and private JSONL artifacts.
-It is not part of Sigma's public Go API.
+text harness with optional caller-owned tool execution, paired
+baseline/candidate summaries, and private JSONL artifacts. It is not part of
+Sigma's public Go API.
 
 ## Run the live smoke suite
 
@@ -17,8 +18,9 @@ mise run eval -- -provider openai -model gpt-5.6-sol
 Command-line values take precedence and must be supplied together. The bundled
 runner supports direct OpenAI Responses, OpenCode Go, both Fireworks text
 surfaces, and native Vertex Gemini models. Each provider is registered
-explicitly by the suite. Its provider-neutral cases cover factual recall,
-arithmetic, exact formatting, JSON extraction, and multi-turn recall.
+explicitly by the suite. Its six provider-neutral cases cover factual recall,
+arithmetic, exact formatting, JSON extraction, multi-turn recall, and a local
+tool-call round trip. Selected models must support tools.
 
 The selected provider and model are the baseline. Repeat `-candidate` with a
 `provider/model` reference to compare explicit catalog models, add
@@ -63,8 +65,14 @@ harness, err := evals.NewSigmaTextHarness(evals.SigmaHarnessConfig{
 
 `evals.Prompt` runs one turn. `evals.Conversation` runs a sequence of prompts,
 replaying each successful assistant response into the next request. The
-harness does not execute tools; an assistant tool-call stop is an evaluation
-error that remains visible in the recorded trace.
+harness does not execute tools by default; an assistant tool-call stop remains
+an evaluation error unless `SigmaHarnessConfig.ToolExecutor` is set.
+Caller-owned executors return text through `SigmaToolOutput`, may mark a result
+as an intentional tool error for model recovery, and may return a Go error for
+an operational failure. Successful and error results are replayed with their
+tool name and recorded in normalized events and the private transcript.
+`MaxToolRounds` bounds tool-call continuations per prompt, defaults to four when
+an executor is present, and must not be set without an executor.
 
 For domain-specific assertions, use `evals.NewSigmaHarness` with an output
 function. The function receives the final response, final assistant message,

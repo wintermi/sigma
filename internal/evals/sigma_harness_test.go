@@ -117,6 +117,163 @@ func TestSigmaHarnessPreservesToolTraceWithoutExecutingIt(t *testing.T) {
 	}
 }
 
+func TestSigmaHarnessExecutesToolCallsAndAggregatesTelemetry(t *testing.T) {
+	t.Parallel()
+
+	model := sigmatest.TextModel()
+	provider := sigmatest.NewFauxProvider(
+		sigmatest.Script{Final: sigma.AssistantMessage{
+			Content: []sigma.ContentBlock{
+				sigma.ToolCallBlock("call-1", "lookup", map[string]any{"key": "first"}),
+				sigma.ToolCallBlock("call-2", "lookup", map[string]any{"key": "missing"}),
+			},
+			StopReason: sigma.StopReasonToolCalls,
+			Usage:      &sigma.Usage{InputTokens: 5, OutputTokens: 2, TotalTokens: 7},
+		}},
+		sigmatest.Script{Final: sigma.AssistantMessage{
+			Content: []sigma.ContentBlock{sigma.Text("recovered")},
+			Usage:   &sigma.Usage{InputTokens: 9, OutputTokens: 1, TotalTokens: 10},
+		}},
+	)
+	var executed []string
+	harness, err := NewSigmaTextHarness(SigmaHarnessConfig{
+		Client: sigmaHarnessTestClient(t, provider, model),
+		Model:  model,
+		ToolExecutor: func(_ context.Context, call sigma.ToolCall) (SigmaToolOutput, error) {
+			executed = append(executed, call.ID)
+			if call.ID == "call-2" {
+				return SigmaToolOutput{Text: "not found", IsError: true}, nil
+			}
+			return SigmaToolOutput{Text: "value"}, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewSigmaTextHarness returned error: %v", err)
+	}
+	run := newRunContext("tool-execution")
+	result, err := harness.Run(context.Background(), Prompt("look up both values"), run)
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if result.Output != "recovered" || result.Usage.TotalTokens != 17 || result.Usage.ToolCalls != 2 {
+		t.Fatalf("result = %#v", result)
+	}
+	if strings.Join(executed, ",") != "call-1,call-2" {
+		t.Fatalf("executed calls = %v", executed)
+	}
+	requests := provider.Requests()
+	if len(requests) != 2 || len(requests[1].Request.Messages) != 4 {
+		t.Fatalf("requests = %#v", requests)
+	}
+	results := requests[1].Request.Messages[2:]
+	if results[0].ToolCallID != "call-1" || results[0].ToolName != "lookup" || results[0].IsError ||
+		results[1].ToolCallID != "call-2" || results[1].ToolName != "lookup" || !results[1].IsError {
+		t.Fatalf("tool results = %#v", results)
+	}
+	var successfulResult, errorResult bool
+	for _, event := range result.Events {
+		successfulResult = successfulResult || event.Type == "tool_result" && event.ToolCallID == "call-1" && event.Error == ""
+		errorResult = errorResult || event.Type == "tool_result" && event.ToolCallID == "call-2" && event.Error == "not found"
+	}
+	if !successfulResult || !errorResult {
+		t.Fatalf("events = %#v", result.Events)
+	}
+	_, attachments := run.snapshot()
+	if len(attachments) != 1 || !strings.Contains(string(attachments[0].Body), "not found") {
+		t.Fatalf("transcript attachment = %#v", attachments)
+	}
+}
+
+func TestSigmaHarnessToolExecutionFailureBoundaries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		scripts   []sigmatest.Script
+		executor  SigmaToolExecutor
+		maxRounds int
+		wantError string
+	}{
+		{
+			name: "tool stop without calls",
+			scripts: []sigmatest.Script{{Final: sigma.AssistantMessage{
+				Content:    []sigma.ContentBlock{sigma.Thinking("work", "signature")},
+				StopReason: sigma.StopReasonToolCalls,
+			}}},
+			executor:  func(context.Context, sigma.ToolCall) (SigmaToolOutput, error) { return SigmaToolOutput{}, nil },
+			wantError: "without returning any tool calls",
+		},
+		{
+			name: "executor error",
+			scripts: []sigmatest.Script{{Final: sigma.AssistantMessage{
+				Content:    []sigma.ContentBlock{sigma.ToolCallBlock("call", "lookup", map[string]any{})},
+				StopReason: sigma.StopReasonToolCalls,
+			}}},
+			executor: func(context.Context, sigma.ToolCall) (SigmaToolOutput, error) {
+				return SigmaToolOutput{}, errors.New("executor failed")
+			},
+			wantError: "executor failed",
+		},
+		{
+			name: "tool round limit",
+			scripts: []sigmatest.Script{
+				{Final: sigma.AssistantMessage{
+					Content:    []sigma.ContentBlock{sigma.ToolCallBlock("call-1", "lookup", map[string]any{})},
+					StopReason: sigma.StopReasonToolCalls,
+				}},
+				{Final: sigma.AssistantMessage{
+					Content:    []sigma.ContentBlock{sigma.ToolCallBlock("call-2", "lookup", map[string]any{})},
+					StopReason: sigma.StopReasonToolCalls,
+				}},
+			},
+			executor: func(context.Context, sigma.ToolCall) (SigmaToolOutput, error) {
+				return SigmaToolOutput{Text: "value"}, nil
+			},
+			maxRounds: 1,
+			wantError: "exceeded 1 tool rounds",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			model := sigmatest.TextModel()
+			provider := sigmatest.NewFauxProvider(tt.scripts...)
+			harness, err := NewSigmaTextHarness(SigmaHarnessConfig{
+				Client:        sigmaHarnessTestClient(t, provider, model),
+				Model:         model,
+				ToolExecutor:  tt.executor,
+				MaxToolRounds: tt.maxRounds,
+			})
+			if err != nil {
+				t.Fatalf("NewSigmaTextHarness returned error: %v", err)
+			}
+			_, err = harness.Run(context.Background(), Prompt("use the tool"), newRunContext("tool-failure"))
+			if err == nil || !strings.Contains(err.Error(), tt.wantError) {
+				t.Fatalf("Run error = %v, want %q", err, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestNewSigmaHarnessRejectsInvalidToolConfiguration(t *testing.T) {
+	t.Parallel()
+
+	model := sigmatest.TextModel()
+	client := sigmaHarnessTestClient(t, sigmatest.NewFauxProvider(), model)
+	if _, err := NewSigmaTextHarness(SigmaHarnessConfig{
+		Client: client, Model: model, ToolExecutor: func(context.Context, sigma.ToolCall) (SigmaToolOutput, error) {
+			return SigmaToolOutput{}, nil
+		}, MaxToolRounds: -1,
+	}); err == nil || !strings.Contains(err.Error(), "must not be negative") {
+		t.Fatalf("negative max tool rounds error = %v", err)
+	}
+	if _, err := NewSigmaTextHarness(SigmaHarnessConfig{
+		Client: client, Model: model, MaxToolRounds: 1,
+	}); err == nil || !strings.Contains(err.Error(), "require a tool executor") {
+		t.Fatalf("missing tool executor error = %v", err)
+	}
+}
+
 func TestSigmaHarnessFailureBoundariesAndCancellation(t *testing.T) {
 	t.Parallel()
 

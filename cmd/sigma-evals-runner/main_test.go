@@ -186,8 +186,23 @@ func TestNewSmokeSuiteUsesFullModelReferenceAsHarnessName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newSmokeSuite returned error: %v", err)
 	}
-	if suite.name() != "openai/gpt-5.6-sol" || suite.harness.HarnessName() != suite.name() {
-		t.Fatalf("suite name = %q, harness name = %q", suite.name(), suite.harness.HarnessName())
+	if suite.name() != "openai/gpt-5.6-sol" ||
+		suite.textHarness.HarnessName() != suite.name() || suite.toolHarness.HarnessName() != suite.name() {
+		t.Fatalf(
+			"suite name = %q, text harness = %q, tool harness = %q",
+			suite.name(),
+			suite.textHarness.HarnessName(),
+			suite.toolHarness.HarnessName(),
+		)
+	}
+}
+
+func TestValidateSmokeModelRequiresToolSupport(t *testing.T) {
+	t.Parallel()
+
+	err := validateSmokeModel(sigma.Model{Provider: "provider", ID: "text-only"})
+	if err == nil || !strings.Contains(err.Error(), "does not support tools") {
+		t.Fatalf("validateSmokeModel error = %v", err)
 	}
 }
 
@@ -320,6 +335,7 @@ func TestSmokeCasesUseDeterministicLocalJudges(t *testing.T) {
 		{name: "exact-formatting", output: "red,green,blue"},
 		{name: "json-extraction", output: `{"count":7,"name":"Ada"}`},
 		{name: "multi-turn-recall", output: "cedar"},
+		{name: "tool-call-round-trip", output: smokeLookupValue},
 	}
 	if len(cases) != len(want) {
 		t.Fatalf("smoke case count = %d, want %d", len(cases), len(want))
@@ -328,15 +344,32 @@ func TestSmokeCasesUseDeterministicLocalJudges(t *testing.T) {
 		if smoke.name != want[index].name {
 			t.Fatalf("smoke case %d = %#v", index, smoke)
 		}
+		result := evals.RunResult[string]{Output: want[index].output}
+		if smoke.harnessKind == smokeHarnessTool {
+			result.Events = []evals.TranscriptEvent{
+				{
+					Type:      "tool_call",
+					ID:        "call-1",
+					Name:      smokeLookupToolName,
+					Arguments: map[string]any{"key": smokeLookupKey},
+				},
+				{
+					Type:       "tool_result",
+					ToolCallID: "call-1",
+					Name:       smokeLookupToolName,
+					Content:    smokeLookupValue,
+				},
+			}
+		}
 		judgment, err := smoke.judge.Score(context.Background(), evals.JudgmentInput[evals.SigmaInput, string]{
 			Input:  smoke.input,
-			Result: evals.RunResult[string]{Output: want[index].output},
+			Result: result,
 		})
 		if err != nil || judgment.Score != 1 {
 			t.Fatalf("smoke case %q judgment = %#v, error = %v", smoke.name, judgment, err)
 		}
 	}
-	if got := len(cases[len(cases)-1].input.Prompts); got != 2 {
+	if got := len(cases[len(cases)-2].input.Prompts); got != 2 {
 		t.Fatalf("multi-turn prompt count = %d, want 2", got)
 	}
 }
@@ -352,6 +385,7 @@ func TestSmokeJudgesRejectMalformedOutput(t *testing.T) {
 		{name: "case-sensitive formatting", judge: exactJudge("red,green,blue"), output: "RED,GREEN,BLUE"},
 		{name: "invalid JSON", judge: jsonExtractionJudge(), output: `{"name":"Ada","count":7} trailing`},
 		{name: "unknown JSON field", judge: jsonExtractionJudge(), output: `{"name":"Ada","count":7,"extra":true}`},
+		{name: "guessed tool result", judge: toolRoundTripJudge(), output: smokeLookupValue},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -361,6 +395,90 @@ func TestSmokeJudgesRejectMalformedOutput(t *testing.T) {
 			})
 			if err != nil || judgment.Score != 0 || judgment.Reason == "" {
 				t.Fatalf("judgment = %#v, error = %v", judgment, err)
+			}
+		})
+	}
+}
+
+func TestToolRoundTripJudgeRequiresSuccessfulMatchingTrace(t *testing.T) {
+	t.Parallel()
+
+	baseEvents := []evals.TranscriptEvent{
+		{
+			Type:      "tool_call",
+			ID:        "call-1",
+			Name:      smokeLookupToolName,
+			Arguments: map[string]any{"key": smokeLookupKey},
+		},
+		{
+			Type:       "tool_result",
+			ToolCallID: "call-1",
+			Name:       smokeLookupToolName,
+			Content:    smokeLookupValue,
+		},
+	}
+	tests := []struct {
+		name   string
+		events []evals.TranscriptEvent
+	}{
+		{name: "missing trace"},
+		{name: "wrong argument", events: []evals.TranscriptEvent{
+			{Type: "tool_call", ID: "call-1", Name: smokeLookupToolName, Arguments: map[string]any{"key": "wrong"}},
+			baseEvents[1],
+		}},
+		{name: "error result", events: []evals.TranscriptEvent{
+			baseEvents[0],
+			{Type: "tool_result", ToolCallID: "call-1", Name: smokeLookupToolName, Content: smokeLookupValue, Error: "failed"},
+		}},
+	}
+	judge := toolRoundTripJudge()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			judgment, err := judge.Score(context.Background(), evals.JudgmentInput[evals.SigmaInput, string]{
+				Result: evals.RunResult[string]{Output: smokeLookupValue, Events: tt.events},
+			})
+			if err != nil || judgment.Score != 0 || judgment.Reason == "" {
+				t.Fatalf("judgment = %#v, error = %v", judgment, err)
+			}
+		})
+	}
+}
+
+func TestSmokeLookupExecutorReturnsToolErrorsForInvalidCalls(t *testing.T) {
+	t.Parallel()
+
+	execute := smokeLookupExecutor(smokeLookupTool())
+	tests := []struct {
+		name      string
+		call      sigma.ToolCall
+		wantText  string
+		wantError bool
+	}{
+		{
+			name:     "success",
+			call:     sigma.ToolCall{ID: "call", Name: smokeLookupToolName, Arguments: map[string]any{"key": smokeLookupKey}},
+			wantText: smokeLookupValue,
+		},
+		{
+			name:      "unknown key",
+			call:      sigma.ToolCall{ID: "call", Name: smokeLookupToolName, Arguments: map[string]any{"key": "missing"}},
+			wantText:  "not found",
+			wantError: true,
+		},
+		{
+			name:      "invalid arguments",
+			call:      sigma.ToolCall{ID: "call", Name: smokeLookupToolName, Arguments: map[string]any{}},
+			wantText:  "invalid arguments",
+			wantError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			output, err := execute(context.Background(), tt.call)
+			if err != nil || output.IsError != tt.wantError || !strings.Contains(output.Text, tt.wantText) {
+				t.Fatalf("output = %#v, error = %v", output, err)
 			}
 		})
 	}
@@ -471,6 +589,51 @@ func TestExecuteSmokeRunsProducesPairedObservationsWithoutFailingOnLowScores(t *
 	}
 }
 
+func TestExecuteSmokeRunsSelectsCaseHarness(t *testing.T) {
+	t.Parallel()
+
+	runner, err := evals.NewRunner(evals.RunnerConfig{ArtifactDir: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewRunner returned error: %v", err)
+	}
+	baseline := fakeSmokeSuite("baseline/model", "text-output", nil)
+	baseline.toolHarness = evals.HarnessFunc[evals.SigmaInput, string]{
+		Name: baseline.name(),
+		Func: func(context.Context, evals.SigmaInput, *evals.RunContext) (evals.RunResult[string], error) {
+			return evals.RunResult[string]{
+				Output: "tool-output",
+				Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: 1},
+			}, nil
+		},
+	}
+	cases := []smokeCase{
+		newSmokeCase("text", evals.Prompt("text"), exactJudge("text-output")),
+		newToolSmokeCase("tool", evals.Prompt("tool"), exactJudge("tool-output")),
+	}
+	var stdout bytes.Buffer
+	summary, err := executeSmokeRuns(
+		context.Background(),
+		runner,
+		&stdout,
+		io.Discard,
+		cases,
+		baseline,
+		nil,
+		1,
+		0,
+	)
+	if err != nil {
+		t.Fatalf("executeSmokeRuns returned error: %v", err)
+	}
+	if summary.Runs != 2 || summary.Correct != 2 || summary.OperationalFailures != 0 || summary.Failed {
+		t.Fatalf("summary = %#v", summary)
+	}
+	if !strings.Contains(stdout.String(), "case=text") || !strings.Contains(stdout.String(), "output=\"text-output\"") ||
+		!strings.Contains(stdout.String(), "case=tool") || !strings.Contains(stdout.String(), "output=\"tool-output\"") {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
 func TestExecuteSmokeRunsSingleModelFailsHardAndReportsCleanupErrorsBeforeResult(t *testing.T) {
 	t.Parallel()
 
@@ -555,7 +718,7 @@ func TestExecuteSmokeRunsUsesIndependentCaseTimeouts(t *testing.T) {
 	baseline := fakeSmokeSuite("baseline/model", "expected", nil)
 	candidate := smokeSuite{
 		model: sigma.Model{Provider: "candidate", ID: "model"},
-		harness: evals.HarnessFunc[evals.SigmaInput, string]{
+		textHarness: evals.HarnessFunc[evals.SigmaInput, string]{
 			Name: "candidate/model",
 			Func: func(ctx context.Context, input evals.SigmaInput, run *evals.RunContext) (evals.RunResult[string], error) {
 				result := evals.RunResult[string]{
@@ -633,7 +796,7 @@ func TestExecuteSmokeRunsZeroCaseTimeoutUsesParentContext(t *testing.T) {
 	}
 	baseline := smokeSuite{
 		model: sigma.Model{Provider: "baseline", ID: "model"},
-		harness: evals.HarnessFunc[evals.SigmaInput, string]{
+		textHarness: evals.HarnessFunc[evals.SigmaInput, string]{
 			Name: "baseline/model",
 			Func: func(ctx context.Context, _ evals.SigmaInput, _ *evals.RunContext) (evals.RunResult[string], error) {
 				if _, ok := ctx.Deadline(); ok {
@@ -667,23 +830,25 @@ func TestExecuteSmokeRunsZeroCaseTimeoutUsesParentContext(t *testing.T) {
 
 func fakeSmokeSuite(name, output string, runErr error) smokeSuite {
 	provider, model, _ := strings.Cut(name, "/")
-	return smokeSuite{
-		model: sigma.Model{Provider: sigma.ProviderID(provider), ID: sigma.ModelID(model)},
-		harness: evals.HarnessFunc[evals.SigmaInput, string]{
-			Name: name,
-			Func: func(context.Context, evals.SigmaInput, *evals.RunContext) (evals.RunResult[string], error) {
-				return evals.RunResult[string]{
-					Output: output,
-					Usage: evals.Usage{
-						Provider:    provider,
-						Model:       model,
-						InputTokens: 4,
-						TotalTokens: 5,
-					},
-					Timings: evals.Timings{Total: time.Millisecond},
-				}, runErr
-			},
+	harness := evals.HarnessFunc[evals.SigmaInput, string]{
+		Name: name,
+		Func: func(context.Context, evals.SigmaInput, *evals.RunContext) (evals.RunResult[string], error) {
+			return evals.RunResult[string]{
+				Output: output,
+				Usage: evals.Usage{
+					Provider:    provider,
+					Model:       model,
+					InputTokens: 4,
+					TotalTokens: 5,
+				},
+				Timings: evals.Timings{Total: time.Millisecond},
+			}, runErr
 		},
+	}
+	return smokeSuite{
+		model:       sigma.Model{Provider: sigma.ProviderID(provider), ID: sigma.ModelID(model)},
+		textHarness: harness,
+		toolHarness: harness,
 	}
 }
 

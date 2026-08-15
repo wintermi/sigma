@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestProviderFactualSmoke(t *testing.T) {
+func TestProviderSmoke(t *testing.T) {
 	selection, err := liveModelSelection()
 	if err != nil {
 		t.Fatal(err)
@@ -54,11 +54,18 @@ func TestProviderFactualSmoke(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, smoke := range smokeCases(suite.harness) {
+	for _, smoke := range smokeCases() {
 		t.Run(smoke.name, func(t *testing.T) {
-			execution := evals.Run(t.Context(), liveRunner, t, smoke.evaluation)
+			threshold := 1.0
+			execution := evals.Run(t.Context(), liveRunner, t, evals.Case[evals.SigmaInput, string]{
+				EvalSet:        "Sigma text smoke",
+				Input:          smoke.input,
+				Harness:        suite.harness(smoke.harnessKind),
+				Judges:         []evals.Judge[evals.SigmaInput, string]{smoke.judge},
+				JudgeThreshold: &threshold,
+			})
 			validateSmokeExecution(t, suite.model, execution)
-			t.Log(formatSmokeResult(smoke.name, execution))
+			t.Log(formatSmokeResult("baseline", suite.name(), smoke.name, 1, execution, nil))
 		})
 	}
 }

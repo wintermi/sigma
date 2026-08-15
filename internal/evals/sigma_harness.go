@@ -38,6 +38,17 @@ func Conversation(prompts ...string) SigmaInput {
 	return SigmaInput{Prompts: append([]string(nil), prompts...)}
 }
 
+const defaultSigmaToolRounds = 4
+
+// SigmaToolOutput is one text result returned by a caller-owned evaluation tool.
+type SigmaToolOutput struct {
+	Text    string
+	IsError bool
+}
+
+// SigmaToolExecutor executes one caller-owned tool call during an evaluation.
+type SigmaToolExecutor func(context.Context, sigma.ToolCall) (SigmaToolOutput, error)
+
 // SigmaHarnessConfig configures a Sigma-backed evaluation harness.
 type SigmaHarnessConfig struct {
 	Name                  string
@@ -46,6 +57,8 @@ type SigmaHarnessConfig struct {
 	BaseRequest           sigma.Request
 	Options               []sigma.Option
 	TransformSystemPrompt func(string) (string, error)
+	ToolExecutor          SigmaToolExecutor
+	MaxToolRounds         int
 }
 
 // SigmaRun exposes the final response and complete replayable conversation to
@@ -67,6 +80,8 @@ type sigmaHarness[O any] struct {
 	base      sigma.Request
 	options   []sigma.Option
 	transform func(string) (string, error)
+	executor  SigmaToolExecutor
+	maxRounds int
 	output    SigmaOutputFunc[O]
 }
 
@@ -99,9 +114,19 @@ func NewSigmaHarness[O any](config SigmaHarnessConfig, output SigmaOutputFunc[O]
 	if output == nil {
 		return nil, errors.New("evals: Sigma output transform is required")
 	}
+	if config.MaxToolRounds < 0 {
+		return nil, errors.New("evals: Sigma max tool rounds must not be negative")
+	}
+	if config.ToolExecutor == nil && config.MaxToolRounds != 0 {
+		return nil, errors.New("evals: Sigma max tool rounds require a tool executor")
+	}
 	base, err := cloneSigmaRequest(config.BaseRequest)
 	if err != nil {
 		return nil, fmt.Errorf("evals: Sigma base request: %w", err)
+	}
+	maxRounds := config.MaxToolRounds
+	if config.ToolExecutor != nil && maxRounds == 0 {
+		maxRounds = defaultSigmaToolRounds
 	}
 	return &sigmaHarness[O]{
 		name:      name,
@@ -110,6 +135,8 @@ func NewSigmaHarness[O any](config SigmaHarnessConfig, output SigmaOutputFunc[O]
 		base:      base,
 		options:   append([]sigma.Option(nil), config.Options...),
 		transform: config.TransformSystemPrompt,
+		executor:  config.ToolExecutor,
+		maxRounds: maxRounds,
 		output:    output,
 	}, nil
 }
@@ -173,25 +200,60 @@ func (h *sigmaHarness[O]) Run(
 		transcript = append(transcript, sigmaTranscriptRecord{Type: "message", Message: &user})
 		result.Events = append(result.Events, transcriptEventsForMessage(user)...)
 
-		final, err = h.client.Complete(ctx, h.model, request, h.options...)
-		accumulateSigmaUsage(&result.Usage, h.model, final)
-		assistant := cloneAssistant(final)
-		transcript = append(transcript, sigmaTranscriptRecord{Type: "assistant", Assistant: &assistant})
-		result.Events = append(result.Events, transcriptEventsForAssistant(final)...)
-		if err != nil {
-			return result, err
+		toolRounds := 0
+		for {
+			final, err = h.client.Complete(ctx, h.model, request, h.options...)
+			accumulateSigmaUsage(&result.Usage, h.model, final)
+			assistant := cloneAssistant(final)
+			transcript = append(transcript, sigmaTranscriptRecord{Type: "assistant", Assistant: &assistant})
+			result.Events = append(result.Events, transcriptEventsForAssistant(final)...)
+			if err != nil {
+				return result, err
+			}
+			request.Messages = append(request.Messages, assistantMessage(h.model, final))
+
+			switch final.StopReason {
+			case sigma.StopReasonEndTurn:
+				response, err = evalAssistantText(final)
+				if err != nil {
+					return result, err
+				}
+				if strings.TrimSpace(response) == "" {
+					return result, errors.New("evals: Sigma run produced no assistant text")
+				}
+			case sigma.StopReasonToolCalls:
+				if h.executor == nil {
+					return result, fmt.Errorf("evals: Sigma run ended with unexpected stop reason %q", final.StopReason)
+				}
+				if toolRounds >= h.maxRounds {
+					return result, fmt.Errorf("evals: Sigma run exceeded %d tool rounds", h.maxRounds)
+				}
+				calls, callErr := sigmaToolCalls(final)
+				if callErr != nil {
+					return result, callErr
+				}
+				toolRounds++
+				for _, call := range calls {
+					toolOutput, executeErr := h.executor(ctx, call)
+					if executeErr != nil {
+						return result, fmt.Errorf("evals: execute Sigma tool %q: %w", call.Name, executeErr)
+					}
+					toolMessage := sigma.ToolResult(call.ID, toolOutput.Text)
+					if toolOutput.IsError {
+						toolMessage = sigma.ToolError(call.ID, toolOutput.Text)
+					}
+					toolMessage.ToolName = call.Name
+					request.Messages = append(request.Messages, toolMessage)
+					transcriptMessage := toolMessage
+					transcript = append(transcript, sigmaTranscriptRecord{Type: "message", Message: &transcriptMessage})
+					result.Events = append(result.Events, transcriptEventsForMessage(toolMessage)...)
+				}
+				continue
+			default:
+				return result, fmt.Errorf("evals: Sigma run ended with unexpected stop reason %q", final.StopReason)
+			}
+			break
 		}
-		if final.StopReason != sigma.StopReasonEndTurn {
-			return result, fmt.Errorf("evals: Sigma run ended with unexpected stop reason %q", final.StopReason)
-		}
-		response, err = evalAssistantText(final)
-		if err != nil {
-			return result, err
-		}
-		if strings.TrimSpace(response) == "" {
-			return result, errors.New("evals: Sigma run produced no assistant text")
-		}
-		request.Messages = append(request.Messages, assistantMessage(h.model, final))
 	}
 
 	output, err := h.output(ctx, SigmaRun{
@@ -292,6 +354,33 @@ func evalAssistantText(message sigma.AssistantMessage) (string, error) {
 		}
 	}
 	return text.String(), nil
+}
+
+func sigmaToolCalls(message sigma.AssistantMessage) ([]sigma.ToolCall, error) {
+	var calls []sigma.ToolCall
+	for _, content := range message.Content {
+		if content.Type != sigma.ContentBlockToolCall {
+			continue
+		}
+		block := content.Clone()
+		if strings.TrimSpace(block.ToolCallID) == "" {
+			return nil, errors.New("evals: Sigma tool call is missing an id")
+		}
+		if strings.TrimSpace(block.ToolName) == "" {
+			return nil, errors.New("evals: Sigma tool call is missing a name")
+		}
+		calls = append(calls, sigma.ToolCall{
+			ID:                block.ToolCallID,
+			Name:              block.ToolName,
+			Arguments:         block.ToolArguments,
+			ProviderSignature: block.ProviderSignature,
+			ProviderMetadata:  block.ProviderMetadata,
+		})
+	}
+	if len(calls) == 0 {
+		return nil, errors.New("evals: Sigma run stopped for tool calls without returning any tool calls")
+	}
+	return calls, nil
 }
 
 func accumulateSigmaUsage(usage *Usage, model sigma.Model, final sigma.AssistantMessage) {

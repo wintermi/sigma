@@ -976,10 +976,14 @@ should still come through the catalog refresh workflow.
 - [x] Give every live eval case/model/repetition run an independent deadline so
       a stalled provider call is recorded with its partial artifacts and does
       not cancel later evaluations, while retaining an overall command timeout.
+- [x] Add bounded caller-owned text tool execution to the internal Sigma eval
+      harness and a deterministic live round-trip case that scores the tool
+      call, local result, and final answer without adding public orchestration.
 - [ ] Add agent runtime integration on top of the provider-neutral primitives
       `sigma` exposes (orchestration is deferred to later integration cards),
-      then add agent-backed evaluation scenarios for isolated workspaces, tool
-      execution, resource reloads, and native session snapshots.
+      then add agent-backed evaluation scenarios for isolated workspaces,
+      agent-owned tool orchestration, resource reloads, and native session
+      snapshots.
 - [x] Implement cross-provider context handoff beyond diagnostic surface probes.
       Expose public helpers to adapt conversation messages (assistant provenance,
       thinking, tool calls/results including images) for a target model. Reuse and

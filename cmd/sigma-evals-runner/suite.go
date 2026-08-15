@@ -25,18 +25,34 @@ import (
 )
 
 type smokeSuite struct {
-	model   sigma.Model
-	harness evals.Harness[evals.SigmaInput, string]
+	model       sigma.Model
+	textHarness evals.Harness[evals.SigmaInput, string]
+	toolHarness evals.Harness[evals.SigmaInput, string]
 }
 
 func (s smokeSuite) name() string {
 	return string(s.model.Provider) + "/" + string(s.model.ID)
 }
 
+type smokeHarnessKind string
+
+const (
+	smokeHarnessText smokeHarnessKind = "text"
+	smokeHarnessTool smokeHarnessKind = "tool"
+)
+
+func (s smokeSuite) harness(kind smokeHarnessKind) evals.Harness[evals.SigmaInput, string] {
+	if kind == smokeHarnessTool {
+		return s.toolHarness
+	}
+	return s.textHarness
+}
+
 type smokeCase struct {
-	name  string
-	input evals.SigmaInput
-	judge evals.Judge[evals.SigmaInput, string]
+	name        string
+	harnessKind smokeHarnessKind
+	input       evals.SigmaInput
+	judge       evals.Judge[evals.SigmaInput, string]
 }
 
 type smokeRunSummary struct {
@@ -65,11 +81,20 @@ type extractedRecord struct {
 	Count int    `json:"count"`
 }
 
+const (
+	smokeLookupToolName = "lookup_sigma_eval_value"
+	smokeLookupKey      = "round-trip"
+	smokeLookupValue    = "violet-echo-731"
+)
+
 func newSmokeSuite(selection evals.ModelSelection, lookup evals.EnvironmentLookup) (smokeSuite, error) {
 	registry := sigma.DefaultRegistry()
 	model, ok := registry.Model(selection.Provider, selection.Model)
 	if !ok {
 		return smokeSuite{}, fmt.Errorf("model not found: %s/%s", selection.Provider, selection.Model)
+	}
+	if err := validateSmokeModel(model); err != nil {
+		return smokeSuite{}, err
 	}
 	resolver, err := registerSmokeProvider(registry, model, lookup)
 	if err != nil {
@@ -79,15 +104,34 @@ func newSmokeSuite(selection evals.ModelSelection, lookup evals.EnvironmentLooku
 		sigma.WithRegistry(registry),
 		sigma.WithAuthResolver(resolver),
 	)
-	harness, err := evals.NewSigmaTextHarness(evals.SigmaHarnessConfig{
+	name := string(model.Provider) + "/" + string(model.ID)
+	textHarness, err := evals.NewSigmaTextHarness(evals.SigmaHarnessConfig{
 		Name:   string(model.Provider) + "/" + string(model.ID),
 		Client: client,
 		Model:  model,
 	})
 	if err != nil {
-		return smokeSuite{}, fmt.Errorf("create harness: %w", err)
+		return smokeSuite{}, fmt.Errorf("create text harness: %w", err)
 	}
-	return smokeSuite{model: model, harness: harness}, nil
+	tool := smokeLookupTool()
+	toolHarness, err := evals.NewSigmaTextHarness(evals.SigmaHarnessConfig{
+		Name:         name,
+		Client:       client,
+		Model:        model,
+		BaseRequest:  sigma.Request{Tools: []sigma.Tool{tool}},
+		ToolExecutor: smokeLookupExecutor(tool),
+	})
+	if err != nil {
+		return smokeSuite{}, fmt.Errorf("create tool harness: %w", err)
+	}
+	return smokeSuite{model: model, textHarness: textHarness, toolHarness: toolHarness}, nil
+}
+
+func validateSmokeModel(model sigma.Model) error {
+	if !model.SupportsTools {
+		return fmt.Errorf("model %s/%s does not support tools required by the evaluation suite", model.Provider, model.ID)
+	}
+	return nil
 }
 
 func newSmokeSuites(
@@ -247,6 +291,14 @@ func smokeCases() []smokeCase {
 			),
 			exactJudge("cedar"),
 		),
+		newToolSmokeCase(
+			"tool-call-round-trip",
+			evals.Prompt(
+				"Call the lookup_sigma_eval_value tool with key round-trip. "+
+					"After receiving the tool result, respond with only the returned value.",
+			),
+			toolRoundTripJudge(),
+		),
 	}
 }
 
@@ -256,9 +308,23 @@ func newSmokeCase(
 	judge evals.Judge[evals.SigmaInput, string],
 ) smokeCase {
 	return smokeCase{
-		name:  name,
-		input: input,
-		judge: judge,
+		name:        name,
+		harnessKind: smokeHarnessText,
+		input:       input,
+		judge:       judge,
+	}
+}
+
+func newToolSmokeCase(
+	name string,
+	input evals.SigmaInput,
+	judge evals.Judge[evals.SigmaInput, string],
+) smokeCase {
+	return smokeCase{
+		name:        name,
+		harnessKind: smokeHarnessTool,
+		input:       input,
+		judge:       judge,
 	}
 }
 
@@ -290,25 +356,6 @@ func executeSmokeRuns(
 	caseTimeout time.Duration,
 ) (smokeRunSummary, error) {
 	comparative := len(candidates) > 0
-	rows := []evals.HarnessTableRow[evals.SigmaInput, string]{
-		{Harness: baseline.harness, Name: baseline.name(), Repetition: 1},
-	}
-	if comparative {
-		candidateHarnesses := make([]evals.Harness[evals.SigmaInput, string], len(candidates))
-		for i, candidate := range candidates {
-			candidateHarnesses[i] = candidate.harness
-		}
-		planned, err := evals.NewHarnessTable(
-			"Sigma text smoke",
-			baseline.harness,
-			candidateHarnesses,
-			repetitions,
-		)
-		if err != nil {
-			return smokeRunSummary{}, fmt.Errorf("create comparison table: %w", err)
-		}
-		rows = planned
-	}
 
 	suites := map[string]smokeSuite{baseline.name(): baseline}
 	for _, candidate := range candidates {
@@ -321,6 +368,10 @@ func executeSmokeRuns(
 
 	var summary smokeRunSummary
 	for _, smoke := range cases {
+		rows, err := smokeHarnessRows(smoke.harnessKind, baseline, candidates, repetitions)
+		if err != nil {
+			return smokeRunSummary{}, fmt.Errorf("create %s harness rows: %w", smoke.name, err)
+		}
 		for _, row := range rows {
 			suite := suites[row.Name]
 			role := "candidate"
@@ -385,6 +436,34 @@ func executeSmokeRuns(
 	return summary, nil
 }
 
+func smokeHarnessRows(
+	kind smokeHarnessKind,
+	baseline smokeSuite,
+	candidates []smokeSuite,
+	repetitions int,
+) ([]evals.HarnessTableRow[evals.SigmaInput, string], error) {
+	baselineHarness := baseline.harness(kind)
+	if len(candidates) == 0 {
+		return []evals.HarnessTableRow[evals.SigmaInput, string]{
+			{Harness: baselineHarness, Name: baseline.name(), Repetition: 1},
+		}, nil
+	}
+	candidateHarnesses := make([]evals.Harness[evals.SigmaInput, string], len(candidates))
+	for i, candidate := range candidates {
+		candidateHarnesses[i] = candidate.harness(kind)
+	}
+	rows, err := evals.NewHarnessTable(
+		"Sigma text smoke",
+		baselineHarness,
+		candidateHarnesses,
+		repetitions,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create comparison table: %w", err)
+	}
+	return rows, nil
+}
+
 func exactJudge(want string) evals.Judge[evals.SigmaInput, string] {
 	return evals.Judge[evals.SigmaInput, string]{
 		Name: "exact output",
@@ -438,6 +517,64 @@ func scoreJSONExtraction(output string) evals.JudgeResult {
 		return evals.JudgeResult{Score: 0, Reason: "JSON fields did not match the source record"}
 	}
 	return evals.JudgeResult{Score: 1}
+}
+
+func smokeLookupTool() sigma.Tool {
+	return sigma.Tool{
+		Name:        smokeLookupToolName,
+		Description: "Return the stored evaluation value for a key.",
+		InputSchema: sigma.Schema{
+			"type": "object",
+			"properties": map[string]any{
+				"key": map[string]any{"type": "string"},
+			},
+			"required":             []any{"key"},
+			"additionalProperties": false,
+		},
+	}
+}
+
+func smokeLookupExecutor(tool sigma.Tool) evals.SigmaToolExecutor {
+	return func(_ context.Context, call sigma.ToolCall) (evals.SigmaToolOutput, error) {
+		arguments, err := sigma.ValidateToolCall([]sigma.Tool{tool}, call)
+		if err != nil {
+			return evals.SigmaToolOutput{Text: sigma.ToolErrorMessage(call, err), IsError: true}, nil
+		}
+		key, _ := arguments["key"].(string)
+		if key != smokeLookupKey {
+			return evals.SigmaToolOutput{
+				Text:    fmt.Sprintf("key %q was not found", key),
+				IsError: true,
+			}, nil
+		}
+		return evals.SigmaToolOutput{Text: smokeLookupValue}, nil
+	}
+}
+
+func toolRoundTripJudge() evals.Judge[evals.SigmaInput, string] {
+	return evals.Judge[evals.SigmaInput, string]{
+		Name: "tool call round trip",
+		Score: func(_ context.Context, input evals.JudgmentInput[evals.SigmaInput, string]) (evals.JudgeResult, error) {
+			if strings.TrimSpace(input.Result.Output) != smokeLookupValue {
+				return evals.JudgeResult{Score: 0, Reason: "response did not match the successful tool result"}, nil
+			}
+			matchingCalls := make(map[string]struct{})
+			for _, event := range input.Result.Events {
+				if event.Type == "tool_call" && event.Name == smokeLookupToolName &&
+					event.Arguments["key"] == smokeLookupKey {
+					matchingCalls[event.ID] = struct{}{}
+				}
+			}
+			for _, event := range input.Result.Events {
+				_, matched := matchingCalls[event.ToolCallID]
+				if event.Type == "tool_result" && matched && event.Name == smokeLookupToolName &&
+					event.Error == "" && event.Content == smokeLookupValue {
+					return evals.JudgeResult{Score: 1}, nil
+				}
+			}
+			return evals.JudgeResult{Score: 0, Reason: "no successful matching tool call and result were recorded"}, nil
+		},
+	}
 }
 
 func validateSmokeExecution(

@@ -48,6 +48,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
   each case/model/repetition run so one stalled provider call is recorded as an
   operational failure without cancelling later evaluations; the existing
   overall command timeout remains the hard invocation limit.
+- Repository-internal Sigma evaluation harnesses can now execute bounded,
+  caller-owned text tool loops while retaining complete usage and trace
+  artifacts. The opt-in live runner adds a deterministic tool-call round-trip
+  case that requires a matching successful call, result, and final answer.
 - OpenAI-compatible Chat Completions models can now opt out of terminal
   `finish_reason` support through `OpenAICompletionsCompat`, accepting an
   explicit `[DONE]` marker while continuing to reject unmarked stream EOF.

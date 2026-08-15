@@ -1,17 +1,18 @@
 # Sigma evals runner
 
-`sigma-evals-runner` is an opt-in live evaluation command. The suite runs five
+`sigma-evals-runner` is an opt-in live evaluation command. The suite runs six
 provider-neutral smoke cases against a caller-selected supported catalog model
 or a baseline/candidate model table: factual recall, arithmetic, exact
-formatting, JSON extraction, and multi-turn recall. It is intentionally outside
-the deterministic test and CI tasks.
+formatting, JSON extraction, multi-turn recall, and a local tool-call round
+trip. It is intentionally outside the deterministic test and CI tasks.
 
 Cases execute sequentially, receive independent pass/fail judgments, and write
 separate run records and transcripts. The command continues through independent
 case failures so one invocation reports the complete smoke result. Each
 case/model/repetition run has an independent one-minute deadline, bounded by the
 overall command deadline, so one stalled provider call does not consume the
-remaining cases.
+remaining cases. The tool case may make multiple completion calls within that
+single case deadline and records the call, local result, and final response.
 
 Successful and failed runs print a compact result line with the model role,
 full model identity, case, repetition, judgment, score, input/output tokens,
@@ -71,7 +72,8 @@ mise run eval -- -provider openai -model gpt-5.6-sol -run 'arithmetic|json-extra
 Candidate correctness is observational: a low score is included in comparison
 statistics without failing the process. Setup, execution, judge, telemetry,
 timeout, and artifact failures still return a non-zero status. A single-model
-run retains hard correctness thresholds.
+run retains hard correctness thresholds. The supported suite requires a model
+that advertises tool support; incompatible selections fail before dispatch.
 
 Native Vertex requires `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT`,
 `GOOGLE_CLOUD_LOCATION` or `GOOGLE_CLOUD_REGION`, and one of

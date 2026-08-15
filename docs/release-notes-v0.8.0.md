@@ -54,7 +54,9 @@ Kimi and Kimi Coding requests now use a Sigma-owned coding-endpoint identity
 from their shared provider wrapper instead of duplicated model-catalog headers.
 The opt-in evaluation runner now isolates every case/model/repetition run with
 an independent deadline so a stalled provider call does not cancel later
-evaluations.
+evaluations. Repository-internal Sigma evaluation harnesses can now execute
+bounded caller-owned text tool loops, and the live suite adds a deterministic
+tool-call round trip that verifies the call, local result, and final answer.
 Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
 retained only when their loading context can be replayed safely. Codex Responses
@@ -132,6 +134,12 @@ omission without mutating caller-owned data.
   Timed-out runs remain operational failures with partial artifacts and
   comparison diagnostics, while later runs continue when the overall deadline
   remains active; callers can configure the duration or disable it.
+- Repository-internal Sigma evaluation harnesses can now execute caller-owned
+  text tools across bounded completion rounds. Successful and intentional-error
+  tool results retain names in replay, normalized traces, accumulated usage,
+  and private transcripts; executor failures remain operational errors. The
+  opt-in live runner now includes a sixth case whose hidden local result passes
+  only with a matching successful tool call/result trace and exact final answer.
 - `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
   end streams with `[DONE]` but do not emit `finish_reason`.
 - Qwen Token Plan Individual now provides a distinct registration route for
