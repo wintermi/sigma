@@ -54,6 +54,9 @@ cancellation/error coverage (see the coverage standards in
 
 ## Core streaming
 
+- [x] Expose an explicit pending stop reason on every non-terminal text-stream
+      partial snapshot, including the initial start event, while preserving
+      provider-authored partial reasons and terminal stop behavior.
 - [x] Harden core text and image stream cancellation so collectors preserve
       aborted partial finals and abandoned canceled streams close promptly.
 - [x] Harden runtime stream/replay edges with tolerant SSE line parsing,

@@ -63,6 +63,15 @@ for event := range stream.Events() {
 Terminal events carry `FinalMessage`. `Stream.Final` returns the same final
 assistant message when the provider recorded one.
 
+Every non-terminal event carries `PartialMessage`. Its stop reason defaults to
+`StopReasonPending` while generation remains in progress; the initial `start`
+event carries an empty pending snapshot before any content blocks arrive. A
+provider-supplied non-empty partial stop reason is preserved.
+
+Use partial messages only for live display or transient state. Persist the
+terminal `FinalMessage` or `Stream.Final` result, whose stop reason records how
+generation actually ended.
+
 ## Collecting
 
 Use `sigma.Collect` when the caller does not need incremental events:

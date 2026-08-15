@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Text stream events now expose `StopReasonPending` on in-progress
+  `PartialMessage` snapshots, including an empty snapshot on the initial start
+  event, while terminal messages retain their existing stop reasons.
 - Existing strict function-tool opt-ins now derive provider-compatible closed
   schemas for supported OpenAI-compatible Chat Completions, Responses, and
   Mistral Conversations routes. Local validation also treats provider-emitted

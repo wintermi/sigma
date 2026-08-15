@@ -194,6 +194,8 @@ const (
 )
 
 const (
+	// StopReasonPending indicates the assistant message is still being generated.
+	StopReasonPending StopReason = "pending"
 	// StopReasonEndTurn indicates the assistant completed a normal turn.
 	StopReasonEndTurn StopReason = "end-turn"
 	// StopReasonMaxTokens indicates generation stopped at the output token limit.

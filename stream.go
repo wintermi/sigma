@@ -133,9 +133,13 @@ func (w *streamWriter) Emit(ctx context.Context, event Event) error {
 	}
 	w.partial.apply(event)
 	if event.PartialMessage == nil {
-		if partial, ok := w.partial.snapshot(true, false); ok {
-			event.PartialMessage = &partial
-		}
+		partial := w.partial.snapshot(true, false)
+		event.PartialMessage = &partial
+	}
+	if event.PartialMessage.StopReason == "" {
+		partial := *event.PartialMessage
+		partial.StopReason = StopReasonPending
+		event.PartialMessage = &partial
 	}
 	if err := mapStreamStateError(w.producer.Emit(ctx, event)); err != nil {
 		return err
@@ -318,16 +322,15 @@ func (a *partialAccumulator) cancelTerminal(err error) streamstate.Terminal[Even
 }
 
 func (a *partialAccumulator) final() AssistantMessage {
-	message, _ := a.snapshot(false, true)
-	return message
+	return a.snapshot(false, true)
 }
 
-func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool) (AssistantMessage, bool) {
+func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool) AssistantMessage {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if len(a.blocks) == 0 {
-		return AssistantMessage{}, false
+		return AssistantMessage{}
 	}
 	indexes := make([]int, 0, len(a.blocks))
 	for index, block := range a.blocks {
@@ -336,14 +339,14 @@ func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool)
 		}
 	}
 	if len(indexes) == 0 {
-		return AssistantMessage{}, false
+		return AssistantMessage{}
 	}
 	sort.Ints(indexes)
 	content := make([]ContentBlock, 0, len(indexes))
 	for _, index := range indexes {
 		content = append(content, a.blocks[index].contentBlock(decodeArguments))
 	}
-	return AssistantMessage{Content: content}, true
+	return AssistantMessage{Content: content}
 }
 
 func eventContentIndex(event Event) int {

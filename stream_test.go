@@ -624,6 +624,75 @@ func receiveEvent(t *testing.T, stream *sigma.Stream) sigma.Event {
 	}
 }
 
+func TestStreamEmitAddsPendingPartialMessage(t *testing.T) {
+	t.Parallel()
+
+	image := sigma.ImageURL("image/png", "https://example.test/image.png")
+	tests := []struct {
+		name        string
+		event       sigma.Event
+		wantContent int
+		wantLast    sigma.ContentBlockType
+	}{
+		{name: "start", event: sigma.Event{Kind: sigma.EventKindStart}},
+		{
+			name:        "text",
+			event:       sigma.Event{Kind: sigma.EventKindTextDelta, ContentIndex: intPtr(0), DeltaText: "answer"},
+			wantContent: 1,
+			wantLast:    sigma.ContentBlockText,
+		},
+		{
+			name:        "thinking",
+			event:       sigma.Event{Kind: sigma.EventKindThinkingDelta, ContentIndex: intPtr(1), DeltaText: "plan"},
+			wantContent: 2,
+			wantLast:    sigma.ContentBlockThinking,
+		},
+		{
+			name: "tool call",
+			event: sigma.Event{
+				Kind:         sigma.EventKindToolCallDelta,
+				ContentIndex: intPtr(2),
+				PartialToolCall: &sigma.PartialToolCall{
+					ID:             "call_1",
+					Name:           "lookup",
+					ArgumentsDelta: `{"city":"Melbourne"}`,
+				},
+			},
+			wantContent: 3,
+			wantLast:    sigma.ContentBlockToolCall,
+		},
+		{
+			name:        "image",
+			event:       sigma.Event{Kind: sigma.EventKindImageEnd, ContentIndex: intPtr(3), Image: &image},
+			wantContent: 4,
+			wantLast:    sigma.ContentBlockImage,
+		},
+	}
+
+	stream, writer := sigma.NewStream(context.Background())
+	defer stream.Close()
+	for _, tt := range tests {
+		if err := writer.Emit(context.Background(), tt.event); err != nil {
+			t.Fatalf("Emit %s returned error: %v", tt.name, err)
+		}
+		event := receiveEvent(t, stream)
+		if event.PartialMessage == nil {
+			t.Fatalf("%s partial message = nil", tt.name)
+		}
+		if got, want := event.PartialMessage.StopReason, sigma.StopReasonPending; got != want {
+			t.Fatalf("%s partial stop reason = %q, want %q", tt.name, got, want)
+		}
+		if got := len(event.PartialMessage.Content); got != tt.wantContent {
+			t.Fatalf("%s partial content length = %d, want %d", tt.name, got, tt.wantContent)
+		}
+		if tt.wantContent > 0 {
+			if got := event.PartialMessage.Content[tt.wantContent-1].Type; got != tt.wantLast {
+				t.Fatalf("%s last partial content type = %q, want %q", tt.name, got, tt.wantLast)
+			}
+		}
+	}
+}
+
 func TestStreamEmitPreservesProviderPartialMessage(t *testing.T) {
 	t.Parallel()
 
@@ -648,6 +717,28 @@ func TestStreamEmitPreservesProviderPartialMessage(t *testing.T) {
 	}
 	if got, want := event.PartialMessage.Content[0].Text, "provider partial"; got != want {
 		t.Fatalf("partial text = %q, want %q (Emit must not overwrite a provider-set partial)", got, want)
+	}
+	if got, want := event.PartialMessage.StopReason, sigma.StopReasonPending; got != want {
+		t.Fatalf("partial stop reason = %q, want %q", got, want)
+	}
+	if custom.StopReason != "" {
+		t.Fatalf("provider partial stop reason mutated to %q", custom.StopReason)
+	}
+
+	explicit := &sigma.AssistantMessage{
+		Content:    []sigma.ContentBlock{sigma.Text("provider state")},
+		StopReason: sigma.StopReasonUnknown,
+	}
+	if err := writer.Emit(context.Background(), sigma.Event{
+		Kind:           sigma.EventKindTextDelta,
+		DeltaText:      "ignored",
+		PartialMessage: explicit,
+	}); err != nil {
+		t.Fatalf("Emit explicit partial returned error: %v", err)
+	}
+	event = receiveEvent(t, stream)
+	if got, want := event.PartialMessage.StopReason, sigma.StopReasonUnknown; got != want {
+		t.Fatalf("explicit partial stop reason = %q, want %q", got, want)
 	}
 	stream.Close()
 }

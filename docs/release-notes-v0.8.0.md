@@ -27,6 +27,8 @@ Direct DeepSeek V4 Flash requests now support the provider's low reasoning
 effort while retaining the existing high and maximum-effort mappings.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output.
+In-progress text streams now identify every partial assistant snapshot as
+pending, beginning with an empty snapshot on the initial start event.
 OpenAI-compatible Chat Completions models can also opt into successful
 `[DONE]` termination when their endpoint does not emit `finish_reason`.
 OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
@@ -67,6 +69,11 @@ omission without mutating caller-owned data.
 
 ## Added
 
+- `StopReasonPending` now identifies in-progress assistant output. Every
+  non-terminal text event carries a `PartialMessage`; the initial start event
+  receives an empty pending snapshot, and accumulated content snapshots remain
+  pending until a provider supplies another explicit reason or terminates the
+  stream.
 - Strict function tools now receive derived provider schemas with closed
   objects, all properties required, and originally optional non-nullable
   properties represented as nullable. The existing boolean
@@ -132,6 +139,12 @@ omission without mutating caller-owned data.
 
 ## Compatibility
 
+- Non-terminal text events that previously omitted `PartialMessage` or left its
+  stop reason empty now expose an empty or accumulated snapshot with
+  `StopReasonPending`. Provider-supplied non-empty partial reasons and all
+  successful, failed, or aborted terminal reasons remain unchanged. Consumers
+  should persist only terminal messages; image streams and provider request
+  behavior are unaffected.
 - Anthropic-style OpenRouter Chat Completions cache markers now treat non-empty
   tool-result messages as eligible final conversation breakpoints. Empty tool
   results fall back to the preceding eligible message; disabled caching, other
