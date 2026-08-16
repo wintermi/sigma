@@ -115,6 +115,170 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/rich_payload.json")
 }
 
+func TestAnthropicStrictToolSchemaUsesDerivedCopy(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-strict-schema-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsStrictTools: sigma.AnthropicCompatSupported}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	schema := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"city":  map[string]any{"type": "string"},
+			"units": map[string]any{"type": "string"},
+		},
+		"required": []any{"city"},
+	}
+	wantOriginal := sigma.Schema{
+		"type": "object",
+		"properties": map[string]any{
+			"city":  map[string]any{"type": "string"},
+			"units": map[string]any{"type": "string"},
+		},
+		"required": []any{"city"},
+	}
+
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use the weather tool.")},
+		Tools: []sigma.Tool{{
+			Name:             "weather",
+			InputSchema:      schema,
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if !reflect.DeepEqual(schema, wantOriginal) {
+		t.Fatalf("Complete mutated schema: got %#v, want %#v", schema, wantOriginal)
+	}
+
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	tool := payload["tools"].([]any)[0].(map[string]any)
+	if got, want := tool["strict"], true; got != want {
+		t.Fatalf("strict = %#v, want %v", got, want)
+	}
+	inputSchema := tool["input_schema"].(map[string]any)
+	if got, want := inputSchema["required"], []any{"city", "units"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("required = %#v, want %#v", got, want)
+	}
+	if got := inputSchema["additionalProperties"]; got != false {
+		t.Fatalf("additionalProperties = %#v, want false", got)
+	}
+	units := inputSchema["properties"].(map[string]any)["units"].(map[string]any)["anyOf"].([]any)
+	if got, want := units[1], map[string]any{"type": "null"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("units null schema = %#v, want %#v", got, want)
+	}
+}
+
+func TestAnthropicStrictToolCompatibilityPrecedence(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		modelSupport   sigma.AnthropicCompatSupport
+		override       *anthropic.MessagesCompat
+		strictMetadata any
+		wantStrict     bool
+	}{
+		{name: "unsupported model", modelSupport: sigma.AnthropicCompatUnsupported, strictMetadata: true},
+		{name: "provider override enables", modelSupport: sigma.AnthropicCompatUnsupported, override: &anthropic.MessagesCompat{StrictTools: true}, strictMetadata: true, wantStrict: true},
+		{name: "provider override disables", modelSupport: sigma.AnthropicCompatSupported, override: &anthropic.MessagesCompat{}, strictMetadata: true},
+		{name: "false tool metadata", modelSupport: sigma.AnthropicCompatSupported, strictMetadata: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("anthropic-strict-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := anthropicTestModel(providerID)
+			model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsStrictTools: tt.modelSupport}
+			var opts []anthropic.ProviderOption
+			if tt.override != nil {
+				opts = append(opts, anthropic.WithMessagesCompat(*tt.override))
+			}
+			client := anthropicTestClient(t, providerID, model, server.URL, opts...)
+			_, err := client.Complete(context.Background(), model, sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("Use the tool.")},
+				Tools: []sigma.Tool{{
+					Name:             "lookup",
+					InputSchema:      sigma.Schema{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}},
+					ProviderMetadata: map[string]any{"strict": tt.strictMetadata},
+				}},
+			})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodePayload(t, receiveRequest(t, requests).Body)
+			tool := payload["tools"].([]any)[0].(map[string]any)
+			_, gotStrict := tool["strict"]
+			if gotStrict != tt.wantStrict {
+				t.Fatalf("strict present = %v, want %v; tool = %#v", gotStrict, tt.wantStrict, tool)
+			}
+			inputSchema := tool["input_schema"].(map[string]any)
+			_, gotClosed := inputSchema["additionalProperties"]
+			if gotClosed != tt.wantStrict {
+				t.Fatalf("derived schema = %v, want %v; schema = %#v", gotClosed, tt.wantStrict, inputSchema)
+			}
+		})
+	}
+}
+
+func TestAnthropicRejectsUnsafeStrictSchemaBeforeRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests <- struct{}{}
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-strict-schema-error-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsStrictTools: sigma.AnthropicCompatSupported}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use the lookup tool.")},
+		Tools: []sigma.Tool{{
+			Name: "lookup",
+			InputSchema: sigma.Schema{
+				"type":       "object",
+				"properties": map[string]any{"value": map[string]any{"$ref": "#/$defs/value"}},
+			},
+			ProviderMetadata: map[string]any{"strict": true},
+		}},
+	})
+	if err == nil {
+		t.Fatal("Complete returned nil error")
+	}
+	if got := err.Error(); !strings.Contains(got, `tool "lookup" strict schema`) || !strings.Contains(got, "$ref schemas are unsupported") {
+		t.Fatalf("Complete error = %q, want strict tool schema context", got)
+	}
+	select {
+	case <-requests:
+		t.Fatal("strict schema error reached provider")
+	default:
+	}
+}
+
 func TestMessagesDefersMarkedClientTools(t *testing.T) {
 	t.Parallel()
 

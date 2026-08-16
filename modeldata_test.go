@@ -1275,6 +1275,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertGeneratedRegionalBedrockMetadata(t, registry)
 	assertGeneratedOpenAICompatibleProviderMetadata(t, registry)
 	assertGeneratedAnthropicCompatibleProviderMetadata(t, registry)
+	assertGeneratedAnthropicStrictToolSupport(t, registry)
 	assertGeneratedVertexMetadata(t, registry)
 	assertGeneratedNVIDIAEmbeddingMetadata(t, registry)
 
@@ -2693,6 +2694,24 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		}
 		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://ai-gateway.vercel.sh/v1")
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{defaultVercelAIGatewayKeyEnv})
+	}
+}
+
+func assertGeneratedAnthropicStrictToolSupport(t *testing.T, registry *Registry) {
+	t.Helper()
+
+	for _, model := range registry.ListModels() {
+		if model.API != APIAnthropicMessages {
+			continue
+		}
+		strictSupported := model.AnthropicMessagesCompat != nil &&
+			model.AnthropicMessagesCompat.SupportsStrictTools == AnthropicCompatSupported
+		if model.Provider == ProviderAnthropic && !strictSupported {
+			t.Fatalf("direct Anthropic %s compatibility = %#v, want strict tools enabled", model.ID, model.AnthropicMessagesCompat)
+		}
+		if model.Provider != ProviderAnthropic && strictSupported {
+			t.Fatalf("%s/%s compatibility = %#v, want strict tools disabled", model.Provider, model.ID, model.AnthropicMessagesCompat)
+		}
 	}
 }
 

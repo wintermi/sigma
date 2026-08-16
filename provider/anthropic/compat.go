@@ -22,6 +22,7 @@ type MessagesCompat struct {
 	SessionAffinityHeaders  bool
 	CacheControlOnTools     bool
 	AdaptiveThinking        bool
+	StrictTools             bool
 }
 
 type messagesCompat struct {
@@ -33,6 +34,7 @@ type messagesCompat struct {
 	emptyThinkingSignature   bool
 	supportsTemperature      bool
 	supportsDisabledThinking bool
+	supportsStrictTools      bool
 	supportsToolReferences   bool
 	thinkingFormat           sigma.AnthropicThinkingFormat
 	// claudeCodeIdentity is request-scoped: it is set when the resolved
@@ -52,6 +54,7 @@ func anthropicMessagesCompat(model sigma.Model, baseURL string, override *Messag
 	compat.sessionAffinityHeaders = override.SessionAffinityHeaders
 	compat.cacheControlOnTools = override.CacheControlOnTools
 	compat.adaptiveThinking = override.AdaptiveThinking
+	compat.supportsStrictTools = override.StrictTools
 	return compat
 }
 
@@ -132,6 +135,9 @@ func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMe
 	}
 	if value, ok := anthropicCompatBool(override.SupportsDisabledThinking); ok {
 		compat.supportsDisabledThinking = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsStrictTools); ok {
+		compat.supportsStrictTools = value
 	}
 	if value, ok := anthropicCompatBool(override.SupportsToolReferences); ok {
 		compat.supportsToolReferences = value

@@ -2966,6 +2966,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -2994,6 +2995,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3022,6 +3024,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3050,6 +3053,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3079,6 +3083,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3107,6 +3112,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3135,6 +3141,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3163,6 +3170,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3196,6 +3204,7 @@ var builtinTextModels = []Model{
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3226,6 +3235,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3255,6 +3265,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3284,6 +3295,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3313,6 +3325,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3342,6 +3355,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3371,6 +3385,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3400,6 +3415,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
@@ -3430,6 +3446,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
@@ -3463,6 +3480,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3496,6 +3514,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3529,6 +3548,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3564,6 +3584,7 @@ var builtinTextModels = []Model{
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
 			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3594,6 +3615,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3623,6 +3645,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
 		ProviderMetadata: map[string]any{
@@ -3652,6 +3675,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
@@ -3682,6 +3706,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("budget"),
 		},
@@ -3712,6 +3737,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -3742,6 +3768,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},

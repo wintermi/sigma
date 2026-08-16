@@ -116,12 +116,15 @@ those properties back to omission. The original schema and arguments are not
 mutated.
 
 Strict derivation is available on strict-capable OpenAI-compatible Chat
-Completions models, Responses routes, and Mistral Conversations. It rejects
-schemas that cannot be converted safely, including references, composed
-object or array unions, tuples, conditionals, pattern properties, and
-schema-valued additional properties, before provider dispatch. Omitted or
-false strict metadata preserves the original schema, and other provider routes
-remain unchanged.
+Completions models, Responses routes, Mistral Conversations, and capability-
+gated Anthropic Messages models. Built-in direct Anthropic models advertise
+support; custom models and compatible endpoints can use
+`AnthropicMessagesCompat.SupportsStrictTools` or
+`anthropic.MessagesCompat.StrictTools`. Strict derivation rejects schemas that
+cannot be converted safely, including references, composed object or array
+unions, tuples, conditionals, pattern properties, and schema-valued additional
+properties, before provider dispatch. Omitted or false strict metadata
+preserves the original schema, and other provider routes remain unchanged.
 
 ## Streaming Tool Calls
 

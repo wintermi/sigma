@@ -67,9 +67,10 @@ caller-owned recovery. Responses incomplete terminals now distinguish
 max-output and content-filter stops from missing or unknown reasons, with a
 provider-neutral helper for bounded caller-owned max-token recovery. Existing
 strict function-tool opt-ins now derive provider-compatible closed schemas for
-supported OpenAI-compatible Chat Completions, Responses, and Mistral routes,
-while local validation maps optional non-nullable `null` placeholders back to
-omission without mutating caller-owned data.
+supported OpenAI-compatible Chat Completions, Responses, Mistral, and
+capability-gated Anthropic Messages routes, while local validation maps
+optional non-nullable `null` placeholders back to omission without mutating
+caller-owned data.
 
 ## Added
 
@@ -87,9 +88,12 @@ omission without mutating caller-owned data.
   objects, all properties required, and originally optional non-nullable
   properties represented as nullable. The existing boolean
   `Tool.ProviderMetadata["strict"]` opt-in drives this behavior on supported
-  OpenAI-compatible Chat Completions, Responses, and Mistral Conversations
-  routes; `ValidateToolCall` removes matching provider-emitted `null`
-  placeholders from its decoded argument copy.
+  OpenAI-compatible Chat Completions, Responses, Mistral Conversations, and
+  capability-gated Anthropic Messages routes. Built-in direct Anthropic models
+  advertise support through `AnthropicMessagesCompat.SupportsStrictTools`, and
+  `anthropic.MessagesCompat.StrictTools` lets custom endpoints override the
+  detected capability. `ValidateToolCall` removes matching provider-emitted
+  `null` placeholders from its decoded argument copy.
 - `OAuthAuth.IsSubscription` and `ProviderAuthInfo.OAuthSubscription` expose
   advisory subscription metadata through detailed provider auth descriptors,
   registry listings, and snapshots. Anthropic, GitHub Copilot, Kimi Coding,
@@ -173,13 +177,15 @@ omission without mutating caller-owned data.
 - `kimi.DefaultUserAgent` now identifies requests as `sigma/kimi-coding` for
   both Kimi provider IDs. Provider, model, and request header overrides retain
   their existing precedence, and API-key and OAuth authentication are unchanged.
-- Strict schema derivation does not add public types or promote strict support
-  on other provider routes. Omitted or false strict metadata and unsupported
-  Chat Completions routes preserve their existing payloads. Explicit strict
-  schemas that use references, composed object or array unions, tuples,
-  conditionals, pattern properties, or schema-valued additional properties now
-  fail before dispatch rather than relying on provider rejection; caller-owned
-  schemas and tool-call arguments remain unchanged.
+- Strict schema derivation does not add public tool types. Anthropic-compatible
+  routes remain unchanged unless model metadata or the provider compatibility
+  override enables strict tools; Bedrock and Google routes remain unchanged.
+  Omitted or false strict metadata and unsupported routes preserve their
+  existing payloads. Explicit strict schemas that use references, composed
+  object or array unions, tuples, conditionals, pattern properties, or schema-
+  valued additional properties fail before dispatch rather than relying on
+  provider rejection; caller-owned schemas and tool-call arguments remain
+  unchanged.
 - Subscription metadata is informational only. It does not change OAuth login,
   credential selection, refresh timing, persistence, or provider dispatch, and
   custom OAuth descriptors remain generic unless callers opt in explicitly.

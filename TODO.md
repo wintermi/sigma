@@ -331,8 +331,10 @@ work until their API boundaries are explicit.
 - [x] Add strict local tool-call validation for string `pattern` constraints
       and `not` schemas without adding implicit argument coercion.
 - [x] Derive provider-compatible closed schemas for existing strict function-
-      tool opt-ins and normalize optional `null` placeholders during local
-      validation without adding new public tool types or provider routes.
+      tool opt-ins across OpenAI-compatible, Responses, Mistral, and capability-
+      gated Anthropic Messages routes, and normalize optional `null`
+      placeholders during local validation without adding new public tool
+      types or provider routes.
 - [x] Add opt-in primitive argument coercion for local tool-call validation
       while keeping strict `ValidateToolCall` behavior as the default.
 - [x] Harden registry model metadata copies and opt-in union coercion so nested

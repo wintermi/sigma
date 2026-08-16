@@ -14,6 +14,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/providertext"
+	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
 )
 
@@ -432,12 +433,10 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 			converted = append(converted, convertedTool)
 			continue
 		}
-		inputSchema, err := jsonValue(tool.InputSchema)
+		strict := compat.supportsStrictTools && toolschema.Enabled(tool.ProviderMetadata)
+		inputSchema, err := anthropicToolInputSchema(tool, strict)
 		if err != nil {
-			return nil, fmt.Errorf("anthropic messages: tool %q schema: %w", tool.Name, err)
-		}
-		if inputSchema == nil {
-			inputSchema = map[string]any{"type": "object"}
+			return nil, err
 		}
 		name := tool.Name
 		if compat.claudeCodeIdentity {
@@ -447,6 +446,9 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 			"name":         name,
 			"description":  tool.Description,
 			"input_schema": inputSchema,
+		}
+		if strict {
+			convertedTool["strict"] = true
 		}
 		if compat.eagerToolInputStreaming {
 			convertedTool["eager_input_streaming"] = true
@@ -460,6 +462,24 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 		converted = append(converted, convertedTool)
 	}
 	return converted, nil
+}
+
+func anthropicToolInputSchema(tool sigma.Tool, strict bool) (any, error) {
+	if strict {
+		inputSchema, err := toolschema.MakeStrict(tool.InputSchema)
+		if err != nil {
+			return nil, fmt.Errorf("anthropic messages: tool %q strict schema: %w", tool.Name, err)
+		}
+		return inputSchema, nil
+	}
+	inputSchema, err := jsonValue(tool.InputSchema)
+	if err != nil {
+		return nil, fmt.Errorf("anthropic messages: tool %q schema: %w", tool.Name, err)
+	}
+	if inputSchema == nil {
+		inputSchema = map[string]any{"type": "object"}
+	}
+	return inputSchema, nil
 }
 
 func anthropicToolReferences(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, normalizeToolName func(string) string) []map[string]any {
