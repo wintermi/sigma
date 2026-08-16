@@ -245,6 +245,81 @@ func TestResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	}
 }
 
+func TestResponsesClampsMaxOutputTokens(t *testing.T) {
+	t.Parallel()
+
+	providerID := sigma.ProviderID("responses-max-tokens-test")
+	tests := []struct {
+		name        string
+		options     []sigma.Option
+		want        float64
+		wantPresent bool
+	}{
+		{name: "unset"},
+		{name: "zero", options: []sigma.Option{sigma.WithMaxTokens(0)}, want: 16, wantPresent: true},
+		{name: "one", options: []sigma.Option{sigma.WithMaxTokens(1)}, want: 16, wantPresent: true},
+		{name: "below minimum", options: []sigma.Option{sigma.WithMaxTokens(15)}, want: 16, wantPresent: true},
+		{name: "at minimum", options: []sigma.Option{sigma.WithMaxTokens(16)}, want: 16, wantPresent: true},
+		{name: "above minimum", options: []sigma.Option{sigma.WithMaxTokens(17)}, want: 17, wantPresent: true},
+		{
+			name: "sampling parameter override",
+			options: []sigma.Option{
+				sigma.WithMaxTokens(1),
+				sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{
+					"max_output_tokens": 20,
+				}}),
+			},
+			want:        20,
+			wantPresent: true,
+		},
+		{
+			name: "extra body override",
+			options: []sigma.Option{
+				sigma.WithMaxTokens(1),
+				sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{
+					"max_output_tokens": 20,
+				}}),
+				sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+					"max_output_tokens": 8,
+				}),
+			},
+			want:        8,
+			wantPresent: true,
+		},
+	}
+	requests := make(chan capturedRequest, len(tests))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				tt.options...,
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			got, ok := payload["max_output_tokens"]
+			if ok != tt.wantPresent {
+				t.Fatalf("max_output_tokens presence = %v, want %v", ok, tt.wantPresent)
+			}
+			if ok && got != tt.want {
+				t.Fatalf("max_output_tokens = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestResponsesPromptCacheDoesNotUseSessionIDAsPreviousResponseID(t *testing.T) {
 	t.Parallel()
 

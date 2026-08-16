@@ -182,6 +182,40 @@ func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	}
 }
 
+func TestAzureResponsesClampsMaxOutputTokens(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan azureCapturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureAzureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("azure-responses-max-tokens-test")
+	model := azureResponsesTestModel(providerID)
+	model.AzureOpenAIResponses.Endpoint = server.URL
+	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithMaxTokens(15),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveAzureRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["max_output_tokens"], float64(16); got != want {
+		t.Fatalf("max_output_tokens = %v, want %v", got, want)
+	}
+}
+
 func TestAzureResponsesDoesNotUseSessionIDAsPreviousResponseID(t *testing.T) {
 	t.Parallel()
 

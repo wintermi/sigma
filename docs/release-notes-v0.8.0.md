@@ -37,7 +37,8 @@ OpenAI-compatible Chat Completions models can also opt into successful
 `[DONE]` termination when their endpoint does not emit `finish_reason`.
 OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
 now carry request-scoped arbitrary sampling parameters with explicit override
-precedence.
+precedence. OpenAI Responses-compatible and Azure OpenAI Responses requests now
+also clamp typed output-token limits below 16 to the accepted request minimum.
 Custom OpenAI-compatible Chat Completions models can also opt into safely
 clamped top-level thinking-token budgets for compatible inference servers.
 Text, image, and embedding requests can now ask stored credentials and built-in
@@ -160,6 +161,11 @@ caller-owned data.
 
 ## Compatibility
 
+- Typed max-token options below 16 now serialize as 16 for
+  OpenAI Responses-compatible and Azure OpenAI Responses requests. Unset values
+  remain omitted, sampling parameters and raw `extra_body` values retain their
+  existing precedence, and Codex Responses continues omitting
+  `max_output_tokens`.
 - Anthropic Messages refusal stops now retain non-empty `stop_details` in
   opaque assistant provider metadata alongside the raw `stop_reason`. Refusal
   and sensitive stops remain normalized as content filters, and null or empty

@@ -182,6 +182,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Keep OpenAI and Azure OpenAI Responses `previous_response_id` payloads
       explicit so cache-affinity `sigma.WithSessionID` values are not sent as
       provider continuation IDs.
+- [x] Clamp typed OpenAI Responses-compatible and Azure OpenAI Responses
+      output-token limits to the accepted request minimum while preserving
+      low-level override precedence and Codex omission.
 - [x] Add OpenAI Responses/Codex service-tier cost accounting for `flex` and
       `priority` request tiers.
 - [x] Add OpenAI Responses and Chat Completions grammar-constrained custom

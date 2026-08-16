@@ -72,6 +72,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Responses-compatible and Azure OpenAI Responses requests now clamp
+  typed `max_output_tokens` values below 16 to the accepted request minimum,
+  while low-level request overrides retain precedence and Codex continues
+  omitting the unsupported field.
 - Anthropic Messages refusal stops now retain non-empty structured
   `stop_details` in opaque assistant provider metadata while preserving
   content-filter normalization and the raw provider stop reason.

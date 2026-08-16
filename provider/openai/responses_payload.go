@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	responsesMinOutputTokens           = 16
 	providerOptionStore                = "store"
 	providerOptionPreviousID           = "previous_response_id"
 	providerOptionPreviousIDGo         = "previousResponseID"
@@ -65,7 +66,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 		payload["temperature"] = *opts.Temperature
 	}
 	if opts.MaxTokens != nil {
-		payload["max_output_tokens"] = *opts.MaxTokens
+		payload["max_output_tokens"] = max(*opts.MaxTokens, responsesMinOutputTokens)
 	}
 	if len(opts.Metadata) > 0 {
 		payload["metadata"] = copyAnyMap(opts.Metadata)

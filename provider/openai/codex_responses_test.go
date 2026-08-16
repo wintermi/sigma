@@ -219,7 +219,7 @@ func TestCodexResponsesOmitsUnsupportedMaxOutputTokens(t *testing.T) {
 		context.Background(),
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithMaxTokens(128),
+		sigma.WithMaxTokens(1),
 	)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
