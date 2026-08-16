@@ -2326,18 +2326,38 @@ func TestStreamUsageMergeContentBlockStopAndStopReasons(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		stopReason string
-		want       sigma.StopReason
+		name            string
+		stopReason      string
+		stopDetails     string
+		want            sigma.StopReason
+		wantStopDetails map[string]any
 	}{
 		{name: "pause turn", stopReason: "pause_turn", want: sigma.StopReasonEndTurn},
 		{name: "sensitive", stopReason: "sensitive", want: sigma.StopReasonContentFilter},
+		{
+			name:        "refusal details",
+			stopReason:  "refusal",
+			stopDetails: `{"type":"refusal","category":"cyber","explanation":"blocked","future":{"code":"policy_v2"}}`,
+			want:        sigma.StopReasonContentFilter,
+			wantStopDetails: map[string]any{
+				"type":        "refusal",
+				"category":    "cyber",
+				"explanation": "blocked",
+				"future":      map[string]any{"code": "policy_v2"},
+			},
+		},
+		{name: "null refusal details", stopReason: "refusal", stopDetails: "null", want: sigma.StopReasonContentFilter},
+		{name: "empty end turn details", stopReason: "end_turn", stopDetails: `{}`, want: sigma.StopReasonEndTurn},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			stopDetails := ""
+			if tt.stopDetails != "" {
+				stopDetails = `,"stop_details":` + tt.stopDetails
+			}
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				writeMessagesSSE(t, w, `data: {"type":"message_start","message":{"id":"msg_usage","type":"message","role":"assistant","model":"claude-test","content":[],"usage":{"input_tokens":7,"cache_read_input_tokens":2}}}
@@ -2348,7 +2368,7 @@ data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text
 
 data: {"type":"content_block_stop","index":0}
 
-data: {"type":"message_delta","delta":{"stop_reason":"`+tt.stopReason+`"},"usage":{"output_tokens":3}}
+data: {"type":"message_delta","delta":{"stop_reason":"`+tt.stopReason+`"`+stopDetails+`},"usage":{"output_tokens":3}}
 
 data: {"type":"message_stop"}
 `)
@@ -2383,6 +2403,14 @@ data: {"type":"message_stop"}
 			}
 			if got, want := final.ProviderMetadata["stop_reason"], tt.stopReason; got != want {
 				t.Fatalf("raw stop reason = %v, want %v", got, want)
+			}
+			gotStopDetails, hasStopDetails := final.ProviderMetadata["stop_details"]
+			if tt.wantStopDetails == nil {
+				if hasStopDetails {
+					t.Fatalf("stop details = %#v, want absent", gotStopDetails)
+				}
+			} else if !hasStopDetails || !reflect.DeepEqual(gotStopDetails, tt.wantStopDetails) {
+				t.Fatalf("stop details = %#v, want %#v", gotStopDetails, tt.wantStopDetails)
 			}
 			if final.Usage == nil {
 				t.Fatal("final usage was nil")

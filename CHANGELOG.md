@@ -72,6 +72,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Anthropic Messages refusal stops now retain non-empty structured
+  `stop_details` in opaque assistant provider metadata while preserving
+  content-filter normalization and the raw provider stop reason.
 - Google Generative AI and Vertex replay now retain blank text and thinking
   parts only when they carry a valid same-provider/API/model thought signature,
   omitting whitespace-only or unusably signed blanks without changing nonblank

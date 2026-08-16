@@ -59,6 +59,7 @@ type streamDelta struct {
 	Signature   string         `json:"signature"`
 	PartialJSON string         `json:"partial_json"`
 	StopReason  string         `json:"stop_reason"`
+	StopDetails map[string]any `json:"stop_details"`
 	Citation    map[string]any `json:"citation"`
 	Container   map[string]any `json:"container"`
 }
@@ -170,6 +171,9 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		if parsed.Delta.StopReason != "" {
 			p.rawStopReason = parsed.Delta.StopReason
 			p.stopReason = anthropicStopReason(parsed.Delta.StopReason)
+			if len(parsed.Delta.StopDetails) > 0 {
+				p.setMetadata("stop_details", parsed.Delta.StopDetails)
+			}
 		}
 		if len(parsed.Delta.Container) > 0 {
 			p.setMetadata("container", parsed.Delta.Container)

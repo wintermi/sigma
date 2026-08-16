@@ -28,7 +28,9 @@ final conversation cache breakpoint through the latest non-empty tool result.
 Direct DeepSeek V4 Flash requests now support the provider's low reasoning
 effort while retaining the existing high and maximum-effort mappings.
 Anthropic Messages streams now surface text and thinking delivered with
-content-block start events immediately through incremental output.
+content-block start events immediately through incremental output. Refusal
+stops now also retain non-empty structured provider details for callers that
+need the refusal category or explanation.
 In-progress text streams now identify every partial assistant snapshot as
 pending, beginning with an empty snapshot on the initial start event.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -158,6 +160,10 @@ caller-owned data.
 
 ## Compatibility
 
+- Anthropic Messages refusal stops now retain non-empty `stop_details` in
+  opaque assistant provider metadata alongside the raw `stop_reason`. Refusal
+  and sensitive stops remain normalized as content filters, and null or empty
+  details remain omitted.
 - Blank or whitespace-only Google and Vertex assistant text or thinking with a
   missing, invalid, or cross-provider/API/model thought signature is no longer
   serialized as an empty part. Valid same-model signature-only parts remain
