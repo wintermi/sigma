@@ -77,6 +77,7 @@ type openAIUsage struct {
 	PromptTokens            int                 `json:"prompt_tokens"`
 	CompletionTokens        int                 `json:"completion_tokens"`
 	TotalTokens             int                 `json:"total_tokens"`
+	CachedTokens            *int                `json:"cached_tokens,omitempty"`
 	PromptCacheHitTokens    *int                `json:"prompt_cache_hit_tokens"`
 	PromptTokensDetails     *promptTokenDetails `json:"prompt_tokens_details"`
 	CompletionTokensDetails *outputTokenDetails `json:"completion_tokens_details"`
@@ -624,6 +625,9 @@ func (u openAIUsage) sigmaUsage() sigma.Usage {
 	}
 	if usage.CacheReadInputTokens == 0 && u.PromptCacheHitTokens != nil {
 		usage.CacheReadInputTokens = *u.PromptCacheHitTokens
+	}
+	if usage.CacheReadInputTokens == 0 && u.CachedTokens != nil {
+		usage.CacheReadInputTokens = *u.CachedTokens
 	}
 	if usage.CacheReadInputTokens > 0 || usage.CacheWriteInputTokens > 0 {
 		usage.InputTokens = max(0, u.PromptTokens-usage.CacheReadInputTokens-usage.CacheWriteInputTokens)

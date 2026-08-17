@@ -39,6 +39,9 @@ OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
 now carry request-scoped arbitrary sampling parameters with explicit override
 precedence. OpenAI Responses-compatible and Azure OpenAI Responses requests now
 also clamp typed output-token limits below 16 to the accepted request minimum.
+OpenAI-compatible Chat Completions usage now also recognizes top-level
+`cached_tokens` from compatible Kimi and Moonshot responses as cache reads
+instead of ordinary input.
 Custom OpenAI-compatible Chat Completions models can also opt into safely
 clamped top-level thinking-token budgets for compatible inference servers.
 Text, image, and embedding requests can now ask stored credentials and built-in
@@ -161,6 +164,12 @@ caller-owned data.
 
 ## Compatibility
 
+- OpenAI-compatible Chat Completions usage now falls back to top-level
+  `cached_tokens` when nested cache details and `prompt_cache_hit_tokens` do not
+  report a cache read. Cache reads remain included in provider prompt totals,
+  so Sigma removes them from ordinary input tokens and prices them separately;
+  raw usage, existing field precedence, and zero or omitted values are
+  unchanged.
 - Typed max-token options below 16 now serialize as 16 for
   OpenAI Responses-compatible and Azure OpenAI Responses requests. Unset values
   remain omitted, sampling parameters and raw `extra_body` values retain their

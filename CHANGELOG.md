@@ -72,6 +72,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI-compatible Chat Completions usage now recognizes top-level
+  `cached_tokens` as a cache-read fallback, keeping compatible Kimi and
+  Moonshot cache hits out of ordinary input-token and cost accounting while
+  preserving existing nested and legacy-field precedence.
 - OpenAI Responses-compatible and Azure OpenAI Responses requests now clamp
   typed `max_output_tokens` values below 16 to the accepted request minimum,
   while low-level request overrides retain precedence and Codex continues

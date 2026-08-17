@@ -2476,33 +2476,102 @@ func TestStreamingParsesChoiceUsage(t *testing.T) {
 	}
 }
 
-func TestStreamingParsesPromptCacheHitTokensFallback(t *testing.T) {
+func TestStreamingParsesCacheReadTokenFallbacks(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"prompt_cache_hit_tokens":4}}`+"\n\n")
-		_, _ = io.WriteString(w, "data: [DONE]\n\n")
-	}))
-	t.Cleanup(server.Close)
+	tests := []struct {
+		name             string
+		usageJSON        string
+		wantInputTokens  int
+		wantCachedTokens int
+		wantRawCached    float64
+		rawCachedPresent bool
+	}{
+		{
+			name:             "top-level fallback",
+			usageJSON:        `{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"cached_tokens":4}`,
+			wantInputTokens:  6,
+			wantCachedTokens: 4,
+			wantRawCached:    4,
+			rawCachedPresent: true,
+		},
+		{
+			name:             "nested details take precedence",
+			usageJSON:        `{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"cached_tokens":5,"prompt_cache_hit_tokens":4,"prompt_tokens_details":{"cached_tokens":3}}`,
+			wantInputTokens:  7,
+			wantCachedTokens: 3,
+			wantRawCached:    5,
+			rawCachedPresent: true,
+		},
+		{
+			name:             "legacy fallback takes precedence",
+			usageJSON:        `{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"cached_tokens":5,"prompt_cache_hit_tokens":4}`,
+			wantInputTokens:  6,
+			wantCachedTokens: 4,
+			wantRawCached:    5,
+			rawCachedPresent: true,
+		},
+		{
+			name:             "zero top-level value",
+			usageJSON:        `{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,"cached_tokens":0}`,
+			wantInputTokens:  10,
+			wantRawCached:    0,
+			rawCachedPresent: true,
+		},
+		{
+			name:            "omitted cache values",
+			usageJSON:       `{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}`,
+			wantInputTokens: 10,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	providerID := sigma.ProviderID("openai-cache-hit-usage-test")
-	model := openAITestModel(providerID)
-	client := openAITestClient(t, providerID, model, server.URL)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":null}]}`+"\n\n")
+				_, _ = io.WriteString(w, `data: {"id":"chatcmpl_cache_hit","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":`+tt.usageJSON+`}`+"\n\n")
+				_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			}))
+			t.Cleanup(server.Close)
 
-	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
-	}
-	if final.Usage == nil {
-		t.Fatal("final usage was nil")
-	}
-	if got, want := final.Usage.CacheReadInputTokens, 4; got != want {
-		t.Fatalf("cache read tokens = %d, want %d", got, want)
-	}
-	if got, want := final.Usage.InputTokens, 6; got != want {
-		t.Fatalf("input tokens = %d, want %d", got, want)
+			providerID := sigma.ProviderMoonshotAI
+			model := openAITestModel(providerID)
+			client := openAITestClient(t, providerID, model, server.URL)
+			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			events := collectEvents(t, stream)
+			if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			final, ok := stream.Final()
+			if !ok || final.Usage == nil {
+				t.Fatalf("stream final = %#v, want usage", final)
+			}
+			if got := final.Usage.InputTokens; got != tt.wantInputTokens {
+				t.Errorf("input tokens = %d, want %d", got, tt.wantInputTokens)
+			}
+			if got := final.Usage.CacheReadInputTokens; got != tt.wantCachedTokens {
+				t.Errorf("cache read tokens = %d, want %d", got, tt.wantCachedTokens)
+			}
+			if final.Cost == nil {
+				t.Fatal("final cost was nil")
+			}
+			if got, want := final.Cost.CacheReadInputCost, float64(tt.wantCachedTokens)*0.5/1_000_000; got != want {
+				t.Errorf("cache read cost = %v, want %v", got, want)
+			}
+			terminal := events[len(events)-1]
+			if terminal.Usage == nil || terminal.Usage.InputTokens != tt.wantInputTokens || terminal.Usage.CacheReadInputTokens != tt.wantCachedTokens {
+				t.Errorf("terminal usage = %#v, want input %d and cache read %d", terminal.Usage, tt.wantInputTokens, tt.wantCachedTokens)
+			}
+			if tt.rawCachedPresent {
+				if got := final.Usage.Raw["cached_tokens"]; got != tt.wantRawCached {
+					t.Errorf("raw cached_tokens = %v, want %v", got, tt.wantRawCached)
+				}
+			} else if _, ok := final.Usage.Raw["cached_tokens"]; ok {
+				t.Errorf("raw cached_tokens = %v, want omitted", final.Usage.Raw["cached_tokens"])
+			}
+		})
 	}
 }
 
