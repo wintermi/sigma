@@ -1448,6 +1448,47 @@ func TestOpenAICompletionsCompatMapsDirectDeepSeekLowReasoning(t *testing.T) {
 	}
 }
 
+func TestOpenAICompletionsCompatMapsRoutedDeepSeekLowReasoning(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		provider sigma.ProviderID
+		model    sigma.ModelID
+		baseURL  string
+	}{
+		{name: "OpenCode Zen", provider: sigma.ProviderOpenCode, model: "deepseek-v4-flash", baseURL: "https://opencode.ai/zen/v1"},
+		{name: "OpenCode Zen Free", provider: sigma.ProviderOpenCode, model: "deepseek-v4-flash-free", baseURL: "https://opencode.ai/zen/v1"},
+		{name: "OpenCode Go", provider: sigma.ProviderOpenCodeGo, model: "deepseek-v4-flash", baseURL: "https://opencode.ai/zen/go/v1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model, ok := sigma.DefaultRegistry().Model(tt.provider, tt.model)
+			if !ok {
+				t.Fatalf("generated registry missing %s/%s", tt.provider, tt.model)
+			}
+			payload, err := chatCompletionsPayload(
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.Options{ReasoningLevel: sigma.ThinkingLevelLow},
+				openAICompletionsCompat(model, tt.baseURL),
+			)
+			if err != nil {
+				t.Fatalf("chatCompletionsPayload returned error: %v", err)
+			}
+			thinking, ok := payload["thinking"].(map[string]any)
+			if !ok || thinking["type"] != "enabled" {
+				t.Fatalf("thinking = %#v, want enabled object", payload["thinking"])
+			}
+			if got, want := payload["reasoning_effort"], "low"; got != want {
+				t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatDowngradesUnsupportedJSONSchemaResponseFormat(t *testing.T) {
 	t.Parallel()
 

@@ -25,8 +25,9 @@ metadata and native chat-template thinking controls. Fireworks GLM 5.2 routes
 now use session affinity for automatic prompt caching without unsupported
 long-cache retention. Anthropic-routed OpenRouter agent loops now advance their
 final conversation cache breakpoint through the latest non-empty tool result.
-Direct DeepSeek V4 Flash requests now support the provider's low reasoning
-effort while retaining the existing high and maximum-effort mappings.
+Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
+support low reasoning effort while retaining their existing high and
+maximum-effort mappings.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output. Refusal
 stops now also retain non-empty structured provider details for callers that
@@ -262,9 +263,10 @@ caller-owned data.
   thinking toggle without sending unsupported reasoning-effort values.
 - Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
   prompt caching is enabled and omit unsupported explicit long-cache retention.
-- Direct DeepSeek V4 Flash now maps `ThinkingLevelLow` to the provider's `low`
-  reasoning effort. DeepSeek V4 Pro and DeepSeek models exposed through other
-  routes retain their existing independently reviewed level mappings.
+- Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
+  map `ThinkingLevelLow` to the provider's `low` reasoning effort. DeepSeek V4
+  Pro and models exposed through other routes retain their existing
+  independently reviewed level mappings.
 - Anthropic Messages streams now emit non-empty text and thinking delivered by
   content-block start events as ordered initial deltas while retaining
   signatures, citations, and complete final blocks.

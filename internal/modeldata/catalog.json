@@ -17335,12 +17335,12 @@
         "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
+        "low": "low",
         "high": "high",
         "xhigh": "max"
       },
       "unsupportedThinkingLevels": [
         "minimal",
-        "low",
         "medium"
       ],
       "openAICompletionsCompat": {
@@ -18325,12 +18325,12 @@
         "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
+        "low": "low",
         "high": "high",
         "xhigh": "max"
       },
       "unsupportedThinkingLevels": [
         "minimal",
-        "low",
         "medium"
       ],
       "openAICompletionsCompat": {
@@ -18365,12 +18365,12 @@
         "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
+        "low": "low",
         "high": "high",
         "xhigh": "max"
       },
       "unsupportedThinkingLevels": [
         "minimal",
-        "low",
         "medium"
       ],
       "openAICompletionsCompat": {

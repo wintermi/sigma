@@ -258,8 +258,9 @@ integrations remain future work until they have the same local evidence bar.
       from live evidence without making provider calls part of `mise run ci`.
 - [x] Normalize top-level `cached_tokens` from compatible Chat Completions
       usage as cache reads while preserving nested and legacy-field precedence.
-- [x] Expose low reasoning effort for direct DeepSeek V4 Flash requests while
-      preserving independently reviewed reasoning levels on routed copies.
+- [x] Expose low reasoning effort for direct and OpenCode-routed DeepSeek V4
+      Flash requests while preserving independently reviewed reasoning levels
+      on other routed copies.
 
 ## Vertex MaaS
 

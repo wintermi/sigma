@@ -94,9 +94,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
   prompt-cache marker on the latest non-empty tool result instead of the
   preceding assistant or user message, while retaining the bounded system and
   tool-definition markers.
-- Direct DeepSeek V4 Flash metadata now exposes its supported low reasoning
-  effort while preserving the existing high and `xhigh`-to-`max` mappings;
-  routed DeepSeek models retain their independently reviewed level support.
+- Direct DeepSeek V4 Flash and its OpenCode Zen, Zen Free, and Go routes now
+  expose their supported low reasoning effort while preserving the existing
+  high and `xhigh`-to-`max` mappings; other routed DeepSeek models retain their
+  independently reviewed level support.
 - OpenAI, Azure, and Codex Responses now normalize incomplete terminals as
   max-token or content-filter stops only for recognized reasons. Missing and
   unknown reasons return typed provider errors while preserving partial output,

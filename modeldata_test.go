@@ -1078,9 +1078,35 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		openCodeDeepSeek.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
 		t.Fatalf("OpenCode Zen DeepSeek compat = %#v, want deepseek reasoning content replay", openCodeDeepSeek.OpenAICompletionsCompat)
 	}
-	if !openCodeDeepSeek.SupportsThinkingLevel(ThinkingLevelOff) ||
-		openCodeDeepSeek.SupportsThinkingLevel(ThinkingLevelMedium) {
-		t.Fatalf("OpenCode Zen DeepSeek thinking level support = %+v / %+v, want off without medium", openCodeDeepSeek.ThinkingLevelMap, openCodeDeepSeek.UnsupportedThinkingLevels)
+	openCodeDeepSeekFree, ok := registry.Model(ProviderOpenCode, "deepseek-v4-flash-free")
+	if !ok {
+		t.Fatal("fresh registry missing generated OpenCode Zen DeepSeek V4 Flash Free model")
+	}
+	for _, tt := range []struct {
+		name  string
+		model Model
+	}{
+		{name: "OpenCode Zen", model: openCodeDeepSeek},
+		{name: "OpenCode Zen Free", model: openCodeDeepSeekFree},
+	} {
+		if !tt.model.SupportsThinkingLevel(ThinkingLevelOff) ||
+			!tt.model.SupportsThinkingLevel(ThinkingLevelLow) ||
+			tt.model.SupportsThinkingLevel(ThinkingLevelMinimal) ||
+			tt.model.SupportsThinkingLevel(ThinkingLevelMedium) {
+			t.Fatalf("%s DeepSeek thinking level support = %+v / %+v, want off/low without minimal/medium", tt.name, tt.model.ThinkingLevelMap, tt.model.UnsupportedThinkingLevels)
+		}
+		if got, ok := tt.model.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
+			t.Fatalf("%s DeepSeek low level = %q, %v; want low, true", tt.name, got, ok)
+		}
+	}
+	for _, provider := range []ProviderID{ProviderOpenCode, ProviderOpenCodeGo} {
+		deepSeekPro, ok := registry.Model(provider, "deepseek-v4-pro")
+		if !ok {
+			t.Fatalf("fresh registry missing %s DeepSeek V4 Pro model", provider)
+		}
+		if deepSeekPro.SupportsThinkingLevel(ThinkingLevelLow) {
+			t.Fatalf("%s DeepSeek V4 Pro unexpectedly supports low thinking: %+v", provider, deepSeekPro.ThinkingLevelMap)
+		}
 	}
 
 	openCodeClaude, ok := registry.Model(ProviderOpenCode, "claude-opus-4-8")
@@ -1138,9 +1164,14 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("OpenCode Go xhigh level = %q, %v; want max, true", got, ok)
 	}
+	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
+		t.Fatalf("OpenCode Go low level = %q, %v; want low, true", got, ok)
+	}
 	if !openCodeGo.SupportsThinkingLevel(ThinkingLevelOff) ||
-		openCodeGo.SupportsThinkingLevel(ThinkingLevelLow) {
-		t.Fatalf("OpenCode Go DeepSeek thinking support = %+v / %+v, want off without low", openCodeGo.ThinkingLevelMap, openCodeGo.UnsupportedThinkingLevels)
+		!openCodeGo.SupportsThinkingLevel(ThinkingLevelLow) ||
+		openCodeGo.SupportsThinkingLevel(ThinkingLevelMinimal) ||
+		openCodeGo.SupportsThinkingLevel(ThinkingLevelMedium) {
+		t.Fatalf("OpenCode Go DeepSeek thinking support = %+v / %+v, want off/low without minimal/medium", openCodeGo.ThinkingLevelMap, openCodeGo.UnsupportedThinkingLevels)
 	}
 	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
 	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
