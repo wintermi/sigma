@@ -1558,6 +1558,7 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 2, OutputCostPerMillion: 9, CacheReadInputCostPerMillion: 0.2, CacheWriteInputCostPerMillion: 2.5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1, CacheWriteInputCostPerMillion: 12.5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5, CacheWriteInputCostPerMillion: 6.25}},
+		{provider: ProviderXAI, id: "grok-4.6", want: ModelCostTier{InputTokensAbove: 200_000, InputCostPerMillion: 4, OutputCostPerMillion: 12, CacheReadInputCostPerMillion: 1}},
 	}
 	for _, tt := range tests {
 		model, ok := registry.Model(tt.provider, tt.id)
@@ -2116,6 +2117,41 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataString(t, grok45.ProviderMetadata, "baseURL", "https://api.x.ai/v1")
 	assertMetadataString(t, grok45.ProviderMetadata, "modelFamily", "grok")
 	assertMetadataStrings(t, grok45.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"XAI_API_KEY"})
+
+	grok46, ok := registry.Model(ProviderXAI, "grok-4.6")
+	if !ok {
+		t.Fatal("fresh registry missing generated xAI Grok 4.6 model")
+	}
+	if grok46.API != APIOpenAIResponses ||
+		!grok46.SupportsTools ||
+		!grok46.SupportsImages() ||
+		grok46.SupportsDocuments() ||
+		!grok46.SupportsReasoning() {
+		t.Fatalf("Grok 4.6 capabilities were not generated: %+v", grok46)
+	}
+	if grok46.ContextWindow != 500000 || grok46.MaxOutputTokens != 500000 ||
+		grok46.InputCostPerMillion != 2 || grok46.OutputCostPerMillion != 6 || grok46.CacheReadInputCostPerMillion != 0.5 {
+		t.Fatalf("Grok 4.6 limits or costs = %+v", grok46)
+	}
+	if grok46.DefaultTransport != TransportSSE ||
+		grok46.OpenAICompletionsCompat != nil ||
+		grok46.OpenAIResponsesCompat == nil ||
+		grok46.OpenAIResponsesCompat.SupportsLongCacheRetention != OpenAICompatUnsupported {
+		t.Fatalf("Grok 4.6 transport or Responses compat = %q / %#v / %#v", grok46.DefaultTransport, grok46.OpenAICompletionsCompat, grok46.OpenAIResponsesCompat)
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelLow, ThinkingLevelMedium, ThinkingLevelHigh, ThinkingLevelXHigh} {
+		if !grok46.SupportsThinkingLevel(level) {
+			t.Fatalf("Grok 4.6 does not support reasoning level %q", level)
+		}
+	}
+	for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal} {
+		if grok46.SupportsThinkingLevel(level) {
+			t.Fatalf("Grok 4.6 unexpectedly supports reasoning level %q", level)
+		}
+	}
+	assertMetadataString(t, grok46.ProviderMetadata, "baseURL", "https://api.x.ai/v1")
+	assertMetadataString(t, grok46.ProviderMetadata, "modelFamily", "grok")
+	assertMetadataStrings(t, grok46.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"XAI_API_KEY"})
 
 	for _, tt := range []struct {
 		provider       ProviderID

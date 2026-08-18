@@ -66,6 +66,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 - Baseten now has a first-class OpenAI-compatible Chat Completions route with
   focused GLM 5.2 and Kimi K2.6 metadata, `BASETEN_API_KEY` discovery, and
   model-specific chat-template thinking controls.
+- Generated direct xAI metadata now includes Grok 4.6 through OpenAI Responses
+  with text and image input, function tools, 500k-token limits, tiered pricing,
+  and low through `xhigh` reasoning levels.
 
 ### Changed
 

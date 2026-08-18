@@ -31,6 +31,9 @@ through the latest non-empty tool result.
 Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
 support low reasoning effort while retaining their existing high and
 maximum-effort mappings.
+Direct xAI now includes Grok 4.6 through OpenAI Responses with text and image
+input, function tools, 500k-token context and output limits, tiered
+long-context pricing, and reasoning controls through `xhigh`.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output. Refusal
 stops now also retain non-empty structured provider details for callers that
@@ -173,6 +176,12 @@ selection remains available through existing provider-specific controls.
   OpenAI-compatible Chat Completions adapter. The focused built-in catalog
   covers vision-capable GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery,
   reviewed inputs, limits, and token pricing.
+- Direct xAI metadata now includes Grok 4.6 through the existing OpenAI
+  Responses registration path. It accepts text and image input, function
+  tools, and low, medium, high, or `xhigh` reasoning within a 500k-token
+  context and output limit. Standard rates are $2 input, $6 output, and $0.50
+  cached input per million tokens; requests above 200k input tokens use the
+  $4, $12, and $1 rates.
 
 ## Compatibility
 
@@ -182,6 +191,12 @@ selection remains available through existing provider-specific controls.
   tool definitions on providers that support an explicit disabled choice;
   Bedrock instead omits active and replay-synthesized tool configuration because
   Converse has no disabled tool-choice variant.
+- Direct xAI Grok 4.6 uses `/responses`, disables provider-side response
+  storage, and requests encrypted reasoning whenever a supported effort is
+  selected. Explicit `xhigh` maps directly to the provider effort; off and
+  minimal remain unsupported. Long cache retention is omitted while cache keys
+  and session affinity remain available. Grok 4.5 and the existing legacy Chat
+  Completions routes are unchanged.
 - OpenAI-compatible Chat Completions usage now falls back to top-level
   `cached_tokens` when nested cache details and `prompt_cache_hit_tokens` do not
   report a cache read. Cache reads remain included in provider prompt totals,

@@ -41,6 +41,9 @@ const (
 )
 
 func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
+	if err := validateReasoningLevel(model, opts, completionsCompat{}); err != nil {
+		return nil, err
+	}
 	cleaned := transform.DropUnansweredToolCalls(req)
 	deferredToolsMode := responsesDeferredToolsModeForModel(model)
 	deferredTools := transform.PlanDeferredTools(cleaned, deferredToolsMode != responsesDeferredToolsNone, nil)

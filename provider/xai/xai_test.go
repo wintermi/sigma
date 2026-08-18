@@ -93,6 +93,77 @@ func TestCompleteSendsGrok45ResponsesRequest(t *testing.T) {
 	assertJSONPath(t, request.Body, []string{"include"}, []any{"reasoning.encrypted_content"})
 }
 
+func TestCompleteSendsGrok46XHighResponsesRequest(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, xaiResponsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := generatedXAIResponsesModel(t, "grok-4.6")
+	model.ProviderMetadata["baseURL"] = server.URL
+	client := xaiResponsesTestClient(t, model, server.URL)
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("xai-test-token"),
+		sigma.WithSessionID("xai-46-session"),
+		sigma.WithCacheRetention(sigma.CacheRetentionLong),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelXHigh),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Path, "/responses"; got != want {
+		t.Fatalf("path = %q, want %q", got, want)
+	}
+	assertJSONPath(t, request.Body, []string{"model"}, "grok-4.6")
+	assertJSONPath(t, request.Body, []string{"store"}, false)
+	assertJSONPath(t, request.Body, []string{"prompt_cache_key"}, "xai-46-session")
+	assertNoJSONPath(t, request.Body, []string{"prompt_cache_retention"})
+	assertJSONPath(t, request.Body, []string{"reasoning", "effort"}, "xhigh")
+	assertJSONPath(t, request.Body, []string{"include"}, []any{"reasoning.encrypted_content"})
+}
+
+func TestCompleteRejectsUnsupportedGrok46ReasoningBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	dispatched := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		dispatched <- struct{}{}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, xaiResponsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := generatedXAIResponsesModel(t, "grok-4.6")
+	model.ProviderMetadata["baseURL"] = server.URL
+	client := xaiResponsesTestClient(t, model, server.URL)
+	for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelOff, sigma.ThinkingLevelMinimal} {
+		_, err := client.Complete(
+			context.Background(),
+			model,
+			sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+			sigma.WithAPIKey("xai-test-token"),
+			sigma.WithReasoningLevel(level),
+		)
+		if !errors.Is(err, sigma.ErrInvalidOptions) {
+			t.Fatalf("Complete with reasoning level %q error = %v, want ErrInvalidOptions", level, err)
+		}
+		select {
+		case <-dispatched:
+			t.Fatalf("reasoning level %q dispatched a request", level)
+		default:
+		}
+	}
+}
+
 func TestCompleteStreamsTextWithXAIDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -290,6 +361,16 @@ func xaiResponsesTestClient(t *testing.T, model sigma.Model, baseURL string, opt
 		return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "resolved-key"}, nil
 	})
 	return sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+}
+
+func generatedXAIResponsesModel(t *testing.T, id sigma.ModelID) sigma.Model {
+	t.Helper()
+
+	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderXAI, id)
+	if !ok {
+		t.Fatalf("generated registry missing xAI model %s", id)
+	}
+	return model
 }
 
 func xaiTestModel() sigma.Model {
