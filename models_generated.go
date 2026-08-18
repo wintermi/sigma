@@ -5144,7 +5144,7 @@ var builtinTextModels = []Model{
 		Name:             "GLM 5.2",
 		ContextWindow:    1048576,
 		MaxOutputTokens:  262144,
-		SupportedInputs:  []ContentBlockType{ContentBlockType("text")},
+		SupportedInputs:  []ContentBlockType{ContentBlockType("text"), ContentBlockType("image")},
 		SupportsTools:    true,
 		SupportsThinking: true,
 		ThinkingLevelMap: map[ThinkingLevel]string{

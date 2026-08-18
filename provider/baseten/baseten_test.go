@@ -165,6 +165,79 @@ func TestRegistersFocusedCatalog(t *testing.T) {
 	}
 }
 
+func TestCompletePreservesGLMToolResultImages(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read request body: %v", err)
+			return
+		}
+		requests <- capturedRequest{Body: body}
+		writeCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	model := withoutModelBaseURL(basetenModel(t, "zai-org/GLM-5.2"))
+	if !model.SupportsImages() {
+		t.Fatal("Baseten GLM 5.2 does not advertise image input")
+	}
+	client := basetenClient(t, model, baseten.WithBaseURL(server.URL))
+	toolCallID := "call_image"
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("inspect"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock(toolCallID, "inspect_image", map[string]any{}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: toolCallID,
+				Content: []sigma.ContentBlock{
+					sigma.Text("inspection complete"),
+					sigma.ImageBase64("image/png", "aGk="),
+				},
+			},
+		}},
+		sigma.WithAPIKey("request-key"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var body struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal((<-requests).Body, &body); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+	if got, want := len(body.Messages), 4; got != want {
+		t.Fatalf("message count = %d, want %d", got, want)
+	}
+	sidecar := body.Messages[3]
+	if got, want := sidecar["role"], "user"; got != want {
+		t.Fatalf("image sidecar role = %#v, want %q", got, want)
+	}
+	parts, ok := sidecar["content"].([]any)
+	if !ok || len(parts) != 2 {
+		t.Fatalf("image sidecar content = %#v, want text plus image", sidecar["content"])
+	}
+	image, ok := parts[1].(map[string]any)
+	if !ok || image["type"] != "image_url" {
+		t.Fatalf("image sidecar part = %#v, want image_url", parts[1])
+	}
+	imageURL, ok := image["image_url"].(map[string]any)
+	if !ok || imageURL["url"] != "data:image/png;base64,aGk=" {
+		t.Fatalf("image sidecar URL = %#v, want data URL", image["image_url"])
+	}
+}
+
 func TestCompleteUsesBasetenThinkingControls(t *testing.T) {
 	t.Parallel()
 

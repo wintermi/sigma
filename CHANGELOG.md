@@ -75,6 +75,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Baseten GLM 5.2 metadata now advertises text and image inputs, allowing
+  image-bearing tool results to remain available through the shared
+  OpenAI-compatible Chat Completions request path.
 - OpenAI-compatible Chat Completions usage now recognizes top-level
   `cached_tokens` as a cache-read fallback, keeping compatible Kimi and
   Moonshot cache hits out of ordinary input-token and cost accounting while

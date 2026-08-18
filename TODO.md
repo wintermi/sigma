@@ -422,6 +422,8 @@ metadata-only and backed by compatibility checks.
 - [x] Baseten — promote a focused GLM 5.2 and Kimi K2.6 OpenAI-compatible
       provider row with deterministic thinking, streaming, error, redaction,
       and cancellation coverage.
+- [x] Baseten — correct GLM 5.2 capability metadata to retain text and image
+      inputs, including image-bearing tool results on the shared adapter.
 - [ ] Baseten — expand the remaining catalog, hosted-tool behavior, and live
       provider coverage only after those contracts have reviewable metadata
       and deterministic request-shape evidence.

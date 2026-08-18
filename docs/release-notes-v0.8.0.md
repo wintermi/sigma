@@ -21,10 +21,12 @@ keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
 seven curated models through the shared international endpoint and credential,
 with each model's thinking controls preserved. Baseten is now available through
 a first-class OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6
-metadata and native chat-template thinking controls. Fireworks GLM 5.2 routes
-now use session affinity for automatic prompt caching without unsupported
-long-cache retention. Anthropic-routed OpenRouter agent loops now advance their
-final conversation cache breakpoint through the latest non-empty tool result.
+metadata and native chat-template thinking controls. GLM 5.2 now advertises
+both text and image input so image-bearing tool results remain available on
+that route. Fireworks GLM 5.2 routes now use session affinity for automatic
+prompt caching without unsupported long-cache retention. Anthropic-routed
+OpenRouter agent loops now advance their final conversation cache breakpoint
+through the latest non-empty tool result.
 Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
 support low reasoning effort while retaining their existing high and
 maximum-effort mappings.
@@ -168,8 +170,8 @@ selection remains available through existing provider-specific controls.
   adapter.
 - Baseten now provides a first-class registration route backed by the shared
   OpenAI-compatible Chat Completions adapter. The focused built-in catalog
-  covers GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery, reviewed
-  inputs, limits, and token pricing.
+  covers vision-capable GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery,
+  reviewed inputs, limits, and token pricing.
 
 ## Compatibility
 
@@ -272,9 +274,10 @@ selection remains available through existing provider-specific controls.
   Max remains toggle-only. The Individual route preserves mapped reasoning
   efforts for DeepSeek V4, GLM-5.2, and Qwen3.8 Max while keeping Qwen3.6 Flash
   and both Qwen3.7 models toggle-only.
-- Baseten GLM 5.2 requests now send `chat_template_args.enable_thinking` with
-  mapped off, high, and max reasoning efforts. Kimi K2.6 uses the same explicit
-  thinking toggle without sending unsupported reasoning-effort values.
+- Baseten GLM 5.2 accepts text and image input, including image-bearing tool
+  results, while retaining its mapped off, high, and max reasoning efforts.
+  Kimi K2.6 retains its existing image support and explicit thinking toggle
+  without sending unsupported reasoning-effort values.
 - Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
   prompt caching is enabled and omit unsupported explicit long-cache retention.
 - Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now

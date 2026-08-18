@@ -1708,7 +1708,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			inputCost: 0.95, outputCost: 4, cacheReadCost: 0.16, supportsEffort: OpenAICompatUnsupported,
 		},
 		"zai-org/GLM-5.2": {
-			family: "glm", contextWindow: 1048576, maxOutputTokens: 262144,
+			family: "glm", images: true, contextWindow: 1048576, maxOutputTokens: 262144,
 			inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.3, supportsEffort: OpenAICompatSupported,
 		},
 	}

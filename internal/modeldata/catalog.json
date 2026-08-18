@@ -6887,7 +6887,8 @@
       "api": "openai-completions",
       "baseURL": "https://inference.baseten.co/v1",
       "supportedInputs": [
-        "text"
+        "text",
+        "image"
       ],
       "supportsTools": true,
       "supportsThinking": true,
