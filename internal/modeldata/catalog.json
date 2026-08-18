@@ -20399,6 +20399,49 @@
       }
     },
     {
+      "id": "deepseek-v4-pro-0813",
+      "name": "DeepSeek V4 Pro 0813",
+      "provider": "qwen-token-plan-individual",
+      "api": "openai-completions",
+      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "max": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "QWEN_TOKEN_PLAN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek-thinking"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "qwen"
+      }
+    },
+    {
       "id": "glm-5.2",
       "name": "GLM-5.2",
       "provider": "qwen-token-plan-individual",

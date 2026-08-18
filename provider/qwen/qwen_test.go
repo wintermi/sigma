@@ -211,6 +211,7 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 		{name: "individual", provider: sigma.ProviderQwenTokenPlanIndividual, modelIDs: []sigma.ModelID{
 			"deepseek-v4-flash-0731",
 			"deepseek-v4-pro",
+			"deepseek-v4-pro-0813",
 			"glm-5.2",
 			"qwen3.6-flash",
 			"qwen3.7-max",
@@ -292,6 +293,26 @@ func TestCompleteUsesQwenThinkingControls(t *testing.T) {
 			modelID:    "glm-5.2",
 			level:      sigma.ThinkingLevelHigh,
 			wantEffort: "high",
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterIndividual(registry)
+			},
+		},
+		{
+			name:       "individual deepseek v4 pro 0813 sends high effort",
+			provider:   sigma.ProviderQwenTokenPlanIndividual,
+			modelID:    "deepseek-v4-pro-0813",
+			level:      sigma.ThinkingLevelHigh,
+			wantEffort: "high",
+			register: func(registry *sigma.Registry) error {
+				return qwen.RegisterIndividual(registry)
+			},
+		},
+		{
+			name:       "individual deepseek v4 pro 0813 sends max effort",
+			provider:   sigma.ProviderQwenTokenPlanIndividual,
+			modelID:    "deepseek-v4-pro-0813",
+			level:      sigma.ThinkingLevel("max"),
+			wantEffort: "max",
 			register: func(registry *sigma.Registry) error {
 				return qwen.RegisterIndividual(registry)
 			},

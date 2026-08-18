@@ -490,8 +490,9 @@ metadata-only and backed by compatibility checks.
       Qwen3.8 Max and preserve native reasoning-effort controls across both
       regional routes while keeping Qwen3.7 Max toggle-only.
 - [x] Qwen Token Plan — add the Individual subscription route with a curated
-      seven-model catalog, shared international credentials and endpoint, and
-      deterministic toggle and reasoning-effort coverage.
+      eight-model catalog including DeepSeek V4 Pro 0813, shared international
+      credentials and endpoint, and deterministic toggle and reasoning-effort
+      coverage.
 - [ ] Qwen Token Plan — expand the remaining catalog and add provider-specific
       hosted-tool behavior only after those contracts have deterministic
       request-shape coverage.

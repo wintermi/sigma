@@ -1913,6 +1913,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}{
 		"deepseek-v4-flash-0731": {family: "deepseek-flash", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
 		"deepseek-v4-pro":        {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"deepseek-v4-pro-0813":   {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
 		"glm-5.2":                {family: "glm", maxOutputTokens: 131072, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
 		"qwen3.6-flash":          {family: "qwen3.6", maxOutputTokens: 65536, images: true},
 		"qwen3.7-max":            {family: "qwen", maxOutputTokens: 131072},

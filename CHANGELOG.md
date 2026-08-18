@@ -60,8 +60,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
   `finish_reason` support through `OpenAICompletionsCompat`, accepting an
   explicit `[DONE]` marker while continuing to reject unmarked stream EOF.
 - Qwen Token Plan Individual is now available as a distinct subscription route
-  with seven curated models, the shared international credential and endpoint,
-  and model-specific Qwen thinking controls.
+  with eight curated models, including DeepSeek V4 Pro 0813, the shared
+  international credential and endpoint, and model-specific Qwen thinking
+  controls.
 - Baseten now has a first-class OpenAI-compatible Chat Completions route with
   focused GLM 5.2 and Kimi K2.6 metadata, `BASETEN_API_KEY` discovery, and
   model-specific chat-template thinking controls.

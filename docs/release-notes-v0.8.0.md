@@ -18,9 +18,10 @@ names without altering stored or streamed tool arguments.
 Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
 across both regional routes while preserving supported reasoning levels and
 keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
-seven curated models through the shared international endpoint and credential,
-with each model's thinking controls preserved. Baseten is now available through
-a first-class OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6
+eight curated models, including DeepSeek V4 Pro 0813, through the shared
+international endpoint and credential, with each model's thinking controls
+preserved. Baseten is now available through a first-class OpenAI-compatible
+route with focused GLM 5.2 and Kimi K2.6
 metadata and native chat-template thinking controls. GLM 5.2 now advertises
 both text and image input so image-bearing tool results remain available on
 that route. Fireworks GLM 5.2 routes now use session affinity for automatic
@@ -164,10 +165,10 @@ selection remains available through existing provider-specific controls.
 - `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
   end streams with `[DONE]` but do not emit `finish_reason`.
 - Qwen Token Plan Individual now provides a distinct registration route for
-  DeepSeek V4 Flash 0731, DeepSeek V4 Pro, GLM-5.2, Qwen3.6 Flash, Qwen3.7 Max,
-  Qwen3.7 Plus, and Qwen3.8 Max. It reuses the international endpoint,
-  `QWEN_TOKEN_PLAN_API_KEY`, and the shared OpenAI-compatible Chat Completions
-  adapter.
+  DeepSeek V4 Flash 0731, DeepSeek V4 Pro, DeepSeek V4 Pro 0813, GLM-5.2,
+  Qwen3.6 Flash, Qwen3.7 Max, Qwen3.7 Plus, and Qwen3.8 Max. It reuses the
+  international endpoint, `QWEN_TOKEN_PLAN_API_KEY`, and the shared
+  OpenAI-compatible Chat Completions adapter.
 - Baseten now provides a first-class registration route backed by the shared
   OpenAI-compatible Chat Completions adapter. The focused built-in catalog
   covers vision-capable GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery,
@@ -272,8 +273,8 @@ selection remains available through existing provider-specific controls.
   Qwen3.8 Max while preserving supported reasoning levels through native
   `reasoning_effort` controls on the international and China routes. Qwen3.7
   Max remains toggle-only. The Individual route preserves mapped reasoning
-  efforts for DeepSeek V4, GLM-5.2, and Qwen3.8 Max while keeping Qwen3.6 Flash
-  and both Qwen3.7 models toggle-only.
+  efforts for DeepSeek V4, including Pro 0813, GLM-5.2, and Qwen3.8 Max while
+  keeping Qwen3.6 Flash and both Qwen3.7 models toggle-only.
 - Baseten GLM 5.2 accepts text and image input, including image-bearing tool
   results, while retaining its mapped off, high, and max reasoning efforts.
   Kimi K2.6 retains its existing image support and explicit thinking toggle
