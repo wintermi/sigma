@@ -113,7 +113,7 @@ func TestCompleteUsesConfiguredOpenAICompatibleBaseURL(t *testing.T) {
 	}
 }
 
-func TestRegistersCatalogTokenPlanModels(t *testing.T) {
+func TestRegistersCatalogModels(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -121,6 +121,9 @@ func TestRegistersCatalogTokenPlanModels(t *testing.T) {
 		provider sigma.ProviderID
 		register func(*sigma.Registry) error
 	}{
+		{name: "api billing", provider: sigma.ProviderXiaomi, register: func(registry *sigma.Registry) error {
+			return xiaomi.Register(registry)
+		}},
 		{name: "cn", provider: sigma.ProviderXiaomiTokenPlanCN, register: func(registry *sigma.Registry) error {
 			return xiaomi.RegisterTokenPlanCN(registry)
 		}},

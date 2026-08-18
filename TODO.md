@@ -484,6 +484,8 @@ metadata-only and backed by compatibility checks.
 - [x] Vercel AI Gateway — promote to a first-class provider row with fixtures.
 - [x] Kimi — promote to a first-class provider row with fixtures.
 - [x] Xiaomi — promote to a first-class provider row with fixtures.
+- [x] Xiaomi — retire the shut-down MiMo V2 model IDs across the direct and
+      regional Token Plan catalogs while retaining the supported V2.5 lineup.
 - [x] Qwen Token Plan — promote focused international and China regional
       Chat Completions rows with generated metadata and fixtures.
 - [x] Qwen Token Plan — replace the retired Qwen3.8 Max Preview rows with

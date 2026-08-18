@@ -79,6 +79,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Xiaomi's direct and regional Token Plan catalogs no longer advertise the
+  retired `mimo-v2-flash`, `mimo-v2-omni`, or `mimo-v2-pro` model IDs, while
+  retaining the supported V2.5 lineup.
 - Baseten GLM 5.2 metadata now advertises text and image inputs, allowing
   image-bearing tool results to remain available through the shared
   OpenAI-compatible Chat Completions request path.

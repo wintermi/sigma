@@ -24,7 +24,9 @@ preserved. Baseten is now available through a first-class OpenAI-compatible
 route with focused GLM 5.2 and Kimi K2.6
 metadata and native chat-template thinking controls. GLM 5.2 now advertises
 both text and image input so image-bearing tool results remain available on
-that route. Fireworks GLM 5.2 routes now use session affinity for automatic
+that route. Xiaomi's direct and regional Token Plan catalogs now expose only
+the supported MiMo V2.5 text-provider lineup instead of retired V2 model names.
+Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
 through the latest non-empty tool result.
@@ -176,6 +178,9 @@ selection remains available through existing provider-specific controls.
   OpenAI-compatible Chat Completions adapter. The focused built-in catalog
   covers vision-capable GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery,
   reviewed inputs, limits, and token pricing.
+- Xiaomi's direct API-billing and regional Token Plan catalogs provide the
+  `mimo-v2.5`, `mimo-v2.5-pro`, and `mimo-v2.5-pro-ultraspeed` model lineup
+  through the existing OpenAI-compatible Chat Completions routes.
 - Direct xAI metadata now includes Grok 4.6 through the existing OpenAI
   Responses registration path. It accepts text and image input, function
   tools, and low, medium, high, or `xhigh` reasoning within a 500k-token
@@ -185,6 +190,11 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- Xiaomi no longer advertises `mimo-v2-flash`, `mimo-v2-omni`, or
+  `mimo-v2-pro` through its generated direct or regional Token Plan catalogs.
+  Callers using those retired IDs must select a V2.5 model; Sigma does not
+  silently alias or migrate model IDs. Xiaomi endpoints, credentials, request
+  routing, and retained V2.5 metadata are unchanged.
 - Omitting `WithToolChoice` preserves existing request payloads and Codex's
   automatic default. Existing typed and raw provider-specific tool controls
   override the provider-neutral fallback. `ToolChoiceNone` retains declared

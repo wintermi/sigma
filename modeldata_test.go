@@ -1781,14 +1781,50 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 	}
 
-	xiaomi, ok := registry.Model(ProviderXiaomi, "mimo-v2.5")
-	if !ok {
-		t.Fatal("fresh registry missing generated Xiaomi model")
-	}
-	if xiaomi.OpenAICompletionsCompat == nil ||
-		xiaomi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		xiaomi.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-		t.Fatalf("Xiaomi compat = %#v, want deepseek reasoning content replay", xiaomi.OpenAICompletionsCompat)
+	for _, tt := range []struct {
+		provider ProviderID
+		baseURL  string
+		envVars  []string
+	}{
+		{provider: ProviderXiaomi, baseURL: "https://api.xiaomimimo.com/v1", envVars: []string{"XIAOMI_API_KEY"}},
+		{provider: ProviderXiaomiTokenPlanCN, baseURL: "https://token-plan-cn.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_CN_API_KEY"}},
+		{provider: ProviderXiaomiTokenPlanAMS, baseURL: "https://token-plan-ams.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_AMS_API_KEY"}},
+		{provider: ProviderXiaomiTokenPlanSGP, baseURL: "https://token-plan-sgp.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_SGP_API_KEY"}},
+	} {
+		modelCount := 0
+		for _, model := range registry.ListModels() {
+			if model.Provider == tt.provider {
+				modelCount++
+			}
+		}
+		if modelCount != 3 {
+			t.Fatalf("%s model count = %d, want 3", tt.provider, modelCount)
+		}
+		for _, modelID := range []ModelID{"mimo-v2-flash", "mimo-v2-omni", "mimo-v2-pro"} {
+			if _, ok := registry.Model(tt.provider, modelID); ok {
+				t.Fatalf("%s retained retired %s", tt.provider, modelID)
+			}
+		}
+		for _, modelID := range []ModelID{"mimo-v2.5", "mimo-v2.5-pro", "mimo-v2.5-pro-ultraspeed"} {
+			if _, ok := registry.Model(tt.provider, modelID); !ok {
+				t.Fatalf("fresh registry missing generated %s %s", tt.provider, modelID)
+			}
+		}
+		xiaomi, ok := registry.Model(tt.provider, "mimo-v2.5")
+		if !ok {
+			t.Fatalf("fresh registry missing generated %s mimo-v2.5 model", tt.provider)
+		}
+		assertMetadataString(t, xiaomi.ProviderMetadata, "baseURL", tt.baseURL)
+		assertMetadataStrings(t, xiaomi.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
+		if xiaomi.API != APIOpenAICompletions || !xiaomi.SupportsTools || !xiaomi.SupportsImages() {
+			t.Fatalf("%s mimo-v2.5 capabilities = API %q tools %t images %t, want Chat Completions with tools/images",
+				tt.provider, xiaomi.API, xiaomi.SupportsTools, xiaomi.SupportsImages())
+		}
+		if xiaomi.OpenAICompletionsCompat == nil ||
+			xiaomi.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+			xiaomi.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+			t.Fatalf("%s compat = %#v, want deepseek reasoning content replay", tt.provider, xiaomi.OpenAICompletionsCompat)
+		}
 	}
 	xiaomiUltra, ok := registry.Model(ProviderXiaomi, "mimo-v2.5-pro-ultraspeed")
 	if !ok {
@@ -1804,31 +1840,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			xiaomiUltra.InputCostPerMillion,
 			xiaomiUltra.OutputCostPerMillion,
 			xiaomiUltra.CacheReadInputCostPerMillion)
-	}
-
-	for _, tt := range []struct {
-		provider ProviderID
-		baseURL  string
-		envVars  []string
-	}{
-		{provider: ProviderXiaomiTokenPlanCN, baseURL: "https://token-plan-cn.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_CN_API_KEY"}},
-		{provider: ProviderXiaomiTokenPlanAMS, baseURL: "https://token-plan-ams.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_AMS_API_KEY"}},
-		{provider: ProviderXiaomiTokenPlanSGP, baseURL: "https://token-plan-sgp.xiaomimimo.com/v1", envVars: []string{"XIAOMI_TOKEN_PLAN_SGP_API_KEY"}},
-	} {
-		if _, ok := registry.Model(tt.provider, "mimo-v2-flash"); ok {
-			t.Fatalf("%s should not include mimo-v2-flash", tt.provider)
-		}
-		tokenPlan, ok := registry.Model(tt.provider, "mimo-v2.5-pro-ultraspeed")
-		if !ok {
-			t.Fatalf("fresh registry missing generated %s ultraspeed model", tt.provider)
-		}
-		assertMetadataString(t, tokenPlan.ProviderMetadata, "baseURL", tt.baseURL)
-		assertMetadataStrings(t, tokenPlan.ProviderMetadata, MetadataAPIKeyEnvVars, tt.envVars)
-		if tokenPlan.OpenAICompletionsCompat == nil ||
-			tokenPlan.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-			tokenPlan.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-			t.Fatalf("%s compat = %#v, want deepseek reasoning content replay", tt.provider, tokenPlan.OpenAICompletionsCompat)
-		}
 	}
 
 	for _, tt := range []struct {
