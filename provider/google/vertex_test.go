@@ -120,6 +120,48 @@ func TestVertexCompleteSendsAPIKeyRequest(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/google/vertex/basic_payload.json")
 }
 
+func TestVertexCompleteSendsProviderNeutralToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedVertexRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureVertexRequest(t, requests, r)
+		writeVertexSSE(t, w, vertexCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	client, model := vertexTestClient(t,
+		WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "us-central1", APIVersion: "v1"}),
+		WithVertexBaseURL(server.URL+"/v1"),
+	)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(receiveVertexRequest(t, requests).Body), &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	toolConfig := payload["toolConfig"].(map[string]any)
+	functionCalling := toolConfig["functionCallingConfig"].(map[string]any)
+	if got, want := functionCalling["mode"], "NONE"; got != want {
+		t.Fatalf("tool choice mode = %#v, want %q", got, want)
+	}
+	if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+		t.Fatalf("tools = %#v, want one tool", payload["tools"])
+	}
+}
+
 func TestVertexGemini25ReasoningLevelsUseThinkingBudgets(t *testing.T) {
 	t.Parallel()
 

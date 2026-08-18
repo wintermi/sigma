@@ -75,6 +75,9 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ServiceTier != "" {
 		payload["service_tier"] = opts.OpenAIOptions.ServiceTier
 	}
+	if opts.ToolChoice != "" {
+		payload["tool_choice"] = string(opts.ToolChoice)
+	}
 	if err := addResponsesOpenAIOptions(payload, model, opts); err != nil {
 		return nil, err
 	}

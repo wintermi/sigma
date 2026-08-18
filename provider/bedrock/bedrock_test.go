@@ -340,6 +340,7 @@ func TestBedrockOptionsOverrideProviderOptionsAndMapToolChoice(t *testing.T) {
 			}},
 		},
 		sigma.Options{
+			ToolChoice: sigma.ToolChoiceNone,
 			BedrockOptions: &sigma.BedrockOptions{
 				ToolChoice:                   &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: "lookup"},
 				TopP:                         &topP,
@@ -416,6 +417,66 @@ func TestBedrockToolChoiceNoneOmitsToolsBeforeCapabilityCheck(t *testing.T) {
 	}
 	if len(payload.Tools) != 0 || payload.ToolChoice != nil {
 		t.Fatalf("tools = %v choice = %+v, want omitted", payload.Tools, payload.ToolChoice)
+	}
+}
+
+func TestProviderNeutralBedrockToolChoice(t *testing.T) {
+	t.Parallel()
+
+	request := sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+		Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+	}
+
+	autoPayload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		request,
+		sigma.Options{ToolChoice: sigma.ToolChoiceAuto},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("auto conversePayload returned error: %v", err)
+	}
+	if len(autoPayload.Tools) != 1 || autoPayload.ToolChoice == nil || autoPayload.ToolChoice.Type != sigma.BedrockToolChoiceAuto {
+		t.Fatalf("auto tools = %v choice = %+v, want one tool and auto", autoPayload.Tools, autoPayload.ToolChoice)
+	}
+
+	nonePayload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		request,
+		sigma.Options{ToolChoice: sigma.ToolChoiceNone},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("none conversePayload returned error: %v", err)
+	}
+	if len(nonePayload.Tools) != 0 || nonePayload.ToolChoice != nil {
+		t.Fatalf("none tools = %v choice = %+v, want omitted", nonePayload.Tools, nonePayload.ToolChoice)
+	}
+
+	replayPayload, err := conversePayload(
+		bedrockTestModel(sigma.ProviderAmazonBedrock),
+		sigma.Request{Messages: []sigma.Message{
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.ToolCallBlock("tool_a", "lookup", map[string]any{"query": "weather"})},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "tool_a",
+				ToolName:   "lookup",
+				Content:    []sigma.ContentBlock{sigma.Text("sunny")},
+			},
+			sigma.UserText("continue"),
+		}},
+		sigma.Options{ToolChoice: sigma.ToolChoiceNone},
+		Config{ModelID: "model"},
+	)
+	if err != nil {
+		t.Fatalf("replay conversePayload returned error: %v", err)
+	}
+	if len(replayPayload.Tools) != 0 || replayPayload.ToolChoice != nil {
+		t.Fatalf("replay tools = %v choice = %+v, want omitted", replayPayload.Tools, replayPayload.ToolChoice)
 	}
 }
 

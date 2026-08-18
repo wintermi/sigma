@@ -58,6 +58,7 @@ func TestOptionsMergePrecedence(t *testing.T) {
 			sigma.WithTemperature(0.1),
 			sigma.WithMaxTokens(100),
 			sigma.WithTransport(sigma.TransportHTTP),
+			sigma.WithToolChoice(sigma.ToolChoiceAuto),
 			sigma.WithReasoningLevel(sigma.ThinkingLevelLow),
 			sigma.WithThinkingBudgetTokens(64),
 			sigma.WithProviderOption(sigma.ProviderOpenAI, "effort", "client"),
@@ -68,6 +69,7 @@ func TestOptionsMergePrecedence(t *testing.T) {
 	_, err := client.Complete(context.Background(), model, sigma.Request{},
 		sigma.WithTemperature(0.7),
 		sigma.WithTransport(sigma.TransportHTTP),
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
 		sigma.WithProviderOption(sigma.ProviderOpenAI, "effort", "call"),
 	)
@@ -83,6 +85,9 @@ func TestOptionsMergePrecedence(t *testing.T) {
 	}
 	if got, want := provider.opts.Transport, sigma.TransportHTTP; got != want {
 		t.Fatalf("transport = %q, want %q", got, want)
+	}
+	if got, want := provider.opts.ToolChoice, sigma.ToolChoiceNone; got != want {
+		t.Fatalf("tool choice = %q, want %q", got, want)
 	}
 	if got, want := provider.opts.ReasoningLevel, sigma.ThinkingLevelHigh; got != want {
 		t.Fatalf("reasoning level = %q, want %q", got, want)
@@ -782,6 +787,7 @@ func TestOptionsValidateCommonInvalidValues(t *testing.T) {
 		{name: "timeout", opt: sigma.WithTimeout(-time.Second)},
 		{name: "max retry delay", opt: sigma.WithMaxRetryDelay(-time.Second)},
 		{name: "thinking budget", opt: sigma.WithThinkingBudgetTokens(-1)},
+		{name: "tool choice", opt: sigma.WithToolChoice(sigma.ToolChoice("required"))},
 		{name: "top logprobs", opt: sigma.WithTopLogprobs(-1)},
 		{name: "openai top logprobs", opt: sigma.WithOpenAIOptions(sigma.OpenAIOptions{TopLogprobs: -1})},
 		{name: "openai codex websocket connect timeout", opt: sigma.WithOpenAIOptions(sigma.OpenAIOptions{CodexWebSocketConnectTimeout: testDurationPtr(-time.Second)})},

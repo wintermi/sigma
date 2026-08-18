@@ -92,6 +92,42 @@ func TestCodexResponsesInjectsBearerTokenAndUsesCodexModelName(t *testing.T) {
 	goldentest.AssertJSON(t, request.Body, "provider/openai/codex_responses/basic_payload.json")
 }
 
+func TestCodexResponsesSendsProviderNeutralToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-neutral-tool-choice")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+	if got, want := payload["tool_choice"], string(sigma.ToolChoiceNone); got != want {
+		t.Fatalf("tool choice = %#v, want %q", got, want)
+	}
+	if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+		t.Fatalf("tools = %#v, want one tool", payload["tools"])
+	}
+}
+
 func TestCodexResponsesDefersMarkedClientTools(t *testing.T) {
 	t.Parallel()
 

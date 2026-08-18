@@ -16,6 +16,16 @@ const (
 	ErrorInvalidOptions ErrorCode = "invalid-options"
 )
 
+// ToolChoice identifies provider-neutral tool selection behavior.
+type ToolChoice string
+
+const (
+	// ToolChoiceAuto lets the provider choose whether to call a tool.
+	ToolChoiceAuto ToolChoice = "auto"
+	// ToolChoiceNone prevents the provider from calling tools.
+	ToolChoiceNone ToolChoice = "none"
+)
+
 // OpenAIOptions carries OpenAI-specific request options known to the root
 // package without importing provider adapters.
 type OpenAIOptions struct {
@@ -204,6 +214,7 @@ type Options struct {
 	Metadata                     map[string]any
 	ReasoningLevel               ThinkingLevel
 	ThinkingBudgetTokens         *int
+	ToolChoice                   ToolChoice
 	StructuredOutput             *StructuredOutput
 	TopLogprobs                  int
 	ProviderOptions              map[ProviderID]map[string]any
@@ -408,6 +419,13 @@ func WithThinkingBudgetTokens(tokens int) Option {
 	}
 }
 
+// WithToolChoice configures provider-neutral tool selection for a request.
+func WithToolChoice(choice ToolChoice) Option {
+	return func(options *Options) {
+		options.ToolChoice = choice
+	}
+}
+
 // WithStructuredOutput requests provider-neutral structured output.
 func WithStructuredOutput(output StructuredOutput) Option {
 	return func(options *Options) {
@@ -547,6 +565,7 @@ func cloneOptions(options Options) Options {
 		Metadata:                     copyStringAnyMap(options.Metadata),
 		ReasoningLevel:               options.ReasoningLevel,
 		ThinkingBudgetTokens:         cloneIntPtr(options.ThinkingBudgetTokens),
+		ToolChoice:                   options.ToolChoice,
 		StructuredOutput:             cloneStructuredOutput(options.StructuredOutput),
 		TopLogprobs:                  options.TopLogprobs,
 		ProviderOptions:              copyProviderOptions(options.ProviderOptions),

@@ -384,6 +384,9 @@ work until their API boundaries are explicit.
 - [x] Add request-scoped arbitrary sampling parameters for OpenAI-compatible
       Chat Completions, Responses, and Azure Responses while preserving raw
       `extra_body` override precedence.
+- [x] Add provider-neutral automatic and disabled tool selection across built-in
+      text providers while retaining provider-specific required, any, named-tool,
+      and custom configuration controls.
 - [x] Add capability-gated top-level `thinking_token_budget` support for custom
       OpenAI-compatible Chat Completions models, using explicit reasoning and
       budget options with a 1,024-token visible-output reserve.

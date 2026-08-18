@@ -594,6 +594,9 @@ func validateOptions(model Model, options Options) error {
 	if options.ThinkingBudgetTokens != nil && *options.ThinkingBudgetTokens < 0 {
 		return invalidOptionsError(model, "thinking budget tokens must be non-negative")
 	}
+	if options.ToolChoice != "" && options.ToolChoice != ToolChoiceAuto && options.ToolChoice != ToolChoiceNone {
+		return invalidOptionsError(model, "tool choice must be auto or none")
+	}
 	if options.TopLogprobs < 0 {
 		return invalidOptionsError(model, "top logprobs must be non-negative")
 	}

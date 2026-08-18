@@ -12,6 +12,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- `WithToolChoice` now provides provider-neutral automatic or disabled tool
+  selection across built-in text providers while retaining provider-specific
+  controls for required and named-tool selection.
 - Text stream events now expose `StopReasonPending` on in-progress
   `PartialMessage` snapshots, including an empty snapshot on the initial start
   event, while terminal messages retain their existing stop reasons.

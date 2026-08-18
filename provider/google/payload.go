@@ -568,10 +568,17 @@ func googleToolConfig(options map[string]any, opts sigma.Options, hasTools bool)
 	if value, ok := options[providerOptionFunctionCallingConfigGo]; ok {
 		return map[string]any{"functionCallingConfig": value}, true
 	}
-	if !hasTools || opts.GoogleOptions == nil || opts.GoogleOptions.ToolChoice == "" {
+	if !hasTools {
 		return nil, false
 	}
-	mode, err := googleToolChoiceMode(opts.GoogleOptions.ToolChoice)
+	choice := string(opts.ToolChoice)
+	if opts.GoogleOptions != nil && opts.GoogleOptions.ToolChoice != "" {
+		choice = opts.GoogleOptions.ToolChoice
+	}
+	if choice == "" {
+		return nil, false
+	}
+	mode, err := googleToolChoiceMode(choice)
 	if err != nil {
 		return nil, false
 	}

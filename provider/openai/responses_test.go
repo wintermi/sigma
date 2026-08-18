@@ -63,6 +63,7 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 		sigma.WithSessionID("session-123"),
 		sigma.WithHeader("X-Custom", "custom"),
 		sigma.WithMetadataValue("trace", "abc"),
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
 			ReasoningEffort:      sigma.ThinkingLevelHigh,
 			ReasoningSummary:     "auto",
@@ -99,6 +100,49 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/responses/rich_payload.json")
+}
+
+func TestResponsesSendsProviderNeutralToolChoice(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []sigma.ToolChoice{sigma.ToolChoiceAuto, sigma.ToolChoiceNone} {
+		choice := choice
+		t.Run(string(choice), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-neutral-tool-choice-" + string(choice))
+			model := responsesTestModel(providerID)
+			client := responsesTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{
+					Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+					Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+				},
+				sigma.WithToolChoice(choice),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+			if got := payload["tool_choice"]; got != string(choice) {
+				t.Fatalf("tool choice = %#v, want %q", got, choice)
+			}
+			if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+				t.Fatalf("tools = %#v, want one tool", payload["tools"])
+			}
+		})
+	}
 }
 
 func TestResponsesDerivesStrictToolSchemaWithoutMutatingRequest(t *testing.T) {
@@ -1356,6 +1400,7 @@ func TestResponsesNormalizesProviderOptionFunctionToolChoice(t *testing.T) {
 		context.Background(),
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("call a tool")}},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithProviderOption(providerID, "tool_choice", map[string]any{
 			"type":     "function",
 			"function": map[string]any{"name": "read_file"},

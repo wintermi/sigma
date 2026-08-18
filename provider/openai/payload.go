@@ -75,6 +75,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	addChatPromptCache(payload, opts, compat)
 	addReasoning(payload, model, opts, compat)
 	addThinkingTokenBudget(payload, model, opts, compat)
+	if opts.ToolChoice != "" {
+		payload["tool_choice"] = string(opts.ToolChoice)
+	}
 	addChatOpenAIOptions(payload, opts, compat)
 	if len(deferredTools.Immediate) > 0 {
 		tools, err := chatTools(model, deferredTools.Immediate, compat, grammarToolInputProperties)

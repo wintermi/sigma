@@ -732,7 +732,13 @@ func bedrockToolChoice(opts sigma.Options, provider sigma.ProviderID) *sigma.Bed
 	if choice := mapToolChoice(mapOption(options, providerOptionToolChoice)); choice != nil {
 		return choice
 	}
-	return mapToolChoice(mapOption(options, providerOptionToolChoiceGo))
+	if choice := mapToolChoice(mapOption(options, providerOptionToolChoiceGo)); choice != nil {
+		return choice
+	}
+	if opts.ToolChoice != "" {
+		return &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceType(opts.ToolChoice)}
+	}
+	return nil
 }
 
 func stringToolChoice(choice string) *sigma.BedrockToolChoice {

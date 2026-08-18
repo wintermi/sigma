@@ -423,6 +423,8 @@ func completionArgs(model sigma.Model, opts sigma.Options) map[string]any {
 		args["tool_choice"] = value
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
 		args["tool_choice"] = value
+	} else if opts.ToolChoice != "" {
+		args["tool_choice"] = string(opts.ToolChoice)
 	}
 	if len(args) == 0 {
 		return nil

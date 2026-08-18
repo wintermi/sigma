@@ -78,9 +78,17 @@ supported OpenAI-compatible Chat Completions, Responses, Mistral, and
 capability-gated Anthropic Messages routes, while local validation maps
 optional non-nullable `null` placeholders back to omission without mutating
 caller-owned data.
+Text requests can now select automatic or disabled tool use through one
+provider-neutral option across every built-in text API, while advanced tool
+selection remains available through existing provider-specific controls.
 
 ## Added
 
+- `WithToolChoice` accepts `ToolChoiceAuto` or `ToolChoiceNone` across OpenAI
+  Chat Completions, Responses, Azure Responses, Codex Responses, Anthropic
+  Messages, Google Gemini and Vertex, Mistral Conversations, and Bedrock
+  Converse. Required, any, named-tool, and custom configurations remain on the
+  existing provider-specific option surfaces.
 - Google Generative AI and Vertex assistant replay now preserve blank text and
   thinking parts when their thought signature passes the existing
   provider/API/model and base64 checks. Unsigned whitespace and blank parts with
@@ -165,6 +173,12 @@ caller-owned data.
 
 ## Compatibility
 
+- Omitting `WithToolChoice` preserves existing request payloads and Codex's
+  automatic default. Existing typed and raw provider-specific tool controls
+  override the provider-neutral fallback. `ToolChoiceNone` retains declared
+  tool definitions on providers that support an explicit disabled choice;
+  Bedrock instead omits active and replay-synthesized tool configuration because
+  Converse has no disabled tool-choice variant.
 - OpenAI-compatible Chat Completions usage now falls back to top-level
   `cached_tokens` when nested cache details and `prompt_cache_hit_tokens` do not
   report a cache read. Cache reads remain included in provider prompt totals,

@@ -70,6 +70,7 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 		sigma.WithSessionID("session-123"),
 		sigma.WithHeader("X-Custom", "custom"),
 		sigma.WithMetadataValue("trace", "abc"),
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{
 			ReasoningEffort: sigma.ThinkingLevelHigh,
 			ServiceTier:     "default",
@@ -123,6 +124,52 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/completions/rich_payload.json")
+}
+
+func TestCompleteSendsProviderNeutralToolChoice(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []sigma.ToolChoice{sigma.ToolChoiceAuto, sigma.ToolChoiceNone} {
+		choice := choice
+		t.Run(string(choice), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openai-neutral-tool-choice-" + string(choice))
+			model := openAITestModel(providerID)
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{
+					Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+					Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+				},
+				sigma.WithToolChoice(choice),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got := payload["tool_choice"]; got != string(choice) {
+				t.Fatalf("tool choice = %#v, want %q", got, choice)
+			}
+			if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+				t.Fatalf("tools = %#v, want one tool", payload["tools"])
+			}
+		})
+	}
 }
 
 func TestChatCompletionsSuppressesFinalHeaders(t *testing.T) {

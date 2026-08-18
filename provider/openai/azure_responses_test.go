@@ -182,6 +182,46 @@ func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	}
 }
 
+func TestAzureResponsesSendsProviderNeutralToolChoice(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan azureCapturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureAzureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("azure-responses-neutral-tool-choice")
+	model := azureResponsesTestModel(providerID)
+	model.AzureOpenAIResponses.Endpoint = server.URL
+	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+		},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveAzureRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["tool_choice"], string(sigma.ToolChoiceNone); got != want {
+		t.Fatalf("tool choice = %#v, want %q", got, want)
+	}
+	if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+		t.Fatalf("tools = %#v, want one tool", payload["tools"])
+	}
+}
+
 func TestAzureResponsesClampsMaxOutputTokens(t *testing.T) {
 	t.Parallel()
 

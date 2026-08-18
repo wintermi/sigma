@@ -403,6 +403,7 @@ func TestCompleteSendsTypedGoogleToolChoice(t *testing.T) {
 				InputSchema: sigma.Schema{"type": "object"},
 			}},
 		},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithGoogleOptions(sigma.GoogleOptions{ToolChoice: "any"}),
 	)
 	if err != nil {
@@ -414,6 +415,51 @@ func TestCompleteSendsTypedGoogleToolChoice(t *testing.T) {
 	functionCalling := toolConfig["functionCallingConfig"].(map[string]any)
 	if got, want := functionCalling["mode"], "ANY"; got != want {
 		t.Fatalf("tool choice mode = %v, want %v", got, want)
+	}
+}
+
+func TestCompleteSendsProviderNeutralGoogleToolChoice(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []sigma.ToolChoice{sigma.ToolChoiceAuto, sigma.ToolChoiceNone} {
+		choice := choice
+		t.Run(string(choice), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeGoogleSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("google-neutral-tool-choice-" + string(choice))
+			model := googleTestModel(providerID)
+			client := googleTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{
+					Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+					Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+				},
+				sigma.WithToolChoice(choice),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodeRequestPayload(t, receiveRequest(t, requests).Body)
+			toolConfig := payload["toolConfig"].(map[string]any)
+			functionCalling := toolConfig["functionCallingConfig"].(map[string]any)
+			if got, want := functionCalling["mode"], strings.ToUpper(string(choice)); got != want {
+				t.Fatalf("tool choice mode = %#v, want %q", got, want)
+			}
+			if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+				t.Fatalf("tools = %#v, want one tool", payload["tools"])
+			}
+		})
 	}
 }
 

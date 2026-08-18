@@ -633,6 +633,8 @@ func addProviderOptions(payload map[string]any, provider sigma.ProviderID, opts 
 		payload["tool_choice"] = value
 	} else if value, ok := options[providerOptionToolChoiceGo]; ok {
 		payload["tool_choice"] = value
+	} else if opts.ToolChoice != "" {
+		payload["tool_choice"] = map[string]any{"type": string(opts.ToolChoice)}
 	}
 	if err := addDisableParallelToolUse(payload, provider, opts, hasTools); err != nil {
 		return err

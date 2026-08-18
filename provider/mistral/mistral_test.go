@@ -446,6 +446,49 @@ func TestTypedMistralToolChoicePayloads(t *testing.T) {
 	}
 }
 
+func TestProviderNeutralMistralToolChoicePayloads(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []sigma.ToolChoice{sigma.ToolChoiceAuto, sigma.ToolChoiceNone} {
+		choice := choice
+		t.Run(string(choice), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMistralSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("mistral-neutral-tool-choice-" + string(choice))
+			model := mistralTestModel(providerID)
+			client := mistralTestClient(t, providerID, model, server.URL)
+
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{
+					Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+					Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+				},
+				sigma.WithToolChoice(choice),
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodePayload(t, receiveRequest(t, requests).Body)
+			completionArgs := payload["completion_args"].(map[string]any)
+			if got := completionArgs["tool_choice"]; got != string(choice) {
+				t.Fatalf("tool choice = %#v, want %q", got, choice)
+			}
+			if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+				t.Fatalf("tools = %#v, want one tool", payload["tools"])
+			}
+		})
+	}
+}
+
 func TestTypedMistralNamedToolChoicePayload(t *testing.T) {
 	t.Parallel()
 
@@ -512,6 +555,7 @@ func TestTypedMistralToolChoiceOverridesRawProviderOption(t *testing.T) {
 			Messages: []sigma.Message{sigma.UserText("Use a tool.")},
 			Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
 		},
+		sigma.WithToolChoice(sigma.ToolChoiceAuto),
 		sigma.WithProviderOption(providerID, "tool_choice", "none"),
 		sigma.WithMistralOptions(sigma.MistralOptions{
 			ToolChoice: &sigma.MistralToolChoice{Type: sigma.MistralToolChoiceTool, Name: "lookup"},

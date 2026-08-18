@@ -1397,6 +1397,7 @@ func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
 				InputSchema: sigma.Schema{"type": "object"},
 			}},
 		},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
 		sigma.WithAnthropicOptions(sigma.AnthropicOptions{
 			ThinkingBudgetTokens: &budget,
 			ToolChoice:           &sigma.AnthropicToolChoice{Type: sigma.AnthropicToolChoiceTool, Name: "lookup"},
@@ -1422,6 +1423,50 @@ func TestTypedAnthropicOptionsOverrideRawProviderOptions(t *testing.T) {
 	}
 	if got, want := toolChoice["name"], "lookup"; got != want {
 		t.Fatalf("tool choice name = %v, want %v", got, want)
+	}
+}
+
+func TestProviderNeutralAnthropicToolChoice(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []sigma.ToolChoice{sigma.ToolChoiceAuto, sigma.ToolChoiceNone} {
+		choice := choice
+		t.Run(string(choice), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("anthropic-neutral-tool-choice-" + string(choice))
+			model := anthropicTestModel(providerID)
+			client := anthropicTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{
+					Messages: []sigma.Message{sigma.UserText("Use a tool.")},
+					Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+				},
+				sigma.WithToolChoice(choice),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			payload := decodePayload(t, receiveRequest(t, requests).Body)
+			toolChoice := payload["tool_choice"].(map[string]any)
+			if got := toolChoice["type"]; got != string(choice) {
+				t.Fatalf("tool choice type = %#v, want %q", got, choice)
+			}
+			if tools, ok := payload["tools"].([]any); !ok || len(tools) != 1 {
+				t.Fatalf("tools = %#v, want one tool", payload["tools"])
+			}
+		})
 	}
 }
 
