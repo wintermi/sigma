@@ -2338,16 +2338,73 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		zai.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported {
 		t.Fatalf("Z.ai compat = %#v, want zai reasoning and tool_stream", zai.OpenAICompletionsCompat)
 	}
-	zai52, ok := registry.Model(ProviderZAI, "glm-5.2")
-	if !ok {
-		t.Fatal("fresh registry missing generated Z.ai GLM-5.2 model")
+	zaiModels := []struct {
+		id            ModelID
+		name          string
+		inputCost     float64
+		outputCost    float64
+		cacheReadCost float64
+		thinking      map[ThinkingLevel]string
+		offSupported  bool
+	}{
+		{
+			id:            "glm-5.2",
+			name:          "GLM-5.2",
+			inputCost:     1.4,
+			outputCost:    4.4,
+			cacheReadCost: 0.26,
+			thinking: map[ThinkingLevel]string{
+				ThinkingLevelMinimal: "high",
+				ThinkingLevelLow:     "high",
+				ThinkingLevelMedium:  "high",
+				ThinkingLevelHigh:    "high",
+				ThinkingLevelXHigh:   "max",
+				ThinkingLevel("max"): "max",
+			},
+			offSupported: true,
+		},
+		{
+			id:   "glm-5.2-highspeed",
+			name: "GLM-5.2 Highspeed",
+			thinking: map[ThinkingLevel]string{
+				ThinkingLevelMinimal: "high",
+				ThinkingLevelLow:     "high",
+				ThinkingLevelMedium:  "high",
+				ThinkingLevelHigh:    "high",
+				ThinkingLevelXHigh:   "max",
+				ThinkingLevel("max"): "max",
+			},
+			offSupported: true,
+		},
+		{
+			id:   "glm-5.3",
+			name: "GLM-5.3",
+			thinking: map[ThinkingLevel]string{
+				ThinkingLevelMinimal: "low",
+				ThinkingLevelLow:     "low",
+				ThinkingLevelMedium:  "high",
+				ThinkingLevelHigh:    "high",
+				ThinkingLevelXHigh:   "max",
+				ThinkingLevel("max"): "max",
+			},
+		},
 	}
-	assertZAI52Model(t, zai52, "ZAI_API_KEY")
-	zaiCN52, ok := registry.Model(ProviderZAICodingCN, "glm-5.2")
-	if !ok {
-		t.Fatal("fresh registry missing generated Z.ai Coding CN GLM-5.2 model")
+	for _, provider := range []struct {
+		id      ProviderID
+		baseURL string
+		envVar  string
+	}{
+		{id: ProviderZAI, baseURL: "https://api.z.ai/api/coding/paas/v4", envVar: "ZAI_API_KEY"},
+		{id: ProviderZAICodingCN, baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVar: "ZAI_CODING_CN_API_KEY"},
+	} {
+		for _, want := range zaiModels {
+			model, ok := registry.Model(provider.id, want.id)
+			if !ok {
+				t.Fatalf("fresh registry missing generated %s model %s", provider.id, want.id)
+			}
+			assertZAICodingPlanModel(t, model, provider.baseURL, provider.envVar, want.name, want.inputCost, want.outputCost, want.cacheReadCost, want.thinking, want.offSupported)
+		}
 	}
-	assertZAI52Model(t, zaiCN52, "ZAI_CODING_CN_API_KEY")
 
 	cloudflare, ok := registry.Model(ProviderCloudflareAIGateway, "gpt-5.4")
 	if !ok {
@@ -3004,27 +3061,43 @@ func assertSortedModelOrder(t *testing.T, models []Model) {
 	}
 }
 
-func assertZAI52Model(t *testing.T, model Model, envVar string) {
+func assertZAICodingPlanModel(t *testing.T, model Model, baseURL, envVar, name string, inputCost, outputCost, cacheReadCost float64, thinking map[ThinkingLevel]string, offSupported bool) {
 	t.Helper()
 
+	if model.Name != name {
+		t.Fatalf("%s/%s name = %q, want %q", model.Provider, model.ID, model.Name, name)
+	}
+	if model.API != APIOpenAICompletions || len(model.SupportedInputs) != 1 || model.SupportedInputs[0] != ContentBlockText || !model.SupportsTools || !model.SupportsReasoning() {
+		t.Fatalf("%s/%s capabilities = %+v, want text-only OpenAI Chat Completions with tools and reasoning", model.Provider, model.ID, model)
+	}
 	if model.ContextWindow != 1000000 || model.MaxOutputTokens != 131072 {
-		t.Fatalf("Z.ai GLM-5.2 limits = %d/%d, want 1000000/131072", model.ContextWindow, model.MaxOutputTokens)
+		t.Fatalf("%s/%s limits = %d/%d, want 1000000/131072", model.Provider, model.ID, model.ContextWindow, model.MaxOutputTokens)
+	}
+	if model.InputCostPerMillion != inputCost || model.OutputCostPerMillion != outputCost || model.CacheReadInputCostPerMillion != cacheReadCost || model.CacheWriteInputCostPerMillion != 0 || model.CostCurrency != "USD" {
+		t.Fatalf("%s/%s costs = %f/%f/%f/%f %s, want %f/%f/%f/0 USD", model.Provider, model.ID, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, model.CostCurrency, inputCost, outputCost, cacheReadCost)
 	}
 	if model.OpenAICompletionsCompat == nil ||
+		model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
 		model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningZAI ||
 		model.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported ||
 		model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatSupported {
-		t.Fatalf("Z.ai GLM-5.2 compat = %#v, want zai reasoning, reasoning_effort, and tool_stream", model.OpenAICompletionsCompat)
+		t.Fatalf("%s/%s compat = %#v, want Z.ai reasoning, reasoning_effort, tool_stream, and no developer role", model.Provider, model.ID, model.OpenAICompletionsCompat)
 	}
+	if model.DefaultTransport != TransportSSE {
+		t.Fatalf("%s/%s default transport = %q, want %q", model.Provider, model.ID, model.DefaultTransport, TransportSSE)
+	}
+	assertMetadataString(t, model.ProviderMetadata, "baseURL", baseURL)
 	assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{envVar})
-	if got, ok := model.ProviderThinkingLevel(ThinkingLevelMinimal); !ok || got != "" {
-		t.Fatalf("Z.ai GLM-5.2 minimal level = %q, %v; want empty string, true", got, ok)
+	if len(model.ThinkingLevelMap) != len(thinking) {
+		t.Fatalf("%s/%s thinking level count = %d, want %d", model.Provider, model.ID, len(model.ThinkingLevelMap), len(thinking))
 	}
-	if got, ok := model.ProviderThinkingLevel(ThinkingLevelHigh); !ok || got != "high" {
-		t.Fatalf("Z.ai GLM-5.2 high level = %q, %v; want high, true", got, ok)
+	for level, want := range thinking {
+		if got, ok := model.ProviderThinkingLevel(level); !ok || got != want {
+			t.Fatalf("%s/%s %s level = %q, %v; want %q, true", model.Provider, model.ID, level, got, ok, want)
+		}
 	}
-	if got, ok := model.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
-		t.Fatalf("Z.ai GLM-5.2 xhigh level = %q, %v; want max, true", got, ok)
+	if got := model.SupportsThinkingLevel(ThinkingLevelOff); got != offSupported {
+		t.Fatalf("%s/%s off support = %v, want %v", model.Provider, model.ID, got, offSupported)
 	}
 }
 

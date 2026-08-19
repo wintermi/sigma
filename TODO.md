@@ -248,6 +248,9 @@ integrations remain future work until they have the same local evidence bar.
       disabled types instead of the legacy `enable_thinking` toggle.
 - [x] Add GLM-5.2 Z.ai reasoning-effort metadata and surface
       OpenAI-compatible provider finish reasons that indicate upstream errors.
+- [x] Refresh Z.ai and Z.ai Coding CN with GLM-5.2 Highspeed and GLM-5.3,
+      model-specific reasoning aliases, and API-equivalent pricing only where
+      matching evidence exists.
 - [x] Harden OpenAI-compatible Chat Completions streams to avoid duplicate
       reasoning alias deltas and reject successful EOF before a terminal
       `finish_reason`.

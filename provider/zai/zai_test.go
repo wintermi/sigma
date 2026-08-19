@@ -7,9 +7,11 @@ package zai_test
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -139,6 +141,44 @@ func TestRegistersCatalogModels(t *testing.T) {
 				t.Fatalf("RegisterModel returned error: %v", err)
 			}
 		})
+	}
+}
+
+func TestGLM53RejectsExplicitDisabledReasoningBeforeDispatch(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderZAI, "glm-5.3")
+	if !ok {
+		t.Fatal("default registry missing zai glm-5.3")
+	}
+	registry := sigma.NewRegistry()
+	if err := zai.Register(registry, zai.WithBaseURL(server.URL)); err != nil {
+		t.Fatalf("Register returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithAPIKey("request-key"),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelOff),
+	)
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("Complete error = %v, want ErrInvalidOptions", err)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("request count = %d, want 0", got)
 	}
 }
 

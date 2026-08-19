@@ -12,6 +12,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Z.ai and Z.ai Coding CN now include GLM-5.2 Highspeed and GLM-5.3 with
+  million-token context limits and model-specific reasoning aliases. GLM-5.2
+  receives API-equivalent estimated pricing, while models without matching
+  price evidence retain zero-cost estimates and default requests remain
+  unchanged.
 - Direct Anthropic Claude Fable 5 and Opus 5 requests can now opt into
   catalog-declared server-side refusal fallbacks through
   `AnthropicOptions.EnableRefusalFallbacks`. Defaults remain unchanged, while

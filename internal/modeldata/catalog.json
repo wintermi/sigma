@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-07",
+  "snapshotDate": "2026-08-19",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -109,6 +109,10 @@
     {
       "name": "Z.ai models",
       "url": "https://docs.z.ai/"
+    },
+    {
+      "name": "Z.ai Coding Plan model catalog",
+      "url": "https://models.dev/api.json"
     }
   ],
   "textModels": [
@@ -22578,10 +22582,97 @@
       "thinkingLevelMap": {
         "high": "high",
         "low": "high",
+        "max": "max",
         "medium": "high",
-        "minimal": "",
+        "minimal": "high",
         "xhigh": "max"
       },
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "ZAI_CODING_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "supportsToolStream": "supported",
+        "reasoningFormat": "zai"
+      }
+    },
+    {
+      "id": "glm-5.2-highspeed",
+      "name": "GLM-5.2 Highspeed",
+      "provider": "zai-coding-cn",
+      "api": "openai-completions",
+      "baseURL": "https://open.bigmodel.cn/api/coding/paas/v4",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "low": "high",
+        "max": "max",
+        "medium": "high",
+        "minimal": "high",
+        "xhigh": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "ZAI_CODING_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "supportsToolStream": "supported",
+        "reasoningFormat": "zai"
+      }
+    },
+    {
+      "id": "glm-5.3",
+      "name": "GLM-5.3",
+      "provider": "zai-coding-cn",
+      "api": "openai-completions",
+      "baseURL": "https://open.bigmodel.cn/api/coding/paas/v4",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "low": "low",
+        "max": "max",
+        "medium": "high",
+        "minimal": "low",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
       "cost": {
         "inputPerMillion": 0,
         "outputPerMillion": 0,
@@ -22778,10 +22869,97 @@
       "thinkingLevelMap": {
         "high": "high",
         "low": "high",
+        "max": "max",
         "medium": "high",
-        "minimal": "",
+        "minimal": "high",
         "xhigh": "max"
       },
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "ZAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "supportsToolStream": "supported",
+        "reasoningFormat": "zai"
+      }
+    },
+    {
+      "id": "glm-5.2-highspeed",
+      "name": "GLM-5.2 Highspeed",
+      "provider": "zai",
+      "api": "openai-completions",
+      "baseURL": "https://api.z.ai/api/coding/paas/v4",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "low": "high",
+        "max": "max",
+        "medium": "high",
+        "minimal": "high",
+        "xhigh": "max"
+      },
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "ZAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "supportsToolStream": "supported",
+        "reasoningFormat": "zai"
+      }
+    },
+    {
+      "id": "glm-5.3",
+      "name": "GLM-5.3",
+      "provider": "zai",
+      "api": "openai-completions",
+      "baseURL": "https://api.z.ai/api/coding/paas/v4",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "high": "high",
+        "low": "low",
+        "max": "max",
+        "medium": "high",
+        "minimal": "low",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ],
       "cost": {
         "inputPerMillion": 0,
         "outputPerMillion": 0,

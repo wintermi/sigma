@@ -2957,12 +2957,13 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		format   sigma.OpenAICompletionsReasoningFormat
-		level    sigma.ThinkingLevel
-		tool     bool
-		assert   func(t *testing.T, body map[string]any)
-		thinking map[sigma.ThinkingLevel]string
+		name        string
+		format      sigma.OpenAICompletionsReasoningFormat
+		level       sigma.ThinkingLevel
+		tool        bool
+		assert      func(t *testing.T, body map[string]any)
+		thinking    map[sigma.ThinkingLevel]string
+		unsupported []sigma.ThinkingLevel
 	}{
 		{
 			name:   "together toggles reasoning and sends effort",
@@ -3000,8 +3001,9 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			},
 		},
 		{
-			name:   "zai disables thinking when no level is requested",
-			format: sigma.OpenAICompletionsReasoningZAI,
+			name:        "zai glm 5.3 disables thinking when no level is requested",
+			format:      sigma.OpenAICompletionsReasoningZAI,
+			unsupported: []sigma.ThinkingLevel{sigma.ThinkingLevelOff},
 			assert: func(t *testing.T, body map[string]any) {
 				t.Helper()
 				thinking, ok := body["thinking"].(map[string]any)
@@ -3017,7 +3019,53 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			},
 		},
 		{
-			name:   "zai glm 5.2 sends mapped high reasoning effort",
+			name:   "zai glm 5.2 sends max reasoning effort",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			level:  sigma.ThinkingLevel("max"),
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if got, want := body["reasoning_effort"], "max"; got != want {
+					t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelMinimal: "high",
+				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMedium:  "high",
+				sigma.ThinkingLevelHigh:    "high",
+				sigma.ThinkingLevelXHigh:   "max",
+				sigma.ThinkingLevel("max"): "max",
+			},
+		},
+		{
+			name:   "zai glm 5.3 sends low reasoning effort",
+			format: sigma.OpenAICompletionsReasoningZAI,
+			level:  sigma.ThinkingLevelLow,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "enabled" {
+					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
+				}
+				if got, want := body["reasoning_effort"], "low"; got != want {
+					t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+				}
+			},
+			thinking: map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelMinimal: "low",
+				sigma.ThinkingLevelLow:     "low",
+				sigma.ThinkingLevelMedium:  "high",
+				sigma.ThinkingLevelHigh:    "high",
+				sigma.ThinkingLevelXHigh:   "max",
+				sigma.ThinkingLevel("max"): "max",
+			},
+		},
+		{
+			name:   "zai glm 5.3 sends high reasoning effort",
 			format: sigma.OpenAICompletionsReasoningZAI,
 			level:  sigma.ThinkingLevelHigh,
 			assert: func(t *testing.T, body map[string]any) {
@@ -3031,17 +3079,18 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				}
 			},
 			thinking: map[sigma.ThinkingLevel]string{
-				sigma.ThinkingLevelMinimal: "",
-				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMinimal: "low",
+				sigma.ThinkingLevelLow:     "low",
 				sigma.ThinkingLevelMedium:  "high",
 				sigma.ThinkingLevelHigh:    "high",
 				sigma.ThinkingLevelXHigh:   "max",
+				sigma.ThinkingLevel("max"): "max",
 			},
 		},
 		{
-			name:   "zai glm 5.2 sends mapped xhigh reasoning effort",
+			name:   "zai glm 5.3 sends max reasoning effort",
 			format: sigma.OpenAICompletionsReasoningZAI,
-			level:  sigma.ThinkingLevelXHigh,
+			level:  sigma.ThinkingLevel("max"),
 			assert: func(t *testing.T, body map[string]any) {
 				t.Helper()
 				thinking, ok := body["thinking"].(map[string]any)
@@ -3053,33 +3102,12 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				}
 			},
 			thinking: map[sigma.ThinkingLevel]string{
-				sigma.ThinkingLevelMinimal: "",
-				sigma.ThinkingLevelLow:     "high",
+				sigma.ThinkingLevelMinimal: "low",
+				sigma.ThinkingLevelLow:     "low",
 				sigma.ThinkingLevelMedium:  "high",
 				sigma.ThinkingLevelHigh:    "high",
 				sigma.ThinkingLevelXHigh:   "max",
-			},
-		},
-		{
-			name:   "zai glm 5.2 minimal enables thinking without reasoning effort",
-			format: sigma.OpenAICompletionsReasoningZAI,
-			level:  sigma.ThinkingLevelMinimal,
-			assert: func(t *testing.T, body map[string]any) {
-				t.Helper()
-				thinking, ok := body["thinking"].(map[string]any)
-				if !ok || thinking["type"] != "enabled" {
-					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
-				}
-				if _, ok := body["reasoning_effort"]; ok {
-					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
-				}
-			},
-			thinking: map[sigma.ThinkingLevel]string{
-				sigma.ThinkingLevelMinimal: "",
-				sigma.ThinkingLevelLow:     "high",
-				sigma.ThinkingLevelMedium:  "high",
-				sigma.ThinkingLevelHigh:    "high",
-				sigma.ThinkingLevelXHigh:   "max",
+				sigma.ThinkingLevel("max"): "max",
 			},
 		},
 		{
@@ -3144,6 +3172,7 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			if tt.thinking != nil {
 				model.ThinkingLevelMap = tt.thinking
 			}
+			model.UnsupportedThinkingLevels = tt.unsupported
 			client := openAITestClient(t, providerID, model, server.URL)
 
 			req := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}

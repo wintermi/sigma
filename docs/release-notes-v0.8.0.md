@@ -20,12 +20,14 @@ across both regional routes while preserving supported reasoning levels and
 keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
 eight curated models, including DeepSeek V4 Pro 0813, through the shared
 international endpoint and credential, with each model's thinking controls
-preserved. Baseten is now available through a first-class OpenAI-compatible
-route with focused GLM 5.2 and Kimi K2.6
-metadata and native chat-template thinking controls. GLM 5.2 now advertises
-both text and image input so image-bearing tool results remain available on
-that route. Xiaomi's direct and regional Token Plan catalogs now expose only
-the supported MiMo V2.5 text-provider lineup instead of retired V2 model names.
+preserved. Z.ai and Z.ai Coding CN now add GLM-5.2 Highspeed and GLM-5.3 with
+million-token limits, model-specific reasoning aliases, and evidence-backed
+estimated pricing. Baseten is now available through a first-class
+OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6 metadata and native
+chat-template thinking controls. GLM 5.2 now advertises both text and image
+input so image-bearing tool results remain available on that route. Xiaomi's
+direct and regional Token Plan catalogs now expose only the supported MiMo V2.5
+text-provider lineup instead of retired V2 model names.
 Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
@@ -96,6 +98,13 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- The international and China Z.ai Coding Plan routes now expose GLM-5.2,
+  GLM-5.2 Highspeed, and GLM-5.3 as a consistent million-token cohort. GLM-5.2
+  variants map Sigma's `minimal` through `high` levels to provider `high` and
+  `xhigh`/`max` to provider `max`; GLM-5.3 maps `minimal`/`low` to `low`,
+  `medium`/`high` to `high`, and `xhigh`/`max` to `max`. Omitted reasoning
+  remains disabled, explicit GLM-5.3 `off` fails locally, GLM-5.2 uses
+  API-equivalent estimated pricing, and unevidenced prices remain zero.
 - `AnthropicOptions.EnableRefusalFallbacks` enables direct Anthropic
   server-side refusal fallback only for models with generated allowed-target
   metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets, while
