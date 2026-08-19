@@ -254,6 +254,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Harden OpenAI-compatible Chat Completions streams to avoid duplicate
       reasoning alias deltas and reject successful EOF before a terminal
       `finish_reason`.
+- [x] Preserve the first provider-issued ID and name for indexed
+      OpenAI-compatible Chat Completions function and grammar tool calls while
+      allowing a late first provider ID to replace Sigma's synthetic fallback.
 - [x] Send explicit `max_tokens` for OpenCode Zen and OpenCode Go Chat
       Completions through compatibility detection.
 - [x] Add opt-in structured-output capability probes for OpenAI-compatible

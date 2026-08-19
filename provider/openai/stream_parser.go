@@ -116,6 +116,7 @@ type completionStreamParser struct {
 	text             *streamblocks.Text
 	thinking         *streamblocks.Thinking
 	toolCalls        map[string]*streamblocks.ToolCall
+	providerIDKeys   map[string]struct{}
 	toolCallOrdinals map[string]int
 	customToolCalls  map[*streamblocks.ToolCall]*completionCustomToolCall
 	grammarTools     map[string]string
@@ -141,6 +142,7 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 		writer:           writer,
 		model:            model,
 		toolCalls:        make(map[string]*streamblocks.ToolCall),
+		providerIDKeys:   make(map[string]struct{}),
 		toolCallOrdinals: make(map[string]int),
 		customToolCalls:  make(map[*streamblocks.ToolCall]*completionCustomToolCall),
 		grammarTools:     grammarTools,
@@ -397,8 +399,7 @@ func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, d
 		}
 		state.SetID(fmt.Sprintf("call_%d", fallback))
 	}
-	state.SetID(delta.ID)
-	state.SetName(delta.Function.Name)
+	p.setToolCallIdentity(key, state, delta.ID, delta.Function.Name)
 	state.AppendArguments(delta.Function.Arguments)
 
 	partial := state.Partial(delta.Function.Arguments, streamblocks.ToolPartialArgumentsText)
@@ -422,8 +423,8 @@ func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, d
 func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key string, delta streamToolCallDelta) error {
 	state := p.toolCalls[key]
 	name := delta.Custom.Name
-	if state != nil {
-		name = firstNonEmpty(name, state.Name())
+	if state != nil && state.Name() != "" {
+		name = state.Name()
 	}
 	property, ok := p.grammarTools[name]
 	if !ok {
@@ -450,8 +451,7 @@ func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key str
 		}
 		state.SetID(fmt.Sprintf("call_%d", fallback))
 	}
-	state.SetID(delta.ID)
-	state.SetName(name)
+	p.setToolCallIdentity(key, state, delta.ID, name)
 	input, err := grammarToolInputDelta(delta.Custom.Input)
 	if err != nil {
 		return err
@@ -475,6 +475,18 @@ func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key str
 		ContentIndex:    intPtr(state.ContentIndex),
 		PartialToolCall: partial,
 	})
+}
+
+func (p *completionStreamParser) setToolCallIdentity(key string, state *streamblocks.ToolCall, id string, name string) {
+	if id != "" {
+		if _, ok := p.providerIDKeys[key]; !ok {
+			state.SetID(id)
+			p.providerIDKeys[key] = struct{}{}
+		}
+	}
+	if state.Name() == "" {
+		state.SetName(name)
+	}
 }
 
 func grammarToolInputDelta(input string) (string, error) {

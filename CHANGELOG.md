@@ -89,6 +89,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI-compatible Chat Completions streams now preserve the first
+  provider-issued ID and name for indexed function and grammar tool calls when
+  later continuation deltas conflict, while still accepting a late first
+  provider ID after a synthetic stream start.
 - Google Generative AI and Vertex streams no longer convert explicit
   max-token, provider-error, or unknown finish reasons into successful tool-call
   stops merely because the response also contains a function call. Tool calls,

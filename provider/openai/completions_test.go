@@ -1901,7 +1901,7 @@ func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_parse","type":"custom","custom":{"name":"parse","input":"go "}},{"index":1,"id":"call_read","type":"function","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":null}]}`+"\n\n")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"type":"custom","custom":{"input":"test"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_changed","type":"custom","custom":{"name":"other","input":"test"}}]},"finish_reason":null}]}`+"\n\n")
 		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_grammar","model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`+"\n\n")
 		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
@@ -1915,6 +1915,7 @@ func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
 		Messages: []sigma.Message{sigma.UserText("run")},
 		Tools: []sigma.Tool{
 			chatGrammarTool("parse", sigma.OpenAIGrammarRegex, ".+"),
+			chatGrammarTool("other", sigma.OpenAIGrammarRegex, ".+"),
 			{Name: "read", InputSchema: sigma.Schema{"type": "object"}},
 		},
 	})
@@ -1936,6 +1937,12 @@ func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
 	if got, want := parseArguments["command"], "go test"; got != want {
 		t.Fatalf("grammar tool command = %v, want %q", got, want)
 	}
+	if got, want := final.Content[0].ToolCallID, "call_parse"; got != want {
+		t.Fatalf("grammar tool id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[0].ToolName, "parse"; got != want {
+		t.Fatalf("grammar tool name = %q, want %q", got, want)
+	}
 	readArguments, ok := final.Content[1].ToolArguments.(map[string]any)
 	if !ok {
 		t.Fatalf("function tool arguments type = %T, want map", final.Content[1].ToolArguments)
@@ -1945,6 +1952,9 @@ func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
 	}
 	var customArguments strings.Builder
 	for _, event := range events {
+		if event.PartialToolCall != nil && event.PartialToolCall.ID == "call_changed" {
+			t.Fatal("grammar tool stream exposed conflicting continuation id")
+		}
 		if event.Kind != sigma.EventKindToolCallDelta || event.PartialToolCall == nil || event.PartialToolCall.ID != "call_parse" {
 			continue
 		}
@@ -1952,6 +1962,99 @@ func TestChatCompletionsGrammarToolStreamBuildsObjectArguments(t *testing.T) {
 	}
 	if got, want := customArguments.String(), `{"command":"go test"}`; got != want {
 		t.Fatalf("streamed custom arguments = %q, want %q", got, want)
+	}
+}
+
+func TestStreamingMixedDeltasPreserveIndexedToolIdentity(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_mixed","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"answer ","reasoning_content":"think ","tool_calls":[{"index":0,"id":"call_read","type":"function","function":{"name":"read","arguments":"{\"path\":\"README"}},{"index":1,"id":"call_grep","type":"function","function":{"name":"grep","arguments":"{\"pattern\":\"TODO"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_mixed","model":"gpt-provider","choices":[{"index":0,"delta":{"content":"done","reasoning_content":"again","tool_calls":[{"index":1,"id":"call_grep_changed","type":"function","function":{"name":"search","arguments":"\",\"path\":\"src\"}"}},{"index":0,"id":"call_read_changed","type":"function","function":{"name":"write","arguments":".md\"}"}}]},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_mixed","model":"gpt-provider","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":10,"completion_tokens":8,"total_tokens":18,"completion_tokens_details":{"reasoning_tokens":2}}}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-mixed-tool-identity-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	stream := client.Stream(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("think and use tools")},
+		Tools: []sigma.Tool{
+			{Name: "read", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "grep", InputSchema: sigma.Schema{"type": "object"}},
+		},
+	})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := len(final.Content), 4; got != want {
+		t.Fatalf("content blocks = %d, want %d: %#v", got, want, final.Content)
+	}
+	if got, want := final.Content[0].ThinkingText, "think again"; got != want {
+		t.Fatalf("thinking = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "answer done"; got != want {
+		t.Fatalf("text = %q, want %q", got, want)
+	}
+	if got, want := final.Content[2].ToolCallID, "call_read"; got != want {
+		t.Fatalf("read tool id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[2].ToolName, "read"; got != want {
+		t.Fatalf("read tool name = %q, want %q", got, want)
+	}
+	readArguments, ok := final.Content[2].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("read arguments type = %T, want map", final.Content[2].ToolArguments)
+	}
+	if got, want := readArguments["path"], "README.md"; got != want {
+		t.Fatalf("read path = %v, want %v", got, want)
+	}
+	if got, want := final.Content[3].ToolCallID, "call_grep"; got != want {
+		t.Fatalf("grep tool id = %q, want %q", got, want)
+	}
+	if got, want := final.Content[3].ToolName, "grep"; got != want {
+		t.Fatalf("grep tool name = %q, want %q", got, want)
+	}
+	grepArguments, ok := final.Content[3].ToolArguments.(map[string]any)
+	if !ok {
+		t.Fatalf("grep arguments type = %T, want map", final.Content[3].ToolArguments)
+	}
+	if got, want := grepArguments["pattern"], "TODO"; got != want {
+		t.Fatalf("grep pattern = %v, want %v", got, want)
+	}
+	if got, want := grepArguments["path"], "src"; got != want {
+		t.Fatalf("grep path = %v, want %v", got, want)
+	}
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderMetadata["finish_reason"], "tool_calls"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
+	if final.Usage == nil {
+		t.Fatal("usage was nil")
+	}
+	if got, want := final.Usage.TotalTokens, 18; got != want {
+		t.Fatalf("total tokens = %d, want %d", got, want)
+	}
+	if got, want := final.Usage.ThinkingTokens, 2; got != want {
+		t.Fatalf("thinking tokens = %d, want %d", got, want)
+	}
+	for _, event := range events {
+		if event.PartialToolCall == nil {
+			continue
+		}
+		if event.PartialToolCall.ID == "call_read_changed" || event.PartialToolCall.ID == "call_grep_changed" {
+			t.Fatalf("stream exposed conflicting continuation id %q", event.PartialToolCall.ID)
+		}
 	}
 }
 
