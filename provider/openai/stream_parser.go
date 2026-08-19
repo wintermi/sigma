@@ -544,7 +544,7 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 			if state.ProviderMetadata == nil {
 				state.ProviderMetadata = make(map[string]any)
 			}
-			state.ProviderMetadata["reasoning_details"] = details
+			state.ProviderMetadata["reasoning_details"] = validatedReasoningDetails(details)
 		}
 		call := state.ToolCall()
 		block := sigma.ToolCallBlock(call.ID, call.Name, call.Arguments)
@@ -571,6 +571,14 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 		for _, index := range indexes {
 			p.final.Content = append(p.final.Content, contentByIndex[index])
 		}
+	}
+	if len(p.reasoningDetails) > 0 && len(p.final.Content) > 0 {
+		first := p.final.Content[0].Clone()
+		if first.ProviderMetadata == nil {
+			first.ProviderMetadata = make(map[string]any)
+		}
+		first.ProviderMetadata[orderedReasoningDetailsMetadataKey] = validatedReasoningDetails(p.reasoningDetails)
+		p.final.Content[0] = first
 	}
 	if p.finishReason != "" {
 		p.final.StopReason = p.finishReason
@@ -738,14 +746,6 @@ func (p *completionStreamParser) responseMetadata() map[string]any {
 		metadata["sources"] = sources
 	}
 	return metadata
-}
-
-func parseReasoningDetails(raw json.RawMessage) ([]any, error) {
-	var details []any
-	if err := json.Unmarshal(raw, &details); err != nil {
-		return nil, fmt.Errorf("openai completions: decode reasoning_details: %w", err)
-	}
-	return details, nil
 }
 
 func streamContentText(raw json.RawMessage) (string, bool, error) {

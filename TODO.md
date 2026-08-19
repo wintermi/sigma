@@ -377,9 +377,10 @@ work until their API boundaries are explicit.
 - [x] Add a provider-neutral routed response model accessor over existing
       provider response metadata without changing serialized assistant message
       shape.
-- [x] Preserve OpenAI-compatible Chat Completions `reasoning_details` metadata
-      on tool-call blocks for replay while keeping broader provider-neutral
-      reasoning-detail rendering deferred.
+- [x] Preserve complete validated OpenAI-compatible Chat Completions
+      `reasoning_details` sequences in provider order across assistant-content
+      persistence and exact-provenance replay, while retaining legacy tool-call
+      metadata and keeping broader provider-neutral rendering deferred.
 - [x] Harden provider replay and protocol edge cases across Anthropic, Google,
       Bedrock, OpenAI-compatible, Azure Responses, and GitHub Copilot OAuth
       with deterministic fixtures for signatures, private reasoning metadata,

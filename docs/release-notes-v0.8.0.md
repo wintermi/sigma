@@ -60,6 +60,10 @@ OpenAI-compatible Chat Completions models can also opt into successful
 Indexed OpenAI-compatible Chat Completions tool-call continuations now retain
 the first provider-issued ID and name across mixed text, reasoning, and tool
 deltas, preventing identity drift during execution, persistence, and replay.
+OpenAI-compatible Chat Completions streams now also retain validated encrypted,
+signed-text, and summary reasoning details in their original order across
+assistant-content persistence and exact same-provider/API/model replay,
+including responses without tool calls.
 OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
 now carry request-scoped arbitrary sampling parameters with explicit override
 precedence. OpenAI Responses-compatible and Azure OpenAI Responses requests now
@@ -250,6 +254,11 @@ selection remains available through existing provider-specific controls.
   later conflicting identity values are ignored while arguments, partial
   events, usage, raw finish reasons, and normalized stops remain unchanged.
   Indexless correlation behavior and request payloads are unchanged.
+- OpenAI-compatible Chat Completions replays complete `reasoning_details` only
+  when persisted provider, API, and model provenance exactly match the target.
+  Invalid or unknown entries are omitted individually, older tool-call metadata
+  remains a replay fallback, and requests without persisted details retain
+  their previous payloads and defaults.
 - Typed max-token options below 16 now serialize as 16 for
   OpenAI Responses-compatible and Azure OpenAI Responses requests. Unset values
   remain omitted, sampling parameters and raw `extra_body` values retain their

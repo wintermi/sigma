@@ -89,6 +89,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI-compatible Chat Completions streams now preserve validated encrypted,
+  signed-text, and summary `reasoning_details` in provider order across
+  assistant-content persistence and exact same-provider/API/model replay.
+  Invalid persisted entries are omitted without losing valid siblings, legacy
+  tool-call metadata remains replayable, and requests without stored details
+  are unchanged.
 - OpenAI-compatible Chat Completions streams now preserve the first
   provider-issued ID and name for indexed function and grammar tool calls when
   later continuation deltas conflict, while still accepting a late first

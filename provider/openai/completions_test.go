@@ -2400,6 +2400,325 @@ func TestStreamingPreservesReasoningDetailsForToolReplay(t *testing.T) {
 	}
 }
 
+func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.T) {
+	t.Parallel()
+
+	signedText := map[string]any{
+		"type":      "reasoning.text",
+		"id":        "reasoning_1",
+		"text":      "inspect the request",
+		"signature": "signed-text",
+		"format":    "openai-responses-v1",
+		"index":     float64(0),
+	}
+	encrypted := map[string]any{
+		"type": "reasoning.encrypted",
+		"id":   "call_1",
+		"data": "encrypted-signature",
+		"extension": map[string]any{
+			"trace": "original",
+		},
+	}
+	summary := map[string]any{
+		"type":    "reasoning.summary",
+		"summary": "read the requested file",
+	}
+	wantOrdered := []any{signedText, encrypted, summary}
+
+	requests := make(chan capturedRequest, 2)
+	var requestCount int
+	var requestMu sync.Mutex
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestMu.Lock()
+		requestCount++
+		count := requestCount
+		requestMu.Unlock()
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		if count == 1 {
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"inspect ","reasoning_details":[{"type":"reasoning.text","id":"reasoning_1","text":"inspect the request","signature":"signed-text","format":"openai-responses-v1","index":0},{"type":"reasoning.unknown","value":"drop"},{"type":"reasoning.summary","summary":42},{"type":"reasoning.summary","summary":"bad id","id":7},{"type":"reasoning.summary","summary":"bad format","format":null},{"type":"reasoning.summary","summary":"bad index","index":"0"},{"type":"reasoning.text","text":"bad signature","signature":7}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"then read","content":"Checking.","reasoning_details":[{"type":"reasoning.encrypted","id":"call_1","data":"encrypted-signature","extension":{"trace":"original"}},{"type":"reasoning.summary","summary":"read the requested file"}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","usage":{"prompt_tokens":10,"completion_tokens":6,"total_tokens":16},"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`+"\n\n")
+			_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			return
+		}
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_replay","model":"gpt-test","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-ordered-reasoning-details-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	stream := client.Stream(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("read the file")},
+		Tools: []sigma.Tool{{
+			Name:        "read",
+			Description: "Read a file",
+			InputSchema: sigma.Schema{"type": "object"},
+		}},
+	})
+	events := collectEvents(t, stream)
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := len(final.Content), 3; got != want {
+		t.Fatalf("content blocks = %d, want %d: %#v", got, want, final.Content)
+	}
+	if final.Content[0].Type != sigma.ContentBlockThinking || final.Content[0].ThinkingText != "inspect then read" {
+		t.Fatalf("thinking block = %#v, want combined reasoning", final.Content[0])
+	}
+	if final.Content[1].Type != sigma.ContentBlockText || final.Content[1].Text != "Checking." {
+		t.Fatalf("text block = %#v, want Checking.", final.Content[1])
+	}
+	if final.Content[2].Type != sigma.ContentBlockToolCall || final.Content[2].ToolCallID != "call_1" {
+		t.Fatalf("tool block = %#v, want call_1", final.Content[2])
+	}
+	ordered, ok := final.Content[0].ProviderMetadata["openai_reasoning_details"].([]any)
+	if !ok {
+		t.Fatalf("ordered reasoning metadata type = %T, want []any", final.Content[0].ProviderMetadata["openai_reasoning_details"])
+	}
+	if !reflect.DeepEqual(ordered, wantOrdered) {
+		t.Fatalf("ordered reasoning metadata = %#v, want %#v", ordered, wantOrdered)
+	}
+	legacy, ok := final.Content[2].ProviderMetadata["reasoning_details"].([]any)
+	if !ok || len(legacy) != 2 {
+		t.Fatalf("legacy reasoning metadata = %#v, want summary and encrypted details", final.Content[2].ProviderMetadata["reasoning_details"])
+	}
+	if !reflect.DeepEqual(legacy, []any{summary, encrypted}) {
+		t.Fatalf("legacy reasoning metadata = %#v, want %#v", legacy, []any{summary, encrypted})
+	}
+	ordered[1].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	if got := legacy[1].(map[string]any)["extension"].(map[string]any)["trace"]; got != "original" {
+		t.Fatalf("legacy metadata trace = %v, want independent original copy", got)
+	}
+	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if final.Usage == nil || final.Usage.TotalTokens != 16 {
+		t.Fatalf("usage = %#v, want 16 total tokens", final.Usage)
+	}
+	if got, want := final.ProviderMetadata["finish_reason"], "tool_calls"; got != want {
+		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
+	if len(events) == 0 || events[len(events)-1].Kind != sigma.EventKindDone {
+		t.Fatalf("terminal event = %#v, want done", events)
+	}
+
+	assistant := sigma.Message{
+		Role:       sigma.RoleAssistant,
+		Content:    final.Content,
+		Provider:   providerID,
+		API:        sigma.APIOpenAICompletions,
+		Model:      model.ID,
+		StopReason: final.StopReason,
+	}
+	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("read the file"),
+		assistant,
+		sigma.ToolResult("call_1", "contents"),
+		sigma.UserText("continue"),
+	}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	_ = receiveRequest(t, requests)
+	replayAssistant := assistantMessageFromRequest(t, receiveRequest(t, requests).Body)
+	replayedDetails, ok := replayAssistant["reasoning_details"].([]any)
+	if !ok {
+		t.Fatalf("replayed reasoning_details type = %T, want []any", replayAssistant["reasoning_details"])
+	}
+	wantOrdered[1].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	if !reflect.DeepEqual(replayedDetails, wantOrdered) {
+		t.Fatalf("replayed reasoning_details = %#v, want %#v", replayedDetails, wantOrdered)
+	}
+}
+
+func TestStreamingPreservesReasoningDetailsWithoutToolCalls(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 2)
+	var requestCount int
+	var requestMu sync.Mutex
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestMu.Lock()
+		requestCount++
+		count := requestCount
+		requestMu.Unlock()
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		if count == 1 {
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_text_reasoning","model":"gpt-test","choices":[{"index":0,"delta":{"content":"answer","reasoning_details":[{"type":"reasoning.summary","summary":"answer directly"}]},"finish_reason":"stop"}]}`+"\n\n")
+		} else {
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_text_replay","model":"gpt-test","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
+		}
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-text-reasoning-details-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("answer")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if len(final.Content) != 1 || final.Content[0].Type != sigma.ContentBlockText {
+		t.Fatalf("content = %#v, want one text block", final.Content)
+	}
+	if _, ok := final.Content[0].ProviderMetadata["openai_reasoning_details"].([]any); !ok {
+		t.Fatalf("ordered reasoning metadata = %#v, want []any", final.Content[0].ProviderMetadata["openai_reasoning_details"])
+	}
+
+	_, err = client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("answer"),
+		{
+			Role:     sigma.RoleAssistant,
+			Content:  final.Content,
+			Provider: providerID,
+			API:      sigma.APIOpenAICompletions,
+			Model:    model.ID,
+		},
+		sigma.UserText("continue"),
+	}})
+	if err != nil {
+		t.Fatalf("Complete replay returned error: %v", err)
+	}
+
+	_ = receiveRequest(t, requests)
+	replayAssistant := assistantMessageFromRequest(t, receiveRequest(t, requests).Body)
+	if got, ok := replayAssistant["reasoning_details"].([]any); !ok || len(got) != 1 {
+		t.Fatalf("replayed reasoning_details = %#v, want one detail", replayAssistant["reasoning_details"])
+	}
+}
+
+func TestReasoningDetailsReplayValidatesHistoryAndRequiresMatchingProvenance(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 4)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_history","model":"gpt-test","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-history-reasoning-details-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	validFull := map[string]any{"type": "reasoning.text", "text": "private", "signature": nil}
+	validLegacy := map[string]any{"type": "reasoning.encrypted", "id": "call_1", "data": "legacy"}
+	text := sigma.Text("answer")
+	text.ProviderMetadata = map[string]any{
+		"openai_reasoning_details": []any{
+			validFull,
+			map[string]any{"type": "reasoning.summary", "summary": 42},
+			map[string]any{"type": "reasoning.unknown", "value": "drop"},
+			map[string]any{"type": "reasoning.summary", "summary": "invalid extension", "extension": func() {}},
+		},
+	}
+	toolCall := sigma.ToolCallBlock("call_1", "read", map[string]any{})
+	toolCall.ProviderMetadata = map[string]any{
+		"reasoning_details": []any{
+			validLegacy,
+			map[string]any{"type": "reasoning.text", "text": 42},
+			map[string]any{"type": "reasoning.summary", "summary": "invalid extension", "extension": func() {}},
+		},
+	}
+	message := sigma.Message{
+		Role:     sigma.RoleAssistant,
+		Content:  []sigma.ContentBlock{text, toolCall},
+		Provider: providerID,
+		API:      sigma.APIOpenAICompletions,
+		Model:    model.ID,
+	}
+
+	providerMismatch := message
+	providerMismatch.Provider = sigma.ProviderID("different-provider")
+	apiMismatch := message
+	apiMismatch.API = sigma.APIOpenAIResponses
+	modelMismatch := message
+	modelMismatch.Model = sigma.ModelID("different-model")
+	for _, assistant := range []sigma.Message{message, providerMismatch, apiMismatch, modelMismatch} {
+		_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("answer"),
+			assistant,
+			sigma.ToolResult("call_1", "contents"),
+			sigma.UserText("continue"),
+		}})
+		if err != nil {
+			t.Fatalf("Complete returned error: %v", err)
+		}
+	}
+
+	matching := assistantMessageFromRequest(t, receiveRequest(t, requests).Body)
+	if got := matching["reasoning_details"]; !reflect.DeepEqual(got, []any{validFull}) {
+		t.Fatalf("matching reasoning_details = %#v, want validated full details", got)
+	}
+	for mismatch := 0; mismatch < 3; mismatch++ {
+		mismatched := assistantMessageFromRequest(t, receiveRequest(t, requests).Body)
+		if got := mismatched["reasoning_details"]; !reflect.DeepEqual(got, []any{validLegacy}) {
+			t.Fatalf("mismatched reasoning_details = %#v, want validated legacy fallback", got)
+		}
+	}
+}
+
+func TestStreamingMalformedReasoningDetailsPreservesPartialOutput(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_bad_reasoning","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_bad_reasoning","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_details":{"type":"reasoning.summary","summary":"not an array"}},"finish_reason":null}]}`+"\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-malformed-reasoning-details-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("answer")}})
+	_ = collectEvents(t, stream)
+	if err := stream.Err(); err == nil || !strings.Contains(err.Error(), "decode reasoning_details") {
+		t.Fatalf("stream error = %v, want reasoning_details decode error", err)
+	}
+	final, ok := stream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("partial content = %#v, want preserved text", final.Content)
+	}
+}
+
+func TestStreamingReasoningDetailsWithoutContentDoesNotCreateBlock(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_empty_reasoning","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_details":[{"type":"reasoning.summary","summary":"empty"}]},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-empty-reasoning-details-test")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("answer")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if len(final.Content) != 0 {
+		t.Fatalf("content = %#v, want no synthetic block", final.Content)
+	}
+}
+
 func TestStreamingIndexlessToolCallsUseIDFallback(t *testing.T) {
 	t.Parallel()
 
@@ -3397,6 +3716,24 @@ func chatCompletionToolNames(t *testing.T, tools []any) []string {
 func messageRole(message map[string]any) string {
 	role, _ := message["role"].(string)
 	return role
+}
+
+func assistantMessageFromRequest(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+
+	var payload struct {
+		Messages []map[string]any `json:"messages"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	for _, message := range payload.Messages {
+		if messageRole(message) == "assistant" {
+			return message
+		}
+	}
+	t.Fatal("request payload did not include an assistant message")
+	return nil
 }
 
 func chatGrammarTool(name string, syntax sigma.OpenAIGrammarSyntax, definition string) sigma.Tool {

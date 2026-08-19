@@ -361,6 +361,9 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		if err != nil {
 			return nil, err
 		}
+		if preserved := preservedReasoningDetails(model, message); len(preserved) > 0 {
+			reasoningDetails = preserved
+		}
 		if text != "" {
 			converted["content"] = text
 		}
@@ -617,15 +620,23 @@ func appendReasoningDetails(details []any, metadata map[string]any) []any {
 	if !ok {
 		return details
 	}
-	switch typed := value.(type) {
-	case []any:
-		return append(details, typed...)
-	case []map[string]any:
-		for _, item := range typed {
-			details = append(details, item)
+	return append(details, validatedReasoningDetails(value)...)
+}
+
+func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
+	if message.Provider != model.Provider || message.API != model.API || message.Model != model.ID {
+		return nil
+	}
+	for _, block := range message.Content {
+		value, ok := block.ProviderMetadata[orderedReasoningDetailsMetadataKey]
+		if !ok {
+			continue
+		}
+		if details := validatedReasoningDetails(value); len(details) > 0 {
+			return details
 		}
 	}
-	return details
+	return nil
 }
 
 func chatToolCallID(raw string) string {
