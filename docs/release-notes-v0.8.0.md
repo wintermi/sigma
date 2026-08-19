@@ -15,6 +15,9 @@ Google and Vertex replay now also retain blank signature-only text and thinking
 parts only when the signature is valid for the same provider, API, and model.
 Replayed Bedrock tool inputs now remove provider-rejected empty object-member
 names without altering stored or streamed tool arguments.
+Bedrock Converse also preserves encrypted reasoning blobs across split stream
+deltas and replays them through the provider's scalar base64 wire shape without
+exposing opaque reasoning as visible text.
 Qwen Token Plan now exposes Qwen3.8 Max under its generally available model ID
 across both regional routes while preserving supported reasoning levels and
 keeping Qwen3.7 Max toggle-only. A distinct Individual subscription route adds
@@ -315,6 +318,11 @@ selection remains available through existing provider-specific controls.
   only from outbound replayed tool inputs. Provider-emitted tool arguments,
   caller-owned messages, arrays, scalar values, `null`, and non-empty keys
   remain unchanged.
+- Amazon Bedrock Converse Stream now decodes scalar base64 `redactedContent`
+  deltas, joins their underlying bytes into one opaque redacted thinking block,
+  and replays that blob before associated text or tool use. Invalid persisted
+  blobs are omitted with their valid sibling content preserved, while malformed
+  provider deltas remain typed provider failures with partial output intact.
 - Qwen Token Plan now replaces the retired Qwen3.8 Max Preview ID with
   Qwen3.8 Max while preserving supported reasoning levels through native
   `reasoning_effort` controls on the international and China routes. Qwen3.7

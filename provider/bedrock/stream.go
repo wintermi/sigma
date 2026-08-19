@@ -7,6 +7,7 @@ package bedrock
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"sort"
 
@@ -69,6 +70,7 @@ type converseStreamParser struct {
 	nextBlock           int
 	text                map[int]*streamblocks.Text
 	thinking            map[int]*streamblocks.Thinking
+	redactedThinking    map[int][]byte
 	toolCalls           map[int]*streamblocks.ToolCall
 	responseFormatTools map[int]struct{}
 	usage               *sigma.Usage
@@ -83,6 +85,7 @@ func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigm
 		model:               model,
 		text:                make(map[int]*streamblocks.Text),
 		thinking:            make(map[int]*streamblocks.Thinking),
+		redactedThinking:    make(map[int][]byte),
 		toolCalls:           make(map[int]*streamblocks.ToolCall),
 		responseFormatTools: make(map[int]struct{}),
 		final: sigma.AssistantMessage{
@@ -147,8 +150,10 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 		}
 		return nil
 	case ConverseEventContentBlockStop:
+		p.finalizeRedactedThinking(event.ContentBlockIndex)
 		return nil
 	case ConverseEventMessageStop:
+		p.finalizeAllRedactedThinking()
 		p.messageStopped = true
 		if event.StopReason != "" {
 			p.rawStopReason = event.StopReason
@@ -204,14 +209,26 @@ func (p *converseStreamParser) emitText(ctx context.Context, index int, delta st
 }
 
 func (p *converseStreamParser) emitThinking(ctx context.Context, index int, event ConverseEvent) error {
+	if event.RedactedThinking != "" {
+		chunk, err := decodeBedrockBlob(event.RedactedThinking)
+		if err != nil {
+			delete(p.thinking, index)
+			delete(p.redactedThinking, index)
+			return providerError(p.model, fmt.Errorf("bedrock converse stream: decode redacted reasoning: %w", err))
+		}
+		state := p.thinkingState(index)
+		state.Set("")
+		state.Signature = ""
+		state.Redacted = true
+		p.redactedThinking[index] = append(p.redactedThinking[index], chunk...)
+		return nil
+	}
 	state := p.thinkingState(index)
+	if state.Redacted {
+		return nil
+	}
 	if event.ThinkingSignature != "" {
 		state.Signature += event.ThinkingSignature
-	}
-	if event.RedactedThinking != "" {
-		state.ProviderSignature = event.RedactedThinking
-		state.Redacted = true
-		return nil
 	}
 	if !state.Started {
 		if err := p.writer.Emit(ctx, sigma.Event{
@@ -277,6 +294,7 @@ func (p *converseStreamParser) isResponseFormatTool(index int) bool {
 }
 
 func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMessage {
+	p.finalizeAllRedactedThinking()
 	contentByIndex := make(map[int]sigma.ContentBlock)
 	for _, state := range p.sortedText() {
 		contentByIndex[state.ContentIndex] = sigma.Text(state.String())
@@ -348,6 +366,23 @@ func (p *converseStreamParser) finalize(ctx context.Context) sigma.AssistantMess
 		p.final.ProviderMetadata["stopReason"] = p.rawStopReason
 	}
 	return p.final
+}
+
+func (p *converseStreamParser) finalizeRedactedThinking(index int) {
+	redacted := p.redactedThinking[index]
+	if len(redacted) == 0 {
+		return
+	}
+	if state := p.thinking[index]; state != nil && state.Redacted {
+		state.ProviderSignature = base64.StdEncoding.EncodeToString(redacted)
+	}
+	delete(p.redactedThinking, index)
+}
+
+func (p *converseStreamParser) finalizeAllRedactedThinking() {
+	for index := range p.redactedThinking {
+		p.finalizeRedactedThinking(index)
+	}
 }
 
 func (p *converseStreamParser) textState(index int) *streamblocks.Text {

@@ -639,7 +639,7 @@ func awsReasoningBlock(reasoning *ConverseReasoningBlock) map[string]any {
 	}
 	if reasoning.Redacted {
 		return map[string]any{"reasoningContent": map[string]any{
-			"redactedContent": map[string]any{"data": reasoning.ProviderSignature},
+			"redactedContent": reasoning.ProviderSignature,
 		}}
 	}
 	return map[string]any{"reasoningContent": map[string]any{
@@ -859,8 +859,8 @@ func deltaEvent(payload map[string]any) ConverseEvent {
 			converted.ThinkingDelta = stringValue(wrapped, "text")
 			converted.ThinkingSignature = stringValue(wrapped, "signature")
 		}
-		if redacted, ok := reasoning["redactedContent"].(map[string]any); ok {
-			converted.RedactedThinking = stringValue(redacted, "data")
+		if redacted, ok := reasoning["redactedContent"].(string); ok {
+			converted.RedactedThinking = redacted
 		}
 	}
 	return converted

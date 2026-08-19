@@ -8,6 +8,7 @@ package bedrock
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -1879,17 +1880,170 @@ func TestConverseEventFromFrameParsesExceptionType(t *testing.T) {
 	}
 }
 
+func TestHTTPConverseStreamDecodesScalarRedactedReasoning(t *testing.T) {
+	t.Parallel()
+
+	want := base64.StdEncoding.EncodeToString([]byte("encrypted reasoning"))
+	frame := bedrockEventStreamFrame("contentBlockDelta", []byte(`{"contentBlockIndex":0,"delta":{"reasoningContent":{"redactedContent":"`+want+`"}}}`))
+	stream := newHTTPConverseStream(io.NopCloser(bytes.NewReader(frame)), "", "")
+	events := readConverseEvents(stream)
+
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1", len(events))
+	}
+	if got := events[0].RedactedThinking; got != want {
+		t.Fatalf("redacted thinking = %q, want %q", got, want)
+	}
+}
+
 func TestAWSReasoningBlockUsesRedactedContent(t *testing.T) {
 	t.Parallel()
 
-	block := awsReasoningBlock(&ConverseReasoningBlock{Redacted: true, ProviderSignature: "opaque"})
+	want := base64.StdEncoding.EncodeToString([]byte("opaque"))
+	block := awsReasoningBlock(&ConverseReasoningBlock{Redacted: true, ProviderSignature: want})
 	reasoning := block["reasoningContent"].(map[string]any)
-	redacted := reasoning["redactedContent"].(map[string]any)
-	if got, want := redacted["data"], "opaque"; got != want {
-		t.Fatalf("redacted data = %v, want %q", got, want)
+	if got := reasoning["redactedContent"]; got != want {
+		t.Fatalf("redacted content = %v, want %q", got, want)
 	}
 	if _, ok := reasoning["redactedReasoning"]; ok {
 		t.Fatalf("redactedReasoning was sent: %#v", reasoning)
+	}
+}
+
+func TestAWSContentBlocksReplayRedactedReasoningBeforeToolUse(t *testing.T) {
+	t.Parallel()
+
+	want := base64.StdEncoding.EncodeToString([]byte("opaque encrypted reasoning"))
+	redacted := sigma.Thinking("", "")
+	redacted.Redacted = true
+	redacted.ProviderSignature = want
+	content, err := converseAssistantContent([]sigma.ContentBlock{
+		redacted,
+		sigma.ToolCallBlock("tool-1", "read", map[string]any{"path": "/tmp/a.txt"}),
+	})
+	if err != nil {
+		t.Fatalf("converseAssistantContent returned error: %v", err)
+	}
+	wire, err := awsContentBlocks(content)
+	if err != nil {
+		t.Fatalf("awsContentBlocks returned error: %v", err)
+	}
+	if len(wire) != 2 {
+		t.Fatalf("wire block count = %d, want 2", len(wire))
+	}
+	reasoning := wire[0]["reasoningContent"].(map[string]any)
+	if got := reasoning["redactedContent"]; got != want {
+		t.Fatalf("redacted content = %v, want %q", got, want)
+	}
+	tool := wire[1]["toolUse"].(map[string]any)
+	if got, want := tool["toolUseId"], "tool-1"; got != want {
+		t.Fatalf("tool use ID = %v, want %q", got, want)
+	}
+}
+
+func TestConverseAssistantContentDropsInvalidRedactedReasoning(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		signature string
+	}{
+		{name: "empty"},
+		{name: "malformed", signature: "not base64"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			redacted := sigma.Thinking("", "")
+			redacted.Redacted = true
+			redacted.ProviderSignature = tt.signature
+			content, err := converseAssistantContent([]sigma.ContentBlock{redacted, sigma.Text("answer")})
+			if err != nil {
+				t.Fatalf("converseAssistantContent returned error: %v", err)
+			}
+			if len(content) != 1 || content[0].Type != converseBlockText || content[0].Text != "answer" {
+				t.Fatalf("content = %#v, want only valid text sibling", content)
+			}
+		})
+	}
+}
+
+func TestStreamingCombinesRedactedReasoningWithoutVisibleEvents(t *testing.T) {
+	t.Parallel()
+
+	redacted := []byte("opaque encrypted reasoning")
+	stream := fakeStream(
+		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, RedactedThinking: base64.StdEncoding.EncodeToString(redacted[:7])},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, RedactedThinking: base64.StdEncoding.EncodeToString(redacted[7:])},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, TextDelta: "done"},
+		ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "end_turn"},
+	)
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	client := bedrockTestClient(t, model.Provider, model, &fakeConverseClient{stream: stream}, fakeCredentialDetector{})
+
+	sigmaStream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	events := collectEvents(t, sigmaStream)
+	if err := sigmaStream.Err(); err != nil {
+		t.Fatalf("stream error = %v", err)
+	}
+	final, ok := sigmaStream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if got, want := eventKinds(events), []sigma.EventKind{
+		sigma.EventKindStart,
+		sigma.EventKindTextStart,
+		sigma.EventKindTextDelta,
+		sigma.EventKindTextEnd,
+		sigma.EventKindDone,
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("event kinds = %v, want %v", got, want)
+	}
+	if len(final.Content) != 2 {
+		t.Fatalf("final content count = %d, want 2", len(final.Content))
+	}
+	thinking := final.Content[0]
+	if thinking.Type != sigma.ContentBlockThinking || !thinking.Redacted || thinking.ThinkingText != "" || thinking.Signature != "" {
+		t.Fatalf("redacted thinking = %#v, want opaque redacted block", thinking)
+	}
+	if got, want := thinking.ProviderSignature, base64.StdEncoding.EncodeToString(redacted); got != want {
+		t.Fatalf("provider signature = %q, want %q", got, want)
+	}
+	if got, want := final.Content[1].Text, "done"; got != want {
+		t.Fatalf("final text = %q, want %q", got, want)
+	}
+}
+
+func TestStreamingRejectsMalformedRedactedReasoning(t *testing.T) {
+	t.Parallel()
+
+	stream := fakeStream(
+		ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, TextDelta: "partial"},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, RedactedThinking: base64.StdEncoding.EncodeToString([]byte("incomplete"))},
+		ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 1, RedactedThinking: "not base64"},
+	)
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	client := bedrockTestClient(t, model.Provider, model, &fakeConverseClient{stream: stream}, fakeCredentialDetector{})
+
+	sigmaStream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	_ = collectEvents(t, sigmaStream)
+	if !errors.Is(sigmaStream.Err(), sigma.ErrProviderResponse) {
+		t.Fatalf("stream error = %v, want ErrProviderResponse", sigmaStream.Err())
+	}
+	final, ok := sigmaStream.Final()
+	if !ok {
+		t.Fatal("stream final was not recorded")
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("final content = %#v, want retained partial text only", final.Content)
+	}
+	if len(final.Diagnostics) != 1 {
+		t.Fatalf("final diagnostics = %#v, want one provider diagnostic", final.Diagnostics)
 	}
 }
 

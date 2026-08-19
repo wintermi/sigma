@@ -496,10 +496,18 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 			if strings.TrimSpace(thinkingText) == "" && !block.Redacted {
 				continue
 			}
+			providerSignature := firstNonEmpty(block.ProviderSignature, block.Signature)
+			if block.Redacted {
+				redactedContent, err := decodeBedrockBlob(providerSignature)
+				if err != nil || len(redactedContent) == 0 {
+					continue
+				}
+				providerSignature = base64.StdEncoding.EncodeToString(redactedContent)
+			}
 			reasoning := &ConverseReasoningBlock{
 				Text:              thinkingText,
 				Signature:         block.Signature,
-				ProviderSignature: firstNonEmpty(block.ProviderSignature, block.Signature),
+				ProviderSignature: providerSignature,
 				Redacted:          block.Redacted,
 			}
 			content = append(content, ConverseContentBlock{Type: converseBlockReasoning, Reasoning: reasoning})
@@ -557,6 +565,18 @@ func converseImage(block sigma.ContentBlock) (*ConverseImageBlock, error) {
 		return nil, fmt.Errorf("bedrock converse stream: unsupported image MIME type %q", block.MIMEType)
 	}
 	return &ConverseImageBlock{Format: format, Data: block.Data}, nil
+}
+
+func decodeBedrockBlob(value string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err == nil {
+		return decoded, nil
+	}
+	decoded, rawErr := base64.RawStdEncoding.DecodeString(value)
+	if rawErr == nil {
+		return decoded, nil
+	}
+	return nil, err
 }
 
 func converseTools(model sigma.Model, tools []sigma.Tool) ([]ConverseTool, error) {

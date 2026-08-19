@@ -878,8 +878,8 @@ should still come through the catalog refresh workflow.
 - [x] Preserve the requested model and AWS request ID from successful HTTP
       responses in mid-stream Converse service-exception diagnostics without
       changing provider error or retry classification.
-- [x] Harden Bedrock Claude replay compatibility for split reasoning
-      signatures, redacted reasoning content, event-stream exception
+- [x] Harden Bedrock replay compatibility for split reasoning signatures,
+      scalar base64 redacted-reasoning deltas and replay, event-stream exception
       classification, and Claude 5-family thinking/cache predicates.
 - [x] Treat unrecognised Bedrock Converse terminal stop reasons as typed
       provider errors instead of successful unknown completions.

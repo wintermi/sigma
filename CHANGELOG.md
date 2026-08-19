@@ -89,6 +89,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Amazon Bedrock Converse Stream now preserves scalar base64
+  `redactedContent` reasoning across split stream deltas and subsequent replay,
+  while omitting invalid persisted blobs instead of sending malformed history.
 - Xiaomi's direct and regional Token Plan catalogs no longer advertise the
   retired `mimo-v2-flash`, `mimo-v2-omni`, or `mimo-v2-pro` model IDs, while
   retaining the supported V2.5 lineup.
