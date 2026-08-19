@@ -308,6 +308,9 @@ work until their API boundaries are explicit.
       `finishReason`, and Bedrock `stopReason` values in assistant provider
       metadata without changing normalized stop reasons or provider error
       behavior.
+- [x] Preserve explicit Google and Vertex max-token, provider-error, and unknown
+      finish reasons when responses also contain function calls, promoting only
+      normal `STOP` responses to tool-call completion.
 - [x] Preserve non-empty Anthropic refusal `stop_details` in opaque assistant
       provider metadata while retaining content-filter normalization and raw
       stop-reason diagnostics.

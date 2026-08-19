@@ -9,10 +9,14 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 `sigma` v0.8.0 begins by tightening native Gemini 3 replay compatibility across
 Google Generative AI and Vertex AI so function calls and matching tool results
-retain stable normalized IDs. Amazon Bedrock Converse Stream service exceptions
-also retain their requested model and AWS request ID for diagnostic correlation.
+retain stable normalized IDs. Google and Vertex streams now also preserve
+explicit max-token, provider-error, and unknown finish reasons when a response
+contains function calls, so only a normal `STOP` is promoted to tool-call
+completion.
 Google and Vertex replay now also retain blank signature-only text and thinking
 parts only when the signature is valid for the same provider, API, and model.
+Amazon Bedrock Converse Stream service exceptions also retain their requested
+model and AWS request ID for diagnostic correlation.
 Replayed Bedrock tool inputs now remove provider-rejected empty object-member
 names without altering stored or streamed tool arguments.
 Bedrock Converse also preserves encrypted reasoning blobs across split stream
@@ -311,6 +315,11 @@ selection remains available through existing provider-specific controls.
 - Google Generative AI and native Vertex Gemini 3 requests now preserve
   normalized tool-call IDs on replayed function calls and matching tool
   results. Older Vertex Gemini requests continue omitting unsupported IDs.
+- Google Generative AI and Vertex responses containing function calls now map
+  only an explicit `STOP` to `StopReasonToolCalls`. Max-token, provider-error,
+  and unknown finish reasons retain their normalized stop reason, while the
+  function call, usage, cost, terminal event, and raw `finishReason` remain
+  available. Request payloads and defaults are unchanged.
 - Amazon Bedrock Converse Stream service exceptions now retain the requested
   model and AWS request ID in typed provider errors and assistant diagnostics
   while preserving existing stop reasons and retry classification.

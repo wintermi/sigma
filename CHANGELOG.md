@@ -89,6 +89,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Google Generative AI and Vertex streams no longer convert explicit
+  max-token, provider-error, or unknown finish reasons into successful tool-call
+  stops merely because the response also contains a function call. Tool calls,
+  usage, cost, and raw finish-reason diagnostics remain available.
 - Amazon Bedrock Converse Stream now preserves scalar base64
   `redactedContent` reasoning across split stream deltas and subsequent replay,
   while omitting invalid persisted blobs instead of sending malformed history.

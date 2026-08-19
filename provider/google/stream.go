@@ -325,7 +325,7 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 			p.final.Content = append(p.final.Content, state.contentBlock())
 		}
 	}
-	if p.hasToolCalls() && (p.stopReason == "" || p.stopReason == sigma.StopReasonEndTurn || p.stopReason == sigma.StopReasonUnknown) {
+	if p.hasToolCalls() && p.stopReason == sigma.StopReasonEndTurn {
 		p.final.StopReason = sigma.StopReasonToolCalls
 	} else if p.stopReason != "" {
 		p.final.StopReason = p.stopReason

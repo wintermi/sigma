@@ -729,6 +729,82 @@ func TestVertexStreamingReusesGoogleParser(t *testing.T) {
 	}
 }
 
+func TestVertexFunctionCallsRespectExplicitFinishReasons(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		finishReason string
+		want         sigma.StopReason
+	}{
+		{finishReason: "STOP", want: sigma.StopReasonToolCalls},
+		{finishReason: "MAX_TOKENS", want: sigma.StopReasonMaxTokens},
+		{finishReason: "MALFORMED_FUNCTION_CALL", want: sigma.StopReasonError},
+		{finishReason: "FUTURE_REASON", want: sigma.StopReasonUnknown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.finishReason, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				writeVertexSSE(t, w, `data: {"responseId":"resp_vertex_tool_stop","candidates":[{"content":{"role":"model","parts":[{"functionCall":{"id":"call_weather","name":"weather","args":{"city":"Melbourne"}}}]},"finishReason":"`+tt.finishReason+`"}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":6,"totalTokenCount":11}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			client, model := vertexTestClient(t,
+				WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "us-central1"}),
+				WithVertexBaseURL(server.URL+"/v1"),
+			)
+			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("weather")}})
+			events := collectVertexEvents(t, stream)
+			if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			final, ok := stream.Final()
+			if !ok {
+				t.Fatal("stream final was not recorded")
+			}
+			assertVertexToolStopFinal(t, final, tt.finishReason, tt.want)
+
+			terminal := events[len(events)-1]
+			if terminal.Kind != sigma.EventKindDone || terminal.StopReason != tt.want {
+				t.Fatalf("terminal event = %#v, want done with stop reason %q", terminal, tt.want)
+			}
+			if terminal.FinalMessage == nil {
+				t.Fatal("terminal final message was nil")
+			}
+			assertVertexToolStopFinal(t, *terminal.FinalMessage, tt.finishReason, tt.want)
+		})
+	}
+}
+
+func assertVertexToolStopFinal(t *testing.T, final sigma.AssistantMessage, rawReason string, want sigma.StopReason) {
+	t.Helper()
+
+	if final.StopReason != want {
+		t.Fatalf("stop reason = %q, want %q", final.StopReason, want)
+	}
+	if got := final.ProviderMetadata["finishReason"]; got != rawReason {
+		t.Fatalf("raw finish reason = %v, want %q", got, rawReason)
+	}
+	if len(final.Content) != 1 || final.Content[0].Type != sigma.ContentBlockToolCall {
+		t.Fatalf("content = %#v, want one tool call", final.Content)
+	}
+	if got, want := final.Content[0].ToolCallID, "call_weather"; got != want {
+		t.Fatalf("tool call id = %q, want %q", got, want)
+	}
+	arguments, ok := final.Content[0].ToolArguments.(map[string]any)
+	if !ok || arguments["city"] != "Melbourne" {
+		t.Fatalf("tool arguments = %#v, want Melbourne city", final.Content[0].ToolArguments)
+	}
+	if final.Usage == nil || final.Usage.TotalTokens != 11 {
+		t.Fatalf("usage = %#v, want 11 total tokens", final.Usage)
+	}
+	if final.Cost == nil {
+		t.Fatal("cost was nil")
+	}
+}
+
 func TestVertexProviderErrorIsTypedAndRedacted(t *testing.T) {
 	t.Parallel()
 
