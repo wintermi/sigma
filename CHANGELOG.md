@@ -12,6 +12,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Direct Anthropic Claude Fable 5 and Opus 5 requests can now opt into
+  catalog-declared server-side refusal fallbacks through
+  `AnthropicOptions.EnableRefusalFallbacks`. Defaults remain unchanged, while
+  declared fallback responses report usage and estimated cost against the
+  returned model's generated pricing.
 - `WithToolChoice` now provides provider-neutral automatic or disabled tool
   selection across built-in text providers while retaining provider-specific
   controls for required and named-tool selection.

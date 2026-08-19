@@ -471,7 +471,7 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 		p.final.StopReason = sigma.StopReasonEndTurn
 	}
 	if p.usage != nil {
-		usage, cost := sigma.AccountUsage(p.model, *p.usage)
+		usage, cost := sigma.AccountUsage(p.usageModel(), *p.usage)
 		p.final.Usage = &usage
 		p.final.Cost = &cost
 	}
@@ -769,8 +769,29 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {
 		usage.CacheWriteInputTokens = update.CacheCreation.Ephemeral5mInputTokens + update.CacheCreation.Ephemeral1hInputTokens
 	}
-	usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*update))
+	usage, _ = sigma.AccountUsage(p.usageModel(), usage, sigma.WithRawUsage(*update))
 	p.usage = &usage
+}
+
+func (p *streamParser) usageModel() sigma.Model {
+	if p.providerModel == "" || p.providerModel == string(p.model.ID) || p.model.AnthropicMessagesCompat == nil {
+		return p.model
+	}
+	for _, fallback := range p.model.AnthropicMessagesCompat.AllowedFallbackModels {
+		if p.providerModel != string(fallback.Model) {
+			continue
+		}
+		model := p.model
+		model.ID = fallback.Model
+		model.InputCostPerMillion = fallback.InputCostPerMillion
+		model.OutputCostPerMillion = fallback.OutputCostPerMillion
+		model.CacheReadInputCostPerMillion = fallback.CacheReadInputCostPerMillion
+		model.CacheWriteInputCostPerMillion = fallback.CacheWriteInputCostPerMillion
+		model.CostTiers = fallback.CostTiers
+		model.CostCurrency = fallback.CostCurrency
+		return model
+	}
+	return p.model
 }
 
 func (p *streamParser) setMetadata(key string, value any) {

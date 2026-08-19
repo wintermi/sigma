@@ -305,6 +305,13 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if fable.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported {
 		t.Fatalf("Claude Fable 5 disabled thinking = %q, want unsupported", fable.AnthropicMessagesCompat.SupportsDisabledThinking)
 	}
+	if got := fable.AnthropicMessagesCompat.AllowedFallbackModels; len(got) != 2 ||
+		got[0].Model != "claude-opus-4-8" || got[1].Model != "claude-opus-5" ||
+		got[0].InputCostPerMillion != 5 || got[0].OutputCostPerMillion != 25 ||
+		got[1].InputCostPerMillion != 5 || got[1].OutputCostPerMillion != 25 ||
+		got[0].CostCurrency != "USD" || got[1].CostCurrency != "USD" {
+		t.Fatalf("Claude Fable 5 fallback metadata = %#v, want ordered Opus 4.8/5 pricing", got)
+	}
 	if got, ok := fable.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
 		t.Fatalf("Claude Fable 5 xhigh level = %q, %v; want xhigh, true", got, ok)
 	}
@@ -336,6 +343,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		opus5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
 		opus5.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
 		t.Fatalf("Claude Opus 5 compat = %#v, want adaptive thinking without temperature", opus5.AnthropicMessagesCompat)
+	}
+	if got := opus5.AnthropicMessagesCompat.AllowedFallbackModels; len(got) != 1 ||
+		got[0].Model != "claude-opus-4-8" || got[0].InputCostPerMillion != 5 ||
+		got[0].OutputCostPerMillion != 25 || got[0].CostCurrency != "USD" {
+		t.Fatalf("Claude Opus 5 fallback metadata = %#v, want Opus 4.8 pricing", got)
 	}
 	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
 		if got, ok := opus5.ProviderThinkingLevel(level); !ok || got != want {

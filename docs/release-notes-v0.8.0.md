@@ -39,7 +39,11 @@ long-context pricing, and reasoning controls through `xhigh`.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output. Refusal
 stops now also retain non-empty structured provider details for callers that
-need the refusal category or explanation.
+need the refusal category or explanation. Direct Claude Fable 5 and Opus 5
+requests can additionally opt into catalog-declared server-side refusal
+fallbacks without changing default requests; known fallback responses retain
+the requested model identity while reporting usage and estimated cost against
+the returned model.
 In-progress text streams now identify every partial assistant snapshot as
 pending, beginning with an empty snapshot on the initial start event.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -92,6 +96,14 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- `AnthropicOptions.EnableRefusalFallbacks` enables direct Anthropic
+  server-side refusal fallback only for models with generated allowed-target
+  metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets, while
+  Claude Opus 5 uses Opus 4.8. Disabled requests omit both the fallback payload
+  and beta header; unsupported opt-ins fail before dispatch. Provider-reported
+  declared fallback models drive usage identity and estimated pricing, while
+  unknown returned model IDs remain diagnostic and retain requested-model
+  accounting.
 - `WithToolChoice` accepts `ToolChoiceAuto` or `ToolChoiceNone` across OpenAI
   Chat Completions, Responses, Azure Responses, Codex Responses, Anthropic
   Messages, Google Gemini and Vertex, Mistral Conversations, and Bedrock

@@ -4084,7 +4084,11 @@
         "supportsCacheControlOnTools": "supported",
         "supportsDisabledThinking": "unsupported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported"
+        "supportsToolReferences": "supported",
+        "allowedFallbackModels": [
+          "claude-opus-4-8",
+          "claude-opus-5"
+        ]
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -4883,7 +4887,10 @@
         "supportsCacheControlOnTools": "supported",
         "supportsTemperature": "unsupported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported"
+        "supportsToolReferences": "supported",
+        "allowedFallbackModels": [
+          "claude-opus-4-8"
+        ]
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",

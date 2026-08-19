@@ -118,12 +118,16 @@ func runGenerateModels(args []string, stdout io.Writer, stderr io.Writer) error 
 
 func renderTextModels(catalog modeldata.Catalog) []byte {
 	var b bytes.Buffer
+	modelsByKey := make(map[string]modeldata.TextModel, len(catalog.TextModels))
+	for _, model := range catalog.TextModels {
+		modelsByKey[catalogDiffKey(model.Provider, model.API, model.ID)] = model
+	}
 	b.WriteString(generatedHeader)
 	writeSnapshotComment(&b, catalog)
 	b.WriteString("package sigma\n\n")
 	b.WriteString("var builtinTextModels = []Model{\n")
 	for _, model := range catalog.TextModels {
-		writeTextModel(&b, model)
+		writeTextModel(&b, model, modelsByKey)
 	}
 	b.WriteString("}\n\n")
 	b.WriteString("func registerBuiltinTextModels(registry *Registry) error {\n")
@@ -475,7 +479,7 @@ func writeSnapshotComment(b *bytes.Buffer, catalog modeldata.Catalog) {
 	b.WriteByte('\n')
 }
 
-func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
+func writeTextModel(b *bytes.Buffer, model modeldata.TextModel, modelsByKey map[string]modeldata.TextModel) {
 	b.WriteString("\t{\n")
 	writeStringField(b, "ID", "ModelID", model.ID)
 	writeStringField(b, "Provider", "ProviderID", model.Provider)
@@ -497,7 +501,7 @@ func writeTextModel(b *bytes.Buffer, model modeldata.TextModel) {
 	writeStringField(b, "CostCurrency", "", model.Cost.Currency)
 	writeStringField(b, "DefaultTransport", "Transport", model.DefaultTransport)
 	writeOpenAICompatField(b, model.OpenAICompletionsCompat)
-	writeAnthropicCompatField(b, model.AnthropicMessagesCompat)
+	writeAnthropicCompatField(b, model, modelsByKey)
 	writeOpenAIResponsesCompatField(b, model.OpenAIResponsesCompat)
 	writeAzureField(b, model.AzureOpenAIResponses)
 	writeCodexField(b, model.OpenAICodexResponses)
@@ -596,7 +600,8 @@ func writeOpenAICompatField(b *bytes.Buffer, compat *modeldata.OpenAICompletions
 	b.WriteString("\t\t},\n")
 }
 
-func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessagesCompat) {
+func writeAnthropicCompatField(b *bytes.Buffer, model modeldata.TextModel, modelsByKey map[string]modeldata.TextModel) {
+	compat := model.AnthropicMessagesCompat
 	if compat == nil {
 		return
 	}
@@ -611,7 +616,55 @@ func writeAnthropicCompatField(b *bytes.Buffer, compat *modeldata.AnthropicMessa
 	writeStringField(b, "SupportsStrictTools", "AnthropicCompatSupport", compat.SupportsStrictTools)
 	writeStringField(b, "SupportsToolReferences", "AnthropicCompatSupport", compat.SupportsToolReferences)
 	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
+	if len(compat.AllowedFallbackModels) > 0 {
+		b.WriteString("\t\t\tAllowedFallbackModels: []AnthropicFallbackModel{\n")
+		for _, modelID := range compat.AllowedFallbackModels {
+			fallback := modelsByKey[catalogDiffKey(model.Provider, model.API, modelID)]
+			b.WriteString("\t\t\t\t{\n")
+			fmt.Fprintf(b, "\t\t\t\t\tModel: ModelID(%s),\n", strconv.Quote(modelID))
+			writeAnthropicFallbackCost(b, fallback.Cost)
+			b.WriteString("\t\t\t\t},\n")
+		}
+		b.WriteString("\t\t\t},\n")
+	}
 	b.WriteString("\t\t},\n")
+}
+
+func writeAnthropicFallbackCost(b *bytes.Buffer, cost modeldata.Cost) {
+	writeIndentedFloatField(b, 5, "InputCostPerMillion", cost.InputPerMillion)
+	writeIndentedFloatField(b, 5, "OutputCostPerMillion", cost.OutputPerMillion)
+	writeIndentedFloatField(b, 5, "CacheReadInputCostPerMillion", cost.CacheReadInputPerMillion)
+	writeIndentedFloatField(b, 5, "CacheWriteInputCostPerMillion", cost.CacheWriteInputPerMillion)
+	if len(cost.Tiers) > 0 {
+		b.WriteString("\t\t\t\t\tCostTiers: []ModelCostTier{\n")
+		for _, tier := range cost.Tiers {
+			b.WriteString("\t\t\t\t\t\t{\n")
+			writeIndentedIntField(b, 7, "InputTokensAbove", tier.InputTokensAbove)
+			writeIndentedFloatField(b, 7, "InputCostPerMillion", tier.InputPerMillion)
+			writeIndentedFloatField(b, 7, "OutputCostPerMillion", tier.OutputPerMillion)
+			writeIndentedFloatField(b, 7, "CacheReadInputCostPerMillion", tier.CacheReadInputPerMillion)
+			writeIndentedFloatField(b, 7, "CacheWriteInputCostPerMillion", tier.CacheWriteInputPerMillion)
+			b.WriteString("\t\t\t\t\t\t},\n")
+		}
+		b.WriteString("\t\t\t\t\t},\n")
+	}
+	if cost.Currency != "" {
+		fmt.Fprintf(b, "\t\t\t\t\tCostCurrency: %s,\n", strconv.Quote(cost.Currency))
+	}
+}
+
+func writeIndentedIntField(b *bytes.Buffer, tabs int, field string, value int) {
+	if value == 0 {
+		return
+	}
+	fmt.Fprintf(b, "%s%s: %d,\n", strings.Repeat("\t", tabs), field, value)
+}
+
+func writeIndentedFloatField(b *bytes.Buffer, tabs int, field string, value float64) {
+	if value == 0 {
+		return
+	}
+	fmt.Fprintf(b, "%s%s: %s,\n", strings.Repeat("\t", tabs), field, formatFloat(value))
 }
 
 func writeOpenAIResponsesCompatField(b *bytes.Buffer, compat *modeldata.OpenAIResponsesCompat) {

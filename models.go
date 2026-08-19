@@ -439,6 +439,13 @@ func cloneAnthropicMessagesCompat(compat *AnthropicMessagesCompat) *AnthropicMes
 		return nil
 	}
 	copied := *compat
+	copied.AllowedFallbackModels = append([]AnthropicFallbackModel(nil), compat.AllowedFallbackModels...)
+	for index := range copied.AllowedFallbackModels {
+		copied.AllowedFallbackModels[index].CostTiers = append(
+			[]ModelCostTier(nil),
+			compat.AllowedFallbackModels[index].CostTiers...,
+		)
+	}
 	return &copied
 }
 

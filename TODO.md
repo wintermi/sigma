@@ -308,6 +308,10 @@ work until their API boundaries are explicit.
 - [x] Preserve non-empty Anthropic refusal `stop_details` in opaque assistant
       provider metadata while retaining content-filter normalization and raw
       stop-reason diagnostics.
+- [x] Add disabled-by-default direct Anthropic server-side refusal fallbacks
+      for catalog-declared Fable 5 and Opus 5 targets, preserving requested
+      model identity while accounting known returned models with their own
+      generated pricing.
 - [x] Preserve Anthropic hosted server-tool metadata, citations,
       context-management metadata, container metadata, and thinking-token usage
       details through deterministic stream parsing.

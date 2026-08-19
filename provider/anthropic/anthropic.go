@@ -28,6 +28,7 @@ const (
 	defaultVersion               = "2023-06-01"
 	fineGrainedToolStreamingBeta = "fine-grained-tool-streaming-2025-05-14"
 	interleavedThinkingBeta      = "interleaved-thinking-2025-05-14"
+	serverSideFallbackBeta       = "server-side-fallback-2026-07-01"
 	defaultSessionAffinityHeader = "x-session-affinity"
 )
 
@@ -491,6 +492,9 @@ func anthropicBeta(model sigma.Model, opts sigma.Options, compat messagesCompat,
 	}
 	if anthropicInterleavedThinking(opts) && thinkingRequested(opts) && thinkingFormat(model, compat) != sigma.AnthropicThinkingAdaptive {
 		betas = appendBetas(betas, interleavedThinkingBeta)
+	}
+	if opts.AnthropicOptions != nil && opts.AnthropicOptions.EnableRefusalFallbacks {
+		betas = appendBetas(betas, serverSideFallbackBeta)
 	}
 	return strings.Join(betas, ",")
 }

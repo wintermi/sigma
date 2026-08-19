@@ -151,16 +151,17 @@ type OpenAICompletionsCompat struct {
 
 // AnthropicMessagesCompat mirrors sigma.AnthropicMessagesCompat.
 type AnthropicMessagesCompat struct {
-	SupportsEagerToolInputStreaming string `json:"supportsEagerToolInputStreaming,omitempty"`
-	SupportsLongCacheRetention      string `json:"supportsLongCacheRetention,omitempty"`
-	SupportsSessionAffinity         string `json:"supportsSessionAffinity,omitempty"`
-	SupportsCacheControlOnTools     string `json:"supportsCacheControlOnTools,omitempty"`
-	SupportsEmptyThinkingSignature  string `json:"supportsEmptyThinkingSignature,omitempty"`
-	SupportsTemperature             string `json:"supportsTemperature,omitempty"`
-	SupportsDisabledThinking        string `json:"supportsDisabledThinking,omitempty"`
-	SupportsStrictTools             string `json:"supportsStrictTools,omitempty"`
-	SupportsToolReferences          string `json:"supportsToolReferences,omitempty"`
-	ThinkingFormat                  string `json:"thinkingFormat,omitempty"`
+	SupportsEagerToolInputStreaming string   `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsLongCacheRetention      string   `json:"supportsLongCacheRetention,omitempty"`
+	SupportsSessionAffinity         string   `json:"supportsSessionAffinity,omitempty"`
+	SupportsCacheControlOnTools     string   `json:"supportsCacheControlOnTools,omitempty"`
+	SupportsEmptyThinkingSignature  string   `json:"supportsEmptyThinkingSignature,omitempty"`
+	SupportsTemperature             string   `json:"supportsTemperature,omitempty"`
+	SupportsDisabledThinking        string   `json:"supportsDisabledThinking,omitempty"`
+	SupportsStrictTools             string   `json:"supportsStrictTools,omitempty"`
+	SupportsToolReferences          string   `json:"supportsToolReferences,omitempty"`
+	ThinkingFormat                  string   `json:"thinkingFormat,omitempty"`
+	AllowedFallbackModels           []string `json:"allowedFallbackModels,omitempty"`
 }
 
 // OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
@@ -314,6 +315,29 @@ func (c Catalog) Validate() error {
 			return fmt.Errorf("textModels[%d] %q: duplicate provider/api/id", i, model.ID)
 		}
 		seenText[key] = struct{}{}
+	}
+	for i, model := range c.TextModels {
+		if model.AnthropicMessagesCompat == nil {
+			continue
+		}
+		if len(model.AnthropicMessagesCompat.AllowedFallbackModels) > 0 &&
+			(model.Provider != "anthropic" || model.API != "anthropic-messages") {
+			return fmt.Errorf("textModels[%d] %q: anthropic fallback models require the direct anthropic messages route", i, model.ID)
+		}
+		seenFallbacks := make(map[string]struct{}, len(model.AnthropicMessagesCompat.AllowedFallbackModels))
+		for j, fallbackModel := range model.AnthropicMessagesCompat.AllowedFallbackModels {
+			if fallbackModel == model.ID {
+				return fmt.Errorf("textModels[%d] %q: anthropicMessagesCompat.allowedFallbackModels[%d] must differ from the requested model", i, model.ID, j)
+			}
+			if _, ok := seenFallbacks[fallbackModel]; ok {
+				return fmt.Errorf("textModels[%d] %q: anthropicMessagesCompat.allowedFallbackModels[%d] is duplicated", i, model.ID, j)
+			}
+			seenFallbacks[fallbackModel] = struct{}{}
+			key := model.Provider + "\x00" + model.API + "\x00" + fallbackModel
+			if _, ok := seenText[key]; !ok {
+				return fmt.Errorf("textModels[%d] %q: anthropicMessagesCompat.allowedFallbackModels[%d] %q is not a matching provider/API model", i, model.ID, j, fallbackModel)
+			}
+		}
 	}
 
 	seenImages := map[string]struct{}{}

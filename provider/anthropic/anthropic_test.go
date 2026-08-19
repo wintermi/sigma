@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -113,6 +114,131 @@ func TestCompleteSendsGoldenPayloadWithCacheThinkingImagesAndTools(t *testing.T)
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/rich_payload.json")
+}
+
+func TestCompleteSendsOptInRefusalFallbacks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		modelID   sigma.ModelID
+		fallbacks []sigma.AnthropicFallbackModel
+		want      []string
+	}{
+		{
+			name:    "fable",
+			modelID: "claude-fable-5",
+			fallbacks: []sigma.AnthropicFallbackModel{
+				{Model: "claude-opus-4-8", InputCostPerMillion: 5, OutputCostPerMillion: 25, CostCurrency: "USD"},
+				{Model: "claude-opus-5", InputCostPerMillion: 5, OutputCostPerMillion: 25, CostCurrency: "USD"},
+			},
+			want: []string{"claude-opus-4-8", "claude-opus-5"},
+		},
+		{
+			name:    "opus 5",
+			modelID: "claude-opus-5",
+			fallbacks: []sigma.AnthropicFallbackModel{
+				{Model: "claude-opus-4-8", InputCostPerMillion: 5, OutputCostPerMillion: 25, CostCurrency: "USD"},
+			},
+			want: []string{"claude-opus-4-8"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeMessagesSSE(t, w, completedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			model := anthropicTestModel(sigma.ProviderAnthropic)
+			model.ID = tt.modelID
+			model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{AllowedFallbackModels: tt.fallbacks}
+			client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+
+			if _, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAnthropicOptions(sigma.AnthropicOptions{EnableRefusalFallbacks: true}),
+				sigma.WithProviderOption(sigma.ProviderAnthropic, "anthropic_beta", "server-side-fallback-2026-07-01,test-beta"),
+			); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			request := receiveRequest(t, requests)
+			assertHeader(t, request.Headers, "Anthropic-Beta", "server-side-fallback-2026-07-01,test-beta")
+			payload := decodePayload(t, request.Body)
+			gotFallbacks := payload["fallbacks"].([]any)
+			if len(gotFallbacks) != len(tt.want) {
+				t.Fatalf("fallbacks = %#v, want %v", gotFallbacks, tt.want)
+			}
+			for index, want := range tt.want {
+				fallback := gotFallbacks[index].(map[string]any)
+				if !reflect.DeepEqual(fallback, map[string]any{"model": want}) {
+					t.Fatalf("fallback %d = %#v, want model-only %q", index, fallback, want)
+				}
+			}
+		})
+	}
+}
+
+func TestRefusalFallbacksAreDisabledByDefaultAndRequireEligibleDirectModel(t *testing.T) {
+	t.Parallel()
+
+	t.Run("disabled", func(t *testing.T) {
+		t.Parallel()
+
+		requests := make(chan capturedRequest, 1)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			captureRequest(t, requests, r)
+			writeMessagesSSE(t, w, completedEvent)
+		}))
+		t.Cleanup(server.Close)
+
+		model := anthropicTestModel(sigma.ProviderAnthropic)
+		model.ID = "claude-fable-5"
+		model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{AllowedFallbackModels: []sigma.AnthropicFallbackModel{{Model: "claude-opus-4-8"}}}
+		client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+		if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}); err != nil {
+			t.Fatalf("Complete returned error: %v", err)
+		}
+		request := receiveRequest(t, requests)
+		assertHeaderAbsent(t, request.Headers, "Anthropic-Beta")
+		if payload := decodePayload(t, request.Body); payload["fallbacks"] != nil {
+			t.Fatalf("disabled payload fallbacks = %#v, want omitted", payload["fallbacks"])
+		}
+	})
+
+	tests := []struct {
+		name     string
+		provider sigma.ProviderID
+		compat   *sigma.AnthropicMessagesCompat
+	}{
+		{name: "missing metadata", provider: sigma.ProviderAnthropic},
+		{name: "compatible router", provider: sigma.ProviderID("anthropic-compatible"), compat: &sigma.AnthropicMessagesCompat{AllowedFallbackModels: []sigma.AnthropicFallbackModel{{Model: "claude-opus-4-8"}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := anthropicTestModel(tt.provider)
+			model.AnthropicMessagesCompat = tt.compat
+			client := anthropicTestClient(t, tt.provider, model, "https://example.invalid")
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithAnthropicOptions(sigma.AnthropicOptions{EnableRefusalFallbacks: true}),
+			)
+			if !errors.Is(err, sigma.ErrInvalidOptions) {
+				t.Fatalf("Complete error = %v, want ErrInvalidOptions", err)
+			}
+		})
+	}
 }
 
 func TestAnthropicStrictToolSchemaUsesDerivedCopy(t *testing.T) {
@@ -2134,6 +2260,110 @@ data: {"type":"message_stop"}
 	}
 	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.ToolUseInputTokens != 5 {
 		t.Fatalf("terminal usage = %#v, want tool use tokens", events[len(events)-1].Usage)
+	}
+}
+
+func TestStreamingAccountsForDeclaredFallbackResponseModel(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		responseModel     string
+		wantResponseModel sigma.ModelID
+		wantUsageModel    sigma.ModelID
+		wantCost          float64
+	}{
+		{
+			name:           "requested model",
+			responseModel:  "claude-fable-5",
+			wantUsageModel: "claude-fable-5",
+			wantCost:       60.0 / 1_000_000,
+		},
+		{
+			name:              "declared fallback",
+			responseModel:     "claude-opus-4-8",
+			wantResponseModel: "claude-opus-4-8",
+			wantUsageModel:    "claude-opus-4-8",
+			wantCost:          30.0 / 1_000_000,
+		},
+		{
+			name:              "unknown returned model",
+			responseModel:     "claude-unknown",
+			wantResponseModel: "claude-unknown",
+			wantUsageModel:    "claude-fable-5",
+			wantCost:          60.0 / 1_000_000,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeMessagesSSE(t, w, fmt.Sprintf(`event: message_start
+data: {"type":"message_start","message":{"id":"msg_fallback","type":"message","role":"assistant","model":%q,"content":[],"usage":{"input_tokens":1,"output_tokens":0}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"ok"}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":1,"output_tokens":1}}
+
+event: message_stop
+data: {"type":"message_stop"}
+`, tt.responseModel))
+			}))
+			t.Cleanup(server.Close)
+
+			model := anthropicTestModel(sigma.ProviderAnthropic)
+			model.ID = "claude-fable-5"
+			model.InputCostPerMillion = 10
+			model.OutputCostPerMillion = 50
+			model.CostCurrency = "USD"
+			model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+				AllowedFallbackModels: []sigma.AnthropicFallbackModel{{
+					Model:                "claude-opus-4-8",
+					InputCostPerMillion:  5,
+					OutputCostPerMillion: 25,
+					CostCurrency:         "USD",
+				}},
+			}
+			client := anthropicTestClient(t, sigma.ProviderAnthropic, model, server.URL)
+
+			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			events := collectEvents(t, stream)
+			if err := stream.Err(); err != nil {
+				t.Fatalf("stream error = %v", err)
+			}
+			final, ok := stream.Final()
+			if !ok {
+				t.Fatal("stream final was not recorded")
+			}
+			if got := final.Model; got != model.ID {
+				t.Fatalf("final model = %q, want requested %q", got, model.ID)
+			}
+			if got := final.ResponseModel(); got != tt.wantResponseModel {
+				t.Fatalf("response model = %q, want %q", got, tt.wantResponseModel)
+			}
+			if final.StopReason != sigma.StopReasonEndTurn {
+				t.Fatalf("stop reason = %q, want end-turn", final.StopReason)
+			}
+			if final.Usage == nil || final.Usage.Model != tt.wantUsageModel {
+				t.Fatalf("final usage = %#v, want model %q", final.Usage, tt.wantUsageModel)
+			}
+			if final.Cost == nil || final.Cost.TotalCost != tt.wantCost {
+				t.Fatalf("final cost = %#v, want total %v", final.Cost, tt.wantCost)
+			}
+			terminal := events[len(events)-1]
+			if terminal.Usage == nil || terminal.Usage.Model != tt.wantUsageModel {
+				t.Fatalf("terminal usage = %#v, want model %q", terminal.Usage, tt.wantUsageModel)
+			}
+			if terminal.FinalMessage == nil || terminal.FinalMessage.Cost == nil || terminal.FinalMessage.Cost.TotalCost != tt.wantCost {
+				t.Fatalf("terminal final = %#v, want total cost %v", terminal.FinalMessage, tt.wantCost)
+			}
+		})
 	}
 }
 

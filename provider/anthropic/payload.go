@@ -108,6 +108,13 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	if err := addProviderOptions(payload, model.Provider, opts, len(transformed.Tools) > 0); err != nil {
 		return nil, err
 	}
+	if opts.AnthropicOptions != nil && opts.AnthropicOptions.EnableRefusalFallbacks {
+		fallbacks := make([]map[string]any, 0, len(model.AnthropicMessagesCompat.AllowedFallbackModels))
+		for _, fallback := range model.AnthropicMessagesCompat.AllowedFallbackModels {
+			fallbacks = append(fallbacks, map[string]any{"model": string(fallback.Model)})
+		}
+		payload["fallbacks"] = fallbacks
+	}
 	return payload, nil
 }
 

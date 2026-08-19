@@ -3207,6 +3207,24 @@ var builtinTextModels = []Model{
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
+			AllowedFallbackModels: []AnthropicFallbackModel{
+				{
+					Model:                         ModelID("claude-opus-4-8"),
+					InputCostPerMillion:           5,
+					OutputCostPerMillion:          25,
+					CacheReadInputCostPerMillion:  0.5,
+					CacheWriteInputCostPerMillion: 6.25,
+					CostCurrency:                  "USD",
+				},
+				{
+					Model:                         ModelID("claude-opus-5"),
+					InputCostPerMillion:           5,
+					OutputCostPerMillion:          25,
+					CacheReadInputCostPerMillion:  0.5,
+					CacheWriteInputCostPerMillion: 6.25,
+					CostCurrency:                  "USD",
+				},
+			},
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"ANTHROPIC_API_KEY"},
@@ -3587,6 +3605,16 @@ var builtinTextModels = []Model{
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
+			AllowedFallbackModels: []AnthropicFallbackModel{
+				{
+					Model:                         ModelID("claude-opus-4-8"),
+					InputCostPerMillion:           5,
+					OutputCostPerMillion:          25,
+					CacheReadInputCostPerMillion:  0.5,
+					CacheWriteInputCostPerMillion: 6.25,
+					CostCurrency:                  "USD",
+				},
+			},
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"ANTHROPIC_API_KEY"},

@@ -82,6 +82,53 @@ func TestRenderTextModelsIncludesGrammarToolCompatibility(t *testing.T) {
 	}
 }
 
+func TestRenderTextModelsIncludesAnthropicFallbackPricing(t *testing.T) {
+	t.Parallel()
+
+	catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{
+		{
+			ID:       "requested",
+			Provider: "anthropic",
+			API:      "anthropic-messages",
+			AnthropicMessagesCompat: &modeldata.AnthropicMessagesCompat{
+				AllowedFallbackModels: []string{"fallback"},
+			},
+		},
+		{
+			ID:       "fallback",
+			Provider: "anthropic",
+			API:      "anthropic-messages",
+			Cost: modeldata.Cost{
+				InputPerMillion:           5,
+				OutputPerMillion:          25,
+				CacheReadInputPerMillion:  0.5,
+				CacheWriteInputPerMillion: 6.25,
+				Currency:                  "USD",
+				Tiers: []modeldata.CostTier{{
+					InputTokensAbove: 200_000,
+					InputPerMillion:  10,
+					OutputPerMillion: 37.5,
+				}},
+			},
+		},
+	}}
+
+	rendered := string(renderTextModels(catalog))
+	for _, want := range []string{
+		`Model: ModelID("fallback")`,
+		"InputCostPerMillion: 5",
+		"OutputCostPerMillion: 25",
+		"CacheReadInputCostPerMillion: 0.5",
+		"CacheWriteInputCostPerMillion: 6.25",
+		"InputTokensAbove: 200000",
+		`CostCurrency: "USD"`,
+	} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("generated fallback metadata omitted %q: %s", want, rendered)
+		}
+	}
+}
+
 func TestRenderTextModelsIncludesFinishReasonCompatibility(t *testing.T) {
 	t.Parallel()
 

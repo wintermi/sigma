@@ -619,6 +619,19 @@ func validateOptions(model Model, options Options) error {
 		*options.AnthropicOptions.ThinkingBudgetTokens < 0 {
 		return invalidOptionsError(model, "anthropic thinking budget tokens must be non-negative")
 	}
+	if options.AnthropicOptions != nil && options.AnthropicOptions.EnableRefusalFallbacks {
+		if api != APIAnthropicMessages || model.Provider != ProviderAnthropic {
+			return invalidOptionsError(model, "anthropic refusal fallbacks require a direct anthropic messages model")
+		}
+		if model.AnthropicMessagesCompat == nil || len(model.AnthropicMessagesCompat.AllowedFallbackModels) == 0 {
+			return invalidOptionsError(model, "anthropic refusal fallbacks are not supported by this model")
+		}
+		for _, fallback := range model.AnthropicMessagesCompat.AllowedFallbackModels {
+			if fallback.Model == "" {
+				return invalidOptionsError(model, "anthropic refusal fallback model id is required")
+			}
+		}
+	}
 	if options.GoogleOptions != nil &&
 		options.GoogleOptions.ThinkingBudgetTokens != nil &&
 		*options.GoogleOptions.ThinkingBudgetTokens < 0 {

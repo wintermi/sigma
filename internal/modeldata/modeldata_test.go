@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "ebc76d4013cf77b699c1de27fbf68528243783307de52c74d1cc1e0b3d198286"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "8e8b8d9c8b6c85f71deeafe077ce5c493c67f276364bf5f334dfe2f29ed9a2a1"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -233,6 +233,46 @@ func TestCatalogValidationRejectsInvalidCostTiers(t *testing.T) {
 			err := validateCost(Cost{InputPerMillion: 1, OutputPerMillion: 2, Currency: "USD", Tiers: tt.tiers})
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("validateCost error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestCatalogValidationRejectsInvalidAnthropicFallbackModels(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		provider  string
+		fallbacks []string
+		want      string
+	}{
+		{name: "requested model", fallbacks: []string{"claude-fable-5"}, want: "must differ from the requested model"},
+		{name: "duplicate", fallbacks: []string{"claude-opus-4-8", "claude-opus-4-8"}, want: "is duplicated"},
+		{name: "missing matching model", fallbacks: []string{"missing-model"}, want: "is not a matching provider/API model"},
+		{name: "compatible route", provider: "custom-anthropic", fallbacks: []string{"claude-opus-4-8"}, want: "require the direct anthropic messages route"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			catalog, err := Load("catalog.json")
+			if err != nil {
+				t.Fatalf("Load returned error: %v", err)
+			}
+			for index := range catalog.TextModels {
+				model := &catalog.TextModels[index]
+				if model.Provider == "anthropic" && model.API == "anthropic-messages" && model.ID == "claude-fable-5" {
+					if tt.provider != "" {
+						model.Provider = tt.provider
+					}
+					model.AnthropicMessagesCompat.AllowedFallbackModels = tt.fallbacks
+					break
+				}
+			}
+			err = catalog.Validate()
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Validate error = %v, want %q", err, tt.want)
 			}
 		})
 	}

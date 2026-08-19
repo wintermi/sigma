@@ -379,16 +379,29 @@ type OpenAICompletionsCompat struct {
 // Anthropic-compatible routers and custom endpoints. Leave fields at their zero
 // value to use provider or base-URL detection.
 type AnthropicMessagesCompat struct {
-	SupportsEagerToolInputStreaming AnthropicCompatSupport  `json:"supportsEagerToolInputStreaming,omitempty"`
-	SupportsLongCacheRetention      AnthropicCompatSupport  `json:"supportsLongCacheRetention,omitempty"`
-	SupportsSessionAffinity         AnthropicCompatSupport  `json:"supportsSessionAffinity,omitempty"`
-	SupportsCacheControlOnTools     AnthropicCompatSupport  `json:"supportsCacheControlOnTools,omitempty"`
-	SupportsEmptyThinkingSignature  AnthropicCompatSupport  `json:"supportsEmptyThinkingSignature,omitempty"`
-	SupportsTemperature             AnthropicCompatSupport  `json:"supportsTemperature,omitempty"`
-	SupportsDisabledThinking        AnthropicCompatSupport  `json:"supportsDisabledThinking,omitempty"`
-	SupportsStrictTools             AnthropicCompatSupport  `json:"supportsStrictTools,omitempty"`
-	SupportsToolReferences          AnthropicCompatSupport  `json:"supportsToolReferences,omitempty"`
-	ThinkingFormat                  AnthropicThinkingFormat `json:"thinkingFormat,omitempty"`
+	SupportsEagerToolInputStreaming AnthropicCompatSupport   `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsLongCacheRetention      AnthropicCompatSupport   `json:"supportsLongCacheRetention,omitempty"`
+	SupportsSessionAffinity         AnthropicCompatSupport   `json:"supportsSessionAffinity,omitempty"`
+	SupportsCacheControlOnTools     AnthropicCompatSupport   `json:"supportsCacheControlOnTools,omitempty"`
+	SupportsEmptyThinkingSignature  AnthropicCompatSupport   `json:"supportsEmptyThinkingSignature,omitempty"`
+	SupportsTemperature             AnthropicCompatSupport   `json:"supportsTemperature,omitempty"`
+	SupportsDisabledThinking        AnthropicCompatSupport   `json:"supportsDisabledThinking,omitempty"`
+	SupportsStrictTools             AnthropicCompatSupport   `json:"supportsStrictTools,omitempty"`
+	SupportsToolReferences          AnthropicCompatSupport   `json:"supportsToolReferences,omitempty"`
+	ThinkingFormat                  AnthropicThinkingFormat  `json:"thinkingFormat,omitempty"`
+	AllowedFallbackModels           []AnthropicFallbackModel `json:"allowedFallbackModels,omitempty"`
+}
+
+// AnthropicFallbackModel describes an allowed server-side refusal fallback
+// and the local rates used when Anthropic reports that returned model.
+type AnthropicFallbackModel struct {
+	Model                         ModelID         `json:"model"`
+	InputCostPerMillion           float64         `json:"inputCostPerMillion,omitempty"`
+	OutputCostPerMillion          float64         `json:"outputCostPerMillion,omitempty"`
+	CacheReadInputCostPerMillion  float64         `json:"cacheReadInputCostPerMillion,omitempty"`
+	CacheWriteInputCostPerMillion float64         `json:"cacheWriteInputCostPerMillion,omitempty"`
+	CostTiers                     []ModelCostTier `json:"costTiers,omitempty"`
+	CostCurrency                  string          `json:"costCurrency,omitempty"`
 }
 
 // OpenRouterRoutingPreference describes OpenRouter's provider routing request

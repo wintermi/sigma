@@ -52,6 +52,7 @@ type AnthropicOptions struct {
 	InterleavedThinking    *bool
 	OutputFormat           any
 	DisableParallelToolUse *bool
+	EnableRefusalFallbacks bool
 }
 
 // AnthropicToolChoiceType identifies Anthropic Messages tool selection behavior.
