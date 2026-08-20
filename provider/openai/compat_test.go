@@ -57,6 +57,60 @@ func TestOpenAICompletionsCompatResolvesFinishReasonSupport(t *testing.T) {
 	}
 }
 
+func TestOpenAICompletionsCompatResolvesZAIReasoningReplay(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		compat sigma.OpenAICompletionsCompat
+		want   bool
+	}{
+		{
+			name: "zai reasoning defaults to replay",
+			compat: sigma.OpenAICompletionsCompat{
+				ReasoningFormat: sigma.OpenAICompletionsReasoningZAI,
+			},
+			want: true,
+		},
+		{
+			name: "explicit unsupported overrides zai default",
+			compat: sigma.OpenAICompletionsCompat{
+				ReasoningFormat: sigma.OpenAICompletionsReasoningZAI,
+				RequiresReasoningContentOnAssistantMessages: sigma.OpenAICompatUnsupported,
+			},
+		},
+		{
+			name: "non zai reasoning retains default",
+			compat: sigma.OpenAICompletionsCompat{
+				ReasoningFormat: sigma.OpenAICompletionsReasoningEffort,
+			},
+		},
+		{
+			name: "explicit supported enables non zai replay",
+			compat: sigma.OpenAICompletionsCompat{
+				ReasoningFormat: sigma.OpenAICompletionsReasoningEffort,
+				RequiresReasoningContentOnAssistantMessages: sigma.OpenAICompatSupported,
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{
+				Provider:                sigma.ProviderCustom,
+				OpenAICompletionsCompat: &tt.compat,
+			}
+			got := openAICompletionsCompat(model, "https://custom.example/v1").requiresReasoningContentOnAssistantMessages
+			if got != tt.want {
+				t.Fatalf("requires reasoning content = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatPayloadFlags(t *testing.T) {
 	t.Parallel()
 

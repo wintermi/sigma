@@ -29,7 +29,9 @@ eight curated models, including DeepSeek V4 Pro 0813, through the shared
 international endpoint and credential, with each model's thinking controls
 preserved. Z.ai and Z.ai Coding CN now add GLM-5.2 Highspeed and GLM-5.3 with
 million-token limits, model-specific reasoning aliases, and evidence-backed
-estimated pricing. Baseten is now available through a first-class
+estimated pricing. Enabled Z.ai reasoning requests now also preserve exact
+same-provider/API/model reasoning across turns for provider-side caching.
+Baseten is now available through a first-class
 OpenAI-compatible route with focused GLM 5.2 and Kimi K2.6 metadata and native
 chat-template thinking controls. GLM 5.2 now advertises both text and image
 input so image-bearing tool results remain available on that route. Xiaomi's
@@ -118,7 +120,14 @@ selection remains available through existing provider-specific controls.
   `xhigh`/`max` to provider `max`; GLM-5.3 maps `minimal`/`low` to `low`,
   `medium`/`high` to `high`, and `xhigh`/`max` to `max`. Omitted reasoning
   remains disabled, explicit GLM-5.3 `off` fails locally, GLM-5.2 uses
-  API-equivalent estimated pricing, and unevidenced prices remain zero.
+  API-equivalent estimated pricing, and unevidenced prices remain zero. The
+  typed Z.ai reasoning format now defaults same-provider/API/model assistant
+  replay to `reasoning_content` and sends `clear_thinking: false` whenever
+  reasoning is enabled so provider-side reasoning state remains cacheable. An
+  explicit `RequiresReasoningContentOnAssistantMessages` setting overrides the
+  replay default; mismatched provenance is never replayed, and disabled or
+  omitted reasoning retains the existing disabled payload without
+  `clear_thinking`.
 - `AnthropicOptions.EnableRefusalFallbacks` enables direct Anthropic
   server-side refusal fallback only for models with generated allowed-target
   metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets, while

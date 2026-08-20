@@ -322,7 +322,8 @@ const (
 	// OpenAICompletionsReasoningQwen sends a top-level Qwen enable_thinking flag.
 	OpenAICompletionsReasoningQwen OpenAICompletionsReasoningFormat = "qwen"
 	// OpenAICompletionsReasoningZAI sends a Z.ai thinking object with an
-	// enabled or disabled type.
+	// enabled or disabled type and preserves reasoning_content on replay by
+	// default.
 	OpenAICompletionsReasoningZAI OpenAICompletionsReasoningFormat = "zai"
 	// OpenAICompletionsReasoningAntLing sends Ant Ling's reasoning object only
 	// for explicitly supported effort levels.

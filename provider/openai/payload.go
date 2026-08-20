@@ -367,7 +367,8 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		if text != "" {
 			converted["content"] = text
 		}
-		if compat.requiresReasoningContentOnAssistantMessages {
+		if compat.requiresReasoningContentOnAssistantMessages &&
+			(compat.reasoningFormat != sigma.OpenAICompletionsReasoningZAI || sameOpenAICompletionsProvenance(model, message)) {
 			converted["reasoning_content"] = reasoningContent
 		}
 		if len(reasoningDetails) > 0 {
@@ -624,7 +625,7 @@ func appendReasoningDetails(details []any, metadata map[string]any) []any {
 }
 
 func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
-	if message.Provider != model.Provider || message.API != model.API || message.Model != model.ID {
+	if !sameOpenAICompletionsProvenance(model, message) {
 		return nil
 	}
 	for _, block := range message.Content {
@@ -637,6 +638,10 @@ func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
 		}
 	}
 	return nil
+}
+
+func sameOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {
+	return message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 }
 
 func chatToolCallID(raw string) string {
@@ -1011,7 +1016,11 @@ func addZAIReasoning(payload map[string]any, model sigma.Model, opts sigma.Optio
 	if level != "" && level != sigma.ThinkingLevelOff {
 		state = "enabled"
 	}
-	payload["thinking"] = map[string]any{providerToolOptionTypeKey: state}
+	thinking := map[string]any{providerToolOptionTypeKey: state}
+	if state == "enabled" {
+		thinking["clear_thinking"] = false
+	}
+	payload["thinking"] = thinking
 	if effort := reasoningEffort(model, opts); state == "enabled" && compat.supportsReasoningEffort && effort != "" {
 		payload["reasoning_effort"] = effort
 	}

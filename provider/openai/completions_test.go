@@ -1429,6 +1429,91 @@ func TestChatCompletionsDoesNotReplayThinkingAsAssistantTextByDefault(t *testing
 	}
 }
 
+func TestChatCompletionsReplaysZAIReasoningWithCachePreservation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		assistantProvider sigma.ProviderID
+		wantReasoning     bool
+	}{
+		{
+			name:              "same model provenance",
+			assistantProvider: "zai-reasoning-replay-same",
+			wantReasoning:     true,
+		},
+		{
+			name:              "mismatched provider provenance",
+			assistantProvider: "other-provider",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			providerID := sigma.ProviderID("zai-reasoning-replay-" + strings.ReplaceAll(tt.name, " ", "-"))
+			assistantProvider := tt.assistantProvider
+			if tt.wantReasoning {
+				assistantProvider = providerID
+			}
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			model := openAITestModel(providerID)
+			model.OpenAICompletionsCompat.ReasoningFormat = sigma.OpenAICompletionsReasoningZAI
+			model.OpenAICompletionsCompat.SupportsReasoningEffort = sigma.OpenAICompatSupported
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{
+					sigma.UserText("Inspect the cache state."),
+					{
+						Role:     sigma.RoleAssistant,
+						Provider: assistantProvider,
+						API:      sigma.APIOpenAICompletions,
+						Model:    model.ID,
+						Content: []sigma.ContentBlock{
+							sigma.Thinking("inspect state", "reasoning_content"),
+							sigma.Text("State inspected."),
+						},
+					},
+					sigma.UserText("Continue."),
+				}},
+				sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload struct {
+				Messages []map[string]any `json:"messages"`
+				Thinking map[string]any   `json:"thinking"`
+			}
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got, want := payload.Thinking["type"], "enabled"; got != want {
+				t.Fatalf("thinking type = %#v, want %q", got, want)
+			}
+			if got, want := payload.Thinking["clear_thinking"], false; got != want {
+				t.Fatalf("clear_thinking = %#v, want %t", got, want)
+			}
+			if got, want := payload.Messages[1]["reasoning_content"], "inspect state"; tt.wantReasoning && got != want {
+				t.Fatalf("reasoning_content = %#v, want %q", got, want)
+			} else if !tt.wantReasoning && got != nil {
+				t.Fatalf("reasoning_content = %#v, want absent", got)
+			}
+		})
+	}
+}
+
 func TestChatCompletionsStreamingParsesReasoningText(t *testing.T) {
 	t.Parallel()
 
@@ -3386,6 +3471,7 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 		assert      func(t *testing.T, body map[string]any)
 		thinking    map[sigma.ThinkingLevel]string
 		unsupported []sigma.ThinkingLevel
+		noReasoning bool
 	}{
 		{
 			name:   "together toggles reasoning and sends effort",
@@ -3414,6 +3500,9 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				if !ok || thinking["type"] != "enabled" {
 					t.Fatalf("thinking = %#v, want enabled type", body["thinking"])
 				}
+				if got := thinking["clear_thinking"]; got != false {
+					t.Fatalf("clear_thinking = %#v, want false", got)
+				}
 				if _, ok := body["enable_thinking"]; ok {
 					t.Fatalf("enable_thinking = %#v, want absent", body["enable_thinking"])
 				}
@@ -3423,7 +3512,7 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			},
 		},
 		{
-			name:        "zai glm 5.3 disables thinking when no level is requested",
+			name:        "zai disables thinking when no level is requested",
 			format:      sigma.OpenAICompletionsReasoningZAI,
 			unsupported: []sigma.ThinkingLevel{sigma.ThinkingLevelOff},
 			assert: func(t *testing.T, body map[string]any) {
@@ -3432,8 +3521,41 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 				if !ok || thinking["type"] != "disabled" {
 					t.Fatalf("thinking = %#v, want disabled type", body["thinking"])
 				}
+				if _, ok := thinking["clear_thinking"]; ok {
+					t.Fatalf("clear_thinking = %#v, want absent", thinking["clear_thinking"])
+				}
 				if _, ok := body["enable_thinking"]; ok {
 					t.Fatalf("enable_thinking = %#v, want absent", body["enable_thinking"])
+				}
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
+				}
+			},
+		},
+		{
+			name:     "zai disables thinking when explicitly off",
+			format:   sigma.OpenAICompletionsReasoningZAI,
+			level:    sigma.ThinkingLevelOff,
+			thinking: map[sigma.ThinkingLevel]string{sigma.ThinkingLevelOff: "off"},
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				thinking, ok := body["thinking"].(map[string]any)
+				if !ok || thinking["type"] != "disabled" {
+					t.Fatalf("thinking = %#v, want disabled type", body["thinking"])
+				}
+				if _, ok := thinking["clear_thinking"]; ok {
+					t.Fatalf("clear_thinking = %#v, want absent", thinking["clear_thinking"])
+				}
+			},
+		},
+		{
+			name:        "zai omits thinking for unsupported model",
+			format:      sigma.OpenAICompletionsReasoningZAI,
+			noReasoning: true,
+			assert: func(t *testing.T, body map[string]any) {
+				t.Helper()
+				if _, ok := body["thinking"]; ok {
+					t.Fatalf("thinking = %#v, want absent", body["thinking"])
 				}
 				if _, ok := body["reasoning_effort"]; ok {
 					t.Fatalf("reasoning_effort = %#v, want absent", body["reasoning_effort"])
@@ -3593,6 +3715,10 @@ func TestChatCompletionsProviderReasoningFormats(t *testing.T) {
 			model.OpenAICompletionsCompat.SupportsToolStream = sigma.OpenAICompatSupported
 			if tt.thinking != nil {
 				model.ThinkingLevelMap = tt.thinking
+			}
+			if tt.noReasoning {
+				model.SupportsThinking = false
+				model.ThinkingLevelMap = nil
 			}
 			model.UnsupportedThinkingLevels = tt.unsupported
 			client := openAITestClient(t, providerID, model, server.URL)

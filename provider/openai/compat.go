@@ -84,13 +84,16 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
 	compat.requiresToolsForToolHistory = supportOverride(compat.requiresToolsForToolHistory, override.RequiresToolsForToolHistory)
+	if override.ReasoningFormat != sigma.OpenAICompletionsReasoningDefault {
+		compat.reasoningFormat = override.ReasoningFormat
+	}
+	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
+		compat.requiresReasoningContentOnAssistantMessages = true
+	}
 	compat.requiresReasoningContentOnAssistantMessages = supportOverride(
 		compat.requiresReasoningContentOnAssistantMessages,
 		override.RequiresReasoningContentOnAssistantMessages,
 	)
-	if override.ReasoningFormat != sigma.OpenAICompletionsReasoningDefault {
-		compat.reasoningFormat = override.ReasoningFormat
-	}
 	if override.MaxTokensField != sigma.OpenAICompletionsMaxTokensDefault {
 		compat.maxTokensField = override.MaxTokensField
 	}

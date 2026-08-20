@@ -483,6 +483,10 @@ metadata-only and backed by compatibility checks.
       needs behavior beyond the shared OpenAI-compatible adapters.
 - [x] Z.ai and Z.ai Coding CN — promote to first-class provider rows with
       fixtures.
+- [x] Z.ai and Z.ai Coding CN — preserve same-provider/API/model reasoning on
+      replay through `reasoning_content` and `clear_thinking: false` when the
+      typed Z.ai thinking format is enabled, while retaining explicit
+      compatibility overrides and disabled-reasoning behavior.
 - [ ] Z.ai and Z.ai Coding CN — add broader live-provider fixture coverage for
       streaming, tools, usage, redaction, and cancellation if the providers need
       behavior beyond the shared OpenAI-compatible adapter.

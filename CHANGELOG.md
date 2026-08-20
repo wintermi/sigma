@@ -91,6 +91,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Z.ai-format OpenAI-compatible Chat Completions requests now preserve
+  same-provider/API/model assistant reasoning as `reasoning_content` and send
+  `clear_thinking: false` whenever reasoning is enabled. Explicit replay
+  compatibility overrides remain authoritative, while disabled reasoning and
+  other formats retain their existing payloads.
 - OpenAI-compatible Chat Completions streams now preserve validated encrypted,
   signed-text, and summary `reasoning_details` in provider order across
   assistant-content persistence and exact same-provider/API/model replay.
