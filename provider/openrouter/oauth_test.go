@@ -629,7 +629,7 @@ func receiveOpenRouterOAuthError(t *testing.T, ch <-chan error) error {
 	select {
 	case err := <-ch:
 		return err
-	case <-time.After(time.Second):
+	case <-time.After(openRouterOAuthShutdownTimeout + time.Second):
 		t.Fatal("timed out waiting for login result")
 		return nil
 	}

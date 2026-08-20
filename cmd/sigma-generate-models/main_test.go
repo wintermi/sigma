@@ -156,12 +156,16 @@ func TestRenderTextModelsIncludesThinkingTokenBudgetCompatibility(t *testing.T) 
 		API:      "openai-completions",
 		OpenAICompletionsCompat: &modeldata.OpenAICompletionsCompat{
 			SupportsThinkingTokenBudget: "supported",
+			ThinkingTokenBudgetField:    "thinking_budget_tokens",
 		},
 	}}}
 
 	rendered := string(renderTextModels(catalog))
 	if !strings.Contains(rendered, "SupportsThinkingTokenBudget: OpenAICompatSupport(\"supported\")") {
 		t.Fatalf("generated text models omitted thinking-token-budget compatibility: %s", rendered)
+	}
+	if !strings.Contains(rendered, "ThinkingTokenBudgetField: OpenAICompletionsThinkingTokenBudgetField(\"thinking_budget_tokens\")") {
+		t.Fatalf("generated text models omitted thinking-token-budget field: %s", rendered)
 	}
 }
 

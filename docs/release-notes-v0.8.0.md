@@ -185,12 +185,15 @@ selection remains available through existing provider-specific controls.
   Responses. These fields override typed request values, while raw provider
   `extra_body` values retain final precedence; unsupported APIs reject non-empty
   sampling maps before dispatch.
-- `OpenAICompletionsCompat.SupportsThinkingTokenBudget` now enables top-level
-  `thinking_token_budget` payloads for custom compatible models when callers
-  select reasoning and provide an explicit positive budget. Sigma clamps the
-  budget against the request or model output ceiling to preserve 1,024 tokens
-  for visible output; sampling parameters and raw `extra_body` values retain
-  their existing override precedence.
+- `OpenAICompletionsCompat.ThinkingTokenBudgetField` now lets custom compatible
+  models select top-level `thinking_token_budget`, `thinking_budget`, or
+  `thinking_budget_tokens` payloads when callers select reasoning and provide
+  an explicit positive budget. `SupportsThinkingTokenBudget` remains a
+  backward-compatible alias for `thinking_token_budget`, while an explicit
+  field selector takes precedence. Sigma clamps the budget against the request
+  or model output ceiling to preserve 1,024 tokens for visible output;
+  sampling parameters and raw `extra_body` values retain their existing
+  override precedence.
 - `cmd/sigma-evals-runner` now defaults each case/model/repetition run to an
   independent one-minute timeout bounded by the overall command deadline.
   Timed-out runs remain operational failures with partial artifacts and

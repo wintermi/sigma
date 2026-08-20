@@ -25,7 +25,7 @@ type completionsCompat struct {
 	supportsToolStream                          bool
 	supportsGrammarTools                        bool
 	supportsFinishReason                        bool
-	supportsThinkingTokenBudget                 bool
+	thinkingTokenBudgetField                    sigma.OpenAICompletionsThinkingTokenBudgetField
 	supportsJSONSchemaResponseFormat            bool
 	maxTokensField                              sigma.OpenAICompletionsMaxTokensField
 	cacheControlFormat                          sigma.OpenAICompletionsCacheControlFormat
@@ -64,10 +64,17 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.supportsToolStream = supportOverride(compat.supportsToolStream, override.SupportsToolStream)
 	compat.supportsGrammarTools = supportOverride(compat.supportsGrammarTools, override.SupportsGrammarTools)
 	compat.supportsFinishReason = supportOverride(compat.supportsFinishReason, override.SupportsFinishReason)
-	compat.supportsThinkingTokenBudget = supportOverride(
-		compat.supportsThinkingTokenBudget,
-		override.SupportsThinkingTokenBudget,
-	)
+	if override.ThinkingTokenBudgetField != sigma.OpenAICompletionsThinkingTokenBudgetDefault {
+		compat.thinkingTokenBudgetField = override.ThinkingTokenBudgetField
+	} else {
+		switch override.SupportsThinkingTokenBudget {
+		case sigma.OpenAICompatSupported:
+			compat.thinkingTokenBudgetField = sigma.OpenAICompletionsThinkingTokenBudget
+		case sigma.OpenAICompatUnsupported:
+			compat.thinkingTokenBudgetField = sigma.OpenAICompletionsThinkingTokenBudgetDefault
+		case sigma.OpenAICompatDefault:
+		}
+	}
 	compat.supportsJSONSchemaResponseFormat = supportOverride(
 		compat.supportsJSONSchemaResponseFormat,
 		override.SupportsJSONSchemaResponseFormat,

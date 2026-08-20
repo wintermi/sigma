@@ -49,6 +49,10 @@ type OpenAICompatSupport string
 // an OpenAI Chat Completions-compatible endpoint.
 type OpenAICompletionsMaxTokensField string
 
+// OpenAICompletionsThinkingTokenBudgetField identifies the top-level reasoning
+// token-budget field used by an OpenAI Chat Completions-compatible endpoint.
+type OpenAICompletionsThinkingTokenBudgetField string
+
 // OpenAICompletionsReasoningFormat identifies how reasoning effort is encoded
 // by an OpenAI Chat Completions-compatible endpoint.
 type OpenAICompletionsReasoningFormat string
@@ -281,6 +285,17 @@ const (
 )
 
 const (
+	// OpenAICompletionsThinkingTokenBudgetDefault omits a top-level thinking budget field.
+	OpenAICompletionsThinkingTokenBudgetDefault OpenAICompletionsThinkingTokenBudgetField = ""
+	// OpenAICompletionsThinkingTokenBudget sends thinking_token_budget.
+	OpenAICompletionsThinkingTokenBudget OpenAICompletionsThinkingTokenBudgetField = "thinking_token_budget"
+	// OpenAICompletionsThinkingBudget sends thinking_budget.
+	OpenAICompletionsThinkingBudget OpenAICompletionsThinkingTokenBudgetField = "thinking_budget"
+	// OpenAICompletionsThinkingBudgetTokens sends thinking_budget_tokens.
+	OpenAICompletionsThinkingBudgetTokens OpenAICompletionsThinkingTokenBudgetField = "thinking_budget_tokens"
+)
+
+const (
 	// OpenAICompletionsReasoningDefault uses provider and endpoint defaults.
 	OpenAICompletionsReasoningDefault OpenAICompletionsReasoningFormat = ""
 	// OpenAICompletionsReasoningUnsupported suppresses reasoning fields.
@@ -351,28 +366,32 @@ const (
 // value to use provider or base-URL detection, or set them when registering a
 // custom model to override conservative defaults.
 type OpenAICompletionsCompat struct {
-	SupportsStore                               OpenAICompatSupport                 `json:"supportsStore,omitempty"`
-	SupportsDeveloperRole                       OpenAICompatSupport                 `json:"supportsDeveloperRole,omitempty"`
-	ReasoningFormat                             OpenAICompletionsReasoningFormat    `json:"reasoningFormat,omitempty"`
-	SupportsReasoningEffort                     OpenAICompatSupport                 `json:"supportsReasoningEffort,omitempty"`
-	SupportsStreamingUsage                      OpenAICompatSupport                 `json:"supportsStreamingUsage,omitempty"`
-	SupportsStrictTools                         OpenAICompatSupport                 `json:"supportsStrictTools,omitempty"`
-	SupportsRequiredToolChoice                  OpenAICompatSupport                 `json:"supportsRequiredToolChoice,omitempty"`
-	SupportsToolStream                          OpenAICompatSupport                 `json:"supportsToolStream,omitempty"`
-	SupportsGrammarTools                        OpenAICompatSupport                 `json:"supportsGrammarTools,omitempty"`
-	SupportsFinishReason                        OpenAICompatSupport                 `json:"supportsFinishReason,omitempty"`
-	SupportsThinkingTokenBudget                 OpenAICompatSupport                 `json:"supportsThinkingTokenBudget,omitempty"`
-	SupportsJSONSchemaResponseFormat            OpenAICompatSupport                 `json:"supportsJSONSchemaResponseFormat,omitempty"`
-	MaxTokensField                              OpenAICompletionsMaxTokensField     `json:"maxTokensField,omitempty"`
-	CacheControlFormat                          OpenAICompletionsCacheControlFormat `json:"cacheControlFormat,omitempty"`
-	SupportsSessionAffinity                     OpenAICompatSupport                 `json:"supportsSessionAffinity,omitempty"`
-	SupportsLongCacheRetention                  OpenAICompatSupport                 `json:"supportsLongCacheRetention,omitempty"`
-	RequiresToolResultName                      OpenAICompatSupport                 `json:"requiresToolResultName,omitempty"`
-	RequiresAssistantAfterToolResult            OpenAICompatSupport                 `json:"requiresAssistantAfterToolResult,omitempty"`
-	RequiresToolsForToolHistory                 OpenAICompatSupport                 `json:"requiresToolsForToolHistory,omitempty"`
-	RequiresReasoningContentOnAssistantMessages OpenAICompatSupport                 `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
-	OpenRouterRouting                           *OpenRouterRoutingPreference        `json:"openRouterRouting,omitempty"`
-	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference   `json:"vercelAIGatewayRouting,omitempty"`
+	SupportsStore              OpenAICompatSupport              `json:"supportsStore,omitempty"`
+	SupportsDeveloperRole      OpenAICompatSupport              `json:"supportsDeveloperRole,omitempty"`
+	ReasoningFormat            OpenAICompletionsReasoningFormat `json:"reasoningFormat,omitempty"`
+	SupportsReasoningEffort    OpenAICompatSupport              `json:"supportsReasoningEffort,omitempty"`
+	SupportsStreamingUsage     OpenAICompatSupport              `json:"supportsStreamingUsage,omitempty"`
+	SupportsStrictTools        OpenAICompatSupport              `json:"supportsStrictTools,omitempty"`
+	SupportsRequiredToolChoice OpenAICompatSupport              `json:"supportsRequiredToolChoice,omitempty"`
+	SupportsToolStream         OpenAICompatSupport              `json:"supportsToolStream,omitempty"`
+	SupportsGrammarTools       OpenAICompatSupport              `json:"supportsGrammarTools,omitempty"`
+	SupportsFinishReason       OpenAICompatSupport              `json:"supportsFinishReason,omitempty"`
+	// SupportsThinkingTokenBudget aliases ThinkingTokenBudgetField to
+	// OpenAICompletionsThinkingTokenBudget when explicitly supported.
+	SupportsThinkingTokenBudget OpenAICompatSupport `json:"supportsThinkingTokenBudget,omitempty"`
+	// ThinkingTokenBudgetField selects the top-level reasoning token-budget field.
+	ThinkingTokenBudgetField                    OpenAICompletionsThinkingTokenBudgetField `json:"thinkingTokenBudgetField,omitempty"`
+	SupportsJSONSchemaResponseFormat            OpenAICompatSupport                       `json:"supportsJSONSchemaResponseFormat,omitempty"`
+	MaxTokensField                              OpenAICompletionsMaxTokensField           `json:"maxTokensField,omitempty"`
+	CacheControlFormat                          OpenAICompletionsCacheControlFormat       `json:"cacheControlFormat,omitempty"`
+	SupportsSessionAffinity                     OpenAICompatSupport                       `json:"supportsSessionAffinity,omitempty"`
+	SupportsLongCacheRetention                  OpenAICompatSupport                       `json:"supportsLongCacheRetention,omitempty"`
+	RequiresToolResultName                      OpenAICompatSupport                       `json:"requiresToolResultName,omitempty"`
+	RequiresAssistantAfterToolResult            OpenAICompatSupport                       `json:"requiresAssistantAfterToolResult,omitempty"`
+	RequiresToolsForToolHistory                 OpenAICompatSupport                       `json:"requiresToolsForToolHistory,omitempty"`
+	RequiresReasoningContentOnAssistantMessages OpenAICompatSupport                       `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
+	OpenRouterRouting                           *OpenRouterRoutingPreference              `json:"openRouterRouting,omitempty"`
+	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference         `json:"vercelAIGatewayRouting,omitempty"`
 }
 
 // AnthropicMessagesCompat describes Messages compatibility differences for

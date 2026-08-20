@@ -940,7 +940,8 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 }
 
 func addThinkingTokenBudget(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {
-	if !compat.supportsThinkingTokenBudget || !model.SupportsReasoning() || opts.ThinkingBudgetTokens == nil || *opts.ThinkingBudgetTokens <= 0 {
+	if compat.thinkingTokenBudgetField == sigma.OpenAICompletionsThinkingTokenBudgetDefault ||
+		!model.SupportsReasoning() || opts.ThinkingBudgetTokens == nil || *opts.ThinkingBudgetTokens <= 0 {
 		return
 	}
 	level := requestedReasoningLevel(opts)
@@ -953,7 +954,7 @@ func addThinkingTokenBudget(payload map[string]any, model sigma.Model, opts sigm
 	}
 	budget := min(*opts.ThinkingBudgetTokens, ceiling-openAICompletionsAnswerReserve)
 	if budget > 0 {
-		payload["thinking_token_budget"] = budget
+		payload[string(compat.thinkingTokenBudgetField)] = budget
 	}
 }
 

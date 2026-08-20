@@ -970,11 +970,12 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 		MaxOutputTokens:  4096,
 	}
 	tests := []struct {
-		name   string
-		model  sigma.Model
-		opts   sigma.Options
-		compat completionsCompat
-		want   int
+		name      string
+		model     sigma.Model
+		opts      sigma.Options
+		compat    completionsCompat
+		wantField sigma.OpenAICompletionsThinkingTokenBudgetField
+		want      int
 	}{
 		{
 			name:  "explicit budget",
@@ -983,8 +984,31 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelHigh,
 				ThinkingBudgetTokens: &positiveBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
-			want:   2048,
+			compat:    completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
+			wantField: sigma.OpenAICompletionsThinkingTokenBudget,
+			want:      2048,
+		},
+		{
+			name:  "thinking budget field",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat:    completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingBudget},
+			wantField: sigma.OpenAICompletionsThinkingBudget,
+			want:      2048,
+		},
+		{
+			name:  "thinking budget tokens field",
+			model: reasoningModel,
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelHigh,
+				ThinkingBudgetTokens: &positiveBudget,
+			},
+			compat:    completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingBudgetTokens},
+			wantField: sigma.OpenAICompletionsThinkingBudgetTokens,
+			want:      2048,
 		},
 		{
 			name:  "request ceiling",
@@ -994,8 +1018,9 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ThinkingBudgetTokens: &largeBudget,
 				MaxTokens:            &requestCeiling,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
-			want:   3072,
+			compat:    completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
+			wantField: sigma.OpenAICompletionsThinkingTokenBudget,
+			want:      3072,
 		},
 		{
 			name:  "model ceiling",
@@ -1004,8 +1029,9 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelHigh,
 				ThinkingBudgetTokens: &largeBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
-			want:   3072,
+			compat:    completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
+			wantField: sigma.OpenAICompletionsThinkingTokenBudget,
+			want:      3072,
 		},
 		{
 			name:  "unsupported compatibility",
@@ -1021,7 +1047,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 			opts: sigma.Options{
 				ThinkingBudgetTokens: &positiveBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 		{
 			name:  "reasoning off",
@@ -1030,7 +1056,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelOff,
 				ThinkingBudgetTokens: &positiveBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 		{
 			name:  "model without reasoning",
@@ -1039,7 +1065,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelHigh,
 				ThinkingBudgetTokens: &positiveBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 		{
 			name:  "zero budget",
@@ -1048,7 +1074,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelHigh,
 				ThinkingBudgetTokens: &zeroBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 		{
 			name:  "unknown ceiling",
@@ -1057,7 +1083,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ReasoningLevel:       sigma.ThinkingLevelHigh,
 				ThinkingBudgetTokens: &positiveBudget,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 		{
 			name:  "ceiling cannot preserve answer",
@@ -1067,7 +1093,7 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 				ThinkingBudgetTokens: &positiveBudget,
 				MaxTokens:            &smallCeiling,
 			},
-			compat: completionsCompat{supportsThinkingTokenBudget: true},
+			compat: completionsCompat{thinkingTokenBudgetField: sigma.OpenAICompletionsThinkingTokenBudget},
 		},
 	}
 
@@ -1077,15 +1103,65 @@ func TestOpenAICompletionsCompatMapsThinkingTokenBudget(t *testing.T) {
 
 			payload := map[string]any{}
 			addThinkingTokenBudget(payload, tt.model, tt.opts, tt.compat)
-			got, ok := payload["thinking_token_budget"]
 			if tt.want == 0 {
-				if ok {
-					t.Fatalf("thinking_token_budget = %v, want absent", got)
+				if len(payload) != 0 {
+					t.Fatalf("thinking budget payload = %#v, want empty", payload)
 				}
 				return
 			}
+			got, ok := payload[string(tt.wantField)]
 			if !ok || got != tt.want {
-				t.Fatalf("thinking_token_budget = %v, present %v; want %d", got, ok, tt.want)
+				t.Fatalf("%s = %v, present %v; want %d", tt.wantField, got, ok, tt.want)
+			}
+			if len(payload) != 1 {
+				t.Fatalf("thinking budget payload = %#v, want one selected field", payload)
+			}
+		})
+	}
+}
+
+func TestOpenAICompletionsCompatResolvesThinkingTokenBudgetField(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		compat sigma.OpenAICompletionsCompat
+		want   sigma.OpenAICompletionsThinkingTokenBudgetField
+	}{
+		{
+			name:   "legacy supported alias",
+			compat: sigma.OpenAICompletionsCompat{SupportsThinkingTokenBudget: sigma.OpenAICompatSupported},
+			want:   sigma.OpenAICompletionsThinkingTokenBudget,
+		},
+		{
+			name:   "legacy unsupported alias",
+			compat: sigma.OpenAICompletionsCompat{SupportsThinkingTokenBudget: sigma.OpenAICompatUnsupported},
+		},
+		{
+			name: "explicit field",
+			compat: sigma.OpenAICompletionsCompat{
+				ThinkingTokenBudgetField: sigma.OpenAICompletionsThinkingBudgetTokens,
+			},
+			want: sigma.OpenAICompletionsThinkingBudgetTokens,
+		},
+		{
+			name: "explicit field wins over alias",
+			compat: sigma.OpenAICompletionsCompat{
+				SupportsThinkingTokenBudget: sigma.OpenAICompatUnsupported,
+				ThinkingTokenBudgetField:    sigma.OpenAICompletionsThinkingBudget,
+			},
+			want: sigma.OpenAICompletionsThinkingBudget,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{OpenAICompletionsCompat: &tt.compat}
+			got := openAICompletionsCompat(model, "https://example.test/v1").thinkingTokenBudgetField
+			if got != tt.want {
+				t.Fatalf("thinking token budget field = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -1112,16 +1188,16 @@ func TestOpenAICompletionsThinkingTokenBudgetOverridePrecedence(t *testing.T) {
 			ThinkingBudgetTokens: &budget,
 			MaxTokens:            &maxTokens,
 			OpenAIOptions: &sigma.OpenAIOptions{SamplingParameters: map[string]any{
-				"thinking_token_budget": 2048,
+				"thinking_budget": 2048,
 			}},
 			ProviderOptions: map[sigma.ProviderID]map[string]any{
 				sigma.ProviderCustom: {
-					"extra_body": map[string]any{"thinking_token_budget": 512},
+					"extra_body": map[string]any{"thinking_budget": 512},
 				},
 			},
 		},
 		completionsCompat{
-			supportsThinkingTokenBudget:      true,
+			thinkingTokenBudgetField:         sigma.OpenAICompletionsThinkingBudget,
 			supportsJSONSchemaResponseFormat: true,
 			supportsRequiredToolChoice:       true,
 			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
@@ -1130,8 +1206,8 @@ func TestOpenAICompletionsThinkingTokenBudgetOverridePrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chatCompletionsPayload returned error: %v", err)
 	}
-	if got, want := payload["thinking_token_budget"], 512; got != want {
-		t.Fatalf("thinking_token_budget = %v, want raw override %v", got, want)
+	if got, want := payload["thinking_budget"], 512; got != want {
+		t.Fatalf("thinking_budget = %v, want raw override %v", got, want)
 	}
 }
 

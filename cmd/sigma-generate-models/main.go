@@ -586,6 +586,7 @@ func writeOpenAICompatField(b *bytes.Buffer, compat *modeldata.OpenAICompletions
 	writeStringField(b, "SupportsGrammarTools", "OpenAICompatSupport", compat.SupportsGrammarTools)
 	writeStringField(b, "SupportsFinishReason", "OpenAICompatSupport", compat.SupportsFinishReason)
 	writeStringField(b, "SupportsThinkingTokenBudget", "OpenAICompatSupport", compat.SupportsThinkingTokenBudget)
+	writeStringField(b, "ThinkingTokenBudgetField", "OpenAICompletionsThinkingTokenBudgetField", compat.ThinkingTokenBudgetField)
 	writeStringField(b, "SupportsJSONSchemaResponseFormat", "OpenAICompatSupport", compat.SupportsJSONSchemaResponseFormat)
 	writeStringField(b, "MaxTokensField", "OpenAICompletionsMaxTokensField", compat.MaxTokensField)
 	writeStringField(b, "CacheControlFormat", "OpenAICompletionsCacheControlFormat", compat.CacheControlFormat)

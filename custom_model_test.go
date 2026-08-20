@@ -350,11 +350,11 @@ func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 		OutputCostPerMillion: 0.2,
 		CostCurrency:         "USD",
 		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			SupportsStreamingUsage:      sigma.OpenAICompatSupported,
-			SupportsThinkingTokenBudget: sigma.OpenAICompatSupported,
-			MaxTokensField:              sigma.OpenAICompletionsMaxCompletionTokens,
-			ReasoningFormat:             sigma.OpenAICompletionsReasoningObject,
-			SupportsStore:               sigma.OpenAICompatUnsupported,
+			SupportsStreamingUsage:   sigma.OpenAICompatSupported,
+			ThinkingTokenBudgetField: sigma.OpenAICompletionsThinkingBudgetTokens,
+			MaxTokensField:           sigma.OpenAICompletionsMaxCompletionTokens,
+			ReasoningFormat:          sigma.OpenAICompletionsReasoningObject,
+			SupportsStore:            sigma.OpenAICompatUnsupported,
 		},
 	})
 
@@ -400,13 +400,13 @@ func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 	assertHeaderValue(t, request.Headers, "X-Model", "request")
 	assertHeaderValue(t, request.Headers, "X-Model-Only", "present")
 	assertJSONMap(t, request.Body, map[string]any{
-		"model":                 "local-chat",
-		"messages":              []any{map[string]any{"role": "user", "content": "hi"}},
-		"stream":                true,
-		"stream_options":        map[string]any{"include_usage": true},
-		"max_completion_tokens": float64(4096),
-		"reasoning":             map[string]any{"effort": "deep"},
-		"thinking_token_budget": float64(3072),
+		"model":                  "local-chat",
+		"messages":               []any{map[string]any{"role": "user", "content": "hi"}},
+		"stream":                 true,
+		"stream_options":         map[string]any{"include_usage": true},
+		"max_completion_tokens":  float64(4096),
+		"reasoning":              map[string]any{"effort": "deep"},
+		"thinking_budget_tokens": float64(3072),
 	})
 	if _, ok := request.Body["store"]; ok {
 		t.Fatal("store was sent despite compatibility override disabling it")

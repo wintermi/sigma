@@ -401,9 +401,11 @@ work until their API boundaries are explicit.
 - [x] Add provider-neutral automatic and disabled tool selection across built-in
       text providers while retaining provider-specific required, any, named-tool,
       and custom configuration controls.
-- [x] Add capability-gated top-level `thinking_token_budget` support for custom
-      OpenAI-compatible Chat Completions models, using explicit reasoning and
-      budget options with a 1,024-token visible-output reserve.
+- [x] Add capability-gated top-level `thinking_token_budget`, `thinking_budget`,
+      and `thinking_budget_tokens` support for custom OpenAI-compatible Chat
+      Completions models, using a typed field selector, explicit reasoning and
+      budget options, and a 1,024-token visible-output reserve while preserving
+      the original compatibility flag as an alias.
 - [ ] Add broader provider-neutral sampling controls such as top-p, top-k,
       seed, and penalty fields only after settling cross-provider semantics.
 - [x] Add opt-in live provider metadata/replay and pairwise handoff probes

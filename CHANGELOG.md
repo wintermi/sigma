@@ -54,10 +54,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
   now accept arbitrary request-scoped sampling parameters through
   `OpenAIOptions.SamplingParameters`; sampling values override typed request
   fields, while provider `extra_body` values retain final precedence.
-- Custom OpenAI-compatible Chat Completions models can now opt into top-level
-  `thinking_token_budget` requests through `OpenAICompletionsCompat`, reusing
-  Sigma's existing explicit reasoning-budget options while reserving 1,024
-  tokens for visible output.
+- Custom OpenAI-compatible Chat Completions models can now select
+  `thinking_token_budget`, `thinking_budget`, or `thinking_budget_tokens`
+  through `OpenAICompletionsCompat.ThinkingTokenBudgetField`, reusing Sigma's
+  existing explicit reasoning-budget options while reserving 1,024 tokens for
+  visible output. `SupportsThinkingTokenBudget` remains a backward-compatible
+  alias for `thinking_token_budget`, and the explicit selector takes precedence.
 - `cmd/sigma-evals-runner` now applies an independent, configurable timeout to
   each case/model/repetition run so one stalled provider call is recorded as an
   operational failure without cancelling later evaluations; the existing
