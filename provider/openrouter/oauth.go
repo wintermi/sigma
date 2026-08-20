@@ -31,6 +31,7 @@ const (
 	openRouterOAuthCallbackHost    = "127.0.0.1"
 	openRouterOAuthLoginTimeout    = 5 * time.Minute
 	openRouterOAuthExchangeTimeout = 30 * time.Second
+	openRouterOAuthShutdownTimeout = time.Second
 )
 
 var (
@@ -206,7 +207,11 @@ func (s *openRouterBrowserCallbackServer) close() {
 	if s == nil || s.server == nil {
 		return
 	}
-	_ = s.server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), openRouterOAuthShutdownTimeout)
+	defer cancel()
+	if err := s.server.Shutdown(ctx); err != nil {
+		_ = s.server.Close()
+	}
 }
 
 func waitOpenRouterBrowserAuthorizationCode(
