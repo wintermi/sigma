@@ -53,6 +53,53 @@ func TestRequestPersistenceRoundTripCoversReplayContent(t *testing.T) {
 	if got, want := roundTripped.Messages[2].AddedToolNames, []string{"forecast"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("tool additions after round trip = %#v, want %#v", got, want)
 	}
+	toolUsage := roundTripped.Messages[2].Usage
+	if toolUsage == nil {
+		t.Fatal("tool usage after round trip was nil")
+	}
+	if got, want := toolUsage.Total(), 17; got != want {
+		t.Fatalf("tool usage total after round trip = %d, want %d", got, want)
+	}
+	if got, want := toolUsage.Provider, sigma.ProviderOpenAI; got != want {
+		t.Fatalf("tool usage provider after round trip = %q, want %q", got, want)
+	}
+	if got, want := toolUsage.Model, sigma.ModelID("tool-model"); got != want {
+		t.Fatalf("tool usage model after round trip = %q, want %q", got, want)
+	}
+	if got, want := toolUsage.Raw["nested"].(map[string]any)["cached"], true; got != want {
+		t.Fatalf("tool raw usage after round trip = %v, want %v", got, want)
+	}
+}
+
+func TestValidateRequestAcceptsUsageOnAssistantAndToolMessages(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		req  sigma.Request
+	}{
+		{
+			name: "assistant",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.Text("done")},
+				Usage:   &sigma.Usage{TotalTokens: 3},
+			}}},
+		},
+		{
+			name: "tool result",
+			req:  sigma.Request{Messages: toolUsageMessages(&sigma.Usage{TotalTokens: 5})},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if err := sigma.ValidateRequest(tt.req); err != nil {
+				t.Fatalf("ValidateRequest returned error: %v", err)
+			}
+		})
+	}
 }
 
 func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
@@ -162,13 +209,22 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 			errorText: "requires provider metadata",
 		},
 		{
-			name: "usage on non-assistant message",
+			name: "usage on user message",
 			req: sigma.Request{Messages: []sigma.Message{{
 				Role:    sigma.RoleUser,
 				Content: []sigma.ContentBlock{sigma.Text("hello")},
 				Usage:   &sigma.Usage{InputTokens: 1},
 			}}},
-			errorText: "assistant usage requires role",
+			errorText: "usage requires role",
+		},
+		{
+			name: "usage on developer message",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:    sigma.RoleDeveloper,
+				Content: []sigma.ContentBlock{sigma.Text("hello")},
+				Usage:   &sigma.Usage{InputTokens: 1},
+			}}},
+			errorText: "usage requires role",
 		},
 	}
 
@@ -381,6 +437,15 @@ func persistedReplayRequest() sigma.Request {
 	toolCall.ProviderSignature = "opaque-tool-signature"
 	toolResult := sigma.ToolResult("call_weather", "18 C")
 	toolResult.AddedToolNames = []string{"forecast"}
+	toolResult.Usage = &sigma.Usage{
+		InputTokens:  11,
+		OutputTokens: 6,
+		Provider:     sigma.ProviderOpenAI,
+		Model:        "tool-model",
+		Raw: map[string]any{
+			"nested": map[string]any{"cached": true},
+		},
+	}
 
 	return sigma.Request{
 		SystemPrompt: "Be concise.",
@@ -426,6 +491,19 @@ func persistedReplayRequest() sigma.Request {
 			Description: "Looks up current weather.",
 			InputSchema: sigma.Schema{"type": "object"},
 		}},
+	}
+}
+
+func toolUsageMessages(usage *sigma.Usage) []sigma.Message {
+	result := sigma.ToolResult("call_tool", "result")
+	result.ToolName = "tool"
+	result.Usage = usage
+	return []sigma.Message{
+		{
+			Role:    sigma.RoleAssistant,
+			Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_tool", "tool", map[string]any{})},
+		},
+		result,
 	}
 }
 

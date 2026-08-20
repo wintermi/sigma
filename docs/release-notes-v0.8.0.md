@@ -214,6 +214,11 @@ selection remains available through existing provider-specific controls.
   and private transcripts; executor failures remain operational errors. The
   opt-in live runner now includes a sixth case whose hidden local result passes
   only with a matching successful tool call/result trace and exact final answer.
+- Persisted tool-result messages can now retain optional `Usage` from
+  caller-owned tool execution through replay and model handoff. This metadata
+  is not serialized into provider requests and remains separate from
+  assistant-usage context anchors, model-turn cost accounting, and evaluation
+  usage totals.
 - `OpenAICompletionsCompat` now supports an opt-in setting for endpoints that
   end streams with `[DONE]` but do not emit `finish_reason`.
 - Qwen Token Plan Individual now provides a distinct registration route for

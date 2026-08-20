@@ -44,6 +44,34 @@ func TestTransformRequestForModelPreservesSameModelThinking(t *testing.T) {
 	}
 }
 
+func TestTransformRequestForModelPreservesToolResultUsage(t *testing.T) {
+	t.Parallel()
+
+	usage := &sigma.Usage{
+		InputTokens: 4,
+		Provider:    sigma.ProviderOpenAI,
+		Model:       "tool-model",
+		Raw:         map[string]any{"source": "tool"},
+	}
+	result, err := sigma.TransformRequestForModel(
+		sigma.Model{
+			ID:            "gpt-test",
+			Provider:      sigma.ProviderOpenAI,
+			API:           sigma.APIOpenAICompletions,
+			SupportsTools: true,
+		},
+		sigma.Request{Messages: toolUsageMessages(usage)},
+	)
+	if err != nil {
+		t.Fatalf("TransformRequestForModel returned error: %v", err)
+	}
+
+	got := result.Request.Messages[1].Usage
+	if !reflect.DeepEqual(got, usage) {
+		t.Fatalf("tool usage = %#v, want %#v", got, usage)
+	}
+}
+
 func TestTransformRequestForModelClonesOpenAIGrammarTools(t *testing.T) {
 	t.Parallel()
 

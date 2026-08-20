@@ -7,6 +7,7 @@ package transform
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -78,6 +79,41 @@ func TestTransformPreservesSameProviderAssistantBlocks(t *testing.T) {
 	transformed.Tools[0].InputSchema.(sigma.Schema)["type"] = "array"
 	if got, want := request.Tools[0].InputSchema.(sigma.Schema)["type"], "object"; got != want {
 		t.Fatalf("original tool schema was mutated: got %q want %q", got, want)
+	}
+}
+
+func TestTransformPreservesToolResultUsage(t *testing.T) {
+	t.Parallel()
+
+	usage := &sigma.Usage{
+		OutputTokens: 3,
+		Provider:     sigma.ProviderOpenAI,
+		Model:        "tool-model",
+		Raw:          map[string]any{"source": "tool"},
+	}
+	toolResult := sigma.ToolResult("call_1", "result")
+	toolResult.Usage = usage
+	transformed, err := Transform(Input{
+		TargetModel: sigma.Model{
+			ID:            "gpt-test",
+			Provider:      sigma.ProviderOpenAI,
+			API:           sigma.APIOpenAICompletions,
+			SupportsTools: true,
+		},
+		Request: sigma.Request{Messages: []sigma.Message{
+			{
+				Role:    sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "tool", map[string]any{})},
+			},
+			toolResult,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Transform returned error: %v", err)
+	}
+
+	if got := transformed.Messages[1].Usage; !reflect.DeepEqual(got, usage) {
+		t.Fatalf("tool usage = %#v, want %#v", got, usage)
 	}
 }
 

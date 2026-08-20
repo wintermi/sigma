@@ -470,9 +470,12 @@ type Request struct {
 // User, developer, and assistant messages use Content. Tool-result messages use
 // Content plus ToolCallID, optional AddedToolNames, and IsError. Provider, API,
 // Model, and StopReason preserve assistant provenance for later cross-provider
-// replay. Go cannot make those role-specific fields impossible to combine in a
-// plain struct, so callers should prefer UserText, UserContent, ToolResult, and
-// ToolError when constructing persisted conversations.
+// replay. Usage records provider accounting on assistant messages or
+// caller-owned execution accounting on tool-result messages. Tool-result usage
+// is metadata only: providers and request token estimates ignore it. Go cannot
+// make those role-specific fields impossible to combine in a plain struct, so
+// callers should prefer UserText, UserContent, ToolResult, and ToolError when
+// constructing persisted conversations.
 type Message struct {
 	Role           Role           `json:"role"`
 	Content        []ContentBlock `json:"content,omitempty"`
@@ -527,7 +530,9 @@ func (b ContentBlock) Clone() ContentBlock {
 	return b
 }
 
-// Usage records provider token accounting for a model turn.
+// Usage records token accounting for a model turn or caller-owned tool
+// execution. Usage attached to a tool-result Message is not part of the main
+// model turn's provider payload, context estimate, or cost accounting.
 type Usage struct {
 	InputTokens               int            `json:"inputTokens,omitempty"`
 	OutputTokens              int            `json:"outputTokens,omitempty"`

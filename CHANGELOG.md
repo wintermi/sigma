@@ -68,6 +68,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
   caller-owned text tool loops while retaining complete usage and trace
   artifacts. The opt-in live runner adds a deterministic tool-call round-trip
   case that requires a matching successful call, result, and final answer.
+- Persisted tool-result messages can now carry optional `Usage` describing
+  caller-owned tool execution. The metadata survives replay and handoff while
+  remaining excluded from provider payloads, request-token estimates, model
+  turn cost accounting, and evaluation usage totals.
 - OpenAI-compatible Chat Completions models can now opt out of terminal
   `finish_reason` support through `OpenAICompletionsCompat`, accepting an
   explicit `[DONE]` marker while continuing to reject unmarked stream EOF.

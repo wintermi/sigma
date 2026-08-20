@@ -980,6 +980,9 @@ should still come through the catalog refresh workflow.
       when provider usage includes cache-read details.
 - [x] Add deterministic approximate request token estimates that can anchor on
       persisted assistant usage without adding provider tokenizer dependencies.
+- [x] Allow persisted tool-result messages to carry optional execution-local
+      usage metadata without adding it to provider payloads, request-token
+      estimates, model-turn cost accounting, or evaluation totals.
 - [ ] Add tokenizer-based token estimates as an alternative to provider-reported
       usage.
 - [ ] Reconcile tokenizer estimates against provider usage data and model

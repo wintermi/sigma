@@ -124,6 +124,15 @@ func TestCompleteStreamsTextAndSendsGoldenPayload(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertHeader(t, request.Headers, "X-Session-ID", "session-123")
 	goldentest.AssertJSON(t, request.Body, "provider/openai/completions/rich_payload.json")
+	var payload map[string]any
+	if err := json.Unmarshal(request.Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	messages := payload["messages"].([]any)
+	toolMessage := messages[4].(map[string]any)
+	if _, ok := toolMessage["usage"]; ok {
+		t.Fatalf("tool message sent usage metadata: %#v", toolMessage)
+	}
 }
 
 func TestCompleteSendsProviderNeutralToolChoice(t *testing.T) {
@@ -3881,6 +3890,13 @@ func chatGrammarTool(name string, syntax sigma.OpenAIGrammarSyntax, definition s
 }
 
 func richRequest() sigma.Request {
+	toolResult := sigma.ToolResult("call_prev", "Sunny")
+	toolResult.Usage = &sigma.Usage{
+		InputTokens:  8,
+		OutputTokens: 2,
+		Provider:     sigma.ProviderOpenAI,
+		Model:        "tool-model",
+	}
 	return sigma.Request{
 		SystemPrompt: "You are helpful.",
 		Messages: []sigma.Message{
@@ -3900,7 +3916,7 @@ func richRequest() sigma.Request {
 					sigma.ToolCallBlock("call_prev", "lookup", map[string]any{"query": "weather"}),
 				},
 			},
-			sigma.ToolResult("call_prev", "Sunny"),
+			toolResult,
 		},
 		Tools: []sigma.Tool{{
 			Name:        "weather",

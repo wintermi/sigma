@@ -60,14 +60,35 @@ For tool loops, append the assistant message first, then append one
 `sigma.ToolResult` or `sigma.ToolError` for each tool call you executed. See
 [Tools](tools.md).
 
+When a caller-owned tool execution has its own token usage, attach it to the
+tool-result message before persisting it:
+
+```go
+result := sigma.ToolResult(call.ID, output)
+result.Usage = &sigma.Usage{
+	InputTokens:  toolInputTokens,
+	OutputTokens: toolOutputTokens,
+	Provider:     toolProvider,
+	Model:        toolModel,
+}
+history = append(history, result)
+```
+
+Tool-result usage is execution-local metadata. Sigma preserves it through
+persistence and model handoff but does not send it to providers or include it
+in request-token estimates, model-turn cost accounting, or evaluation usage
+totals. It is distinct from `Usage.ToolUseInputTokens`, which records
+provider-reported tool or connector input tokens on an assistant turn.
+
 For canceled streams, only persist the aborted assistant message if the partial
 content was visible to the user or needed for a later continue request. See
 [Cancellation](cancellation.md).
 
 Persisting assistant usage is optional. When present on the latest successful
 assistant message, `sigma.EstimateRequestTokens` uses it as an anchor and only
-estimates messages that follow it. Usage on non-assistant messages is rejected
-by `ValidateRequest`.
+estimates messages that follow it. Tool-result usage is preserved but never
+used as an anchor. Usage on user and developer messages is rejected by
+`ValidateRequest`.
 
 ## Storage concerns
 

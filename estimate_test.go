@@ -6,6 +6,7 @@
 package sigma_test
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -53,6 +54,19 @@ func TestEstimateRequestTokensWithoutUsageAnchor(t *testing.T) {
 	}
 	if got, want := estimate.TrailingTokens, estimate.Tokens; got != want {
 		t.Fatalf("trailing tokens = %d, want %d", got, want)
+	}
+}
+
+func TestEstimateRequestTokensIgnoresToolResultUsage(t *testing.T) {
+	t.Parallel()
+
+	withoutUsage := sigma.Request{Messages: toolUsageMessages(nil)}
+	withUsage := sigma.Request{Messages: toolUsageMessages(&sigma.Usage{TotalTokens: 1_000_000})}
+
+	withoutEstimate := sigma.EstimateRequestTokens(withoutUsage)
+	withEstimate := sigma.EstimateRequestTokens(withUsage)
+	if !reflect.DeepEqual(withEstimate, withoutEstimate) {
+		t.Fatalf("estimate with tool usage = %#v, want %#v", withEstimate, withoutEstimate)
 	}
 }
 
