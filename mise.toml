@@ -9,7 +9,7 @@ COMMIT_LONG = "{{ exec(command='git rev-parse HEAD 2>/dev/null || echo \"unknown
 [tools]
 go = "1.26"
 "go:golang.org/x/tools/gopls" = { version = "latest" }
-"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = { version = "latest" }
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = { version = "v2.12.2" }
 "go:mvdan.cc/gofumpt" = { version = "latest" }
 
 [tasks."mise:validate"]
