@@ -98,8 +98,11 @@ Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
 retained only when their loading context can be replayed safely. Codex Responses
 SSE and WebSocket streams also recognize `response.done` completion and retain
-explicit `end_turn` values as opaque diagnostics. Provider failures that report
-an exhausted upstream request buffer are now classified as retryable for
+explicit `end_turn` values as opaque diagnostics. OpenAI, Azure, and Codex
+Responses streams now also retain non-empty assistant message phases through
+persistence, with recognized commentary and final-answer boundaries replayed
+only to the exact provider, API, and model. Provider failures that report an
+exhausted upstream request buffer are now classified as retryable for
 caller-owned recovery. Responses incomplete terminals now distinguish
 max-output and content-filter stops from missing or unknown reasons, with a
 provider-neutral helper for bounded caller-owned max-token recovery. Existing
@@ -242,6 +245,11 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- Responses assistant phases remain opaque provider metadata rather than new
+  provider-neutral content or end-turn controls. Unknown phases are retained
+  for diagnostics but omitted from replay, as are recognized phases from a
+  different provider, API, or model; partial and terminal stop-reason behavior
+  is unchanged.
 - Xiaomi no longer advertises `mimo-v2-flash`, `mimo-v2-omni`, or
   `mimo-v2-pro` through its generated direct or regional Token Plan catalogs.
   Callers using those retired IDs must select a V2.5 model; Sigma does not

@@ -310,6 +310,10 @@ work until their API boundaries are explicit.
       error behavior.
 - [x] Accept Codex Responses `response.done` terminal signals and preserve
       explicit `end_turn` diagnostics across SSE and WebSocket transports.
+- [x] Preserve non-empty OpenAI Responses assistant message phases in opaque
+      content metadata and replay recognized commentary and final-answer phases
+      only for the exact provider, API, and model without changing normalized
+      stop reasons.
 - [ ] Keep provider-neutral end-turn control semantics deferred until agent
       orchestration has an explicit typed contract.
 - [x] Preserve non-empty terminal OpenAI-compatible Chat Completions

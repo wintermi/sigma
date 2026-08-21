@@ -57,6 +57,7 @@ type responsesOutputItem struct {
 	ID               string                 `json:"id"`
 	Type             string                 `json:"type"`
 	Role             string                 `json:"role"`
+	Phase            string                 `json:"phase"`
 	Status           string                 `json:"status"`
 	Content          []responsesContentPart `json:"content"`
 	Summary          []responsesSummaryPart `json:"summary"`
@@ -122,6 +123,7 @@ type responsesStreamParser struct {
 	started             bool
 	nextBlock           int
 	text                map[int]*responsesTextState
+	messagePhases       map[int]string
 	thinking            map[int]*responsesThinkingState
 	images              map[int]*responsesImageState
 	toolCalls           map[int]*streamblocks.ToolCall
@@ -158,6 +160,7 @@ type responsesTextState struct {
 	itemID    string
 	partID    string
 	signature string
+	phase     string
 }
 
 type responsesThinkingState struct {
@@ -203,6 +206,7 @@ func newResponsesStreamParser(writer sigma.StreamWriter, model sigma.Model, opts
 		model:           model,
 		options:         opts,
 		text:            make(map[int]*responsesTextState),
+		messagePhases:   make(map[int]string),
 		thinking:        make(map[int]*responsesThinkingState),
 		images:          make(map[int]*responsesImageState),
 		toolCalls:       make(map[int]*streamblocks.ToolCall),
@@ -436,6 +440,12 @@ func (p *responsesStreamParser) captureTerminalResponse(response responsesRespon
 func (p *responsesStreamParser) captureOutputItem(outputIndex int, item responsesOutputItem) {
 	switch item.Type {
 	case "message":
+		if item.Phase != "" {
+			p.messagePhases[outputIndex] = item.Phase
+			if state := p.text[outputIndex]; state != nil {
+				state.phase = item.Phase
+			}
+		}
 		for _, part := range item.Content {
 			if part.Type != "output_text" && part.Type != "refusal" {
 				continue
@@ -790,6 +800,12 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		block := sigma.Text(state.String())
 		block.Signature = state.signature
 		block.ProviderMetadata = responsesMetadata(state.itemID, state.partID, "")
+		if state.phase != "" {
+			if block.ProviderMetadata == nil {
+				block.ProviderMetadata = make(map[string]any)
+			}
+			block.ProviderMetadata["phase"] = state.phase
+		}
 		contentByIndex[state.ContentIndex] = block
 	}
 	for _, state := range p.sortedThinking() {
@@ -966,7 +982,10 @@ func (p *responsesStreamParser) emitEndEvents(ctx context.Context, outputIndex *
 func (p *responsesStreamParser) textState(outputIndex int) *responsesTextState {
 	state := p.text[outputIndex]
 	if state == nil {
-		state = &responsesTextState{Text: streamblocks.Text{ContentIndex: p.nextContentIndex()}}
+		state = &responsesTextState{
+			Text:  streamblocks.Text{ContentIndex: p.nextContentIndex()},
+			phase: p.messagePhases[outputIndex],
+		}
 		p.text[outputIndex] = state
 	}
 	return state

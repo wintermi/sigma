@@ -2114,6 +2114,197 @@ data: {"type":"response.custom_tool_call_input.done","output_index":0,"input":"s
 	}
 }
 
+func TestResponsesPreservesAndReplaysAssistantPhases(t *testing.T) {
+	t.Parallel()
+
+	phaseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeResponsesSSE(t, w, responsesAssistantPhasesEvent)
+	}))
+	t.Cleanup(phaseServer.Close)
+
+	providerID := sigma.ProviderID("responses-phase-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, phaseServer.URL)
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.StopReason, sigma.StopReasonEndTurn; got != want {
+		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := len(final.Content), 2; got != want {
+		t.Fatalf("content blocks = %d, want %d", got, want)
+	}
+	for i, want := range []struct {
+		text      string
+		itemID    string
+		contentID string
+		phase     string
+	}{
+		{text: "Checking constraints.", itemID: "msg_commentary", contentID: "text_commentary", phase: "commentary"},
+		{text: "The answer.", itemID: "msg_answer", contentID: "text_answer", phase: "final_answer"},
+	} {
+		block := final.Content[i]
+		if got := block.Text; got != want.text {
+			t.Fatalf("content %d text = %q, want %q", i, got, want.text)
+		}
+		if got := block.ProviderMetadata["id"]; got != want.itemID {
+			t.Fatalf("content %d item id = %v, want %q", i, got, want.itemID)
+		}
+		if got := block.ProviderMetadata["content_id"]; got != want.contentID {
+			t.Fatalf("content %d content id = %v, want %q", i, got, want.contentID)
+		}
+		if got := block.ProviderMetadata["phase"]; got != want.phase {
+			t.Fatalf("content %d phase = %v, want %q", i, got, want.phase)
+		}
+	}
+
+	persisted, err := sigma.MarshalRequest(sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("hi"),
+		{
+			Role:       sigma.RoleAssistant,
+			Content:    final.Content,
+			Provider:   final.Provider,
+			API:        model.API,
+			Model:      final.Model,
+			StopReason: final.StopReason,
+		},
+	}})
+	if err != nil {
+		t.Fatalf("MarshalRequest returned error: %v", err)
+	}
+	restored, err := sigma.UnmarshalRequest(persisted)
+	if err != nil {
+		t.Fatalf("UnmarshalRequest returned error: %v", err)
+	}
+	for i, phase := range []string{"commentary", "final_answer"} {
+		if got := restored.Messages[1].Content[i].ProviderMetadata["phase"]; got != phase {
+			t.Fatalf("restored content %d phase = %v, want %q", i, got, phase)
+		}
+	}
+	restored.Messages = append(restored.Messages, sigma.UserText("continue"))
+
+	requests := make(chan capturedRequest, 1)
+	replayServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(replayServer.Close)
+	replayClient := responsesTestClient(t, providerID, model, replayServer.URL)
+	if _, err := replayClient.Complete(context.Background(), model, restored); err != nil {
+		t.Fatalf("replay Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("decode replay payload: %v", err)
+	}
+	var assistantItems []map[string]any
+	for _, item := range payload.Input {
+		if item["type"] == "message" && item["role"] == "assistant" {
+			assistantItems = append(assistantItems, item)
+		}
+	}
+	if got, want := len(assistantItems), 2; got != want {
+		t.Fatalf("replayed assistant message items = %d, want %d: %#v", got, want, assistantItems)
+	}
+	for i, want := range []struct {
+		itemID string
+		phase  string
+		text   string
+	}{
+		{itemID: "msg_commentary", phase: "commentary", text: "Checking constraints."},
+		{itemID: "msg_answer", phase: "final_answer", text: "The answer."},
+	} {
+		item := assistantItems[i]
+		if got := item["id"]; got != want.itemID {
+			t.Fatalf("replayed item %d id = %v, want %q", i, got, want.itemID)
+		}
+		if got := item["phase"]; got != want.phase {
+			t.Fatalf("replayed item %d phase = %v, want %q", i, got, want.phase)
+		}
+		content := item["content"].([]any)
+		if got := content[0].(map[string]any)["text"]; got != want.text {
+			t.Fatalf("replayed item %d text = %v, want %q", i, got, want.text)
+		}
+	}
+}
+
+func TestResponsesReplayOmitsUntrustedAssistantPhases(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-phase-omission-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	tests := []struct {
+		name     string
+		phase    string
+		provider sigma.ProviderID
+		api      sigma.API
+		model    sigma.ModelID
+	}{
+		{name: "missing", provider: providerID, api: model.API, model: model.ID},
+		{name: "unknown", phase: "analysis", provider: providerID, api: model.API, model: model.ID},
+		{name: "foreign-provider", phase: "commentary", provider: "other", api: model.API, model: model.ID},
+		{name: "different-api", phase: "commentary", provider: providerID, api: sigma.APIOpenAICompletions, model: model.ID},
+		{name: "different-model", phase: "final_answer", provider: providerID, api: model.API, model: "other"},
+	}
+	request := sigma.Request{Messages: []sigma.Message{sigma.UserText("start")}}
+	for _, tt := range tests {
+		block := sigma.Text(tt.name)
+		block.ProviderMetadata = map[string]any{"id": "msg_" + strings.ReplaceAll(tt.name, "-", "_")}
+		if tt.phase != "" {
+			block.ProviderMetadata["phase"] = tt.phase
+		}
+		request.Messages = append(request.Messages, sigma.Message{
+			Role:     sigma.RoleAssistant,
+			Content:  []sigma.ContentBlock{block},
+			Provider: tt.provider,
+			API:      tt.api,
+			Model:    tt.model,
+		})
+	}
+	request.Messages = append(request.Messages, sigma.UserText("continue"))
+
+	if _, err := client.Complete(context.Background(), model, request); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	var payload struct {
+		Input []map[string]any `json:"input"`
+	}
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	var assistantItems []map[string]any
+	for _, item := range payload.Input {
+		if item["type"] == "message" && item["role"] == "assistant" {
+			assistantItems = append(assistantItems, item)
+		}
+	}
+	if got, want := len(assistantItems), len(tests); got != want {
+		t.Fatalf("assistant message items = %d, want %d", got, want)
+	}
+	for i, tt := range tests {
+		if phase, ok := assistantItems[i]["phase"]; ok {
+			t.Fatalf("%s replayed phase = %v, want absent", tt.name, phase)
+		}
+		metadata := request.Messages[i+1].Content[0].ProviderMetadata
+		got, _ := metadata["phase"].(string)
+		if got != tt.phase {
+			t.Fatalf("%s stored phase = %q, want %q", tt.name, got, tt.phase)
+		}
+	}
+}
+
 func TestResponsesStreamingMapsTextReasoningUsageAndMetadata(t *testing.T) {
 	t.Parallel()
 
@@ -3498,6 +3689,21 @@ func errorsContains(err error, text string) bool {
 }
 
 const responsesCompletedEvent = `data: {"type":"response.completed","response":{"id":"resp_complete","model":"gpt-test","status":"completed","output":[{"type":"message","id":"msg_complete","role":"assistant","content":[{"type":"output_text","id":"text_complete","text":"ok"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}
+`
+
+const responsesAssistantPhasesEvent = `data: {"type":"response.output_item.added","response_id":"resp_phases","output_index":0,"item":{"type":"message","id":"msg_commentary","role":"assistant","phase":"commentary","content":[]}}
+
+data: {"type":"response.output_text.delta","response_id":"resp_phases","item_id":"msg_commentary","output_index":0,"content_index":0,"delta":"Checking constraints."}
+
+data: {"type":"response.output_item.done","response_id":"resp_phases","output_index":0,"item":{"type":"message","id":"msg_commentary","role":"assistant","phase":"commentary","content":[{"type":"output_text","id":"text_commentary","text":"Checking constraints."}]}}
+
+data: {"type":"response.output_item.added","response_id":"resp_phases","output_index":1,"item":{"type":"message","id":"msg_answer","role":"assistant","phase":"commentary","content":[]}}
+
+data: {"type":"response.output_text.delta","response_id":"resp_phases","item_id":"msg_answer","output_index":1,"content_index":0,"delta":"The answer."}
+
+data: {"type":"response.output_item.done","response_id":"resp_phases","output_index":1,"item":{"type":"message","id":"msg_answer","role":"assistant","phase":"final_answer","content":[{"type":"output_text","id":"text_answer","text":"The answer."}]}}
+
+data: {"type":"response.completed","response":{"id":"resp_phases","model":"gpt-test","status":"completed","usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}}
 `
 
 func responsesUsageEvent(serviceTier string) string {

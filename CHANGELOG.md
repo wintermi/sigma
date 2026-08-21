@@ -106,6 +106,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
   Invalid persisted entries are omitted without losing valid siblings, legacy
   tool-call metadata remains replayable, and requests without stored details
   are unchanged.
+- OpenAI, Azure, and Codex Responses streams now preserve non-empty assistant
+  message phases in opaque content metadata. Recognized `commentary` and
+  `final_answer` phases retain their original item boundaries on exact
+  provider/API/model replay, while unknown or incompatible phases remain
+  diagnostic-only and normalized stop reasons are unchanged.
 - OpenAI-compatible Chat Completions streams now preserve the first
   provider-issued ID and name for indexed function and grammar tool calls when
   later continuation deltas conflict, while still accepting a late first

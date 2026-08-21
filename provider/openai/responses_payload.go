@@ -354,6 +354,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
+	var messagePhase string
 	messageOrdinal := 0
 	contentOrdinal := 0
 	flushMessage := func() {
@@ -366,9 +367,13 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			"content":                 content,
 		}
 		item["id"] = responsesBoundedID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
+		if messagePhase != "" {
+			item["phase"] = messagePhase
+		}
 		items = append(items, item)
 		content = nil
 		messageID = ""
+		messagePhase = ""
 		messageOrdinal++
 	}
 
@@ -376,6 +381,11 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
+			phase := replayableResponsesPhase(model, message, block)
+			if phase != "" {
+				flushMessage()
+				messagePhase = phase
+			}
 			messageID = firstNonEmpty(messageID, providerID(block.ProviderMetadata))
 			part := map[string]any{
 				providerToolOptionTypeKey: "output_text",
@@ -391,6 +401,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			}
 			content = append(content, part)
 			contentOrdinal++
+			if phase != "" {
+				flushMessage()
+			}
 		case sigma.ContentBlockThinking:
 			flushMessage()
 			item := map[string]any{
@@ -467,6 +480,17 @@ func sameProviderDifferentModel(model sigma.Model, message sigma.Message) bool {
 		message.API == model.API &&
 		message.Model != "" &&
 		message.Model != model.ID
+}
+
+func replayableResponsesPhase(model sigma.Model, message sigma.Message, block sigma.ContentBlock) string {
+	if message.Provider != model.Provider || message.API != model.API || message.Model != model.ID {
+		return ""
+	}
+	phase := providerMetadataString(block.ProviderMetadata, "phase")
+	if phase == "commentary" || phase == "final_answer" {
+		return phase
+	}
+	return ""
 }
 
 func replayableResponsesNamespace(model sigma.Model, message sigma.Message, block sigma.ContentBlock, deferredTools map[string]sigma.Tool) string {
