@@ -153,7 +153,10 @@ func DoHTTPWithRetryAttempts(
 // RetryableStatusCode reports whether status is safe for pre-body-consumption
 // HTTP retries.
 func RetryableStatusCode(status int) bool {
-	return status == http.StatusTooManyRequests || status >= http.StatusInternalServerError
+	return status == http.StatusRequestTimeout ||
+		status == http.StatusConflict ||
+		status == http.StatusTooManyRequests ||
+		status >= http.StatusInternalServerError
 }
 
 // RetryableNetworkError reports whether err represents a transient network

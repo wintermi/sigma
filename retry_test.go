@@ -18,31 +18,44 @@ import (
 func TestDoHTTPWithRetryDoesNotRetryByDefault(t *testing.T) {
 	t.Parallel()
 
-	client := retryHTTPClient(
-		retryResponse(http.StatusInternalServerError, "temporary"),
-		retryResponse(http.StatusOK, "ok"),
-	)
+	for _, status := range []int{
+		http.StatusRequestTimeout,
+		http.StatusConflict,
+		http.StatusInternalServerError,
+	} {
+		status := status
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
 
-	resp, err := DoHTTPWithRetry(context.Background(), client, Options{}, retryRequest, retryProviderError)
-	if err != nil {
-		t.Fatalf("DoHTTPWithRetry returned error: %v", err)
-	}
-	defer resp.Body.Close()
+			client := retryHTTPClient(
+				retryResponse(status, "temporary"),
+				retryResponse(http.StatusOK, "ok"),
+			)
 
-	if got, want := resp.StatusCode, http.StatusInternalServerError; got != want {
-		t.Fatalf("status = %d, want %d", got, want)
-	}
-	if got, want := retryAttempts(client), 1; got != want {
-		t.Fatalf("attempts = %d, want %d", got, want)
+			resp, err := DoHTTPWithRetry(context.Background(), client, Options{}, retryRequest, retryProviderError)
+			if err != nil {
+				t.Fatalf("DoHTTPWithRetry returned error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if got := resp.StatusCode; got != status {
+				t.Fatalf("status = %d, want %d", got, status)
+			}
+			if got, want := retryAttempts(client), 1; got != want {
+				t.Fatalf("attempts = %d, want %d", got, want)
+			}
+		})
 	}
 }
 
-func TestDoHTTPWithRetryRetries429And5xx(t *testing.T) {
+func TestDoHTTPWithRetryRetriesTransientStatuses(t *testing.T) {
 	t.Parallel()
 
 	zeroDelay := time.Duration(0)
-	maxRetries := 2
+	maxRetries := 4
 	client := retryHTTPClient(
+		retryResponse(http.StatusRequestTimeout, "request timed out"),
+		retryResponse(http.StatusConflict, "request conflict"),
 		retryResponse(http.StatusInternalServerError, "temporary"),
 		retryResponse(http.StatusTooManyRequests, "rate limited"),
 		retryResponse(http.StatusOK, "ok"),
@@ -64,7 +77,7 @@ func TestDoHTTPWithRetryRetries429And5xx(t *testing.T) {
 	if got, want := string(body), "ok"; got != want {
 		t.Fatalf("body = %q, want %q", got, want)
 	}
-	if got, want := retryAttempts(client), 3; got != want {
+	if got, want := retryAttempts(client), 5; got != want {
 		t.Fatalf("attempts = %d, want %d", got, want)
 	}
 }

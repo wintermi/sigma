@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/wintermi/sigma"
@@ -832,6 +833,53 @@ func TestVertexProviderErrorIsTypedAndRedacted(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "AIzaSyD1234567890123") {
 		t.Fatalf("error leaked secret: %v", err)
+	}
+}
+
+func TestVertexRetriesTransientStatusBeforeStreaming(t *testing.T) {
+	t.Parallel()
+
+	for _, status := range []int{
+		http.StatusRequestTimeout,
+		http.StatusConflict,
+	} {
+		status := status
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
+
+			var attempts atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				if attempts.Add(1) == 1 {
+					w.WriteHeader(status)
+					_, _ = io.WriteString(w, `{"error":{"message":"temporary"}}`)
+					return
+				}
+				writeVertexSSE(t, w, vertexCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			client, model := vertexTestClient(t,
+				WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "us-central1"}),
+				WithVertexBaseURL(server.URL+"/v1"),
+			)
+
+			final, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				sigma.WithMaxRetries(1),
+				sigma.WithMaxRetryDelay(0),
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if got, want := attempts.Load(), int32(2); got != want {
+				t.Fatalf("attempts = %d, want %d", got, want)
+			}
+			if final.StopReason != sigma.StopReasonEndTurn {
+				t.Fatalf("stop reason = %q, want %q", final.StopReason, sigma.StopReasonEndTurn)
+			}
+		})
 	}
 }
 

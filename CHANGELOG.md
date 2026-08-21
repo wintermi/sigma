@@ -163,6 +163,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
   structured status or type evidence is unavailable. Existing auth, billing,
   quota, rate-limit, context-overflow, and cancellation precedence is
   unchanged, and Sigma does not automatically replay post-body failures.
+- Opt-in pre-body HTTP retries now treat `408 Request Timeout` and `409 Conflict`
+  as transient alongside `429` and `5xx` responses. Exhausted or disabled
+  retries retain same-request retry advice, structured provider code and message
+  precedence is unchanged, and Sigma does not automatically replay post-body
+  failures.
 - Codex Responses SSE and WebSocket streams now accept `response.done` as a
   successful terminal signal and retain explicit `end_turn` values in opaque
   assistant provider metadata without changing normalized stop reasons.

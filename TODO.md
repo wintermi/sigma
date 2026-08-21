@@ -77,6 +77,9 @@ cancellation/error coverage (see the coverage standards in
       `ResourceExhausted`, and known premature-stream diagnostics while keeping
       auth, quota, billing, context, cancellation, and post-body retry ownership
       unchanged.
+- [x] Extend shared opt-in pre-body retries and transient classification to HTTP
+      `408 Request Timeout` and `409 Conflict` while preserving structured error
+      precedence, zero retries by default, and caller-owned post-body recovery.
 - [x] Normalize shared Responses incomplete terminals for max-output and
       content-filter reasons, preserve raw incomplete diagnostics, reject
       missing or unknown reasons, and expose bounded caller-owned max-token

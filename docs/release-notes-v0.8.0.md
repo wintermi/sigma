@@ -342,6 +342,11 @@ selection remains available through existing provider-specific controls.
   unavailable. Auth, billing, quota, rate-limit, context-overflow, and
   cancellation precedence is unchanged; partial finals remain intact and
   post-body request replay remains caller-owned.
+- Opt-in pre-body HTTP retries now include `408 Request Timeout` and
+  `409 Conflict` responses alongside `429` and `5xx`. These statuses produce
+  transient same-request retry advice when retries are disabled or exhausted,
+  while structured provider codes and messages retain precedence. The default
+  remains zero retries, and post-body replay remains caller-owned.
 - Codex Responses accepts `response.done` as a successful terminal alias across
   SSE and WebSocket transports and retains an explicitly supplied `end_turn`
   boolean in assistant provider metadata. The value remains diagnostic and does

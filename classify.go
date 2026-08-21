@@ -189,6 +189,8 @@ func classForStatus(status int) (ErrorClass, bool) {
 		return ErrorClassContextOverflow, true
 	case status == http.StatusTooManyRequests:
 		return ErrorClassRateLimited, true
+	case status == http.StatusRequestTimeout || status == http.StatusConflict:
+		return ErrorClassTransient, true
 	case status >= http.StatusInternalServerError:
 		return ErrorClassTransient, true
 	case status == http.StatusBadRequest || status == http.StatusForbidden || status == http.StatusUnprocessableEntity:

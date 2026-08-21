@@ -10,6 +10,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -177,6 +178,24 @@ func TestClassifyError(t *testing.T) {
 			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 503, "", 0, []byte(`{"error":{"message":"try later"}}`), ErrProviderResponse),
 			class:     ErrorClassTransient,
 			retryable: true,
+		},
+		{
+			name:      "request timeout status",
+			err:       NewProviderError(ProviderGoogleVertex, APIGoogleVertex, "gemini-test", http.StatusRequestTimeout, "", 0, []byte(`{"error":{"message":"request timed out"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "conflict status",
+			err:       NewProviderError(ProviderGoogleVertex, APIGoogleVertex, "gemini-test", http.StatusConflict, "", 0, []byte(`{"error":{"message":"request conflict"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:  "structured quota code overrides conflict status",
+			err:   NewProviderError(ProviderGoogleVertex, APIGoogleVertex, "gemini-test", http.StatusConflict, "", 0, []byte(`{"error":{"code":"quota_exceeded","message":"request conflict"}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "quota_exceeded",
 		},
 		{
 			name:      "upstream request buffer exhaustion overrides bad request status",
