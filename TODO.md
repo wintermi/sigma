@@ -72,6 +72,11 @@ cancellation/error coverage (see the coverage standards in
 - [x] Classify exhausted upstream request-buffer failures as transient and
       retryable so routing can advise a same-model retry while post-body replay
       remains caller-owned.
+- [x] Broaden transient classification for provider-wrapped DNS, connection,
+      socket/WebSocket, HTTP/2 no-response, explicit retry-guidance,
+      `ResourceExhausted`, and known premature-stream diagnostics while keeping
+      auth, quota, billing, context, cancellation, and post-body retry ownership
+      unchanged.
 - [x] Normalize shared Responses incomplete terminals for max-output and
       content-filter reasons, preserve raw incomplete diagnostics, reject
       missing or unknown reasons, and expose bounded caller-owned max-token

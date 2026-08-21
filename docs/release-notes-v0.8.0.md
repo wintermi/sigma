@@ -334,6 +334,14 @@ selection remains available through existing provider-specific controls.
   and same-model retry advice even when accompanied by a bad-request status.
   Sigma preserves partial finals and does not automatically replay post-body
   failures.
+- Provider-wrapped DNS lookup failures, connection and socket/WebSocket
+  closures, reset-before-headers and HTTP/2 no-response failures, explicit
+  provider retry guidance, `ResourceExhausted` capacity failures, and known
+  premature-stream diagnostics now produce transient classification and
+  same-model retry advice when structured status or type evidence is
+  unavailable. Auth, billing, quota, rate-limit, context-overflow, and
+  cancellation precedence is unchanged; partial finals remain intact and
+  post-body request replay remains caller-owned.
 - Codex Responses accepts `response.done` as a successful terminal alias across
   SSE and WebSocket transports and retains an explicitly supplied `end_turn`
   boolean in assistant provider metadata. The value remains diagnostic and does

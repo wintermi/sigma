@@ -185,8 +185,84 @@ func TestClassifyError(t *testing.T) {
 			retryable: true,
 		},
 		{
+			name:      "dns lookup failure overrides bad request status",
+			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 400, "", 0, []byte(`{"error":{"message":"getaddrinfo ENOTFOUND bedrock-runtime.example.test"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "temporary dns failure overrides bad request status",
+			err:       NewProviderError(ProviderGoogle, APIGoogleGenerativeAI, "gemini-test", 400, "", 0, []byte(`{"error":{"message":"lookup generativelanguage.example.test: EAI_AGAIN"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "connection loss overrides bad request status",
+			err:       NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "auto", 400, "", 0, []byte(`{"error":{"message":"upstream connection lost"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "socket closure overrides bad request status",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"the socket connection was closed unexpectedly"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "websocket closure overrides bad request status",
+			err:       NewProviderError(ProviderOpenAICodex, APIOpenAICodexResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"websocket closed before the response completed"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "reset before headers overrides bad request status",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"upstream reset before headers"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "http2 no response overrides bad request status",
+			err:       NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "claude-test", 400, "", 0, []byte(`{"error":{"message":"http2 request did not get a response"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "provider returned error guidance overrides bad request status",
+			err:       NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "auto", 400, "", 0, []byte(`{"error":{"message":"Provider returned error while processing the request"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "explicit retry guidance overrides bad request status",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"An error occurred while processing your request. You can retry your request."}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "resource exhausted overrides bad request status",
+			err:       NewProviderError(ProviderNVIDIA, APIOpenAICompletions, "nim-test", 400, "", 0, []byte(`{"error":{"message":"ResourceExhausted: worker request limit reached"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "premature stream provider error overrides bad request status",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"stream ended before terminal response event"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
 			name:  "different request buffer wording remains invalid",
 			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"request buffer limit exceeded"}}`), ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+		},
+		{
+			name:  "generic termination wording remains invalid",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"request terminated by policy"}}`), ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+		},
+		{
+			name:  "generic timeout wording remains invalid",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"message":"timeout policy is invalid"}}`), ErrProviderResponse),
 			class: ErrorClassInvalidRequest,
 		},
 		{
@@ -262,6 +338,16 @@ func TestClassifyError(t *testing.T) {
 			err:       io.EOF,
 			class:     ErrorClassTransient,
 			retryable: true,
+		},
+		{
+			name:  "canceled context",
+			err:   context.Canceled,
+			class: ErrorClassUnknown,
+		},
+		{
+			name:  "context deadline",
+			err:   context.DeadlineExceeded,
+			class: ErrorClassUnknown,
 		},
 		{
 			name:      "google premature stream",
@@ -402,6 +488,40 @@ func TestClassifyUpstreamRequestBufferGenerationErrorPreservesFinal(t *testing.T
 	}
 	if got, want := final.Content[0].Text, "partial answer"; got != want {
 		t.Fatalf("final text = %q, want %q", got, want)
+	}
+}
+
+func TestClassifyTransientGenerationErrorPreservesPartialFinal(t *testing.T) {
+	t.Parallel()
+
+	final := AssistantMessage{
+		Content:    []ContentBlock{Text("partial answer")},
+		StopReason: StopReasonError,
+		Model:      "gpt-test",
+		Provider:   ProviderOpenAI,
+	}
+	providerErr := NewProviderError(
+		ProviderOpenAI,
+		APIOpenAIResponses,
+		"gpt-test",
+		400,
+		"req_socket",
+		0,
+		[]byte(`{"error":{"message":"the socket connection was closed unexpectedly"}}`),
+		ErrProviderResponse,
+	)
+	err := &GenerationError{Final: final, Err: providerErr}
+
+	classification := ClassifyError(err)
+	if classification.Class != ErrorClassTransient || !classification.RetryHint.Retryable {
+		t.Fatalf("classification = %#v, want retryable transient", classification)
+	}
+	got, ok := err.FinalMessage()
+	if !ok {
+		t.Fatal("GenerationError missing final message")
+	}
+	if got.StopReason != StopReasonError || len(got.Content) != 1 || got.Content[0].Text != "partial answer" {
+		t.Fatalf("final = %#v, want unchanged partial answer", got)
 	}
 }
 

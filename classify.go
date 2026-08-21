@@ -316,9 +316,26 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "service unavailable") ||
 		strings.Contains(message, "server error") ||
 		strings.Contains(message, "internal error") ||
+		strings.Contains(message, "provider returned error") ||
 		strings.Contains(message, "exceeded request buffer limit while retrying upstream") ||
 		strings.Contains(message, "upstream connect") ||
-		strings.Contains(message, "connection refused")
+		strings.Contains(message, "connection refused") ||
+		strings.Contains(message, "connection lost") ||
+		strings.Contains(message, "other side closed") ||
+		strings.Contains(message, "reset before headers") ||
+		strings.Contains(message, "socket hang up") ||
+		strings.Contains(message, "socket connection was closed") ||
+		strings.Contains(message, "websocket closed") ||
+		strings.Contains(message, "websocket error") ||
+		strings.Contains(message, "getaddrinfo") ||
+		strings.Contains(message, "enotfound") ||
+		strings.Contains(message, "eai_again") ||
+		strings.Contains(message, "http2 request did not get a response") ||
+		strings.Contains(message, "you can retry your request") ||
+		strings.Contains(message, "try your request again") ||
+		strings.Contains(message, "please retry your request") ||
+		strings.Contains(message, "resourceexhausted") ||
+		messageIndicatesPrematureProviderStreamTermination(message)
 }
 
 func messageIndicatesPrematureProviderStreamTermination(message string) bool {

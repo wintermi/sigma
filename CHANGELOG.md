@@ -156,6 +156,13 @@ See [release notes](docs/release-notes-v0.8.0.md).
 - Provider failures reporting an exhausted upstream request buffer now classify
   as transient and retryable, allowing caller-owned policies to retry the same
   model without automatic post-body request replay.
+- Provider-wrapped DNS lookup failures, connection and socket/WebSocket
+  closures, reset-before-headers and HTTP/2 no-response failures, explicit
+  provider retry guidance, `ResourceExhausted` capacity failures, and known
+  premature-stream diagnostics now classify as transient and retryable when
+  structured status or type evidence is unavailable. Existing auth, billing,
+  quota, rate-limit, context-overflow, and cancellation precedence is
+  unchanged, and Sigma does not automatically replay post-body failures.
 - Codex Responses SSE and WebSocket streams now accept `response.done` as a
   successful terminal signal and retain explicit `end_turn` values in opaque
   assistant provider metadata without changing normalized stop reasons.
