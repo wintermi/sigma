@@ -102,7 +102,10 @@ SSE and WebSocket streams also recognize `response.done` completion and retain
 explicit `end_turn` values as opaque diagnostics. OpenAI, Azure, and Codex
 Responses streams now also retain non-empty assistant message phases through
 persistence, with recognized commentary and final-answer boundaries replayed
-only to the exact provider, API, and model. Provider failures that report an
+only to the exact provider, API, and model. Later Responses requests now also
+omit failed or aborted assistant turns and their associated tool results from
+wire history, avoiding incomplete reasoning and call pairings while retaining
+the partial finals locally for callers. Provider failures that report an
 exhausted upstream request buffer are now classified as retryable for
 caller-owned recovery. Responses incomplete terminals now distinguish
 max-output and content-filter stops from missing or unknown reasons, with a
@@ -251,6 +254,12 @@ selection remains available through existing provider-specific controls.
   for diagnostics but omitted from replay, as are recognized phases from a
   different provider, API, or model; partial and terminal stop-reason behavior
   is unchanged.
+- OpenAI, Azure, and Codex Responses requests omit assistant turns whose
+  persisted stop reason is `error` or `aborted`, together with tool results for
+  calls from those turns. Successful, max-token, content-filter, and other
+  non-failed history remains replayable, caller-owned messages and partial
+  finals are unchanged, and Sigma does not automatically retry or replay the
+  failed request.
 - Xiaomi no longer advertises `mimo-v2-flash`, `mimo-v2-omni`, or
   `mimo-v2-pro` through its generated direct or regional Token Plan catalogs.
   Callers using those retired IDs must select a V2.5 model; Sigma does not

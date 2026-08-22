@@ -44,7 +44,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if err := validateReasoningLevel(model, opts, completionsCompat{}); err != nil {
 		return nil, err
 	}
-	cleaned := transform.DropUnansweredToolCalls(req)
+	cleaned := transform.DropUnansweredToolCalls(filterFailedResponsesTurns(req))
 	deferredToolsMode := responsesDeferredToolsModeForModel(model)
 	deferredTools := transform.PlanDeferredTools(cleaned, deferredToolsMode != responsesDeferredToolsNone, nil)
 	grammarToolInputProperties, err := responsesGrammarToolInputProperties(model, cleaned, opts)
@@ -96,6 +96,37 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	addResponsesPreviousResponseID(payload, model.Provider, opts)
 	addResponsesProviderOptions(payload, model.Provider, opts)
 	return payload, nil
+}
+
+func filterFailedResponsesTurns(req sigma.Request) sigma.Request {
+	failedToolCallIDs := make(map[string]struct{})
+	for _, message := range req.Messages {
+		if message.Role != sigma.RoleAssistant ||
+			(message.StopReason != sigma.StopReasonError && message.StopReason != sigma.StopReasonAborted) {
+			continue
+		}
+		for _, block := range message.Content {
+			if block.Type == sigma.ContentBlockToolCall && block.ToolCallID != "" {
+				failedToolCallIDs[block.ToolCallID] = struct{}{}
+			}
+		}
+	}
+
+	filtered := make([]sigma.Message, 0, len(req.Messages))
+	for _, message := range req.Messages {
+		if message.Role == sigma.RoleAssistant &&
+			(message.StopReason == sigma.StopReasonError || message.StopReason == sigma.StopReasonAborted) {
+			continue
+		}
+		if message.Role == sigma.RoleTool {
+			if _, failed := failedToolCallIDs[message.ToolCallID]; failed {
+				continue
+			}
+		}
+		filtered = append(filtered, message)
+	}
+	req.Messages = filtered
+	return req
 }
 
 func responsesGrammarToolsEnabled(model sigma.Model, opts sigma.Options) bool {

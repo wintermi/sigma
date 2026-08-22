@@ -182,6 +182,28 @@ func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	}
 }
 
+func TestAzureResponsesFiltersFailedAssistantTurnsBeforeReplay(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan azureCapturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureAzureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("azure-responses-failed-turn-replay-test")
+	model := azureResponsesTestModel(providerID)
+	model.AzureOpenAIResponses.Endpoint = server.URL
+	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
+
+	if _, err := client.Complete(context.Background(), model, failedResponsesReplayRequest()); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	assertFailedResponsesReplayFiltered(t, receiveAzureRequest(t, requests).Body)
+}
+
 func TestAzureResponsesSendsProviderNeutralToolChoice(t *testing.T) {
 	t.Parallel()
 

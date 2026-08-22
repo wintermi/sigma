@@ -95,6 +95,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI, Azure, and Codex Responses history replay now omits failed or
+  aborted assistant turns and their associated tool results, preventing
+  incomplete reasoning or tool-call items from reaching later requests while
+  preserving caller-owned partial finals and valid history.
 - Explicit GitHub Copilot model-policy enablement now retries HTTP 429
   responses up to twice within a five-second budget, honoring provider retry
   delays and context cancellation while preserving caller-invoked policy

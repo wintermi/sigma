@@ -201,6 +201,9 @@ integrations remain future work until they have the same local evidence bar.
       reconstruction.
 - [x] Harden OpenAI Responses replay when same-provider history crosses model
       IDs with prior function-call item IDs.
+- [x] Omit failed or aborted assistant turns and their associated tool results
+      from OpenAI, Azure, and Codex Responses wire replay while preserving
+      caller-owned partial finals and valid remaining history.
 - [x] Harden OpenAI Responses stream terminal handling so premature EOF is an
       error and terminal incomplete responses preserve usage as max-token stops.
 - [x] Harden OpenAI Responses completion and replay so final reasoning content

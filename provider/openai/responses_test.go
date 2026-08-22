@@ -971,6 +971,39 @@ func TestResponsesSynthesizesUnansweredToolCallsBeforeUserTurn(t *testing.T) {
 	}
 }
 
+func TestResponsesFiltersFailedAssistantTurnsBeforeReplay(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-failed-turn-replay-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	request := failedResponsesReplayRequest()
+	before, err := json.Marshal(request)
+	if err != nil {
+		t.Fatalf("Marshal request before Complete returned error: %v", err)
+	}
+
+	if _, err := client.Complete(context.Background(), model, request); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	after, err := json.Marshal(request)
+	if err != nil {
+		t.Fatalf("Marshal request after Complete returned error: %v", err)
+	}
+	if !reflect.DeepEqual(after, before) {
+		t.Fatalf("request changed during Complete:\nbefore %s\nafter  %s", before, after)
+	}
+	assertFailedResponsesReplayFiltered(t, receiveRequest(t, requests).Body)
+}
+
 func TestResponsesUsesPlaceholderForEmptyToolResult(t *testing.T) {
 	t.Parallel()
 
@@ -3463,6 +3496,102 @@ func deferredToolsRequest() sigma.Request {
 			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base_second", "base", map[string]any{})}},
 			{Role: sigma.RoleTool, ToolCallID: "call_base_second", Content: []sigma.ContentBlock{sigma.Text("second")}, AddedToolNames: []string{"late"}},
 		},
+	}
+}
+
+func failedResponsesReplayRequest() sigma.Request {
+	return sigma.Request{Messages: []sigma.Message{
+		sigma.UserText("before"),
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonEndTurn,
+			Content:    []sigma.ContentBlock{sigma.Text("kept success")},
+		},
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonError,
+			Content:    []sigma.ContentBlock{sigma.Thinking("failed reasoning", "reasoning-signature")},
+		},
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonAborted,
+			Content: []sigma.ContentBlock{
+				sigma.Text("failed partial"),
+				sigma.ToolCallBlock("call_failed", "lookup", map[string]any{"query": "discard"}),
+			},
+		},
+		sigma.ToolResult("call_failed", "failed tool output"),
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonMaxTokens,
+			Content:    []sigma.ContentBlock{sigma.Text("kept max tokens")},
+		},
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonContentFilter,
+			Content:    []sigma.ContentBlock{sigma.Text("kept content filter")},
+		},
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonToolCalls,
+			Content: []sigma.ContentBlock{
+				sigma.ToolCallBlock("call_valid", "lookup", map[string]any{"query": "keep"}),
+			},
+		},
+		sigma.ToolResult("call_valid", "valid tool output"),
+		{
+			Role:       sigma.RoleAssistant,
+			StopReason: sigma.StopReasonToolCalls,
+			Content: []sigma.ContentBlock{
+				sigma.ToolCallBlock("call_unanswered", "lookup", map[string]any{"query": "repair"}),
+			},
+		},
+		sigma.UserText("after"),
+	}}
+}
+
+func assertFailedResponsesReplayFiltered(t *testing.T, body []byte) {
+	t.Helper()
+
+	payload := decodeResponsesPayload(t, body)
+	input := payload["input"].([]any)
+	wantTypes := []string{
+		"", "message", "message", "message", "function_call",
+		"function_call_output", "function_call", "function_call_output", "",
+	}
+	if got, want := len(input), len(wantTypes); got != want {
+		t.Fatalf("input count = %d, want %d: %#v", got, want, input)
+	}
+	for index, want := range wantTypes {
+		item := input[index].(map[string]any)
+		if got, _ := item["type"].(string); got != want {
+			t.Fatalf("input[%d] type = %q, want %q: %#v", index, got, want, item)
+		}
+	}
+
+	assertResponsesInputText(t, input[0].(map[string]any), "before")
+	assertResponsesOutputText(t, input[1].(map[string]any), "kept success")
+	assertResponsesOutputText(t, input[2].(map[string]any), "kept max tokens")
+	assertResponsesOutputText(t, input[3].(map[string]any), "kept content filter")
+	if got, want := input[4].(map[string]any)["call_id"], "call_valid"; got != want {
+		t.Fatalf("valid call id = %v, want %q", got, want)
+	}
+	if got, want := input[5].(map[string]any)["output"], "valid tool output"; got != want {
+		t.Fatalf("valid tool output = %v, want %q", got, want)
+	}
+	if got, want := input[6].(map[string]any)["call_id"], "call_unanswered"; got != want {
+		t.Fatalf("unanswered call id = %v, want %q", got, want)
+	}
+	if got, want := input[7].(map[string]any)["output"], "No result provided"; got != want {
+		t.Fatalf("synthetic tool output = %v, want %q", got, want)
+	}
+	assertResponsesInputText(t, input[8].(map[string]any), "after")
+
+	if strings.Contains(string(body), "failed reasoning") ||
+		strings.Contains(string(body), "failed partial") ||
+		strings.Contains(string(body), "call_failed") ||
+		strings.Contains(string(body), "failed tool output") {
+		t.Fatalf("failed assistant turn was replayed: %s", body)
 	}
 }
 
