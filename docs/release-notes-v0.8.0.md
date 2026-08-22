@@ -83,7 +83,8 @@ subscription-backed flows so applications can distinguish them from generic
 OAuth sign-in without inferring from provider names or credential types.
 GitHub Copilot callers can also discover the authenticated account's available
 model IDs and filter Sigma's curated catalog without enabling policies or
-mutating registry state.
+mutating registry state. Explicit model-policy enablement now retries throttled
+requests within a five-second bound while remaining caller-invoked.
 Overlapping runtime text, image, and embedding model-source operations now
 publish per-provider registry state in latest-started order, so a slower older
 refresh cannot overwrite a newer refresh or cached text restore.
@@ -325,9 +326,12 @@ selection remains available through existing provider-specific controls.
   credential selection, refresh timing, persistence, or provider dispatch, and
   custom OAuth descriptors remain generic unless callers opt in explicitly.
 - GitHub Copilot model discovery is caller-invoked and advisory. It retries one
-  rate-limited catalog request with a bounded provider delay, but does not run
-  during login or refresh, enable model policies, persist availability, mutate
-  registries, or replace generated catalog metadata. A valid empty account
+  rate-limited catalog request with a bounded provider delay and does not enable
+  model policies. Explicit policy enablement retries up to two throttled POSTs
+  within a five-second wait budget, honoring `Retry-After-Ms`, `Retry-After`,
+  and context cancellation; other failures remain single-attempt. Neither
+  helper runs during login or refresh, persists availability, mutates Sigma
+  registries, or replaces generated catalog metadata. A valid empty account
   catalog produces a filter that matches no models.
 - A superseded runtime model-source operation returns Sigma's existing conflict
   error and cannot replace the winning registry catalog, even when the newer

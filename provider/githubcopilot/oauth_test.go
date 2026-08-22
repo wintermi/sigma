@@ -750,6 +750,161 @@ func TestDiscoverGitHubCopilotModelsCancelsRateLimitWait(t *testing.T) {
 	}
 }
 
+func TestEnableGitHubCopilotModelRetriesRateLimit(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	var bodies []string
+	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
+		requests++
+		bodies = append(bodies, readRequestBody(t, r))
+		assertHeader(t, r.Header, "Authorization", "Bearer copilot-token")
+		assertHeader(t, r.Header, "Copilot-Integration-Id", "vscode-chat")
+		if requests == 1 {
+			response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{"error":"slow down"}`)
+			response.Header.Set("Retry-After-Ms", "1")
+			return response
+		}
+		return githubCopilotJSONResponse(http.StatusOK, `{}`)
+	})
+
+	result, err := githubcopilot.EnableGitHubCopilotModel(
+		context.Background(),
+		"copilot-token",
+		"gpt-test",
+		githubcopilot.GitHubCopilotModelEnableOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err != nil {
+		t.Fatalf("EnableGitHubCopilotModel returned error: %v", err)
+	}
+	if !result.Enabled || result.StatusCode != http.StatusOK {
+		t.Fatalf("result = %+v, want enabled status 200", result)
+	}
+	if got, want := requests, 2; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+	for _, body := range bodies {
+		if got, want := body, `{"state":"enabled"}`; got != want {
+			t.Fatalf("request body = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestEnableGitHubCopilotModelExhaustsRateLimitRetries(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{"access_token":"leaked-token"}`)
+		response.Header.Set("Retry-After-Ms", "1")
+		return response
+	})
+
+	result, err := githubcopilot.EnableGitHubCopilotModel(
+		context.Background(),
+		"copilot-token",
+		"gpt-test",
+		githubcopilot.GitHubCopilotModelEnableOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil {
+		t.Fatal("EnableGitHubCopilotModel returned nil error")
+	}
+	if result.Enabled || result.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("result = %+v, want disabled status 429", result)
+	}
+	if got, want := requests, 3; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+	if strings.Contains(err.Error(), "leaked-token") {
+		t.Fatalf("enable error leaked token: %v", err)
+	}
+}
+
+func TestEnableGitHubCopilotModelRejectsRetryBeyondBudget(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{}`)
+		response.Header.Set("Retry-After", "6")
+		return response
+	})
+
+	result, err := githubcopilot.EnableGitHubCopilotModel(
+		context.Background(),
+		"copilot-token",
+		"gpt-test",
+		githubcopilot.GitHubCopilotModelEnableOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil {
+		t.Fatal("EnableGitHubCopilotModel returned nil error")
+	}
+	if result.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("status code = %d, want %d", result.StatusCode, http.StatusTooManyRequests)
+	}
+	if got, want := requests, 1; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+}
+
+func TestEnableGitHubCopilotModelCancelsRateLimitWait(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		cancel()
+		response := githubCopilotJSONResponse(http.StatusTooManyRequests, `{}`)
+		response.Header.Set("Retry-After-Ms", "100")
+		return response
+	})
+
+	result, err := githubcopilot.EnableGitHubCopilotModel(
+		ctx,
+		"copilot-token",
+		"gpt-test",
+		githubcopilot.GitHubCopilotModelEnableOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("EnableGitHubCopilotModel error = %v, want context.Canceled", err)
+	}
+	if result.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("status code = %d, want %d", result.StatusCode, http.StatusTooManyRequests)
+	}
+	if got, want := requests, 1; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+}
+
+func TestEnableGitHubCopilotModelDoesNotRetryOtherFailures(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := githubCopilotOAuthTestClient(func(*http.Request) *http.Response {
+		requests++
+		return githubCopilotJSONResponse(http.StatusServiceUnavailable, `{"error":"unavailable"}`)
+	})
+
+	result, err := githubcopilot.EnableGitHubCopilotModel(
+		context.Background(),
+		"copilot-token",
+		"gpt-test",
+		githubcopilot.GitHubCopilotModelEnableOptions{HTTPClient: client, BaseURL: "https://copilot.test"},
+	)
+	if err == nil {
+		t.Fatal("EnableGitHubCopilotModel returned nil error")
+	}
+	if result.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status code = %d, want %d", result.StatusCode, http.StatusServiceUnavailable)
+	}
+	if got, want := requests, 1; got != want {
+		t.Fatalf("request count = %d, want %d", got, want)
+	}
+}
+
 func TestEnableGitHubCopilotModelsReportsPerModelResults(t *testing.T) {
 	t.Parallel()
 

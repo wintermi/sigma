@@ -32,6 +32,9 @@ const (
 	githubCopilotModelsMaxBodyBytes         = 1 << 20
 	githubCopilotModelsDefaultRetryAfter    = time.Second
 	githubCopilotModelsMaxRetryAfter        = 10 * time.Second
+	githubCopilotPolicyMaxRetries           = 2
+	githubCopilotPolicyRetryBudget          = 5 * time.Second
+	githubCopilotPolicyDefaultRetryAfter    = 500 * time.Millisecond
 )
 
 // GitHubCopilotOAuthCredentials carries GitHub Copilot OAuth tokens. Callers
@@ -599,36 +602,59 @@ func EnableGitHubCopilotModel(ctx context.Context, token string, modelID string,
 		return result, err
 	}
 	endpoint := strings.TrimRight(baseURL, "/") + "/models/" + url.PathEscape(modelID) + "/policy"
-	body := bytes.NewBufferString(`{"state":"enabled"}`)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
-	if err != nil {
-		result.Err = err
-		return result, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Openai-Intent", "chat-policy")
-	req.Header.Set("X-Interaction-Type", "chat-policy")
-	addGitHubCopilotOAuthHeaders(req.Header)
+	var retryWait time.Duration
+	for attempt := 0; ; attempt++ {
+		body := bytes.NewBufferString(`{"state":"enabled"}`)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
+		if err != nil {
+			result.Err = err
+			return result, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Openai-Intent", "chat-policy")
+		req.Header.Set("X-Interaction-Type", "chat-policy")
+		addGitHubCopilotOAuthHeaders(req.Header)
 
-	resp, err := githubCopilotHTTPClient(opts.HTTPClient).Do(req)
-	if err != nil {
-		result.Err = githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: enable model %q: %w", modelID, err))
-		return result, result.Err
+		resp, err := githubCopilotHTTPClient(opts.HTTPClient).Do(req)
+		if err != nil {
+			result.Err = githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: enable model %q: %w", modelID, err))
+			return result, result.Err
+		}
+		result.StatusCode = resp.StatusCode
+		data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		if err != nil {
+			result.Err = githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: read enable model %q response: %w", modelID, err))
+			return result, result.Err
+		}
+
+		if resp.StatusCode != http.StatusTooManyRequests || attempt >= githubCopilotPolicyMaxRetries {
+			if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+				result.Err = fmt.Errorf("github copilot oauth: enable model %q failed (%d): %s", modelID, resp.StatusCode, redact.Preview(string(data), 1024))
+				return result, result.Err
+			}
+			result.Enabled = true
+			return result, nil
+		}
+		if err := ctx.Err(); err != nil {
+			result.Err = err
+			return result, err
+		}
+		delay := sigma.RetryAfter(resp.Header)
+		if delay <= 0 {
+			delay = githubCopilotPolicyDefaultRetryAfter * time.Duration(1<<attempt)
+		}
+		if delay > githubCopilotPolicyRetryBudget-retryWait {
+			result.Err = fmt.Errorf("github copilot oauth: enable model %q failed (%d): %s", modelID, resp.StatusCode, redact.Preview(string(data), 1024))
+			return result, result.Err
+		}
+		if err := githubCopilotSleepContext(ctx, delay); err != nil {
+			result.Err = err
+			return result, err
+		}
+		retryWait += delay
 	}
-	defer resp.Body.Close()
-	result.StatusCode = resp.StatusCode
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		result.Err = githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: read enable model %q response: %w", modelID, err))
-		return result, result.Err
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		result.Err = fmt.Errorf("github copilot oauth: enable model %q failed (%d): %s", modelID, resp.StatusCode, redact.Preview(string(data), 1024))
-		return result, result.Err
-	}
-	result.Enabled = true
-	return result, nil
 }
 
 // EnableGitHubCopilotModels enables multiple GitHub Copilot model policies and

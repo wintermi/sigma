@@ -95,6 +95,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Explicit GitHub Copilot model-policy enablement now retries HTTP 429
+  responses up to twice within a five-second budget, honoring provider retry
+  delays and context cancellation while preserving caller-invoked policy
+  changes and independent per-model results.
 - Z.ai-format OpenAI-compatible Chat Completions requests now preserve
   same-provider/API/model assistant reasoning as `reasoning_content` and send
   `clear_thinking: false` whenever reasoning is enabled. Explicit replay

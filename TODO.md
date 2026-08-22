@@ -943,8 +943,8 @@ should still come through the catalog refresh workflow.
       and an in-memory OAuth token provider with caller-owned credential
       persistence.
 - [x] Add explicit GitHub Copilot model-policy enablement helpers with
-      per-model result reporting, without making model enablement an automatic
-      login side effect.
+      per-model result reporting and bounded rate-limit recovery, without
+      making model enablement an automatic login side effect.
 - [x] Add opt-in GitHub Copilot account model discovery and catalog filtering,
       including Individual policy fallback and bounded rate-limit recovery,
       without changing login, refresh, persistence, or registry ownership.
