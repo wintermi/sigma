@@ -56,12 +56,11 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 		return nil, err
 	}
 
-	payload := map[string]any{
-		"model":  string(model.ID),
-		"input":  input,
-		"store":  false,
-		"stream": true,
-	}
+	payload := openAIPayloadWithModelSamplingDefaults(model)
+	payload["model"] = string(model.ID)
+	payload["input"] = input
+	payload["store"] = false
+	payload["stream"] = true
 	if cleaned.SystemPrompt != "" {
 		payload["instructions"] = providerText(cleaned.SystemPrompt)
 	}

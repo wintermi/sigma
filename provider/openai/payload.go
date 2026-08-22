@@ -53,11 +53,10 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		return nil, err
 	}
 
-	payload := map[string]any{
-		"model":    string(model.ID),
-		"messages": messages,
-		"stream":   true,
-	}
+	payload := openAIPayloadWithModelSamplingDefaults(model)
+	payload["model"] = string(model.ID)
+	payload["messages"] = messages
+	payload["stream"] = true
 	if includeUsage(opts, model.Provider) {
 		if compat.supportsStreamingUsage {
 			payload["stream_options"] = map[string]any{"include_usage": true}
@@ -112,6 +111,24 @@ func addOpenAISamplingParameters(payload map[string]any, opts sigma.Options) {
 	}
 	for key, value := range opts.OpenAIOptions.SamplingParameters {
 		payload[key] = value
+	}
+}
+
+func openAIPayloadWithModelSamplingDefaults(model sigma.Model) map[string]any {
+	payload := copyAnyMap(modelOpenAISamplingParameters(model))
+	if payload == nil {
+		payload = make(map[string]any)
+	}
+	return payload
+}
+
+func modelOpenAISamplingParameters(model sigma.Model) map[string]any {
+	switch model.API {
+	case sigma.APIOpenAICompletions, sigma.APIOpenAIResponses, sigma.APIAzureOpenAIResponses:
+		parameters, _ := model.ProviderMetadata[sigma.MetadataOpenAISamplingParameters].(map[string]any)
+		return parameters
+	default:
+		return nil
 	}
 }
 

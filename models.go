@@ -68,15 +68,21 @@ const (
 	// MetadataOpenAICompatibleHeaders stores model-scoped HTTP headers for a
 	// caller-registered OpenAI-compatible model.
 	MetadataOpenAICompatibleHeaders = "openAICompatibleHeaders"
+	// MetadataOpenAISamplingParameters stores model-scoped default sampling
+	// parameters for supported OpenAI-compatible APIs.
+	MetadataOpenAISamplingParameters = "openAISamplingParameters"
 )
 
 // OpenAICompatibleModelConfig configures OpenAICompatibleModel.
 type OpenAICompatibleModelConfig struct {
-	ID                            ModelID
-	Provider                      ProviderID
-	BaseURL                       string
-	Name                          string
-	Headers                       map[string]string
+	ID       ModelID
+	Provider ProviderID
+	BaseURL  string
+	Name     string
+	Headers  map[string]string
+	// SamplingParameters supplies model-level defaults for arbitrary
+	// OpenAI-compatible sampling fields.
+	SamplingParameters            map[string]any
 	ContextWindow                 int
 	MaxOutputTokens               int
 	SupportedInputs               []ContentBlockType
@@ -111,6 +117,9 @@ func OpenAICompatibleModel(config OpenAICompatibleModelConfig) Model {
 	}
 	if len(config.Headers) > 0 {
 		metadata[MetadataOpenAICompatibleHeaders] = copyStringStringMap(config.Headers)
+	}
+	if len(config.SamplingParameters) > 0 {
+		metadata[MetadataOpenAISamplingParameters] = copyStringAnyMap(config.SamplingParameters)
 	}
 
 	return Model{

@@ -322,6 +322,57 @@ func TestCustomModelRegistrationDuplicateAndIsolation(t *testing.T) {
 	}
 }
 
+func TestOpenAICompatibleModelSamplingParametersAreIsolated(t *testing.T) {
+	t.Parallel()
+
+	samplingParameters := map[string]any{
+		"top_p":  0.8,
+		"nested": map[string]any{"mode": "model"},
+	}
+	model := sigma.OpenAICompatibleModel(sigma.OpenAICompatibleModelConfig{
+		ID:                 "sampling-model",
+		Provider:           "sampling-provider",
+		BaseURL:            "http://localhost:8000/v1",
+		SamplingParameters: samplingParameters,
+	})
+	samplingParameters["top_p"] = 0.1
+	samplingParameters["nested"].(map[string]any)["mode"] = "source-mutated"
+
+	registry := sigma.NewRegistry()
+	if err := sigma.RegisterModel(registry, model, sigma.WithMetadataOnly()); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+
+	registered, ok := registry.Model(model.Provider, model.ID)
+	if !ok {
+		t.Fatal("registered model not found")
+	}
+	parameters, ok := registered.ProviderMetadata[sigma.MetadataOpenAISamplingParameters].(map[string]any)
+	if !ok {
+		t.Fatalf("sampling parameters = %#v, want map", registered.ProviderMetadata[sigma.MetadataOpenAISamplingParameters])
+	}
+	if got, want := parameters["top_p"], 0.8; got != want {
+		t.Fatalf("top_p = %v, want %v", got, want)
+	}
+	if got, want := parameters["nested"].(map[string]any)["mode"], "model"; got != want {
+		t.Fatalf("nested mode = %v, want %v", got, want)
+	}
+
+	parameters["top_p"] = 0.2
+	parameters["nested"].(map[string]any)["mode"] = "snapshot-mutated"
+	reloaded, ok := registry.Model(model.Provider, model.ID)
+	if !ok {
+		t.Fatal("registered model not found after snapshot mutation")
+	}
+	reloadedParameters := reloaded.ProviderMetadata[sigma.MetadataOpenAISamplingParameters].(map[string]any)
+	if got, want := reloadedParameters["top_p"], 0.8; got != want {
+		t.Fatalf("reloaded top_p = %v, want %v", got, want)
+	}
+	if got, want := reloadedParameters["nested"].(map[string]any)["mode"], "model"; got != want {
+		t.Fatalf("reloaded nested mode = %v, want %v", got, want)
+	}
+}
+
 func TestOpenAICompatibleModelUsesLocalEndpointMetadata(t *testing.T) {
 	t.Parallel()
 

@@ -68,8 +68,11 @@ assistant-content persistence and exact same-provider/API/model replay,
 including responses without tool calls.
 OpenAI-compatible Chat Completions, Responses, and Azure Responses requests can
 now carry request-scoped arbitrary sampling parameters with explicit override
-precedence. OpenAI Responses-compatible and Azure OpenAI Responses requests now
-also clamp typed output-token limits below 16 to the accepted request minimum.
+precedence. Caller-registered models can also declare default arbitrary
+sampling fields that remain below Sigma's core and typed request values,
+request-scoped sampling overrides, and raw provider body overrides. OpenAI
+Responses-compatible and Azure OpenAI Responses requests now also clamp typed
+output-token limits below 16 to the accepted request minimum.
 OpenAI-compatible Chat Completions usage now also recognizes top-level
 `cached_tokens` from compatible Kimi and Moonshot responses as cache reads
 instead of ordinary input.
@@ -201,6 +204,13 @@ selection remains available through existing provider-specific controls.
   Responses. These fields override typed request values, while raw provider
   `extra_body` values retain final precedence; unsupported APIs reject non-empty
   sampling maps before dispatch.
+- `OpenAICompatibleModelConfig.SamplingParameters` and
+  `MetadataOpenAISamplingParameters` now let caller-registered models provide
+  default arbitrary sampling fields for OpenAI-compatible Chat Completions,
+  Responses, and Azure Responses. Required payload fields and typed request
+  options override model defaults, request-scoped sampling maps override
+  matching keys while retaining other defaults, and raw provider `extra_body`
+  values retain final precedence.
 - `OpenAICompletionsCompat.ThinkingTokenBudgetField` now lets custom compatible
   models select top-level `thinking_token_budget`, `thinking_budget`, or
   `thinking_budget_tokens` payloads when callers select reasoning and provide
@@ -299,6 +309,10 @@ selection remains available through existing provider-specific controls.
   remain omitted, sampling parameters and raw `extra_body` values retain their
   existing precedence, and Codex Responses continues omitting
   `max_output_tokens`.
+- Model-scoped arbitrary sampling defaults apply only to OpenAI-compatible Chat
+  Completions, Responses, and Azure Responses. Omitted defaults leave existing
+  payloads unchanged; Codex Responses and non-OpenAI APIs ignore the metadata,
+  and broader provider-neutral sampling semantics remain deferred.
 - Anthropic Messages refusal stops now retain non-empty `stop_details` in
   opaque assistant provider metadata alongside the raw `stop_reason`. Refusal
   and sensitive stops remain normalized as content filters, and null or empty

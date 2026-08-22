@@ -57,6 +57,42 @@ func TestOpenAICompletionsCompatResolvesFinishReasonSupport(t *testing.T) {
 	}
 }
 
+func TestModelOpenAISamplingParametersSupportsOnlyCompatibleAPIs(t *testing.T) {
+	t.Parallel()
+
+	parameters := map[string]any{"top_p": 0.8}
+	tests := []struct {
+		api  sigma.API
+		want bool
+	}{
+		{api: sigma.APIOpenAICompletions, want: true},
+		{api: sigma.APIOpenAIResponses, want: true},
+		{api: sigma.APIAzureOpenAIResponses, want: true},
+		{api: sigma.APIOpenAICodexResponses},
+		{api: sigma.APIAnthropicMessages},
+		{api: sigma.APIGoogleGenerativeAI},
+		{api: sigma.APIGoogleVertex},
+		{api: sigma.APIMistralConversations},
+		{api: sigma.APIBedrockConverseStream},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.api), func(t *testing.T) {
+			t.Parallel()
+
+			model := sigma.Model{
+				API: tt.api,
+				ProviderMetadata: map[string]any{
+					sigma.MetadataOpenAISamplingParameters: parameters,
+				},
+			}
+			got := modelOpenAISamplingParameters(model)
+			if (got != nil) != tt.want {
+				t.Fatalf("modelOpenAISamplingParameters() = %#v, want present %t", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatResolvesZAIReasoningReplay(t *testing.T) {
 	t.Parallel()
 

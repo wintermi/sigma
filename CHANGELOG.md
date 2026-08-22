@@ -54,6 +54,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
   now accept arbitrary request-scoped sampling parameters through
   `OpenAIOptions.SamplingParameters`; sampling values override typed request
   fields, while provider `extra_body` values retain final precedence.
+- Caller-registered OpenAI-compatible models can now declare default arbitrary
+  sampling parameters through `OpenAICompatibleModelConfig.SamplingParameters`
+  or `MetadataOpenAISamplingParameters`. Sigma's core and typed request fields
+  override model defaults, request-scoped sampling values override matching
+  keys, and provider `extra_body` values retain final precedence.
 - Custom OpenAI-compatible Chat Completions models can now select
   `thinking_token_budget`, `thinking_budget`, or `thinking_budget_tokens`
   through `OpenAICompletionsCompat.ThinkingTokenBudgetField`, reusing Sigma's

@@ -257,6 +257,13 @@ func TestResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 
 	providerID := sigma.ProviderID("responses-sampling-test")
 	model := responsesTestModel(providerID)
+	model.ProviderMetadata = map[string]any{
+		sigma.MetadataOpenAISamplingParameters: map[string]any{
+			"temperature": 0.1,
+			"top_p":       0.7,
+			"model_only":  "kept",
+		},
+	}
 	client := responsesTestClient(t, providerID, model, server.URL)
 
 	_, err := client.Complete(
@@ -282,6 +289,7 @@ func TestResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 		"temperature": 0.6,
 		"top_p":       0.95,
 		"seed":        float64(0),
+		"model_only":  "kept",
 	} {
 		if got := payload[key]; got != want {
 			t.Errorf("%s = %v, want %v", key, got, want)

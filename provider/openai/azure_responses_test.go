@@ -151,6 +151,13 @@ func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	providerID := sigma.ProviderID("azure-responses-sampling-test")
 	model := azureResponsesTestModel(providerID)
 	model.AzureOpenAIResponses.Endpoint = server.URL
+	model.ProviderMetadata = map[string]any{
+		sigma.MetadataOpenAISamplingParameters: map[string]any{
+			"temperature": 0.1,
+			"top_k":       40,
+			"model_only":  "kept",
+		},
+	}
 	client := azureResponsesTestClient(t, providerID, model, azureAPIKeyResolver("resolved-key"))
 
 	_, err := client.Complete(
@@ -179,6 +186,9 @@ func TestAzureResponsesSendsSamplingParametersWithPrecedence(t *testing.T) {
 	}
 	if got, want := payload["top_k"], float64(0); got != want {
 		t.Fatalf("top_k = %v, want %v", got, want)
+	}
+	if got, want := payload["model_only"], "kept"; got != want {
+		t.Fatalf("model_only = %v, want %v", got, want)
 	}
 }
 

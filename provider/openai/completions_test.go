@@ -282,6 +282,17 @@ func TestChatCompletionsSendsSamplingParametersWithPrecedence(t *testing.T) {
 
 	providerID := sigma.ProviderID("openai-sampling-test")
 	model := openAITestModel(providerID)
+	model.ProviderMetadata = map[string]any{
+		sigma.MetadataOpenAISamplingParameters: map[string]any{
+			"model":       "model-default-must-not-win",
+			"stream":      false,
+			"temperature": 0.1,
+			"max_tokens":  10,
+			"top_p":       0.7,
+			"min_p":       0.05,
+			"model_only":  "kept",
+		},
+	}
 	client := openAITestClient(t, providerID, model, server.URL)
 
 	_, err := client.Complete(
@@ -289,6 +300,7 @@ func TestChatCompletionsSendsSamplingParametersWithPrecedence(t *testing.T) {
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("sample")}},
 		sigma.WithTemperature(0.2),
+		sigma.WithMaxTokens(123),
 		sigma.WithOpenAIOptions(sigma.OpenAIOptions{SamplingParameters: map[string]any{
 			"temperature":       0.6,
 			"top_p":             0.8,
@@ -310,11 +322,15 @@ func TestChatCompletionsSendsSamplingParametersWithPrecedence(t *testing.T) {
 		t.Fatalf("Unmarshal request body returned error: %v", err)
 	}
 	for key, want := range map[string]any{
+		"model":             "gpt-test",
+		"stream":            true,
 		"temperature":       0.9,
+		"max_tokens":        float64(123),
 		"top_p":             0.95,
 		"top_k":             float64(0),
 		"min_p":             float64(0),
 		"frequency_penalty": float64(0),
+		"model_only":        "kept",
 	} {
 		if got := payload[key]; got != want {
 			t.Errorf("%s = %v, want %v", key, got, want)
