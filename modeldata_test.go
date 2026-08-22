@@ -2406,6 +2406,59 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 	}
 
+	zaiVision, ok := registry.Model(ProviderZAICodingCN, "glm-4.6v")
+	if !ok {
+		t.Fatal("fresh registry missing generated Z.ai Coding CN GLM-4.6V model")
+	}
+	if _, ok := registry.Model(ProviderZAI, "glm-4.6v"); ok {
+		t.Fatal("international Z.ai catalog unexpectedly includes China-only GLM-4.6V")
+	}
+	if zaiVision.API != APIOpenAICompletions || len(zaiVision.SupportedInputs) != 2 ||
+		zaiVision.SupportedInputs[0] != ContentBlockText || zaiVision.SupportedInputs[1] != ContentBlockImage ||
+		!zaiVision.SupportsTools || !zaiVision.SupportsReasoning() {
+		t.Fatalf("Z.ai Coding CN GLM-4.6V capabilities = %+v, want text/image Chat Completions with tools and reasoning", zaiVision)
+	}
+	if zaiVision.ContextWindow != 128000 || zaiVision.MaxOutputTokens != 32768 {
+		t.Fatalf("Z.ai Coding CN GLM-4.6V limits = %d/%d, want 128000/32768", zaiVision.ContextWindow, zaiVision.MaxOutputTokens)
+	}
+	if zaiVision.InputCostPerMillion != 0.3 || zaiVision.OutputCostPerMillion != 0.9 ||
+		zaiVision.CacheReadInputCostPerMillion != 0 || zaiVision.CacheWriteInputCostPerMillion != 0 || zaiVision.CostCurrency != "USD" {
+		t.Fatalf("Z.ai Coding CN GLM-4.6V costs = %f/%f/%f/%f %s, want 0.3/0.9/0/0 USD", zaiVision.InputCostPerMillion, zaiVision.OutputCostPerMillion, zaiVision.CacheReadInputCostPerMillion, zaiVision.CacheWriteInputCostPerMillion, zaiVision.CostCurrency)
+	}
+	if zaiVision.OpenAICompletionsCompat == nil ||
+		zaiVision.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
+		zaiVision.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported ||
+		zaiVision.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningZAI ||
+		zaiVision.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+		t.Fatalf("Z.ai Coding CN GLM-4.6V compat = %#v, want Z.ai reasoning, tool_stream, max_tokens, and no developer role", zaiVision.OpenAICompletionsCompat)
+	}
+	if zaiVision.DefaultTransport != TransportSSE {
+		t.Fatalf("Z.ai Coding CN GLM-4.6V transport = %q, want %q", zaiVision.DefaultTransport, TransportSSE)
+	}
+	assertMetadataString(t, zaiVision.ProviderMetadata, "baseURL", "https://open.bigmodel.cn/api/coding/paas/v4")
+	assertMetadataStrings(t, zaiVision.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"ZAI_CODING_CN_API_KEY"})
+
+	for _, provider := range []ProviderID{ProviderZAI, ProviderZAICodingCN} {
+		for _, want := range []struct {
+			id        ModelID
+			input     float64
+			output    float64
+			cacheRead float64
+		}{
+			{id: "glm-5.1", input: 1.4, output: 4.4, cacheRead: 0.26},
+			{id: "glm-5v-turbo", input: 1.2, output: 4, cacheRead: 0.24},
+		} {
+			model, ok := registry.Model(provider, want.id)
+			if !ok {
+				t.Fatalf("fresh registry missing generated %s model %s", provider, want.id)
+			}
+			if model.InputCostPerMillion != want.input || model.OutputCostPerMillion != want.output ||
+				model.CacheReadInputCostPerMillion != want.cacheRead || model.CacheWriteInputCostPerMillion != 0 || model.CostCurrency != "USD" {
+				t.Fatalf("%s/%s costs = %f/%f/%f/%f %s, want %f/%f/%f/0 USD", provider, want.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, model.CostCurrency, want.input, want.output, want.cacheRead)
+			}
+		}
+	}
+
 	cloudflare, ok := registry.Model(ProviderCloudflareAIGateway, "gpt-5.4")
 	if !ok {
 		t.Fatal("fresh registry missing generated Cloudflare AI Gateway model")

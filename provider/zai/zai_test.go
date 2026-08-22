@@ -7,6 +7,7 @@ package zai_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -23,6 +24,7 @@ type capturedRequest struct {
 	Method  string
 	Path    string
 	Headers http.Header
+	Body    []byte
 }
 
 func TestRegistersReportOpenAICompletionsAPI(t *testing.T) {
@@ -106,6 +108,76 @@ func TestCompleteUsesConfiguredOpenAICompatibleBaseURL(t *testing.T) {
 	}
 	if got, want := request.Headers.Get("Authorization"), "Bearer request-key"; got != want {
 		t.Fatalf("Authorization header = %q, want %q", got, want)
+	}
+}
+
+func TestGLM46VUsesVisionAndCompatibilityMetadata(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeCompleted(t, w)
+	}))
+	t.Cleanup(server.Close)
+
+	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderZAICodingCN, "glm-4.6v")
+	if !ok {
+		t.Fatal("default registry missing Z.ai Coding CN GLM-4.6V")
+	}
+	model.ProviderMetadata["baseURL"] = server.URL
+	registry := sigma.NewRegistry()
+	if err := zai.RegisterCodingCN(registry, zai.WithBaseURL(server.URL)); err != nil {
+		t.Fatalf("RegisterCodingCN returned error: %v", err)
+	}
+	if err := registry.RegisterModel(model); err != nil {
+		t.Fatalf("RegisterModel returned error: %v", err)
+	}
+	client := sigma.NewClient(sigma.WithRegistry(registry))
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{
+			Messages: []sigma.Message{sigma.UserContent(
+				sigma.Text("describe this"),
+				sigma.ImageURL("image/png", "https://example.test/cat.png"),
+			)},
+			Tools: []sigma.Tool{{
+				Name:        "inspect",
+				Description: "Inspect the image",
+				InputSchema: sigma.Schema{"type": "object"},
+			}},
+		},
+		sigma.WithAPIKey("request-key"),
+		sigma.WithMaxTokens(2048),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	var payload map[string]any
+	if err := json.Unmarshal(request.Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["max_tokens"], float64(2048); got != want {
+		t.Fatalf("max_tokens = %v, want %v", got, want)
+	}
+	if _, ok := payload["max_completion_tokens"]; ok {
+		t.Fatalf("payload unexpectedly includes max_completion_tokens: %#v", payload)
+	}
+	if got, want := payload["tool_stream"], true; got != want {
+		t.Fatalf("tool_stream = %v, want %v", got, want)
+	}
+	messages := payload["messages"].([]any)
+	content := messages[0].(map[string]any)["content"].([]any)
+	image := content[1].(map[string]any)
+	if got, want := image["type"], "image_url"; got != want {
+		t.Fatalf("image type = %v, want %q", got, want)
+	}
+	if got, want := image["image_url"].(map[string]any)["url"], "https://example.test/cat.png"; got != want {
+		t.Fatalf("image URL = %v, want %q", got, want)
 	}
 }
 
@@ -196,11 +268,15 @@ func zaiTestModel(provider sigma.ProviderID) sigma.Model {
 func captureRequest(t *testing.T, ch chan<- capturedRequest, r *http.Request) {
 	t.Helper()
 
-	_, _ = io.Copy(io.Discard, r.Body)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		t.Errorf("read request body: %v", err)
+	}
 	ch <- capturedRequest{
 		Method:  r.Method,
 		Path:    r.URL.Path,
 		Headers: r.Header.Clone(),
+		Body:    body,
 	}
 }
 

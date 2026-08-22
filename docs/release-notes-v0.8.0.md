@@ -129,15 +129,18 @@ selection remains available through existing provider-specific controls.
   variants map Sigma's `minimal` through `high` levels to provider `high` and
   `xhigh`/`max` to provider `max`; GLM-5.3 maps `minimal`/`low` to `low`,
   `medium`/`high` to `high`, and `xhigh`/`max` to `max`. Omitted reasoning
-  remains disabled, explicit GLM-5.3 `off` fails locally, GLM-5.2 uses
-  API-equivalent estimated pricing, and unevidenced prices remain zero. The
-  typed Z.ai reasoning format now defaults same-provider/API/model assistant
-  replay to `reasoning_content` and sends `clear_thinking: false` whenever
-  reasoning is enabled so provider-side reasoning state remains cacheable. An
-  explicit `RequiresReasoningContentOnAssistantMessages` setting overrides the
-  replay default; mismatched provenance is never replayed, and disabled or
-  omitted reasoning retains the existing disabled payload without
-  `clear_thinking`.
+  remains disabled, and explicit GLM-5.3 `off` fails locally. The China route
+  additionally exposes GLM-4.6V with text and image input, Z.ai reasoning,
+  streamed tools, a 128,000-token context window, a 32,768-token output limit,
+  and `max_tokens` request compatibility. GLM-5.1, GLM-5.2, and GLM-5V-Turbo
+  use API-equivalent estimated pricing across both routes, while unevidenced
+  prices remain zero. The typed Z.ai reasoning format now defaults
+  same-provider/API/model assistant replay to `reasoning_content` and sends
+  `clear_thinking: false` whenever reasoning is enabled so provider-side
+  reasoning state remains cacheable. An explicit
+  `RequiresReasoningContentOnAssistantMessages` setting overrides the replay
+  default; mismatched provenance is never replayed, and disabled or omitted
+  reasoning retains the existing disabled payload without `clear_thinking`.
 - `AnthropicOptions.EnableRefusalFallbacks` enables direct Anthropic
   server-side refusal fallback only for models with generated allowed-target
   metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets, while

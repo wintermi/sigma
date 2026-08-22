@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-19",
+  "snapshotDate": "2026-08-23",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -22473,6 +22473,40 @@
       }
     },
     {
+      "id": "glm-4.6v",
+      "name": "GLM-4.6V",
+      "provider": "zai-coding-cn",
+      "api": "openai-completions",
+      "baseURL": "https://open.bigmodel.cn/api/coding/paas/v4",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 0.9,
+        "currency": "USD"
+      },
+      "contextWindow": 128000,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "ZAI_CODING_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsToolStream": "supported",
+        "reasoningFormat": "zai",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
       "id": "glm-4.7",
       "name": "GLM-4.7",
       "provider": "zai-coding-cn",
@@ -22548,8 +22582,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
         "currency": "USD"
       },
       "contextWindow": 200000,
@@ -22708,8 +22743,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.2,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.24,
         "currency": "USD"
       },
       "contextWindow": 200000,
@@ -22835,8 +22871,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
         "currency": "USD"
       },
       "contextWindow": 200000,
@@ -22995,8 +23032,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 1.2,
+        "outputPerMillion": 4,
+        "cacheReadInputPerMillion": 0.24,
         "currency": "USD"
       },
       "contextWindow": 200000,

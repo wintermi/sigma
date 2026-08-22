@@ -56,6 +56,7 @@ const (
 	defaultHuggingFaceTokenEnv    = "HF_TOKEN"
 	defaultCopilotGitHubTokenEnv  = "COPILOT_GITHUB_TOKEN"
 	defaultNVIDIAAPIKeyEnv        = "NVIDIA_API_KEY"
+	defaultZAICodingCNAPIKeyEnv   = "ZAI_CODING_CN_API_KEY"
 	defaultMoonshotAPIKeyEnv      = "MOONSHOT_API_KEY"
 	defaultKimiAPIKeyEnv          = "KIMI_API_KEY"
 	defaultFireworksAPIKeyEnv     = "FIREWORKS_API_KEY"
@@ -87,7 +88,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderGitHubCopilot:           {defaultCopilotGitHubTokenEnv},
 	ProviderNVIDIA:                  {defaultNVIDIAAPIKeyEnv},
 	ProviderZAI:                     {"ZAI_API_KEY"},
-	ProviderZAICodingCN:             {"ZAI_CODING_CN_API_KEY"},
+	ProviderZAICodingCN:             {defaultZAICodingCNAPIKeyEnv},
 	ProviderAntLing:                 {"ANT_LING_API_KEY"},
 	ProviderMoonshotAI:              {defaultMoonshotAPIKeyEnv},
 	ProviderMoonshotAICN:            {defaultMoonshotAPIKeyEnv},

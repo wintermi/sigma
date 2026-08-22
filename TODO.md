@@ -262,6 +262,8 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Refresh Z.ai and Z.ai Coding CN with GLM-5.2 Highspeed and GLM-5.3,
       model-specific reasoning aliases, and API-equivalent pricing only where
       matching evidence exists.
+- [x] Add the China-only GLM-4.6V vision model and apply API-equivalent GLM-5.1
+      and GLM-5V-Turbo usage estimates across both Z.ai Coding Plan routes.
 - [x] Harden OpenAI-compatible Chat Completions streams to avoid duplicate
       reasoning alias deltas and reject successful EOF before a terminal
       `finish_reason`.
