@@ -73,6 +73,12 @@ sampling fields that remain below Sigma's core and typed request values,
 request-scoped sampling overrides, and raw provider body overrides. OpenAI
 Responses-compatible and Azure OpenAI Responses requests now also clamp typed
 output-token limits below 16 to the accepted request minimum.
+Direct OpenAI Responses requests can now run in the background through an
+explicit provider-neutral lifecycle. Callers receive a JSON-serializable,
+provenance-bearing handle, can perform one status fetch at a time, and can
+request cancellation without changing ordinary streaming or completion
+behavior. Completed and incomplete background responses use the same content,
+tool, usage, cost, metadata, and error conversion as streamed Responses.
 OpenAI-compatible Chat Completions usage now also recognizes top-level
 `cached_tokens` from compatible Kimi and Moonshot responses as cache reads
 instead of ordinary input.
@@ -124,6 +130,19 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- `SubmitDeferred`, `FetchDeferred`, and `CancelDeferred` provide an explicit
+  provider-neutral lifecycle for durable text responses, initially backed by
+  direct OpenAI Responses. `DeferredResponseHandle` is safe to serialize for
+  later polling and pins the provider, API, model, and response ID so a handle
+  cannot be dispatched to a different registered route. Queued and in-progress
+  observations carry no assistant message; terminal output reuses the existing
+  Responses parser, including reasoning, function and grammar tools, usage,
+  estimated cost, routed-model metadata, and partial output on failures.
+  Fetching performs exactly one request and cancellation returns the resulting
+  provider status, including an already-completed response. Sigma does not
+  automatically poll, resume background streams, or extend upstream retention;
+  callers using the default non-stored request policy must retrieve results
+  within the provider's temporary polling window.
 - The international and China Z.ai Coding Plan routes now expose GLM-5.2,
   GLM-5.2 Highspeed, and GLM-5.3 as a consistent million-token cohort. GLM-5.2
   variants map Sigma's `minimal` through `high` levels to provider `high` and

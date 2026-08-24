@@ -409,9 +409,13 @@ work until their API boundaries are explicit.
       tool references and OpenAI/Codex Responses, including native
       message-anchored additional tools, older-model client tool-search replay,
       and namespace-safe compatible history replay.
+- [x] Add JSON-serializable provider-neutral deferred response handles and
+      explicit submit, single-fetch, and cancel lifecycle methods with an
+      initial direct OpenAI Responses implementation.
 - [ ] Keep Responses hosted-tool execution, namespace-definition authoring,
-      background response lifecycles, and provider-neutral agent orchestration
-      outside the focused deferred client-tool surface.
+      Azure and Codex background support, automatic polling, resumable
+      background streams, webhooks, and provider-neutral agent orchestration
+      outside the focused deferred response lifecycle.
 - [x] Add request-scoped arbitrary sampling parameters for OpenAI-compatible
       Chat Completions, Responses, and Azure Responses while preserving raw
       `extra_body` override precedence.

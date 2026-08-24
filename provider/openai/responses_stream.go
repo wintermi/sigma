@@ -200,6 +200,38 @@ func parseResponsesStream(ctx context.Context, r io.Reader, writer sigma.StreamW
 	return parser.finalize(ctx), nil
 }
 
+func parseResponsesObject(ctx context.Context, response responsesResponse, model sigma.Model, opts responsesStreamOptions) (sigma.AssistantMessage, error) {
+	parser := newResponsesStreamParser(nil, model, opts)
+	switch response.Status {
+	case "completed":
+		parser.terminalResponse = true
+		parser.captureTerminalResponse(response)
+		return parser.finalize(ctx), nil
+	case "incomplete":
+		parser.terminalResponse = true
+		parser.captureTerminalResponse(response)
+		final := parser.finalize(ctx)
+		if response.Error != nil {
+			return final, openAIResponsesStreamProviderError(model, response.Error)
+		}
+		if parser.stopReason == "" || parser.stopReason == sigma.StopReasonUnknown {
+			return final, openAIResponsesIncompleteError(model, parser.incompleteReason)
+		}
+		return final, nil
+	case "failed":
+		parser.terminalResponse = true
+		parser.terminalStatus = response.Status
+		parser.captureResponse(response)
+		final := parser.finalize(ctx)
+		if response.Error != nil {
+			return final, openAIResponsesStreamProviderError(model, response.Error)
+		}
+		return final, fmt.Errorf("openai responses: response ended with status %q", response.Status)
+	default:
+		return parser.finalize(ctx), fmt.Errorf("openai responses: cannot convert status %q", response.Status)
+	}
+}
+
 func newResponsesStreamParser(writer sigma.StreamWriter, model sigma.Model, opts responsesStreamOptions) *responsesStreamParser {
 	return &responsesStreamParser{
 		writer:          writer,

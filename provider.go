@@ -13,6 +13,15 @@ type TextProvider interface {
 	Stream(context.Context, Model, Request, Options) *Stream
 }
 
+// DeferredTextProvider optionally adapts a provider API into sigma's durable
+// background text-response lifecycle.
+type DeferredTextProvider interface {
+	TextProvider
+	SubmitDeferred(context.Context, Model, Request, Options) (DeferredResponse, error)
+	FetchDeferred(context.Context, Model, DeferredResponseHandle, Options) (DeferredResponse, error)
+	CancelDeferred(context.Context, Model, DeferredResponseHandle, Options) (DeferredResponse, error)
+}
+
 // ImageProvider adapts a provider API into sigma's image generation interface.
 type ImageProvider interface {
 	API() ImageAPI

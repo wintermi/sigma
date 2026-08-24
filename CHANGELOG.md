@@ -62,6 +62,13 @@ See [release notes](docs/release-notes-v0.8.0.md).
   or `MetadataOpenAISamplingParameters`. Sigma's core and typed request fields
   override model defaults, request-scoped sampling values override matching
   keys, and provider `extra_body` values retain final precedence.
+- Direct OpenAI Responses requests can now be submitted for background
+  execution through explicit provider-neutral submit, fetch, and cancel
+  methods. JSON-serializable handles retain exact provider, API, model, and
+  response ID provenance; each fetch performs one status check, while terminal
+  responses reuse Sigma's existing content, tool, usage, cost, and incomplete
+  response conversion. Existing streaming and completion requests are
+  unchanged.
 - Custom OpenAI-compatible Chat Completions models can now select
   `thinking_token_budget`, `thinking_budget`, or `thinking_budget_tokens`
   through `OpenAICompletionsCompat.ThinkingTokenBudgetField`, reusing Sigma's
