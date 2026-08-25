@@ -267,6 +267,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Harden OpenAI-compatible Chat Completions streams to avoid duplicate
       reasoning alias deltas and reject successful EOF before a terminal
       `finish_reason`.
+- [x] Omit typed OpenAI-compatible Chat Completions tool choices when no tool
+      definitions are emitted, including fully deferred tool sets, while
+      preserving declared-tool behavior and low-level payload precedence.
 - [x] Preserve the first provider-issued ID and name for indexed
       OpenAI-compatible Chat Completions function and grammar tool calls while
       allowing a late first provider ID to replace Sigma's synthetic fallback.
@@ -396,8 +399,9 @@ work until their API boundaries are explicit.
       shape.
 - [x] Preserve complete validated OpenAI-compatible Chat Completions
       `reasoning_details` sequences in provider order across assistant-content
-      persistence and exact-provenance replay, while retaining legacy tool-call
-      metadata and keeping broader provider-neutral rendering deferred.
+      persistence and exact-provenance replay, coalescing consecutive streamed
+      text and summary fragments while retaining legacy tool-call metadata and
+      keeping broader provider-neutral rendering deferred.
 - [x] Harden provider replay and protocol edge cases across Anthropic, Google,
       Bedrock, OpenAI-compatible, Azure Responses, and GitHub Copilot OAuth
       with deterministic fixtures for signatures, private reasoning metadata,
@@ -456,6 +460,9 @@ metadata-only and backed by compatibility checks.
       first-class row promotion, with deterministic request, stream, error,
       redaction, and cancellation coverage before registration.
 - [x] DeepSeek — promote to a first-class provider row with fixtures.
+- [ ] DeepSeek — review `deepseek-v4-flash-vision-exp` through the catalog
+      refresh workflow, with deterministic evidence for image input, limits,
+      pricing, and compatibility metadata before promotion.
 - [x] Groq — promote to a first-class provider row with fixtures.
 - [x] Cerebras — promote to a first-class provider row with fixtures.
 - [x] Together — promote to a first-class provider row with fixtures.
@@ -677,7 +684,8 @@ upstream.
       catalog review is tractable before generated files are written.
 - [ ] Expand OpenRouter text metadata beyond the curated route cohort only
       through the catalog refresh workflow, with deterministic diffs and
-      reviewable routing/cost changes instead of ad hoc catalog imports.
+      reviewable routing, cost, mandatory-reasoning, disabled-reasoning, and
+      supported-effort changes instead of ad hoc catalog imports.
 - [x] Add focused current Bedrock Claude regional inference-profile and direct
       GPT-OSS, DeepSeek R1, and Llama 4 metadata with deterministic registry
       assertions, while keeping broad catalog refresh work deferred.

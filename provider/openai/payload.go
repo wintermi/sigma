@@ -49,7 +49,8 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	if err := validateReasoningLevel(model, opts, compat); err != nil {
 		return nil, err
 	}
-	if err := validateChatToolChoice(model, opts, compat); err != nil {
+	hasImmediateTools := len(deferredTools.Immediate) > 0
+	if err := validateChatToolChoice(model, opts, compat, hasImmediateTools); err != nil {
 		return nil, err
 	}
 
@@ -74,11 +75,8 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	addChatPromptCache(payload, opts, compat)
 	addReasoning(payload, model, opts, compat)
 	addThinkingTokenBudget(payload, model, opts, compat)
-	if opts.ToolChoice != "" {
-		payload["tool_choice"] = string(opts.ToolChoice)
-	}
 	addChatOpenAIOptions(payload, opts, compat)
-	if len(deferredTools.Immediate) > 0 {
+	if hasImmediateTools {
 		tools, err := chatTools(model, deferredTools.Immediate, compat, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
@@ -90,6 +88,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	} else if compat.requiresToolsForToolHistory && hasToolHistory(cleaned.Messages) {
 		payload["tools"] = []map[string]any{}
 	}
+	addChatToolChoice(payload, opts, hasImmediateTools)
 
 	addOpenAISamplingParameters(payload, opts)
 	for key, value := range extraBody(opts, model.Provider) {
@@ -143,7 +142,10 @@ func chatGrammarToolInputProperties(req sigma.Request, opts sigma.Options, compa
 	return grammarToolInputProperties("openai completions", req, chatGrammarToolsEnabled(opts, compat))
 }
 
-func validateChatToolChoice(model sigma.Model, opts sigma.Options, compat completionsCompat) error {
+func validateChatToolChoice(model sigma.Model, opts sigma.Options, compat completionsCompat, hasTools bool) error {
+	if !hasTools {
+		return nil
+	}
 	if compat.supportsRequiredToolChoice || opts.OpenAIOptions == nil || opts.OpenAIOptions.ToolChoice == nil {
 		return nil
 	}
@@ -227,9 +229,6 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 	if opts.OpenAIOptions == nil {
 		return
 	}
-	if opts.OpenAIOptions.ToolChoice != nil {
-		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
-	}
 	if opts.OpenAIOptions.ResponseFormat != nil {
 		payload["response_format"] = chatResponseFormat(opts.OpenAIOptions.ResponseFormat, compat)
 	}
@@ -247,6 +246,18 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 		compat.cacheControlFormat != sigma.OpenAICompletionsCacheControlUnsupported &&
 		compat.supportsLongCacheRetention {
 		payload["prompt_cache_retention"] = opts.OpenAIOptions.PromptCacheRetention
+	}
+}
+
+func addChatToolChoice(payload map[string]any, opts sigma.Options, hasTools bool) {
+	if !hasTools {
+		return
+	}
+	if opts.ToolChoice != "" {
+		payload["tool_choice"] = string(opts.ToolChoice)
+	}
+	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ToolChoice != nil {
+		payload["tool_choice"] = opts.OpenAIOptions.ToolChoice
 	}
 }
 

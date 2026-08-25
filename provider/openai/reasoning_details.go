@@ -54,6 +54,59 @@ func filterReasoningDetails(details []any) []any {
 	return valid
 }
 
+func appendReasoningDetail(details []any, detail any) []any {
+	next, ok := detail.(map[string]any)
+	if !ok || len(details) == 0 {
+		return append(details, detail)
+	}
+	current, ok := details[len(details)-1].(map[string]any)
+	if !ok || current["type"] != next["type"] {
+		return append(details, detail)
+	}
+
+	switch next["type"] {
+	case "reasoning.text":
+		currentText, currentOK := current["text"].(string)
+		nextText, nextOK := next["text"].(string)
+		if !currentOK || !nextOK {
+			return append(details, detail)
+		}
+		current["text"] = currentText + nextText
+		fillMissingReasoningDetailString(current, next, "signature")
+	case "reasoning.summary":
+		currentSummary, currentOK := current["summary"].(string)
+		nextSummary, nextOK := next["summary"].(string)
+		if !currentOK || !nextOK {
+			return append(details, detail)
+		}
+		current["summary"] = currentSummary + nextSummary
+	default:
+		return append(details, detail)
+	}
+	fillMissingReasoningDetailString(current, next, "id")
+	fillMissingReasoningDetailString(current, next, "format")
+	fillMissingReasoningDetailValue(current, next, "index")
+	return details
+}
+
+func fillMissingReasoningDetailString(target, source map[string]any, key string) {
+	if value, _ := target[key].(string); value != "" {
+		return
+	}
+	if value, _ := source[key].(string); value != "" {
+		target[key] = value
+	}
+}
+
+func fillMissingReasoningDetailValue(target, source map[string]any, key string) {
+	if value, ok := target[key]; ok && value != nil {
+		return
+	}
+	if value, ok := source[key]; ok && value != nil {
+		target[key] = value
+	}
+}
+
 func validReasoningDetail(detail map[string]any) bool {
 	if !optionalNilOrString(detail, "id") || !optionalString(detail, "format") || !optionalNumber(detail, "index") {
 		return false

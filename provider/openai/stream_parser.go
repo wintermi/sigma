@@ -259,7 +259,9 @@ func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDe
 		if err != nil {
 			return err
 		}
-		p.reasoningDetails = append(p.reasoningDetails, details...)
+		for _, detail := range details {
+			p.reasoningDetails = appendReasoningDetail(p.reasoningDetails, detail)
+		}
 	}
 	if len(delta.Content) > 0 {
 		text, ok, err := streamContentText(delta.Content)

@@ -123,12 +123,19 @@ See [release notes](docs/release-notes-v0.8.0.md).
   `clear_thinking: false` whenever reasoning is enabled. Explicit replay
   compatibility overrides remain authoritative, while disabled reasoning and
   other formats retain their existing payloads.
+- OpenAI-compatible Chat Completions requests now omit typed `tool_choice`
+  values when no tool definitions are emitted, including requests whose tools
+  are fully deferred. Declared tools retain existing automatic, disabled,
+  required, and named-tool behavior, while low-level payload overrides keep
+  final precedence.
 - OpenAI-compatible Chat Completions streams now preserve validated encrypted,
-  signed-text, and summary `reasoning_details` in provider order across
-  assistant-content persistence and exact same-provider/API/model replay.
-  Invalid persisted entries are omitted without losing valid siblings, legacy
-  tool-call metadata remains replayable, and requests without stored details
-  are unchanged.
+  signed-text, and summary `reasoning_details` in provider order, coalescing
+  consecutive streamed text and summary fragments into complete logical
+  entries before assistant-content persistence and exact same-provider/API/
+  model replay. Later fragments fill missing identity and format metadata
+  without replacing prior values; invalid persisted entries are omitted
+  without losing valid siblings, legacy tool-call metadata remains replayable,
+  and requests without stored details are unchanged.
 - OpenAI, Azure, and Codex Responses streams now preserve non-empty assistant
   message phases in opaque content metadata. Recognized `commentary` and
   `final_answer` phases retain their original item boundaries on exact

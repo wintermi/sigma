@@ -302,7 +302,10 @@ selection remains available through existing provider-specific controls.
   override the provider-neutral fallback. `ToolChoiceNone` retains declared
   tool definitions on providers that support an explicit disabled choice;
   Bedrock instead omits active and replay-synthesized tool configuration because
-  Converse has no disabled tool-choice variant.
+  Converse has no disabled tool-choice variant. OpenAI-compatible Chat
+  Completions also omit provider-neutral and typed provider-specific choices
+  when no tool definitions are emitted, including fully deferred tool sets;
+  low-level payload overrides retain final precedence.
 - Direct xAI Grok 4.6 uses `/responses`, disables provider-side response
   storage, and requests encrypted reasoning whenever a supported effort is
   selected. Explicit `xhigh` maps directly to the provider effort; off and
@@ -323,9 +326,13 @@ selection remains available through existing provider-specific controls.
   Indexless correlation behavior and request payloads are unchanged.
 - OpenAI-compatible Chat Completions replays complete `reasoning_details` only
   when persisted provider, API, and model provenance exactly match the target.
-  Invalid or unknown entries are omitted individually, older tool-call metadata
-  remains a replay fallback, and requests without persisted details retain
-  their previous payloads and defaults.
+  Consecutive streamed text and summary fragments are coalesced into complete
+  logical entries, with later fragments filling missing identity, format,
+  index, and signature metadata without replacing prior values. Encrypted
+  entries remain discrete and ordered. Invalid or unknown entries are omitted
+  individually, older tool-call metadata remains a replay fallback, and
+  requests without persisted details retain their previous payloads and
+  defaults.
 - Typed max-token options below 16 now serialize as 16 for
   OpenAI Responses-compatible and Azure OpenAI Responses requests. Unset values
   remain omitted, sampling parameters and raw `extra_body` values retain their

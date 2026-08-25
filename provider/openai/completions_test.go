@@ -181,6 +181,134 @@ func TestCompleteSendsProviderNeutralToolChoice(t *testing.T) {
 	}
 }
 
+func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		provider       sigma.ProviderID
+		model          func(sigma.ProviderID) sigma.Model
+		request        sigma.Request
+		options        []sigma.Option
+		wantEmptyTools bool
+	}{
+		{
+			name:    "provider neutral",
+			model:   openAITestModel,
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
+			options: []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+		},
+		{
+			name:    "typed provider specific",
+			model:   openAITestModel,
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
+			options: []sigma.Option{sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: "required"})},
+		},
+		{
+			name: "empty history scaffolding",
+			model: func(providerID sigma.ProviderID) sigma.Model {
+				model := openAITestModel(providerID)
+				model.OpenAICompletionsCompat.RequiresToolsForToolHistory = sigma.OpenAICompatSupported
+				return model
+			},
+			request: sigma.Request{Messages: []sigma.Message{
+				sigma.UserText("start"),
+				{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_lookup", "lookup", map[string]any{})}},
+				sigma.ToolResult("call_lookup", "found"),
+			}},
+			options:        []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			wantEmptyTools: true,
+		},
+		{
+			name:     "fully deferred",
+			provider: sigma.ProviderFireworks,
+			model:    func(sigma.ProviderID) sigma.Model { return fireworksKimiK3TestModel() },
+			request: sigma.Request{
+				Tools: []sigma.Tool{{Name: "late", InputSchema: sigma.Schema{"type": "object"}}},
+				Messages: []sigma.Message{
+					sigma.UserText("start"),
+					{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_base", "base", map[string]any{})}},
+					{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("base result")}, AddedToolNames: []string{"late"}},
+				},
+			},
+			options: []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeFixture(t, w, "text_usage.sse")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := tt.provider
+			if providerID == "" {
+				providerID = sigma.ProviderID("openai-tool-choice-without-tools-" + strings.ReplaceAll(tt.name, " ", "-"))
+			}
+			model := tt.model(providerID)
+			client := openAITestClient(t, providerID, model, server.URL)
+
+			if _, err := client.Complete(context.Background(), model, tt.request, tt.options...); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if _, ok := payload["tool_choice"]; ok {
+				t.Fatalf("tool_choice = %#v, want omitted", payload["tool_choice"])
+			}
+			tools, hasTools := payload["tools"].([]any)
+			if tt.wantEmptyTools && (!hasTools || len(tools) != 0) {
+				t.Fatalf("tools = %#v, want empty history scaffolding", payload["tools"])
+			}
+			if hasTools && len(tools) > 0 {
+				t.Fatalf("tools = %#v, want no emitted definitions", tools)
+			}
+		})
+	}
+}
+
+func TestChatCompletionsRawToolChoiceOverridesTypedOmission(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeFixture(t, w, "text_usage.sse")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openai-raw-tool-choice-without-tools")
+	model := openAITestModel(providerID)
+	client := openAITestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
+		sigma.WithToolChoice(sigma.ToolChoiceNone),
+		sigma.WithProviderOption(providerID, "extra_body", map[string]any{"tool_choice": "required"}),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	if got, want := payload["tool_choice"], "required"; got != want {
+		t.Fatalf("tool_choice = %#v, want raw override %q", got, want)
+	}
+}
+
 func TestChatCompletionsSuppressesFinalHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -2510,7 +2638,7 @@ func TestStreamingPreservesReasoningDetailsForToolReplay(t *testing.T) {
 	}
 }
 
-func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.T) {
+func TestStreamingCoalescesOrderedReasoningDetailsForSameModelReplay(t *testing.T) {
 	t.Parallel()
 
 	signedText := map[string]any{
@@ -2521,6 +2649,11 @@ func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.
 		"format":    "openai-responses-v1",
 		"index":     float64(0),
 	}
+	summary := map[string]any{
+		"type":    "reasoning.summary",
+		"summary": "read the requested file",
+		"format":  "openai-responses-v1",
+	}
 	encrypted := map[string]any{
 		"type": "reasoning.encrypted",
 		"id":   "call_1",
@@ -2529,11 +2662,11 @@ func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.
 			"trace": "original",
 		},
 	}
-	summary := map[string]any{
+	laterSummary := map[string]any{
 		"type":    "reasoning.summary",
-		"summary": "read the requested file",
+		"summary": "after encrypted",
 	}
-	wantOrdered := []any{signedText, encrypted, summary}
+	wantOrdered := []any{signedText, summary, encrypted, laterSummary}
 
 	requests := make(chan capturedRequest, 2)
 	var requestCount int
@@ -2546,8 +2679,9 @@ func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.
 		captureRequest(t, requests, r)
 		w.Header().Set("Content-Type", "text/event-stream")
 		if count == 1 {
-			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"inspect ","reasoning_details":[{"type":"reasoning.text","id":"reasoning_1","text":"inspect the request","signature":"signed-text","format":"openai-responses-v1","index":0},{"type":"reasoning.unknown","value":"drop"},{"type":"reasoning.summary","summary":42},{"type":"reasoning.summary","summary":"bad id","id":7},{"type":"reasoning.summary","summary":"bad format","format":null},{"type":"reasoning.summary","summary":"bad index","index":"0"},{"type":"reasoning.text","text":"bad signature","signature":7}]},"finish_reason":null}]}`+"\n\n")
-			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"then read","content":"Checking.","reasoning_details":[{"type":"reasoning.encrypted","id":"call_1","data":"encrypted-signature","extension":{"trace":"original"}},{"type":"reasoning.summary","summary":"read the requested file"}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"inspect ","reasoning_details":[{"type":"reasoning.text","text":"inspect ","index":0},{"type":"reasoning.unknown","value":"drop"},{"type":"reasoning.summary","summary":42},{"type":"reasoning.summary","summary":"bad id","id":7},{"type":"reasoning.summary","summary":"bad format","format":null},{"type":"reasoning.summary","summary":"bad index","index":"0"},{"type":"reasoning.text","text":"bad signature","signature":7}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_content":"then read","content":"Checking.","reasoning_details":[{"type":"reasoning.text","id":"reasoning_1","text":"the request","signature":"signed-text","format":"openai-responses-v1","index":0},{"type":"reasoning.text","id":"reasoning_other","text":"","signature":"replacement","format":"other","index":1},{"type":"reasoning.summary","summary":"read "}]},"finish_reason":null}]}`+"\n\n")
+			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"reasoning_details":[{"type":"reasoning.summary","summary":"the requested file","format":"openai-responses-v1"},{"type":"reasoning.encrypted","id":"call_1","data":"encrypted-signature","extension":{"trace":"original"}},{"type":"reasoning.summary","summary":"after encrypted"}]},"finish_reason":null}]}`+"\n\n")
 			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"README.md\"}"}}]},"finish_reason":null}]}`+"\n\n")
 			_, _ = io.WriteString(w, `data: {"id":"chatcmpl_ordered","model":"gpt-test","usage":{"prompt_tokens":10,"completion_tokens":6,"total_tokens":16},"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`+"\n\n")
 			_, _ = io.WriteString(w, "data: [DONE]\n\n")
@@ -2597,14 +2731,14 @@ func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.
 		t.Fatalf("ordered reasoning metadata = %#v, want %#v", ordered, wantOrdered)
 	}
 	legacy, ok := final.Content[2].ProviderMetadata["reasoning_details"].([]any)
-	if !ok || len(legacy) != 2 {
-		t.Fatalf("legacy reasoning metadata = %#v, want summary and encrypted details", final.Content[2].ProviderMetadata["reasoning_details"])
+	if !ok || len(legacy) != 3 {
+		t.Fatalf("legacy reasoning metadata = %#v, want summaries and encrypted details", final.Content[2].ProviderMetadata["reasoning_details"])
 	}
-	if !reflect.DeepEqual(legacy, []any{summary, encrypted}) {
-		t.Fatalf("legacy reasoning metadata = %#v, want %#v", legacy, []any{summary, encrypted})
+	if !reflect.DeepEqual(legacy, []any{summary, laterSummary, encrypted}) {
+		t.Fatalf("legacy reasoning metadata = %#v, want %#v", legacy, []any{summary, laterSummary, encrypted})
 	}
-	ordered[1].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
-	if got := legacy[1].(map[string]any)["extension"].(map[string]any)["trace"]; got != "original" {
+	ordered[2].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	if got := legacy[2].(map[string]any)["extension"].(map[string]any)["trace"]; got != "original" {
 		t.Fatalf("legacy metadata trace = %v, want independent original copy", got)
 	}
 	if got, want := final.StopReason, sigma.StopReasonToolCalls; got != want {
@@ -2644,7 +2778,7 @@ func TestStreamingPreservesOrderedReasoningDetailsForSameModelReplay(t *testing.
 	if !ok {
 		t.Fatalf("replayed reasoning_details type = %T, want []any", replayAssistant["reasoning_details"])
 	}
-	wantOrdered[1].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	wantOrdered[2].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
 	if !reflect.DeepEqual(replayedDetails, wantOrdered) {
 		t.Fatalf("replayed reasoning_details = %#v, want %#v", replayedDetails, wantOrdered)
 	}
