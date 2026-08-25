@@ -83,6 +83,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
   caller-owned text tool loops while retaining complete usage and trace
   artifacts. The opt-in live runner adds a deterministic tool-call round-trip
   case that requires a matching successful call, result, and final answer.
+- `cmd/sigma-surface-probe` now has an opt-in Vertex Anthropic Claude route
+  over the existing `streamRawPredict` adapter. It defaults to the built-in
+  Claude Sonnet 4.6 model, validates explicit model IDs locally, and reuses
+  explicit Vertex project, location, API-key, or OAuth credential inputs
+  without adding live provider calls to CI.
 - Persisted tool-result messages can now carry optional `Usage` describing
   caller-owned tool execution. The metadata survives replay and handoff while
   remaining excluded from provider payloads, request-token estimates, model

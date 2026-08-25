@@ -47,6 +47,7 @@ All other routes must be requested explicitly.
 | `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
 | `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
 | `google-vertex` | Native Vertex Gemini `streamGenerateContent` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses every built-in `google-vertex` Gemini text model in sorted order unless `-models` is set |
+| `google-vertex-anthropic` | Vertex Anthropic Claude `streamRawPredict` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses `claude-sonnet-4-6` unless `-models` selects other built-in Vertex Claude models |
 | `fireworks-openai` | Fireworks OpenAI-compatible Chat Completions | `FIREWORKS_API_KEY` | Discovers Fireworks models |
 | `fireworks-anthropic` | Fireworks Anthropic-compatible Messages | `FIREWORKS_API_KEY` | Discovers Fireworks models |
 | `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Discovers Moonshot AI models |
@@ -152,10 +153,28 @@ it.
 Omit `-models` to probe every built-in native Vertex Gemini text model
 sequentially. Explicit IDs must be built-in `google-vertex` text models; model
 selection is catalog-backed and never calls a Vertex model-discovery endpoint.
-Vertex-hosted partner MaaS models, images, and embeddings are not included.
+Vertex-hosted partner MaaS models, images, and embeddings are not included in
+the native Gemini route.
 Use the `global` location when probing the complete catalog because some current
 models are global-only. A regional or multi-region location remains valid when
 every explicitly selected model is available there.
+
+Probe the default Vertex Anthropic Claude model with the same explicit routing
+and credential contract:
+
+```bash
+GOOGLE_CLOUD_ACCESS_TOKEN="$(gcloud auth application-default print-access-token)" \
+GOOGLE_CLOUD_PROJECT=my-project \
+GOOGLE_CLOUD_LOCATION=global \
+mise run go:run -- ./cmd/sigma-surface-probe \
+  -routes google-vertex-anthropic \
+  -repair
+```
+
+The route defaults to `claude-sonnet-4-6`. Use `-models` to select one or more
+other built-in `google-vertex-anthropic` Claude IDs. Model selection remains
+catalog-backed and does not call a Vertex model-discovery endpoint. The probe
+does not load ambient credentials or persist access tokens.
 
 Probe OpenAI Responses with a known model:
 
@@ -260,7 +279,8 @@ The `variation` case uses `dall-e-2`. The other image API cases use
 and the image-generation tool. These probes require `OPENAI_API_KEY` and stay
 outside deterministic CI.
 
-Anthropic-compatible routes currently run:
+Anthropic-compatible routes run the cases supported by the selected model's
+generated or probe metadata:
 
 ```text
 basic_text

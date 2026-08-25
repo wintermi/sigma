@@ -29,6 +29,26 @@ import (
 	"github.com/wintermi/sigma/sigmatest"
 )
 
+const vertexAnthropicProbeSSE = `event: message_start
+data: {"type":"message_start","message":{"id":"msg_vertex_probe","type":"message","role":"assistant","model":"claude-sonnet-4-6","content":[],"usage":{"input_tokens":1,"output_tokens":0}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"sigma-ok"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":1,"output_tokens":1}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+`
+
 func collectProbeModel(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config) []probeResult {
 	model := route.Model(route, modelID)
 	results := make([]probeResult, 0, len(route.Cases(route, model)))
@@ -292,6 +312,36 @@ func TestGoogleVertexRouteUsesGeneratedModels(t *testing.T) {
 	}
 }
 
+func TestGoogleVertexAnthropicRouteUsesGeneratedModel(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex-anthropic"]
+	if route.RegisterProvider == nil {
+		t.Fatal("google-vertex-anthropic route missing provider registration")
+	}
+	if got, want := route.Provider, sigma.ProviderGoogleVertexAnthropic; got != want {
+		t.Fatalf("provider = %q, want %q", got, want)
+	}
+
+	registry := sigma.NewRegistry()
+	if err := route.RegisterProvider(registry, route); err != nil {
+		t.Fatalf("register provider: %v", err)
+	}
+	providers := registry.ListProviders()
+	if len(providers) != 1 || providers[0].ID != sigma.ProviderGoogleVertexAnthropic || providers[0].TextAPI != sigma.APIAnthropicMessages {
+		t.Fatalf("registered providers = %#v, want google-vertex-anthropic text provider", providers)
+	}
+
+	got := route.Model(route, defaultGoogleVertexAnthropicModel)
+	want, ok := sigma.GetModel(sigma.ProviderGoogleVertexAnthropic, defaultGoogleVertexAnthropicModel)
+	if !ok {
+		t.Fatal("generated google-vertex-anthropic model was not registered")
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("probe model differs from generated model:\n got: %#v\nwant: %#v", got, want)
+	}
+}
+
 func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 	t.Parallel()
 
@@ -365,6 +415,38 @@ func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 	} {
 		_, err = modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{modelID: true})
 		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
+			t.Fatalf("invalid model %q error = %v, want clear local rejection", modelID, err)
+		}
+	}
+}
+
+func TestModelsForGoogleVertexAnthropicUseBuiltInCatalog(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex-anthropic"]
+	route.BaseURL = "http://127.0.0.1:1/v1"
+	models, err := modelsForRoute(context.Background(), route, routeCredential{}, nil)
+	if err != nil {
+		t.Fatalf("modelsForRoute returned error: %v", err)
+	}
+	if !reflect.DeepEqual(models, []string{defaultGoogleVertexAnthropicModel}) {
+		t.Fatalf("models = %v, want default Vertex Anthropic model", models)
+	}
+
+	models, err = modelsForRoute(context.Background(), route, routeCredential{}, map[string]bool{
+		"claude-opus-4-8":   true,
+		"claude-sonnet-4-6": true,
+	})
+	if err != nil {
+		t.Fatalf("selected models returned error: %v", err)
+	}
+	if !reflect.DeepEqual(models, []string{"claude-opus-4-8", "claude-sonnet-4-6"}) {
+		t.Fatalf("models = %v, want sorted selected Vertex Anthropic models", models)
+	}
+
+	for _, modelID := range []string{"not-a-vertex-model", "gemini-3.6-flash"} {
+		_, err = modelsForRoute(context.Background(), route, routeCredential{}, map[string]bool{modelID: true})
+		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex-anthropic text model") {
 			t.Fatalf("invalid model %q error = %v, want clear local rejection", modelID, err)
 		}
 	}
@@ -615,6 +697,13 @@ func TestGoogleVertexCredentialPrecedence(t *testing.T) {
 	if credential.accessToken != "oauth-token" || credential.apiKey != "" {
 		t.Fatalf("auth selection = token %t, key %t; want token only", credential.accessToken != "", credential.apiKey != "")
 	}
+	vertexAnthropicCredential, err := credentialForRoute(context.Background(), routes["google-vertex-anthropic"], config{})
+	if err != nil {
+		t.Fatalf("Vertex Anthropic credentialForRoute returned error: %v", err)
+	}
+	if !reflect.DeepEqual(vertexAnthropicCredential, credential) {
+		t.Fatalf("Vertex Anthropic credential = %#v, want shared Vertex credential %#v", vertexAnthropicCredential, credential)
+	}
 }
 
 func TestGoogleVertexCredentialFallbacks(t *testing.T) {
@@ -702,6 +791,42 @@ func TestGoogleVertexAuthOptions(t *testing.T) {
 	}
 }
 
+func TestGoogleVertexAnthropicAuthOptions(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex-anthropic"]
+	model := route.Model(route, defaultGoogleVertexAnthropicModel)
+	oauth := applyProbeOptions(authOptions(route, routeCredential{
+		accessToken: "oauth-token",
+		projectID:   "test-project",
+		location:    "us-central1",
+	}))
+	providerOptions := oauth.ProviderOptions[route.Provider]
+	if providerOptions["projectID"] != "test-project" || providerOptions["location"] != "us-central1" {
+		t.Fatalf("provider options = %#v, want request-scoped Vertex routing", providerOptions)
+	}
+	resolver, ok := oauth.ProviderAuthResolvers[route.Provider]
+	if !ok {
+		t.Fatal("missing google-vertex-anthropic auth resolver")
+	}
+	credential, err := resolver.Resolve(context.Background(), model, oauth)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if credential.Type != sigma.CredentialTypeOAuthToken || credential.Value != "oauth-token" || credential.Source != "env:GOOGLE_CLOUD_ACCESS_TOKEN" {
+		t.Fatalf("credential = %s, want typed environment OAuth token", credential)
+	}
+
+	apiKey := applyProbeOptions(authOptions(route, routeCredential{
+		apiKey:    "api-key",
+		projectID: "test-project",
+		location:  "us-central1",
+	}))
+	if apiKey.APIKey != "api-key" || apiKey.ProviderAuthResolvers[route.Provider] != nil {
+		t.Fatalf("API-key options = %#v, want API key without OAuth resolver", apiKey)
+	}
+}
+
 func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -760,6 +885,64 @@ func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 	}
 }
 
+func TestGoogleVertexAnthropicProbeRequestRoutingAndAuthentication(t *testing.T) {
+	tests := []struct {
+		name              string
+		credential        routeCredential
+		wantAuthorization string
+		wantAPIKey        string
+	}{
+		{
+			name:              "oauth bearer",
+			credential:        routeCredential{accessToken: "oauth-secret", projectID: "test-project", location: "us-central1"},
+			wantAuthorization: "Bearer oauth-secret",
+		},
+		{
+			name:       "api key",
+			credential: routeCredential{apiKey: "api-secret", projectID: "test-project", location: "us-central1"},
+			wantAPIKey: "api-secret",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got, want := r.URL.Path, "/v1/projects/test-project/locations/us-central1/publishers/anthropic/models/claude-sonnet-4-6:streamRawPredict"; got != want {
+					t.Errorf("path = %q, want %q", got, want)
+				}
+				if got := r.Header.Get("Authorization"); got != tt.wantAuthorization {
+					t.Errorf("Authorization = %q, want %q", got, tt.wantAuthorization)
+				}
+				if got := r.Header.Get("X-Goog-Api-Key"); got != tt.wantAPIKey {
+					t.Errorf("X-Goog-Api-Key = %q, want %q", got, tt.wantAPIKey)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				}
+				if bytes.Contains(body, []byte("oauth-secret")) || bytes.Contains(body, []byte("api-secret")) {
+					t.Errorf("request payload leaked credentials: %s", body)
+				}
+				if !bytes.Contains(body, []byte(`"anthropic_version":"vertex-2023-10-16"`)) {
+					t.Errorf("request payload missing Vertex Anthropic version: %s", body)
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, vertexAnthropicProbeSSE)
+			}))
+			defer server.Close()
+
+			route := routes["google-vertex-anthropic"]
+			route.BaseURL = server.URL + "/v1"
+			model := route.Model(route, defaultGoogleVertexAnthropicModel)
+			result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+				singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
+				tt.credential, "basic_text")
+			if result.Outcome != "ok" || result.Error != "" {
+				t.Fatalf("probe result = %+v, want success", result)
+			}
+		})
+	}
+}
+
 func TestGoogleVertexProbeErrorDoesNotLeakAccessToken(t *testing.T) {
 	t.Parallel()
 
@@ -772,6 +955,29 @@ func TestGoogleVertexProbeErrorDoesNotLeakAccessToken(t *testing.T) {
 	route := routes["google-vertex"]
 	route.BaseURL = server.URL + "/v1"
 	model := route.Model(route, "gemini-2.5-flash")
+	result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
+		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
+	if result.Error == "" {
+		t.Fatal("probe unexpectedly succeeded")
+	}
+	if strings.Contains(result.Error, accessToken) {
+		t.Fatalf("probe error leaked access token: %s", result.Error)
+	}
+}
+
+func TestGoogleVertexAnthropicProbeErrorDoesNotLeakAccessToken(t *testing.T) {
+	t.Parallel()
+
+	const accessToken = "oauth-secret-that-must-not-leak"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":{"message":"denied"}}`, http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	route := routes["google-vertex-anthropic"]
+	route.BaseURL = server.URL + "/v1"
+	model := route.Model(route, defaultGoogleVertexAnthropicModel)
 	result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
 		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
@@ -1172,13 +1378,64 @@ func openAIProbeTestCredentials() *openai.CodexOAuthCredentials {
 func TestAnthropicProbeCasesDoNotSendRawOpenAIExtraBody(t *testing.T) {
 	t.Parallel()
 
-	for _, testCase := range anthropicCompatibleProbeCases(routes["fireworks-anthropic"], sigma.Model{}) {
+	route := routes["fireworks-anthropic"]
+	model := route.Model(route, "accounts/fireworks/models/kimi-k2p6")
+	for _, testCase := range anthropicCompatibleProbeCases(route, model) {
 		options := applyProbeOptions(testCase.Options)
 		if providerOptions := options.ProviderOptions[sigma.ProviderFireworks]; providerOptions != nil {
 			if _, ok := providerOptions["extra_body"]; ok {
 				t.Fatalf("%s set raw extra_body for Anthropic route: %#v", testCase.Name, providerOptions)
 			}
 		}
+	}
+}
+
+func TestAnthropicProbeCasesFollowModelCapabilitiesAndTypedOptions(t *testing.T) {
+	t.Parallel()
+
+	route := routes["google-vertex-anthropic"]
+	model := route.Model(route, defaultGoogleVertexAnthropicModel)
+	cases := anthropicCompatibleProbeCases(route, model)
+	for _, name := range []string{
+		"basic_text",
+		"developer_instruction",
+		"cache_ephemeral",
+		"image_input",
+		"reasoning_level_low",
+		"reasoning_level_medium",
+		"reasoning_level_high",
+		"tool_auto_file_read",
+		"tool_required_file_read",
+	} {
+		if !hasRepairVariant(cases, name) {
+			t.Errorf("Vertex Anthropic probe cases missing %q", name)
+		}
+	}
+
+	cache := applyProbeOptions(findProbeCase(t, cases, "cache_ephemeral").Options)
+	if got, want := cache.SessionID, "sigma-google-vertex-anthropic-probe"; got != want {
+		t.Fatalf("cache session ID = %q, want %q", got, want)
+	}
+
+	auto := applyProbeOptions(findProbeCase(t, cases, "tool_auto_file_read").Options)
+	if auto.ToolChoice != sigma.ToolChoiceAuto || auto.OpenAIOptions != nil {
+		t.Fatalf("automatic Anthropic tool options = %#v, want provider-neutral auto without OpenAI options", auto)
+	}
+	required := applyProbeOptions(findProbeCase(t, cases, "tool_required_file_read").Options)
+	if required.AnthropicOptions == nil || required.AnthropicOptions.ToolChoice == nil ||
+		required.AnthropicOptions.ToolChoice.Type != sigma.AnthropicToolChoiceAny || required.OpenAIOptions != nil {
+		t.Fatalf("required Anthropic tool options = %#v, want typed Anthropic any without OpenAI options", required)
+	}
+
+	limited := sigma.Model{
+		ID:              "limited-claude",
+		Provider:        sigma.ProviderGoogleVertexAnthropic,
+		API:             sigma.APIAnthropicMessages,
+		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
+	}
+	limitedCases := anthropicCompatibleProbeCases(route, limited)
+	if got, want := probeCaseNames(limitedCases), []string{"basic_text", "developer_instruction", "cache_ephemeral"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("limited model cases = %v, want %v", got, want)
 	}
 }
 
@@ -1913,6 +2170,14 @@ func hasRepairVariant(variants []probeCase, name string) bool {
 		}
 	}
 	return false
+}
+
+func probeCaseNames(cases []probeCase) []string {
+	names := make([]string, 0, len(cases))
+	for _, testCase := range cases {
+		names = append(names, testCase.Name)
+	}
+	return names
 }
 
 func hasString(values []string, want string) bool {

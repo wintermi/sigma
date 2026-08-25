@@ -302,9 +302,13 @@ deterministic request, stream, error, and metadata evidence.
       settling its Chat Completions-shaped request and response fixtures.
 - [ ] Add broader Vertex MaaS catalog refresh support through the existing
       reviewable catalog workflow rather than ad hoc metadata imports.
-- [ ] Add opt-in live Vertex MaaS probes for OpenAI-compatible, Anthropic, and
-      future Mistral routes without making live provider calls part of
-      `mise run ci`.
+- [x] Add an opt-in live Vertex Anthropic Claude probe with catalog-backed
+      model selection, explicit project/location routing, and caller-supplied
+      API-key or OAuth credentials outside `mise run ci`.
+- [ ] Add an opt-in live Vertex OpenAI-compatible MaaS probe without making
+      provider calls part of `mise run ci`.
+- [ ] Add a live Mistral-on-Vertex probe only after its runtime route and
+      deterministic request/response fixtures exist.
 
 ## Provider replay and metadata hardening
 

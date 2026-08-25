@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/fireworks"
 	"github.com/wintermi/sigma/provider/google"
 	"github.com/wintermi/sigma/provider/moonshot"
@@ -194,6 +195,14 @@ var routes = map[string]routeSpec{
 		Model:            googleVertexProbeModel,
 		Cases:            googleVertexProbeCases,
 	},
+	"google-vertex-anthropic": {
+		Name:             "google-vertex-anthropic",
+		Provider:         sigma.ProviderGoogleVertexAnthropic,
+		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
+		RegisterProvider: registerGoogleVertexAnthropicProvider,
+		Model:            googleVertexAnthropicProbeModel,
+		Cases:            anthropicCompatibleProbeCases,
+	},
 	"fireworks-openai": {
 		Name:             "fireworks-openai",
 		Provider:         sigma.ProviderFireworks,
@@ -267,6 +276,7 @@ const (
 	jsonTypeKey                          = "type"
 	defaultRouteList                     = "zen,go"
 	defaultOpenAICodexProbeModel         = "gpt-5.5"
+	defaultGoogleVertexAnthropicModel    = "claude-sonnet-4-6"
 	defaultNVIDIAProbeModel              = "nvidia/nemotron-3-super-120b-a12b"
 	defaultOpenAIImageProbeModel         = "gpt-image-1"
 	defaultOpenAIImageVariationModel     = "dall-e-2"
@@ -357,7 +367,7 @@ func parseConfig() config {
 	var handoff bool
 	var structuredOutput bool
 	var images bool
-	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,google-vertex,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
+	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,google-vertex,google-vertex-anthropic,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
 	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run known unavailable advertised models instead of skipping them")
@@ -392,7 +402,7 @@ func credentialForRoute(ctx context.Context, route routeSpec, cfg config) (route
 	if route.Name == "openai-codex" {
 		return openAICodexCredential(ctx, cfg)
 	}
-	if route.Name == "google-vertex" {
+	if isGoogleVertexRoute(route) {
 		return googleVertexCredential()
 	}
 	apiKey := os.Getenv(route.APIKeyEnv)
@@ -506,10 +516,16 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 	if len(selected) > 0 {
 		models := make([]string, 0, len(selected))
 		for modelID := range selected {
-			if route.Name == "google-vertex" {
+			switch route.Name {
+			case "google-vertex":
 				model, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID))
 				if !ok || !isBuiltInGoogleVertexGeminiModel(model) {
 					return nil, fmt.Errorf("model %q is not a built-in google-vertex text model", modelID)
+				}
+			case "google-vertex-anthropic":
+				model, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID))
+				if !ok || !isBuiltInGoogleVertexAnthropicModel(model) {
+					return nil, fmt.Errorf("model %q is not a built-in google-vertex-anthropic text model", modelID)
 				}
 			}
 			models = append(models, modelID)
@@ -522,6 +538,9 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 	}
 	if route.Name == "nvidia" {
 		return []string{defaultNVIDIAProbeModel}, nil
+	}
+	if route.Name == "google-vertex-anthropic" {
+		return []string{defaultGoogleVertexAnthropicModel}, nil
 	}
 	if route.Name == "google-vertex" {
 		models := make([]string, 0)
@@ -542,6 +561,19 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 func isBuiltInGoogleVertexGeminiModel(model sigma.Model) bool {
 	family, _ := model.ProviderMetadata["modelFamily"].(string)
 	return model.Provider == sigma.ProviderGoogleVertex && model.API == sigma.APIGoogleVertex && family == "gemini"
+}
+
+func isBuiltInGoogleVertexAnthropicModel(model sigma.Model) bool {
+	family, _ := model.ProviderMetadata["modelFamily"].(string)
+	publisher, _ := model.ProviderMetadata["vertexPublisher"].(string)
+	return model.Provider == sigma.ProviderGoogleVertexAnthropic &&
+		model.API == sigma.APIAnthropicMessages &&
+		family == "claude" &&
+		publisher == "anthropic"
+}
+
+func isGoogleVertexRoute(route routeSpec) bool {
+	return route.Name == "google-vertex" || route.Name == "google-vertex-anthropic"
 }
 
 func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]string, error) {
@@ -1133,6 +1165,17 @@ func registerGoogleVertexProvider(registry *sigma.Registry, route routeSpec) err
 	return nil
 }
 
+func registerGoogleVertexAnthropicProvider(registry *sigma.Registry, route routeSpec) error {
+	options := make([]anthropic.VertexProviderOption, 0, 1)
+	if route.BaseURL != "" {
+		options = append(options, anthropic.WithVertexBaseURL(route.BaseURL))
+	}
+	if err := anthropic.RegisterVertex(registry, route.Provider, options...); err != nil {
+		return fmt.Errorf("register google vertex anthropic provider: %w", err)
+	}
+	return nil
+}
+
 func registerFireworksOpenAIProvider(registry *sigma.Registry, route routeSpec) error {
 	if err := fireworks.Register(registry, fireworks.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register fireworks openai-compatible provider: %w", err)
@@ -1251,6 +1294,18 @@ func googleVertexProbeModel(route routeSpec, id string) sigma.Model {
 		ID:              sigma.ModelID(id),
 		Provider:        route.Provider,
 		API:             sigma.APIGoogleVertex,
+		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
+	}
+}
+
+func googleVertexAnthropicProbeModel(route routeSpec, id string) sigma.Model {
+	if model, ok := sigma.GetModel(route.Provider, sigma.ModelID(id)); ok && isBuiltInGoogleVertexAnthropicModel(model) {
+		return model
+	}
+	return sigma.Model{
+		ID:              sigma.ModelID(id),
+		Provider:        route.Provider,
+		API:             sigma.APIAnthropicMessages,
 		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
 	}
 }
@@ -1482,7 +1537,7 @@ func authOptions(route routeSpec, credential routeCredential) []sigma.Option {
 			),
 		}
 	}
-	if route.Name == "google-vertex" {
+	if isGoogleVertexRoute(route) {
 		options := []sigma.Option{sigma.WithProviderOptions(route.Provider, map[string]any{
 			"projectID": credential.projectID,
 			"location":  credential.location,
@@ -1784,8 +1839,8 @@ func isOpenCodeGoReasoningEffortKimi(model sigma.Model) bool {
 		modelFamily(string(model.ID)) == "kimi"
 }
 
-func anthropicCompatibleProbeCases(_ routeSpec, _ sigma.Model) []probeCase {
-	return []probeCase{
+func anthropicCompatibleProbeCases(route routeSpec, model sigma.Model) []probeCase {
+	cases := []probeCase{
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
 		singleTurnCase("developer_instruction", "system instruction handling", sigma.Request{
 			SystemPrompt: "Reply tersely.",
@@ -1793,16 +1848,30 @@ func anthropicCompatibleProbeCases(_ routeSpec, _ sigma.Model) []probeCase {
 		}, []sigma.Option{sigma.WithMaxTokens(128)}),
 		singleTurnCase("cache_ephemeral", "prompt cache marker", basicRequest("Reply with exactly: cache-ok."), []sigma.Option{
 			sigma.WithCacheRetention(sigma.CacheRetentionEphemeral),
-			sigma.WithSessionID("sigma-fireworks-probe"),
+			sigma.WithSessionID("sigma-" + route.Name + "-probe"),
 			sigma.WithMaxTokens(128),
 		}),
-		singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}),
-		singleTurnCase("reasoning_level_low", "typed reasoning low", basicRequest("Reply with exactly: 5."), []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelLow), sigma.WithMaxTokens(512)}),
-		singleTurnCase("reasoning_level_medium", "typed reasoning medium", basicRequest("Reply with exactly: 5."), []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelMedium), sigma.WithMaxTokens(512)}),
-		singleTurnCase("reasoning_level_high", "typed reasoning high", basicRequest("Reply with exactly: 5."), []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelHigh), sigma.WithMaxTokens(512)}),
-		toolCase("tool_auto_file_read", "auto read-file tool", "auto"),
-		toolCase("tool_required_file_read", "required read-file tool", "required"),
 	}
+	if model.SupportsImages() {
+		cases = append(cases, singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}))
+	}
+	if model.SupportsReasoning() {
+		for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh} {
+			if model.SupportsThinkingLevel(level) {
+				cases = append(cases, singleTurnCase("reasoning_level_"+string(level), "typed reasoning "+string(level), basicRequest("Reply with exactly: 5."), []sigma.Option{
+					sigma.WithReasoningLevel(level),
+					sigma.WithMaxTokens(512),
+				}))
+			}
+		}
+	}
+	if model.SupportsTools {
+		cases = append(cases,
+			anthropicToolCase("tool_auto_file_read", "auto read-file tool", sigma.AnthropicToolChoiceAuto),
+			anthropicToolCase("tool_required_file_read", "required read-file tool", sigma.AnthropicToolChoiceAny),
+		)
+	}
+	return cases
 }
 
 func singleTurnCase(name string, description string, req sigma.Request, opts []sigma.Option) probeCase {
@@ -1851,6 +1920,34 @@ func toolCase(name string, description string, choice any) probeCase {
 			sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: choice}),
 			sigma.WithMaxTokens(512),
 		},
+	}
+}
+
+func anthropicToolCase(name string, description string, choice sigma.AnthropicToolChoiceType) probeCase {
+	options := []sigma.Option{sigma.WithMaxTokens(512)}
+	if choice == sigma.AnthropicToolChoiceAuto {
+		options = append(options, sigma.WithToolChoice(sigma.ToolChoiceAuto))
+	} else {
+		options = append(options, sigma.WithAnthropicOptions(sigma.AnthropicOptions{
+			ToolChoice: &sigma.AnthropicToolChoice{Type: choice},
+		}))
+	}
+	return probeCase{
+		Name:        name,
+		Description: description,
+		Request: sigma.Request{
+			Messages: []sigma.Message{sigma.UserText("Use the available tool and answer with the result.")},
+			Tools: []sigma.Tool{{
+				Name:        "read_file",
+				Description: "Read a file",
+				InputSchema: sigma.Schema{
+					jsonTypeKey:  "object",
+					"properties": map[string]any{"path": map[string]any{jsonTypeKey: "string"}},
+					"required":   []any{"path"},
+				},
+			}},
+		},
+		Options: options,
 	}
 }
 

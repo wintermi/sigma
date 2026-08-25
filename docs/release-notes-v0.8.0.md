@@ -104,6 +104,9 @@ an independent deadline so a stalled provider call does not cancel later
 evaluations. Repository-internal Sigma evaluation harnesses can now execute
 bounded caller-owned text tool loops, and the live suite adds a deterministic
 tool-call round trip that verifies the call, local result, and final answer.
+The opt-in surface probe now also exercises Anthropic Claude through Vertex
+`streamRawPredict`, using catalog-backed model selection and the existing
+explicit Vertex routing and credential contract.
 Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
 retained only when their loading context can be replayed safely. Codex Responses
@@ -253,6 +256,13 @@ selection remains available through existing provider-specific controls.
   and private transcripts; executor failures remain operational errors. The
   opt-in live runner now includes a sixth case whose hidden local result passes
   only with a matching successful tool call/result trace and exact final answer.
+- `cmd/sigma-surface-probe` now exposes `google-vertex-anthropic` as an opt-in
+  live route over the existing Vertex Anthropic provider. The route defaults to
+  the built-in `claude-sonnet-4-6` row, validates explicit Claude IDs against
+  Sigma's catalog without model discovery, and capability-gates image,
+  reasoning, and tool cases from the selected model metadata. Anthropic tool
+  cases use provider-neutral automatic choice or typed required choice instead
+  of OpenAI-specific request options.
 - Persisted tool-result messages can now retain optional `Usage` from
   caller-owned tool execution through replay and model handoff. This metadata
   is not serialized into provider requests and remains separate from
@@ -281,6 +291,12 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- The Vertex Anthropic surface-probe route is diagnostic-only and remains
+  outside `mise run ci`. It requires explicit project and location values plus
+  a caller-supplied API key or OAuth access token; Sigma does not add ambient
+  credential loading, persistence, model discovery, provider IDs, catalog
+  rows, or runtime request changes. Existing default probe routes remain
+  `zen,go`.
 - Responses assistant phases remain opaque provider metadata rather than new
   provider-neutral content or end-turn controls. Unknown phases are retained
   for diagnostics but omitted from replay, as are recognized phases from a
