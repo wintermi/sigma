@@ -464,9 +464,12 @@ metadata-only and backed by compatibility checks.
       first-class row promotion, with deterministic request, stream, error,
       redaction, and cancellation coverage before registration.
 - [x] DeepSeek — promote to a first-class provider row with fixtures.
-- [ ] DeepSeek — review `deepseek-v4-flash-vision-exp` through the catalog
-      refresh workflow, with deterministic evidence for image input, limits,
-      pricing, and compatibility metadata before promotion.
+- [x] DeepSeek — add the experimental `deepseek-v4-flash-vision-exp` model
+      through the direct Chat Completions route with deterministic image-input,
+      limits, compatibility, and conservative peak-rate pricing evidence.
+- [ ] DeepSeek — keep automatic peak/off-peak price-window selection deferred
+      until Sigma defines provider-neutral schedule and timezone semantics;
+      direct model metadata uses conservative peak-rate estimates meanwhile.
 - [x] Groq — promote to a first-class provider row with fixtures.
 - [x] Cerebras — promote to a first-class provider row with fixtures.
 - [x] Together — promote to a first-class provider row with fixtures.

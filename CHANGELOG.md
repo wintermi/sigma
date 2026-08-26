@@ -20,6 +20,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
   streamed tools, and its required `max_tokens` field, while models without
   matching price evidence retain zero-cost estimates and default requests
   remain unchanged.
+- Direct DeepSeek now includes the experimental DeepSeek V4 Flash Vision model
+  through the existing OpenAI-compatible Chat Completions route, with text and
+  image input, tools, low through maximum reasoning, million-token limits, and
+  conservative peak-rate cost estimates. Existing direct V4 Flash and V4 Pro
+  estimates now use the same documented peak-rate basis.
 - Direct Anthropic Claude Fable 5 and Opus 5 requests can now opt into
   catalog-declared server-side refusal fallbacks through
   `AnthropicOptions.EnableRefusalFallbacks`. Defaults remain unchanged, while

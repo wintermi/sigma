@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-23",
+  "snapshotDate": "2026-08-26",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -29,6 +29,10 @@
     {
       "name": "Cloudflare Workers AI models",
       "url": "https://developers.cloudflare.com/workers-ai/models/"
+    },
+    {
+      "name": "DeepSeek models and pricing",
+      "url": "https://api-docs.deepseek.com/quick_start/pricing/"
     },
     {
       "name": "Fireworks Fire Pass setup",
@@ -8690,9 +8694,51 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.14,
-        "outputPerMillion": 0.28,
-        "cacheReadInputPerMillion": 0.0028,
+        "inputPerMillion": 0.44,
+        "outputPerMillion": 1.32,
+        "cacheReadInputPerMillion": 0.014,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium"
+      ]
+    },
+    {
+      "id": "deepseek-v4-flash-vision-exp",
+      "name": "DeepSeek V4 Flash Vision Exp",
+      "provider": "deepseek",
+      "api": "openai-completions",
+      "baseURL": "https://api.deepseek.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.44,
+        "outputPerMillion": 1.32,
+        "cacheReadInputPerMillion": 0.014,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -8731,9 +8777,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.435,
-        "outputPerMillion": 0.87,
-        "cacheReadInputPerMillion": 0.003625,
+        "inputPerMillion": 1.32,
+        "outputPerMillion": 3.96,
+        "cacheReadInputPerMillion": 0.044,
         "currency": "USD"
       },
       "contextWindow": 1000000,

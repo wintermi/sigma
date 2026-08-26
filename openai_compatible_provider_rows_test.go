@@ -192,7 +192,7 @@ func openAICompatibleProviderRows() []openAICompatibleProviderRow {
 		{
 			name:       "deepseek",
 			providerID: sigma.ProviderDeepSeek,
-			modelID:    "deepseek-v4-flash",
+			modelID:    "deepseek-v4-flash-vision-exp",
 			register: func(registry *sigma.Registry, baseURL string) error {
 				return deepseek.Register(registry, deepseek.WithBaseURL(baseURL), deepseek.WithHeader("X-Provider", "provider"))
 			},

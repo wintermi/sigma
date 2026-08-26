@@ -1591,19 +1591,24 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 	}
 }
 
-func TestOpenAICompletionsCompatMapsDirectDeepSeekLowReasoning(t *testing.T) {
-	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderDeepSeek, "deepseek-v4-flash")
+func TestOpenAICompletionsCompatMapsDirectDeepSeekVisionRequest(t *testing.T) {
+	t.Parallel()
+
+	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderDeepSeek, "deepseek-v4-flash-vision-exp")
 	if !ok {
-		t.Fatal("generated registry missing direct DeepSeek V4 Flash")
+		t.Fatal("generated registry missing direct DeepSeek V4 Flash Vision Exp")
 	}
 	payload, err := chatCompletionsPayload(
 		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.Request{Messages: []sigma.Message{sigma.UserContent(
+			sigma.Text("Describe the image."),
+			sigma.ImageURL("image/png", "https://example.test/chart.png"),
+		)}},
 		sigma.Options{ReasoningLevel: sigma.ThinkingLevelLow},
 		openAICompletionsCompat(model, "https://api.deepseek.com"),
 	)
 	if err != nil {
-		t.Fatalf("chatCompletionsPayload for direct DeepSeek low reasoning returned error: %v", err)
+		t.Fatalf("chatCompletionsPayload for direct DeepSeek vision request returned error: %v", err)
 	}
 	thinking, ok := payload["thinking"].(map[string]any)
 	if !ok || thinking["type"] != "enabled" {
@@ -1611,6 +1616,24 @@ func TestOpenAICompletionsCompatMapsDirectDeepSeekLowReasoning(t *testing.T) {
 	}
 	if got, want := payload["reasoning_effort"], "low"; got != want {
 		t.Fatalf("reasoning_effort = %#v, want %q", got, want)
+	}
+	messages, ok := payload["messages"].([]map[string]any)
+	if !ok || len(messages) != 1 {
+		t.Fatalf("messages = %#v, want one user message", payload["messages"])
+	}
+	parts, ok := messages[0]["content"].([]map[string]any)
+	if !ok || len(parts) != 2 {
+		t.Fatalf("user content = %#v, want text and image parts", messages[0]["content"])
+	}
+	if got, want := parts[0]["type"], "text"; got != want {
+		t.Fatalf("text part type = %#v, want %q", got, want)
+	}
+	image, ok := parts[1]["image_url"].(map[string]any)
+	if !ok || parts[1]["type"] != "image_url" {
+		t.Fatalf("image part = %#v, want image_url part", parts[1])
+	}
+	if got, want := image["url"], "https://example.test/chart.png"; got != want {
+		t.Fatalf("image URL = %#v, want %q", got, want)
 	}
 }
 

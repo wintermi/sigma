@@ -1682,6 +1682,53 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
 		t.Fatalf("DeepSeek low level = %q, %v; want low, true", got, ok)
 	}
+	if deepSeek.InputCostPerMillion != 0.44 || deepSeek.OutputCostPerMillion != 1.32 ||
+		deepSeek.CacheReadInputCostPerMillion != 0.014 || deepSeek.CostCurrency != "USD" {
+		t.Fatalf("DeepSeek V4 Flash peak costs = %f/%f/%f %s, want 0.44/1.32/0.014 USD",
+			deepSeek.InputCostPerMillion,
+			deepSeek.OutputCostPerMillion,
+			deepSeek.CacheReadInputCostPerMillion,
+			deepSeek.CostCurrency)
+	}
+
+	deepSeekVision, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-flash-vision-exp")
+	if !ok {
+		t.Fatal("fresh registry missing generated DeepSeek V4 Flash Vision Exp model")
+	}
+	if deepSeekVision.API != APIOpenAICompletions || !deepSeekVision.SupportsInput(ContentBlockText) ||
+		!deepSeekVision.SupportsImages() || !deepSeekVision.SupportsTools || !deepSeekVision.SupportsReasoning() {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp capabilities = %+v, want text/image Chat Completions with tools and reasoning", deepSeekVision)
+	}
+	if deepSeekVision.ContextWindow != 1000000 || deepSeekVision.MaxOutputTokens != 384000 {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp limits = %d/%d, want 1000000/384000",
+			deepSeekVision.ContextWindow, deepSeekVision.MaxOutputTokens)
+	}
+	if deepSeekVision.OpenAICompletionsCompat == nil ||
+		deepSeekVision.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		deepSeekVision.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp compat = %#v, want deepseek reasoning content replay", deepSeekVision.OpenAICompletionsCompat)
+	}
+	if got, ok := deepSeekVision.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp low level = %q, %v; want low, true", got, ok)
+	}
+	if got, ok := deepSeekVision.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp xhigh level = %q, %v; want max, true", got, ok)
+	}
+	if deepSeekVision.InputCostPerMillion != 0.44 || deepSeekVision.OutputCostPerMillion != 1.32 ||
+		deepSeekVision.CacheReadInputCostPerMillion != 0.014 || deepSeekVision.CostCurrency != "USD" {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp peak costs = %f/%f/%f %s, want 0.44/1.32/0.014 USD",
+			deepSeekVision.InputCostPerMillion,
+			deepSeekVision.OutputCostPerMillion,
+			deepSeekVision.CacheReadInputCostPerMillion,
+			deepSeekVision.CostCurrency)
+	}
+	if deepSeekVision.DefaultTransport != TransportSSE {
+		t.Fatalf("DeepSeek V4 Flash Vision Exp transport = %q, want %q", deepSeekVision.DefaultTransport, TransportSSE)
+	}
+	assertMetadataString(t, deepSeekVision.ProviderMetadata, "baseURL", "https://api.deepseek.com")
+	assertMetadataString(t, deepSeekVision.ProviderMetadata, "modelFamily", "deepseek")
+	assertMetadataStrings(t, deepSeekVision.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"DEEPSEEK_API_KEY"})
+
 	deepSeekPro, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-pro")
 	if !ok {
 		t.Fatal("fresh registry missing generated DeepSeek V4 Pro model")
@@ -1693,6 +1740,36 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	if got, ok := deepSeekPro.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
 		t.Fatalf("DeepSeek V4 Pro xhigh level = %q, %v; want max, true", got, ok)
+	}
+	if deepSeekPro.InputCostPerMillion != 1.32 || deepSeekPro.OutputCostPerMillion != 3.96 ||
+		deepSeekPro.CacheReadInputCostPerMillion != 0.044 || deepSeekPro.CostCurrency != "USD" {
+		t.Fatalf("DeepSeek V4 Pro peak costs = %f/%f/%f %s, want 1.32/3.96/0.044 USD",
+			deepSeekPro.InputCostPerMillion,
+			deepSeekPro.OutputCostPerMillion,
+			deepSeekPro.CacheReadInputCostPerMillion,
+			deepSeekPro.CostCurrency)
+	}
+
+	for _, tt := range []struct {
+		provider  ProviderID
+		cacheRead float64
+	}{
+		{provider: ProviderOpenCode, cacheRead: 0.03},
+		{provider: ProviderOpenCodeGo, cacheRead: 0.0028},
+	} {
+		routed, ok := registry.Model(tt.provider, "deepseek-v4-flash")
+		if !ok {
+			t.Fatalf("fresh registry missing routed %s DeepSeek V4 Flash model", tt.provider)
+		}
+		if routed.InputCostPerMillion != 0.14 || routed.OutputCostPerMillion != 0.28 ||
+			routed.CacheReadInputCostPerMillion != tt.cacheRead {
+			t.Fatalf("routed %s DeepSeek V4 Flash costs = %f/%f/%f, want 0.14/0.28/%f",
+				tt.provider,
+				routed.InputCostPerMillion,
+				routed.OutputCostPerMillion,
+				routed.CacheReadInputCostPerMillion,
+				tt.cacheRead)
+		}
 	}
 
 	together, ok := registry.Model(ProviderTogether, "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8")
