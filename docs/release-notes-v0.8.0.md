@@ -331,9 +331,12 @@ selection remains available through existing provider-specific controls.
   tool definitions on providers that support an explicit disabled choice;
   Bedrock instead omits active and replay-synthesized tool configuration because
   Converse has no disabled tool-choice variant. OpenAI-compatible Chat
-  Completions also omit provider-neutral and typed provider-specific choices
-  when no tool definitions are emitted, including fully deferred tool sets;
-  low-level payload overrides retain final precedence.
+  Completions preserve explicitly supplied provider-neutral and typed
+  provider-specific choices even when no tool definitions are emitted,
+  including fully deferred tool sets. Provider-specific typed choices override
+  provider-neutral choices, and low-level payload overrides retain final
+  precedence. Callers targeting endpoints that reject a choice without tools
+  must omit the explicit option; Sigma no longer silently discards it.
 - Direct xAI Grok 4.6 uses `/responses`, disables provider-side response
   storage, and requests encrypted reasoning whenever a supported effort is
   selected. Explicit `xhigh` maps directly to the provider effort; off and

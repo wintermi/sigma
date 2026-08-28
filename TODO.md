@@ -267,9 +267,10 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Harden OpenAI-compatible Chat Completions streams to avoid duplicate
       reasoning alias deltas and reject successful EOF before a terminal
       `finish_reason`.
-- [x] Omit typed OpenAI-compatible Chat Completions tool choices when no tool
-      definitions are emitted, including fully deferred tool sets, while
-      preserving declared-tool behavior and low-level payload precedence.
+- [x] Preserve explicitly supplied typed OpenAI-compatible Chat Completions tool
+      choices when no tool definitions are emitted, including fully deferred
+      tool sets, while leaving omitted choices absent and preserving
+      declared-tool behavior and low-level payload precedence.
 - [x] Preserve the first provider-issued ID and name for indexed
       OpenAI-compatible Chat Completions function and grammar tool calls while
       allowing a late first provider ID to replace Sigma's synthetic fallback.

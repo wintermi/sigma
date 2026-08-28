@@ -133,11 +133,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
   `clear_thinking: false` whenever reasoning is enabled. Explicit replay
   compatibility overrides remain authoritative, while disabled reasoning and
   other formats retain their existing payloads.
-- OpenAI-compatible Chat Completions requests now omit typed `tool_choice`
-  values when no tool definitions are emitted, including requests whose tools
-  are fully deferred. Declared tools retain existing automatic, disabled,
-  required, and named-tool behavior, while low-level payload overrides keep
-  final precedence.
+- OpenAI-compatible Chat Completions requests now preserve explicitly supplied
+  typed `tool_choice` values even when no tool definitions are emitted,
+  including requests whose tools are fully deferred. Omitted choices remain
+  absent, declared-tool behavior is unchanged, provider-specific typed choices
+  override provider-neutral choices, and low-level payload overrides keep final
+  precedence.
 - OpenAI-compatible Chat Completions streams now preserve validated encrypted,
   signed-text, and summary `reasoning_details` in provider order, coalescing
   consecutive streamed text and summary fragments into complete logical

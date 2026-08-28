@@ -181,7 +181,7 @@ func TestCompleteSendsProviderNeutralToolChoice(t *testing.T) {
 	}
 }
 
-func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
+func TestChatCompletionsPreservesExplicitToolChoiceWithoutEmittedTools(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -190,19 +190,37 @@ func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
 		model          func(sigma.ProviderID) sigma.Model
 		request        sigma.Request
 		options        []sigma.Option
+		wantToolChoice string
 		wantEmptyTools bool
 	}{
 		{
-			name:    "provider neutral",
-			model:   openAITestModel,
-			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
-			options: []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			name:           "provider neutral none",
+			model:          openAITestModel,
+			request:        sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
+			options:        []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			wantToolChoice: string(sigma.ToolChoiceNone),
 		},
 		{
-			name:    "typed provider specific",
+			name:           "provider neutral auto",
+			model:          openAITestModel,
+			request:        sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
+			options:        []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceAuto)},
+			wantToolChoice: string(sigma.ToolChoiceAuto),
+		},
+		{
+			name:    "typed provider specific overrides provider neutral",
 			model:   openAITestModel,
 			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
-			options: []sigma.Option{sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: "required"})},
+			options: []sigma.Option{
+				sigma.WithToolChoice(sigma.ToolChoiceNone),
+				sigma.WithOpenAIOptions(sigma.OpenAIOptions{ToolChoice: "required"}),
+			},
+			wantToolChoice: "required",
+		},
+		{
+			name:    "omitted",
+			model:   openAITestModel,
+			request: sigma.Request{Messages: []sigma.Message{sigma.UserText("Summarize the conversation.")}},
 		},
 		{
 			name: "empty history scaffolding",
@@ -217,6 +235,7 @@ func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
 				sigma.ToolResult("call_lookup", "found"),
 			}},
 			options:        []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			wantToolChoice: string(sigma.ToolChoiceNone),
 			wantEmptyTools: true,
 		},
 		{
@@ -231,7 +250,8 @@ func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
 					{Role: sigma.RoleTool, ToolCallID: "call_base", Content: []sigma.ContentBlock{sigma.Text("base result")}, AddedToolNames: []string{"late"}},
 				},
 			},
-			options: []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			options:        []sigma.Option{sigma.WithToolChoice(sigma.ToolChoiceNone)},
+			wantToolChoice: string(sigma.ToolChoiceNone),
 		},
 	}
 
@@ -261,8 +281,13 @@ func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
 			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
 				t.Fatalf("Unmarshal request body returned error: %v", err)
 			}
-			if _, ok := payload["tool_choice"]; ok {
-				t.Fatalf("tool_choice = %#v, want omitted", payload["tool_choice"])
+			gotToolChoice, hasToolChoice := payload["tool_choice"]
+			if tt.wantToolChoice == "" {
+				if hasToolChoice {
+					t.Fatalf("tool_choice = %#v, want omitted", gotToolChoice)
+				}
+			} else if !hasToolChoice || gotToolChoice != tt.wantToolChoice {
+				t.Fatalf("tool_choice = %#v, want %q", gotToolChoice, tt.wantToolChoice)
 			}
 			tools, hasTools := payload["tools"].([]any)
 			if tt.wantEmptyTools && (!hasTools || len(tools) != 0) {
@@ -275,7 +300,7 @@ func TestChatCompletionsOmitsTypedToolChoiceWithoutEmittedTools(t *testing.T) {
 	}
 }
 
-func TestChatCompletionsRawToolChoiceOverridesTypedOmission(t *testing.T) {
+func TestChatCompletionsRawToolChoiceOverridesTypedChoice(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)

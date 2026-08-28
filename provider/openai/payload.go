@@ -50,7 +50,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		return nil, err
 	}
 	hasImmediateTools := len(deferredTools.Immediate) > 0
-	if err := validateChatToolChoice(model, opts, compat, hasImmediateTools); err != nil {
+	if err := validateChatToolChoice(model, opts, compat); err != nil {
 		return nil, err
 	}
 
@@ -88,7 +88,7 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 	} else if compat.requiresToolsForToolHistory && hasToolHistory(cleaned.Messages) {
 		payload["tools"] = []map[string]any{}
 	}
-	addChatToolChoice(payload, opts, hasImmediateTools)
+	addChatToolChoice(payload, opts)
 
 	addOpenAISamplingParameters(payload, opts)
 	for key, value := range extraBody(opts, model.Provider) {
@@ -142,10 +142,7 @@ func chatGrammarToolInputProperties(req sigma.Request, opts sigma.Options, compa
 	return grammarToolInputProperties("openai completions", req, chatGrammarToolsEnabled(opts, compat))
 }
 
-func validateChatToolChoice(model sigma.Model, opts sigma.Options, compat completionsCompat, hasTools bool) error {
-	if !hasTools {
-		return nil
-	}
+func validateChatToolChoice(model sigma.Model, opts sigma.Options, compat completionsCompat) error {
 	if compat.supportsRequiredToolChoice || opts.OpenAIOptions == nil || opts.OpenAIOptions.ToolChoice == nil {
 		return nil
 	}
@@ -249,10 +246,7 @@ func addChatOpenAIOptions(payload map[string]any, opts sigma.Options, compat com
 	}
 }
 
-func addChatToolChoice(payload map[string]any, opts sigma.Options, hasTools bool) {
-	if !hasTools {
-		return
-	}
+func addChatToolChoice(payload map[string]any, opts sigma.Options) {
 	if opts.ToolChoice != "" {
 		payload["tool_choice"] = string(opts.ToolChoice)
 	}

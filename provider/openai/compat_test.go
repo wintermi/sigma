@@ -1519,17 +1519,7 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 
 	_, err = chatCompletionsPayload(
 		goKimiCode,
-		sigma.Request{
-			Messages: []sigma.Message{sigma.UserText("hi")},
-			Tools: []sigma.Tool{{
-				Name:        "lookup",
-				Description: "Lookup",
-				InputSchema: sigma.Schema{
-					"type":       "object",
-					"properties": map[string]any{},
-				},
-			}},
-		},
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.Options{OpenAIOptions: &sigma.OpenAIOptions{ToolChoice: "required"}},
 		openAICompletionsCompat(goKimiCode, "https://opencode.ai/zen/go/v1"),
 	)
