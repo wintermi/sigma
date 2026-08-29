@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-26",
+  "snapshotDate": "2026-08-29",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -96,7 +96,7 @@
     },
     {
       "name": "OpenRouter models",
-      "url": "https://openrouter.ai/models"
+      "url": "https://openrouter.ai/api/v1/models"
     },
     {
       "name": "Qwen Token Plan setup",
@@ -20001,6 +20001,10 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": "xhigh",
         "max": "max"
       },
@@ -20042,6 +20046,7 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "off": "none",
         "high": "high",
         "xhigh": "xhigh"
       },
@@ -20089,6 +20094,12 @@
       ],
       "supportsTools": true,
       "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
       "unsupportedThinkingLevels": [
         "off"
       ],
@@ -20189,6 +20200,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
@@ -20231,6 +20245,10 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": "xhigh",
         "max": "max"
       },
@@ -20272,6 +20290,10 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": "xhigh",
         "max": "max"
       },
@@ -20313,6 +20335,10 @@
       "supportsTools": true,
       "supportsThinking": true,
       "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": "xhigh",
         "max": "max"
       },

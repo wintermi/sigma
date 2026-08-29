@@ -634,6 +634,10 @@ upstream.
 - [x] Add curated OpenRouter GPT-5.6 Luna, Sol, and Terra route metadata with
       reviewed reasoning, text/image, tool, limit, and cache-pricing coverage
       while keeping broad text expansion deferred.
+- [x] Align the curated OpenRouter text cohort with provider-declared optional
+      or mandatory reasoning and supported effort levels, explicitly disabling
+      reasoning only on optional routes while keeping broad catalog ingestion
+      and expansion deferred.
 - [x] Add the missing direct Anthropic Claude Fable 5 row with adaptive
       thinking metadata, xhigh thinking-level mapping, image input support,
       current limits, and pricing.

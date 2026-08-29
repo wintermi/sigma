@@ -37,6 +37,11 @@ chat-template thinking controls. GLM 5.2 now advertises both text and image
 input so image-bearing tool results remain available on that route. Xiaomi's
 direct and regional Token Plan catalogs now expose only the supported MiMo V2.5
 text-provider lineup instead of retired V2 model names.
+Curated OpenRouter text routes now carry reviewed optional or mandatory
+reasoning behavior and exact effort availability. Optional routes explicitly
+send `reasoning.effort: "none"` when reasoning is omitted; mandatory routes
+retain provider defaults and reject explicit off or unsupported efforts before
+dispatch.
 Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
@@ -303,6 +308,13 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- The curated OpenRouter Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3.5 Flash,
+  GPT-5.2 Codex, and GPT-5.6 routes now expose only their reviewed reasoning
+  efforts. Optional routes map omitted or explicitly disabled reasoning to
+  nested effort `none`; mandatory routes omit a disabled-reasoning payload by
+  default and reject explicit off locally. Pricing, limits, routing,
+  authentication, provider registration, and the curated model set are
+  unchanged.
 - The Vertex Anthropic surface-probe route is diagnostic-only and remains
   outside `mise run ci`. It requires explicit project and location values plus
   a caller-supplied API key or OAuth access token; Sigma does not add ambient

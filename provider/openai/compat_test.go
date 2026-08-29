@@ -344,51 +344,93 @@ func TestOpenAICompletionsStrictToolSchemaRequiresSafeConversion(t *testing.T) {
 	}
 }
 
-func TestOpenAICompletionsCompatDetectsOpenRouterReasoningObject(t *testing.T) {
+func TestOpenAICompletionsOpenRouterReasoningMetadata(t *testing.T) {
 	t.Parallel()
 
-	model := sigma.Model{
+	request := sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}}
+	optional := sigma.Model{
 		ID:               "router-model",
 		Provider:         sigma.ProviderOpenRouter,
 		API:              sigma.APIOpenAICompletions,
 		SupportsThinking: true,
 		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
-			sigma.ThinkingLevelHigh: "high",
-			sigma.ThinkingLevelOff:  "none",
+			sigma.ThinkingLevelLow:    "low",
+			sigma.ThinkingLevelMedium: "medium",
+			sigma.ThinkingLevelHigh:   "high",
+			sigma.ThinkingLevelOff:    "none",
 		},
 	}
-	payload, err := chatCompletionsPayload(
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
-		sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh},
-		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
-	)
-	if err != nil {
-		t.Fatalf("chatCompletionsPayload returned error: %v", err)
-	}
-	reasoning, ok := payload["reasoning"].(map[string]any)
-	if !ok {
-		t.Fatalf("reasoning = %#v, want object", payload["reasoning"])
-	}
-	if got, want := reasoning["effort"], "high"; got != want {
-		t.Fatalf("reasoning effort = %v, want %v", got, want)
+	for _, level := range []sigma.ThinkingLevel{
+		sigma.ThinkingLevelLow,
+		sigma.ThinkingLevelMedium,
+		sigma.ThinkingLevelHigh,
+	} {
+		payload, err := chatCompletionsPayload(
+			optional,
+			request,
+			sigma.Options{ReasoningLevel: level},
+			openAICompletionsCompat(optional, "https://openrouter.ai/api/v1"),
+		)
+		if err != nil {
+			t.Fatalf("chatCompletionsPayload(%q) returned error: %v", level, err)
+		}
+		reasoning, ok := payload["reasoning"].(map[string]any)
+		if !ok {
+			t.Fatalf("reasoning(%q) = %#v, want object", level, payload["reasoning"])
+		}
+		if got, want := reasoning["effort"], string(level); got != want {
+			t.Fatalf("reasoning effort(%q) = %v, want %v", level, got, want)
+		}
 	}
 
-	payload, err = chatCompletionsPayload(
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("think")}},
+	payload, err := chatCompletionsPayload(
+		optional,
+		request,
 		sigma.Options{},
-		openAICompletionsCompat(model, "https://openrouter.ai/api/v1"),
+		openAICompletionsCompat(optional, "https://openrouter.ai/api/v1"),
 	)
 	if err != nil {
 		t.Fatalf("chatCompletionsPayload with off reasoning returned error: %v", err)
 	}
-	reasoning, ok = payload["reasoning"].(map[string]any)
+	reasoning, ok := payload["reasoning"].(map[string]any)
 	if !ok {
 		t.Fatalf("off reasoning = %#v, want object", payload["reasoning"])
 	}
 	if got, want := reasoning["effort"], "none"; got != want {
 		t.Fatalf("off reasoning effort = %v, want %v", got, want)
+	}
+
+	mandatory := optional
+	mandatory.ThinkingLevelMap = map[sigma.ThinkingLevel]string{
+		sigma.ThinkingLevelLow:    "low",
+		sigma.ThinkingLevelMedium: "medium",
+		sigma.ThinkingLevelHigh:   "high",
+		sigma.ThinkingLevelXHigh:  "xhigh",
+	}
+	mandatory.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelOff}
+	payload, err = chatCompletionsPayload(
+		mandatory,
+		request,
+		sigma.Options{},
+		openAICompletionsCompat(mandatory, "https://openrouter.ai/api/v1"),
+	)
+	if err != nil {
+		t.Fatalf("mandatory chatCompletionsPayload returned error: %v", err)
+	}
+	if got := payload["reasoning"]; got != nil {
+		t.Fatalf("mandatory default reasoning = %#v, want omitted", got)
+	}
+
+	for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelOff, sigma.ThinkingLevelMinimal} {
+		_, err := chatCompletionsPayload(
+			mandatory,
+			request,
+			sigma.Options{ReasoningLevel: level},
+			openAICompletionsCompat(mandatory, "https://openrouter.ai/api/v1"),
+		)
+		if !errors.Is(err, sigma.ErrInvalidOptions) {
+			t.Fatalf("mandatory chatCompletionsPayload(%q) error = %v, want invalid options", level, err)
+		}
 	}
 }
 

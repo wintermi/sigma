@@ -120,6 +120,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Generated OpenRouter text metadata now distinguishes optional and mandatory
+  reasoning and exposes only the supported effort levels for the curated Claude
+  Sonnet 5, DeepSeek V4 Pro, Gemini 3.5 Flash, GPT-5.2 Codex, and GPT-5.6
+  routes. Optional routes explicitly disable omitted reasoning with
+  `reasoning.effort: "none"`; mandatory routes preserve provider defaults and
+  reject explicit off or unsupported efforts locally.
 - OpenAI, Azure, and Codex Responses history replay now omits failed or
   aborted assistant turns and their associated tool results, preventing
   incomplete reasoning or tool-call items from reaching later requests while
