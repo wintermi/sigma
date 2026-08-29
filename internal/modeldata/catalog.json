@@ -23431,6 +23431,72 @@
       }
     },
     {
+      "id": "bytedance-seed/seedream-5-0-lite",
+      "name": "ByteDance Seed: Seedream 5.0 Lite",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "bytedance",
+        "routedProvider": "bytedance-seed"
+      }
+    },
+    {
+      "id": "bytedance-seed/seedream-5-0-pro",
+      "name": "ByteDance Seed: Seedream 5.0 Pro",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "bytedance",
+        "routedProvider": "bytedance-seed"
+      }
+    },
+    {
       "id": "google/gemini-2.5-flash-image",
       "name": "Google: Nano Banana (Gemini 2.5 Flash Image)",
       "provider": "openrouter",
@@ -23737,6 +23803,39 @@
       "providerMetadata": {
         "modelFamily": "krea",
         "routedProvider": "krea"
+      }
+    },
+    {
+      "id": "meta/muse-image",
+      "name": "Meta: Muse Image",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "muse",
+        "routedProvider": "meta"
       }
     },
     {
@@ -24082,6 +24181,72 @@
       }
     },
     {
+      "id": "qwen/qwen-image-3",
+      "name": "Qwen: Qwen Image 3",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "qwen",
+        "routedProvider": "qwen"
+      }
+    },
+    {
+      "id": "qwen/qwen-image-3-pro",
+      "name": "Qwen: Qwen Image 3 Pro",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "qwen",
+        "routedProvider": "qwen"
+      }
+    },
+    {
       "id": "recraft/recraft-v3",
       "name": "Recraft: Recraft V3",
       "provider": "openrouter",
@@ -24183,6 +24348,138 @@
     {
       "id": "recraft/recraft-v4-pro-vector",
       "name": "Recraft: Recraft V4 Pro Vector",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "recraft",
+        "routedProvider": "recraft"
+      }
+    },
+    {
+      "id": "recraft/recraft-v4-styles",
+      "name": "Recraft: Recraft V4 Styles",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "recraft",
+        "routedProvider": "recraft"
+      }
+    },
+    {
+      "id": "recraft/recraft-v4-styles-pro",
+      "name": "Recraft: Recraft V4 Styles Pro",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "recraft",
+        "routedProvider": "recraft"
+      }
+    },
+    {
+      "id": "recraft/recraft-v4-styles-pro-vector",
+      "name": "Recraft: Recraft V4 Styles Pro Vector",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "recraft",
+        "routedProvider": "recraft"
+      }
+    },
+    {
+      "id": "recraft/recraft-v4-styles-vector",
+      "name": "Recraft: Recraft V4 Styles Vector",
       "provider": "openrouter",
       "api": "openrouter-images",
       "baseURL": "https://openrouter.ai/api/v1",
@@ -24673,6 +24970,39 @@
       "providerMetadata": {
         "modelFamily": "riverflow",
         "routedProvider": "sourceful"
+      }
+    },
+    {
+      "id": "x-ai/grok-imagine-image-2.0",
+      "name": "xAI: Grok Imagine Image 2.0",
+      "provider": "openrouter",
+      "api": "openrouter-images",
+      "baseURL": "https://openrouter.ai/api/v1",
+      "maxWidth": 1024,
+      "maxHeight": 1024,
+      "supportedSizes": [
+        "1024x1024"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0
+        }
+      },
+      "headers": {
+        "HTTP-Referer": "",
+        "X-Title": ""
+      },
+      "authEnvNames": [
+        "OPENROUTER_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "routedProvider": "xai"
       }
     },
     {

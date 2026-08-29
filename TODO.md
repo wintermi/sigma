@@ -627,6 +627,9 @@ upstream.
       existing image adapter.
 - [x] Add focused OpenRouter image metadata for current Gemini and GPT Image
       routes while keeping broad OpenRouter text expansion deferred.
+- [x] Add focused OpenRouter image metadata for Seedream 5.0, Qwen Image 3,
+      Meta Muse Image, Grok Imagine Image 2.0, and Recraft V4 Styles routes
+      through the existing image adapter with conservative zero-cost estimates.
 - [x] Add a curated OpenRouter text-model cohort for Claude Sonnet 5, GPT-5.2
       Codex, Gemini 3.5 Flash, and DeepSeek V4 Pro with route-specific
       compatibility, reasoning, pricing, and capability metadata while keeping

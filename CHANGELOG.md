@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Generated OpenRouter image metadata now includes Seedream 5.0 Lite and Pro,
+  Qwen Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and four
+  Recraft V4 Styles variants through the existing image adapter. Models without
+  independently verified pricing retain zero-cost estimates.
 - Z.ai and Z.ai Coding CN now include GLM-5.2 Highspeed and GLM-5.3 with
   million-token context limits and model-specific reasoning aliases. GLM-5.2
   receives API-equivalent estimated pricing, and both Coding Plan routes now

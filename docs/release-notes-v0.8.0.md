@@ -42,6 +42,10 @@ reasoning behavior and exact effort availability. Optional routes explicitly
 send `reasoning.effort: "none"` when reasoning is omitted; mandatory routes
 retain provider defaults and reject explicit off or unsupported efforts before
 dispatch.
+The curated OpenRouter image catalog now also includes Seedream 5.0 Lite and
+Pro, Qwen Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and four
+Recraft V4 Styles variants through the existing image adapter. Their estimated
+image costs remain zero until independently verified pricing is available.
 Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
@@ -143,6 +147,12 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- OpenRouter image generation now exposes Seedream 5.0 Lite and Pro, Qwen
+  Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and Recraft V4
+  Styles, Styles Pro, Styles Vector, and Styles Pro Vector through the existing
+  image route. Each row retains the shared OpenRouter endpoint, authentication,
+  1024x1024 PNG capability contract, and a zero estimated image cost pending
+  independently verified pricing.
 - `SubmitDeferred`, `FetchDeferred`, and `CancelDeferred` provide an explicit
   provider-neutral lifecycle for durable text responses, initially backed by
   direct OpenAI Responses. `DeferredResponseHandle` is safe to serialize for

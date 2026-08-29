@@ -1393,11 +1393,21 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		costKey        string
 		costValue      float64
 	}{
+		{id: "bytedance-seed/seedream-5-0-lite", modelFamily: "bytedance", routedProvider: "bytedance-seed", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "bytedance-seed/seedream-5-0-pro", modelFamily: "bytedance", routedProvider: "bytedance-seed", costUnit: "image", costKey: "image", costValue: 0},
 		{id: "krea/krea-2-large", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
 		{id: "krea/krea-2-medium", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
 		{id: "krea/krea-2-medium-turbo", modelFamily: "krea", routedProvider: "krea", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "meta/muse-image", modelFamily: "muse", routedProvider: "meta", costUnit: "image", costKey: "image", costValue: 0},
 		{id: "microsoft/mai-image-2.5-pro", modelFamily: "mai-image", routedProvider: "microsoft", costUnit: "million tokens", costKey: "input", costValue: 5},
 		{id: "openrouter/auto-beta", modelFamily: "openrouter", routedProvider: "openrouter", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "qwen/qwen-image-3", modelFamily: "qwen", routedProvider: "qwen", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "qwen/qwen-image-3-pro", modelFamily: "qwen", routedProvider: "qwen", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "recraft/recraft-v4-styles", modelFamily: "recraft", routedProvider: "recraft", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "recraft/recraft-v4-styles-pro", modelFamily: "recraft", routedProvider: "recraft", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "recraft/recraft-v4-styles-pro-vector", modelFamily: "recraft", routedProvider: "recraft", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "recraft/recraft-v4-styles-vector", modelFamily: "recraft", routedProvider: "recraft", costUnit: "image", costKey: "image", costValue: 0},
+		{id: "x-ai/grok-imagine-image-2.0", modelFamily: "grok", routedProvider: "xai", costUnit: "image", costKey: "image", costValue: 0},
 	} {
 		t.Run(string(tt.id), func(t *testing.T) {
 			image, ok := registry.ImageModel(ProviderOpenRouter, tt.id)
