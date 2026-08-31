@@ -97,6 +97,15 @@ See [release notes](docs/release-notes-v0.8.0.md).
   Claude Sonnet 4.6 model, validates explicit model IDs locally, and reuses
   explicit Vertex project, location, API-key, or OAuth credential inputs
   without adding live provider calls to CI.
+- `cmd/sigma-surface-probe -images` now has opt-in Google Gemini API and Vertex
+  AI routes for Gemini image generation through `generateContent`. The probes
+  reuse generated image models, validate explicit selections locally, isolate
+  each case with its own timeout, and require actual image data for success
+  while remaining outside deterministic CI. Generated Google image metadata
+  now replaces retired Imagen 4 rows with Gemini 3.1 Flash Image for direct and
+  Vertex routes, and the Vertex image adapter accepts Gemini inline-image
+  responses while retaining Imagen `predict` compatibility for caller-defined
+  models.
 - Persisted tool-result messages can now carry optional `Usage` describing
   caller-owned tool execution. The metadata survives replay and handoff while
   remaining excluded from provider payloads, request-token estimates, model

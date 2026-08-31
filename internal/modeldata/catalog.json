@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-08-29",
+  "snapshotDate": "2026-09-01",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -23162,19 +23162,23 @@
       }
     },
     {
-      "id": "imagen-4.0-generate-001",
-      "name": "Imagen 4 Generate",
+      "id": "gemini-3.1-flash-image",
+      "name": "Gemini 3.1 Flash Image",
       "provider": "google",
       "api": "google-images",
       "baseURL": "https://generativelanguage.googleapis.com/v1beta",
-      "maxWidth": 2048,
-      "maxHeight": 2048,
+      "maxWidth": 4096,
+      "maxHeight": 4096,
       "supportedSizes": [
         "1:1",
         "16:9",
         "9:16",
         "4:3",
-        "3:4"
+        "3:4",
+        "1:4",
+        "4:1",
+        "1:8",
+        "8:1"
       ],
       "supportedFormats": [
         "image/png"
@@ -23183,7 +23187,7 @@
         "unit": "image",
         "currency": "USD",
         "values": {
-          "image": 0
+          "image": 0.067
         }
       },
       "headers": {},
@@ -23192,23 +23196,27 @@
         "GOOGLE_CLOUD_API_KEY"
       ],
       "providerMetadata": {
-        "modelFamily": "imagen"
+        "modelFamily": "gemini-image"
       }
     },
     {
-      "id": "imagen-4.0-generate-001",
-      "name": "Imagen 4 Generate (Vertex)",
+      "id": "gemini-3.1-flash-image",
+      "name": "Gemini 3.1 Flash Image (Vertex)",
       "provider": "google-vertex",
       "api": "google-vertex-images",
       "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
-      "maxWidth": 2048,
-      "maxHeight": 2048,
+      "maxWidth": 4096,
+      "maxHeight": 4096,
       "supportedSizes": [
         "1:1",
         "16:9",
         "9:16",
         "4:3",
-        "3:4"
+        "3:4",
+        "1:4",
+        "4:1",
+        "1:8",
+        "8:1"
       ],
       "supportedFormats": [
         "image/png"
@@ -23217,7 +23225,7 @@
         "unit": "image",
         "currency": "USD",
         "values": {
-          "image": 0
+          "image": 0.067
         }
       },
       "headers": {},
@@ -23226,7 +23234,7 @@
         "GOOGLE_API_KEY"
       ],
       "providerMetadata": {
-        "modelFamily": "imagen",
+        "modelFamily": "gemini-image",
         "vertexPublisher": "google"
       }
     },

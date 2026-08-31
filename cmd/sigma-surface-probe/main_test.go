@@ -1247,6 +1247,166 @@ func TestOpenAIImageRouteBuildsExpectedModel(t *testing.T) {
 	assertMetadataStrings(t, model.ProviderMetadata, "apiKeyEnvVars", []string{"OPENAI_API_KEY"})
 }
 
+func TestGoogleImageRoutesUseGeneratedModels(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		routeName string
+		modelID   string
+		wantAPI   sigma.ImageAPI
+	}{
+		{routeName: "google", modelID: defaultGoogleGeminiImageProbeModel, wantAPI: sigma.ImageAPIGoogleImages},
+		{routeName: "google", modelID: defaultGoogleCurrentImageProbeModel, wantAPI: sigma.ImageAPIGoogleImages},
+		{routeName: routeGoogleVertex, modelID: defaultGoogleCurrentImageProbeModel, wantAPI: sigma.ImageAPIGoogleVertexImages},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.routeName+"/"+tt.modelID, func(t *testing.T) {
+			t.Parallel()
+
+			route := imageRoutes[tt.routeName]
+			model := route.Model(route, tt.modelID)
+			generated, ok := sigma.GetImageModel(route.Provider, sigma.ModelID(tt.modelID))
+			if !ok {
+				t.Fatalf("generated image model %q was not registered", tt.modelID)
+			}
+			if !reflect.DeepEqual(model, generated) {
+				t.Fatalf("probe model = %#v, want generated model %#v", model, generated)
+			}
+			if model.API != tt.wantAPI {
+				t.Fatalf("image API = %q, want %q", model.API, tt.wantAPI)
+			}
+
+			registry := sigma.NewRegistry()
+			if err := route.RegisterProvider(registry, route); err != nil {
+				t.Fatalf("register image provider: %v", err)
+			}
+			provider, ok := registry.ImageProvider(route.Provider)
+			if !ok || provider.API() != tt.wantAPI {
+				t.Fatalf("registered provider = %#v, want API %q", provider, tt.wantAPI)
+			}
+		})
+	}
+}
+
+func TestGoogleImageProbeCasesUseExpectedGeneratedModels(t *testing.T) {
+	t.Parallel()
+
+	direct := googleImageProbeCases(imageRoutes["google"])
+	if got, want := len(direct), 2; got != want {
+		t.Fatalf("direct Google cases = %d, want %d", got, want)
+	}
+	if got := findImageProbeCase(t, direct, "generate_gemini").ModelID; got != defaultGoogleGeminiImageProbeModel {
+		t.Fatalf("Gemini model = %q, want %q", got, defaultGoogleGeminiImageProbeModel)
+	}
+	if got := findImageProbeCase(t, direct, "generate_gemini_3_1").ModelID; got != defaultGoogleCurrentImageProbeModel {
+		t.Fatalf("current Gemini model = %q, want %q", got, defaultGoogleCurrentImageProbeModel)
+	}
+
+	vertex := googleImageProbeCases(imageRoutes[routeGoogleVertex])
+	if got, want := len(vertex), 1; got != want {
+		t.Fatalf("Vertex cases = %d, want %d", got, want)
+	}
+	if got := vertex[0].ModelID; got != defaultGoogleCurrentImageProbeModel {
+		t.Fatalf("Vertex Gemini model = %q, want %q", got, defaultGoogleCurrentImageProbeModel)
+	}
+}
+
+func TestGoogleImageCredentialPrecedence(t *testing.T) {
+	clearGoogleVertexEnvironment(t)
+	t.Setenv("GOOGLE_API_KEY", "google-key")
+	t.Setenv("GOOGLE_CLOUD_API_KEY", "cloud-key")
+
+	credential, err := credentialForImageRoute(imageRoutes["google"])
+	if err != nil {
+		t.Fatalf("credentialForImageRoute returned error: %v", err)
+	}
+	if got, want := credential.apiKey, "google-key"; got != want {
+		t.Fatalf("API key = %q, want %q", got, want)
+	}
+
+	t.Setenv("GOOGLE_API_KEY", "")
+	credential, err = credentialForImageRoute(imageRoutes["google"])
+	if err != nil {
+		t.Fatalf("cloud fallback returned error: %v", err)
+	}
+	if got, want := credential.apiKey, "cloud-key"; got != want {
+		t.Fatalf("fallback API key = %q, want %q", got, want)
+	}
+}
+
+func TestGoogleImageCredentialsReportMissingRequirements(t *testing.T) {
+	t.Run("direct", func(t *testing.T) {
+		clearGoogleVertexEnvironment(t)
+		_, err := credentialForImageRoute(imageRoutes["google"])
+		if err == nil || !strings.Contains(err.Error(), "GOOGLE_API_KEY or GOOGLE_CLOUD_API_KEY") {
+			t.Fatalf("error = %v, want direct Google credential requirements", err)
+		}
+	})
+	t.Run("vertex", func(t *testing.T) {
+		clearGoogleVertexEnvironment(t)
+		_, err := credentialForImageRoute(imageRoutes["google-vertex"])
+		if err == nil || !strings.Contains(err.Error(), "GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT") {
+			t.Fatalf("error = %v, want Vertex routing requirements", err)
+		}
+	})
+}
+
+func TestGoogleVertexImageAuthOptions(t *testing.T) {
+	t.Parallel()
+
+	route := imageRoutes[routeGoogleVertex]
+	model := route.Model(route, defaultGoogleCurrentImageProbeModel)
+	oauth := applyImageProbeOptions(imageAuthOptions(route, routeCredential{
+		accessToken: "oauth-token",
+		projectID:   "test-project",
+		location:    "us-central1",
+	}))
+	providerOptions := oauth.ProviderOptions[route.Provider]
+	if providerOptions["projectID"] != "test-project" || providerOptions["location"] != "us-central1" {
+		t.Fatalf("provider options = %#v, want request-scoped Vertex routing", providerOptions)
+	}
+	resolver, ok := oauth.ProviderAuthResolvers[route.Provider]
+	if !ok {
+		t.Fatal("missing google-vertex image auth resolver")
+	}
+	credential, err := resolver.Resolve(context.Background(), sigma.Model{ID: model.ID, Provider: model.Provider}, oauth)
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if credential.Type != sigma.CredentialTypeOAuthToken || credential.Value != "oauth-token" || credential.Source != "env:GOOGLE_CLOUD_ACCESS_TOKEN" {
+		t.Fatalf("credential = %s, want typed environment OAuth token", credential)
+	}
+
+	apiKey := applyImageProbeOptions(imageAuthOptions(route, routeCredential{
+		apiKey:    "api-key",
+		projectID: "test-project",
+		location:  "us-central1",
+	}))
+	if apiKey.APIKey != "api-key" || apiKey.ProviderAuthResolvers[route.Provider] != nil {
+		t.Fatalf("API-key options = %#v, want API key without OAuth resolver", apiKey)
+	}
+}
+
+func TestGoogleImageModelFilteringSkipsBeforeCredentials(t *testing.T) {
+	clearGoogleVertexEnvironment(t)
+
+	var results []probeResult
+	runImageProbes(context.Background(), config{
+		routes:      []string{"google"},
+		models:      map[string]bool{"unrelated-image-model": true},
+		caseTimeout: time.Second,
+	}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got, want := len(results), 1; got != want {
+		t.Fatalf("results = %d, want %d: %#v", got, want, results)
+	}
+	if result := results[0]; result.Outcome != "skipped" || result.Attempt != "model_selection" || !strings.Contains(result.Error, "not a built-in google image model") {
+		t.Fatalf("result = %+v, want explicit model-selection skip", result)
+	}
+}
+
 func TestOpenAIImageProbeCasesUseExpectedModels(t *testing.T) {
 	t.Parallel()
 
@@ -1309,6 +1469,187 @@ func TestRunOpenAIImageCasesUseExpectedRequestShapes(t *testing.T) {
 	assertImageProbeRecord(t, gotRecords[2], "/images/edits", defaultOpenAIImageProbeModel, true, false)
 	assertImageProbeRecord(t, gotRecords[3], "/images/variations", defaultOpenAIImageVariationModel, true, false)
 	assertImageProbeRecord(t, gotRecords[4], "/images/generations", defaultOpenAIImageProbeModel, false, true)
+}
+
+func TestRunDirectGoogleImageCasesUseExpectedEndpoints(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		caseName    string
+		wantPath    string
+		wantPayload string
+		response    string
+	}{
+		{
+			caseName:    "generate_gemini",
+			wantPath:    "/v1beta/models/gemini-2.5-flash-image:generateContent",
+			wantPayload: "generationConfig",
+			response:    `{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"aW1hZ2U="}}]}}]}`,
+		},
+		{
+			caseName:    "generate_gemini_3_1",
+			wantPath:    "/v1beta/models/gemini-3.1-flash-image:generateContent",
+			wantPayload: "generationConfig",
+			response:    `{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"aW1hZ2U="}}]}}]}`,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.caseName, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got := r.URL.Path; got != tt.wantPath {
+					t.Errorf("path = %q, want %q", got, tt.wantPath)
+				}
+				if got, want := r.Header.Get("X-Goog-Api-Key"), "google-key"; got != want {
+					t.Errorf("X-Goog-Api-Key = %q, want %q", got, want)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Errorf("read request body: %v", err)
+				} else if !bytes.Contains(body, []byte(`"`+tt.wantPayload+`"`)) {
+					t.Errorf("request body = %s, want %q payload", body, tt.wantPayload)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, tt.response)
+			}))
+			t.Cleanup(server.Close)
+
+			route := imageRoutes["google"]
+			route.BaseURL = server.URL + "/v1beta"
+			testCase := findImageProbeCase(t, route.Cases(route), tt.caseName)
+			result := runImageCase(context.Background(), route, testCase, routeCredential{apiKey: "google-key"})
+			if result.Outcome != "ok" || result.Hint != "image_generated" {
+				t.Fatalf("result = %+v, want generated image success", result)
+			}
+		})
+	}
+}
+
+func TestRunGoogleVertexImageCaseUsesRoutingAndAuthentication(t *testing.T) {
+	tests := []struct {
+		name              string
+		credential        routeCredential
+		wantAuthorization string
+		wantAPIKey        string
+	}{
+		{
+			name:              "oauth bearer",
+			credential:        routeCredential{accessToken: "oauth-secret", projectID: "test-project", location: "us-central1"},
+			wantAuthorization: "Bearer oauth-secret",
+		},
+		{
+			name:       "api key",
+			credential: routeCredential{apiKey: "api-secret", projectID: "test-project", location: "us-central1"},
+			wantAPIKey: "api-secret",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				wantPath := "/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-3.1-flash-image:generateContent"
+				if got := r.URL.Path; got != wantPath {
+					t.Errorf("path = %q, want %q", got, wantPath)
+				}
+				if got := r.Header.Get("Authorization"); got != tt.wantAuthorization {
+					t.Errorf("Authorization = %q, want %q", got, tt.wantAuthorization)
+				}
+				if got := r.Header.Get("X-Goog-Api-Key"); got != tt.wantAPIKey {
+					t.Errorf("X-Goog-Api-Key = %q, want %q", got, tt.wantAPIKey)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = io.WriteString(w, `{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"aW1hZ2U="}}]}}]}`)
+			}))
+			t.Cleanup(server.Close)
+
+			route := imageRoutes[routeGoogleVertex]
+			route.BaseURL = server.URL + "/v1"
+			testCase := findImageProbeCase(t, route.Cases(route), "generate_gemini_3_1")
+			result := runImageCase(context.Background(), route, testCase, tt.credential)
+			if result.Outcome != "ok" {
+				t.Fatalf("result = %+v, want ok", result)
+			}
+		})
+	}
+}
+
+func TestGoogleImageProbeRequiresBinaryImage(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"candidates":[{"content":{"parts":[{"text":"I created an image."}]}}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	route := imageRoutes["google"]
+	route.BaseURL = server.URL + "/v1beta"
+	testCase := findImageProbeCase(t, route.Cases(route), "generate_gemini")
+	result := runImageCase(context.Background(), route, testCase, routeCredential{apiKey: "google-key"})
+	if result.Outcome != "no_working_attempt" || !strings.Contains(result.Error, "non-empty base64 or URL image") {
+		t.Fatalf("result = %+v, want text-only response rejected", result)
+	}
+}
+
+func TestGoogleVertexImageProbeRedactsCredentials(t *testing.T) {
+	t.Parallel()
+
+	const secret = "oauth-secret-value"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = io.WriteString(w, `{"error":{"message":"invalid credential","access_token":"`+secret+`"}}`)
+	}))
+	t.Cleanup(server.Close)
+
+	route := imageRoutes[routeGoogleVertex]
+	route.BaseURL = server.URL + "/v1"
+	testCase := findImageProbeCase(t, route.Cases(route), "generate_gemini_3_1")
+	result := runImageCase(context.Background(), route, testCase, routeCredential{
+		accessToken: secret,
+		projectID:   "test-project",
+		location:    "us-central1",
+	})
+	if result.Outcome == "ok" {
+		t.Fatalf("result = %+v, want authentication failure", result)
+	}
+	if strings.Contains(result.Error, secret) || !strings.Contains(result.Error, "[redacted]") {
+		t.Fatalf("error = %q, want credential redaction", result.Error)
+	}
+}
+
+func TestImageCaseTimeoutDoesNotCancelFollowingCase(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxImageProvider(
+		sigmatest.ImageScript{WaitForCancel: true},
+		sigmatest.ImageScript{Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageOutputData("image/png", "aW1hZ2U=")}}},
+	)
+	model := sigmatest.ImageModel()
+	route := imageRouteSpec{
+		Name:     "sigmatest",
+		Provider: model.Provider,
+		RegisterProvider: func(registry *sigma.Registry, _ imageRouteSpec) error {
+			return sigmatest.RegisterImages(registry, provider, model)
+		},
+		Model: func(_ imageRouteSpec, _ string) sigma.ImageModel { return model },
+	}
+	testCase := imageProbeCase{
+		Name:         "generate",
+		ModelID:      string(model.ID),
+		Request:      sigma.ImageRequest{Prompt: "Create an icon.", Size: string(sigma.ImageSize1024x1024), Count: 1},
+		RequireImage: true,
+	}
+
+	first := runImageCaseWithTimeout(context.Background(), 10*time.Millisecond, route, testCase, routeCredential{})
+	if first.Outcome != "upstream_availability" || !strings.Contains(first.Error, "deadline exceeded") {
+		t.Fatalf("first result = %+v, want isolated case timeout", first)
+	}
+	second := runImageCaseWithTimeout(context.Background(), time.Second, route, testCase, routeCredential{})
+	if second.Outcome != "ok" {
+		t.Fatalf("second result = %+v, want following case to run", second)
+	}
 }
 
 func TestRunOpenAIResponsesImageToolCaseDetectsImageOutput(t *testing.T) {
@@ -2117,6 +2458,9 @@ func TestClassifyFailure(t *testing.T) {
 	if got := classifyFailure(routes["fireworks-anthropic"], model, errors.New("status=404 body={\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Path not found: /messages\"}}")); got != "upstream_availability" {
 		t.Fatalf("path-not-found classification = %q", got)
 	}
+	if got := classifyFailure(routes[routeGoogleVertex], model, errors.New("status=404 provider_code=NOT_FOUND provider_message=Publisher model was not found")); got != "upstream_availability" {
+		t.Fatalf("publisher-model-not-found classification = %q", got)
+	}
 	model.ID = "gpt-5.1-codex"
 	if got := classifyFailure(routes["openai-codex"], model, errors.New("status=400 body={\"detail\":\"The 'gpt-5.1-codex' model is not supported when using Codex with a ChatGPT account.\"}")); got != "upstream_availability" {
 		t.Fatalf("chatgpt-account-unsupported classification = %q", got)
@@ -2282,6 +2626,14 @@ func assertImageProbeRecord(t *testing.T, record imageProbeRequestRecord, path s
 }
 
 func applyProbeOptions(opts []sigma.Option) sigma.Options {
+	var options sigma.Options
+	for _, opt := range opts {
+		opt(&options)
+	}
+	return options
+}
+
+func applyImageProbeOptions(opts []sigma.ImageOption) sigma.Options {
 	var options sigma.Options
 	for _, opt := range opts {
 		opt(&options)

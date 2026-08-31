@@ -25,7 +25,7 @@ Common flags:
 -codex-oauth            run OpenAI Codex device-code OAuth for openai-codex
 -handoff                run cross-provider replay handoff diagnostics
 -structured-output      run focused OpenAI-compatible structured-output probes
--images                 run focused OpenAI image-generation probes
+-images                 run focused image-generation probes
 -timeout                overall probe timeout, default 10m
 -case-timeout           maximum duration per case or repair attempt, default 1m
 ```
@@ -43,6 +43,8 @@ All other routes must be requested explicitly.
 | --- | --- | --- | --- |
 | `openai` | OpenAI Responses | `OPENAI_API_KEY` | Discovers OpenAI models |
 | `openai` with `-images` | OpenAI Images and OpenAI Responses image-generation tool | `OPENAI_API_KEY` | Uses `gpt-image-1`, `dall-e-2` for variations, and `gpt-5.5` for the Responses tool case |
+| `google` with `-images` | Gemini `generateContent` | `GOOGLE_API_KEY`, then `GOOGLE_CLOUD_API_KEY` | Uses the generated `gemini-2.5-flash-image` and `gemini-3.1-flash-image` rows |
+| `google-vertex` with `-images` | Vertex AI Gemini `generateContent` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses the generated `gemini-3.1-flash-image` row |
 | `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.5` unless `-models` is set |
 | `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
 | `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
@@ -154,7 +156,8 @@ Omit `-models` to probe every built-in native Vertex Gemini text model
 sequentially. Explicit IDs must be built-in `google-vertex` text models; model
 selection is catalog-backed and never calls a Vertex model-discovery endpoint.
 Vertex-hosted partner MaaS models, images, and embeddings are not included in
-the native Gemini route.
+the native Gemini text route; use `-images -routes google-vertex` for the
+focused Vertex Gemini image probe.
 Use the `global` location when probing the complete catalog because some current
 models are global-only. A regional or multi-region location remains valid when
 every explicitly selected model is available there.
@@ -191,6 +194,37 @@ Probe OpenAI image generation surfaces:
 OPENAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -images
 ```
+
+Probe current Gemini image models through the direct Google image route:
+
+```bash
+GOOGLE_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
+  -images \
+  -routes google
+```
+
+The direct route uses `GOOGLE_API_KEY` first and falls back to
+`GOOGLE_CLOUD_API_KEY`. It sends `gemini-2.5-flash-image` and
+`gemini-3.1-flash-image` through `generateContent`. Use `-models` to select one
+of those generated model rows; unrelated IDs are reported as skipped before
+network access.
+
+Probe Gemini image generation through Vertex AI with an externally supplied
+OAuth access token:
+
+```bash
+GOOGLE_CLOUD_ACCESS_TOKEN="$(gcloud auth application-default print-access-token)" \
+GOOGLE_CLOUD_PROJECT=my-project \
+GOOGLE_CLOUD_LOCATION=us-central1 \
+mise run go:run -- ./cmd/sigma-surface-probe \
+  -images \
+  -routes google-vertex
+```
+
+The Vertex image route reuses the text route's explicit project, location, and
+credential precedence: OAuth access token, Cloud API key, then Google API key.
+It does not load ambient credentials or persist tokens. Both Google image
+routes remain opt-in live diagnostics outside deterministic CI.
 
 Probe OpenAI Codex Responses with device-code OAuth:
 
@@ -278,6 +312,13 @@ The `variation` case uses `dall-e-2`. The other image API cases use
 `gpt-image-1`, and `responses_image_tool` uses OpenAI Responses with `gpt-5.5`
 and the image-generation tool. These probes require `OPENAI_API_KEY` and stay
 outside deterministic CI.
+
+The direct Google image route runs `generate_gemini` and
+`generate_gemini_3_1`; the Vertex image route runs `generate_gemini_3_1`. A
+successful image case requires a non-empty base64 or URL image, so a text-only
+Gemini response is not treated as success. Every image case receives an
+independent `-case-timeout`, bounded by the overall `-timeout`, so one stalled
+request does not prevent later cases.
 
 Anthropic-compatible routes run the cases supported by the selected model's
 generated or probe metadata:

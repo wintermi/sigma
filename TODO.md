@@ -107,7 +107,7 @@ cancellation/error coverage (see the coverage standards in
       reference-only JSON edits, variations, streaming partial images, and
       Responses image-generation tool output without making live provider calls
       part of `mise run ci`.
-- [ ] Add opt-in live Google Gemini API and Vertex AI image probes without
+- [x] Add opt-in live Google Gemini API and Vertex AI image probes without
       making live provider calls part of `mise run ci`.
 
 ## Embeddings

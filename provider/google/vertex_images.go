@@ -17,7 +17,7 @@ import (
 	"github.com/wintermi/sigma"
 )
 
-// VertexImagesProvider adapts Vertex AI's Imagen predict API to sigma.
+// VertexImagesProvider adapts Vertex AI's Gemini and Imagen image APIs to sigma.
 type VertexImagesProvider struct {
 	base *VertexProvider
 }
@@ -45,7 +45,7 @@ func (p *VertexImagesProvider) API() sigma.ImageAPI {
 	return sigma.ImageAPIGoogleVertexImages
 }
 
-// Generate sends req to Vertex AI's models/{model}:predict Imagen endpoint.
+// Generate sends req to Vertex AI's Gemini generateContent or Imagen predict endpoint.
 func (p *VertexImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
@@ -80,13 +80,13 @@ func (p *VertexImagesProvider) Generate(ctx context.Context, model sigma.ImageMo
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}, vertexImagesProviderError(resp, model, body, nil)
 	}
-	return decodeGoogleImagenResponse(body, model)
+	if googleImagenModel(model.ID) {
+		return decodeGoogleImagenResponse(body, model)
+	}
+	return decodeGoogleGeminiImageResponse(body, model)
 }
 
 func (p *VertexImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
-	if !googleImagenModel(model.ID) {
-		return nil, fmt.Errorf("google vertex images: unsupported image model %q", model.ID)
-	}
 	body, err := googleImagesRequestBody(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,11 @@ func (p *VertexImagesProvider) endpoint(model sigma.Model, opts sigma.Options, c
 	if err != nil {
 		return "", vertexInvalidOptions(model, err.Error(), err)
 	}
-	return baseURL + "/" + vertexModelResource(model.ID, config) + ":predict", nil
+	suffix := ":generateContent"
+	if googleImagenModel(model.ID) {
+		suffix = ":predict"
+	}
+	return baseURL + "/" + vertexModelResource(model.ID, config) + suffix, nil
 }
 
 func vertexImagesResponseError(resp *http.Response, model sigma.ImageModel) *sigma.ProviderError {

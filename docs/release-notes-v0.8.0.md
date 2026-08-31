@@ -121,6 +121,10 @@ tool-call round trip that verifies the call, local result, and final answer.
 The opt-in surface probe now also exercises Anthropic Claude through Vertex
 `streamRawPredict`, using catalog-backed model selection and the existing
 explicit Vertex routing and credential contract.
+Image probe mode now also exercises the Google Gemini API and Vertex AI image
+adapters with generated Gemini 2.5 and 3.1 image metadata. Explicit model
+selections are validated locally, every image case has an independent deadline,
+and success requires non-empty base64 or URL image data.
 Reviewed OpenAI Responses and Codex Responses models now use native,
 message-anchored additional-tool input, and streamed tool-call namespaces are
 retained only when their loading context can be replayed safely. Codex Responses
@@ -283,6 +287,15 @@ selection remains available through existing provider-specific controls.
   reasoning, and tool cases from the selected model metadata. Anthropic tool
   cases use provider-neutral automatic choice or typed required choice instead
   of OpenAI-specific request options.
+- `cmd/sigma-surface-probe -images` now exposes opt-in `google` and
+  `google-vertex` routes. The direct route probes `gemini-2.5-flash-image` and
+  `gemini-3.1-flash-image` through `generateContent`; the Vertex route probes
+  the generated Gemini 3.1 row through Vertex `generateContent`. Direct
+  credentials prefer `GOOGLE_API_KEY` over `GOOGLE_CLOUD_API_KEY`, while Vertex
+  reuses the existing explicit project, location, OAuth-token, and API-key
+  contract. Each case has an independent timeout bounded by the overall probe
+  deadline, and successful responses must contain a non-empty base64 or URL
+  image.
 - Persisted tool-result messages can now retain optional `Usage` from
   caller-owned tool execution through replay and model handoff. This metadata
   is not serialized into provider requests and remains separate from
@@ -331,6 +344,16 @@ selection remains available through existing provider-specific controls.
   credential loading, persistence, model discovery, provider IDs, catalog
   rows, or runtime request changes. Existing default probe routes remain
   `zen,go`.
+- The Google image surface-probe routes are diagnostic-only and remain outside
+  `mise run ci`. Image mode still defaults to `openai`; the new routes add no
+  ambient credential loading or persistence. Image generation remains a
+  preview surface.
+- Generated direct and Vertex Google image metadata replaces the retired
+  `imagen-4.0-generate-001` rows with `gemini-3.1-flash-image`. The Vertex image
+  adapter routes Gemini image models through `generateContent` and retains the
+  existing Imagen `predict` behavior for caller-registered legacy model IDs;
+  Sigma does not silently alias retired IDs. The catalog snapshot and generated
+  artifacts now reflect the supported model set.
 - Responses assistant phases remain opaque provider metadata rather than new
   provider-neutral content or end-turn controls. Unknown phases are retained
   for diagnostics but omitted from replay, as are recognized phases from a

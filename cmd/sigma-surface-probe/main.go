@@ -187,8 +187,8 @@ var routes = map[string]routeSpec{
 		Model:            discoveredOpenCodeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
-	"google-vertex": {
-		Name:             "google-vertex",
+	routeGoogleVertex: {
+		Name:             routeGoogleVertex,
 		Provider:         sigma.ProviderGoogleVertex,
 		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
 		RegisterProvider: registerGoogleVertexProvider,
@@ -261,6 +261,23 @@ var routes = map[string]routeSpec{
 }
 
 var imageRoutes = map[string]imageRouteSpec{
+	"google": {
+		Name:             "google",
+		Provider:         sigma.ProviderGoogle,
+		BaseURL:          google.DefaultBaseURL,
+		APIKeyEnv:        "GOOGLE_API_KEY",
+		RegisterProvider: registerGoogleImagesProvider,
+		Model:            googleImageProbeModel,
+		Cases:            googleImageProbeCases,
+	},
+	routeGoogleVertex: {
+		Name:             routeGoogleVertex,
+		Provider:         sigma.ProviderGoogleVertex,
+		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
+		RegisterProvider: registerGoogleVertexImagesProvider,
+		Model:            googleImageProbeModel,
+		Cases:            googleImageProbeCases,
+	},
 	"openai": {
 		Name:             "openai",
 		Provider:         sigma.ProviderOpenAI,
@@ -274,10 +291,14 @@ var imageRoutes = map[string]imageRouteSpec{
 
 const (
 	jsonTypeKey                          = "type"
+	routeGoogleVertex                    = "google-vertex"
+	outcomeSkipped                       = "skipped"
 	defaultRouteList                     = "zen,go"
 	defaultOpenAICodexProbeModel         = "gpt-5.5"
 	defaultGoogleVertexAnthropicModel    = "claude-sonnet-4-6"
 	defaultNVIDIAProbeModel              = "nvidia/nemotron-3-super-120b-a12b"
+	defaultGoogleGeminiImageProbeModel   = "gemini-2.5-flash-image"
+	defaultGoogleCurrentImageProbeModel  = "gemini-3.1-flash-image"
 	defaultOpenAIImageProbeModel         = "gpt-image-1"
 	defaultOpenAIImageVariationModel     = "dall-e-2"
 	defaultOpenAIResponsesToolProbeModel = "gpt-5.5"
@@ -375,7 +396,7 @@ func parseConfig() config {
 	flag.BoolVar(&codexOAuthBrowser, "codex-oauth-browser", false, "run OpenAI Codex browser callback OAuth for the openai-codex route")
 	flag.BoolVar(&handoff, "handoff", false, "run cross-provider replay handoff diagnostics instead of per-route surface cases")
 	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
-	flag.BoolVar(&images, "images", false, "run focused OpenAI image-generation surface probes")
+	flag.BoolVar(&images, "images", false, "run focused image-generation surface probes")
 	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
 	flag.DurationVar(&caseTimeout, "case-timeout", defaultCaseTimeout, "maximum duration for one probe case or repair attempt; 0 uses only the overall timeout")
 	flag.Parse()
@@ -517,7 +538,7 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 		models := make([]string, 0, len(selected))
 		for modelID := range selected {
 			switch route.Name {
-			case "google-vertex":
+			case routeGoogleVertex:
 				model, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID))
 				if !ok || !isBuiltInGoogleVertexGeminiModel(model) {
 					return nil, fmt.Errorf("model %q is not a built-in google-vertex text model", modelID)
@@ -542,7 +563,7 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 	if route.Name == "google-vertex-anthropic" {
 		return []string{defaultGoogleVertexAnthropicModel}, nil
 	}
-	if route.Name == "google-vertex" {
+	if route.Name == routeGoogleVertex {
 		models := make([]string, 0)
 		for _, model := range sigma.Models() {
 			if isBuiltInGoogleVertexGeminiModel(model) {
@@ -573,7 +594,7 @@ func isBuiltInGoogleVertexAnthropicModel(model sigma.Model) bool {
 }
 
 func isGoogleVertexRoute(route routeSpec) bool {
-	return route.Name == "google-vertex" || route.Name == "google-vertex-anthropic"
+	return route.Name == routeGoogleVertex || route.Name == "google-vertex-anthropic"
 }
 
 func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]string, error) {
@@ -645,7 +666,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			Model:   modelID,
 			Case:    "all",
 			Attempt: "skip_known_unavailable",
-			Outcome: "skipped",
+			Outcome: outcomeSkipped,
 		})
 		return
 	}
@@ -657,7 +678,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			Model:   modelID,
 			Case:    "structured_output",
 			Attempt: "unsupported_api",
-			Outcome: "skipped",
+			Outcome: outcomeSkipped,
 		})
 		return
 	}
@@ -750,7 +771,7 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 				Route:   routeName,
 				Case:    "handoff_source",
 				Attempt: "route",
-				Outcome: "skipped",
+				Outcome: outcomeSkipped,
 				Error:   fmt.Sprintf("unknown route %q", routeName),
 			})
 			continue
@@ -761,7 +782,7 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 				Route:   route.Name,
 				Case:    "handoff_source",
 				Attempt: "credential",
-				Outcome: "skipped",
+				Outcome: outcomeSkipped,
 				Error:   err.Error(),
 			})
 			continue
@@ -804,37 +825,90 @@ func runImageProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 				Route:   routeName,
 				Case:    "images",
 				Attempt: "route",
-				Outcome: "skipped",
+				Outcome: outcomeSkipped,
 				Error:   fmt.Sprintf("unknown image route %q", routeName),
 			})
 			continue
 		}
+		cases, skipped := selectedImageProbeCases(route, cfg.models)
+		for _, result := range skipped {
+			emit(result)
+		}
+		if len(cases) == 0 {
+			continue
+		}
+
 		credential, err := credentialForImageRoute(route)
 		if err != nil {
 			emit(probeResult{
 				Route:   route.Name,
 				Case:    "images",
 				Attempt: "credential",
-				Outcome: "skipped",
+				Outcome: outcomeSkipped,
 				Error:   err.Error(),
 			})
 			continue
 		}
-		for _, testCase := range route.Cases(route) {
-			if !imageProbeCaseSelected(testCase, cfg.models) {
-				continue
-			}
-			emit(runImageCase(ctx, route, testCase, credential))
+		for _, testCase := range cases {
+			emit(runImageCaseWithTimeout(ctx, cfg.caseTimeout, route, testCase, credential))
 		}
 	}
 }
 
 func credentialForImageRoute(route imageRouteSpec) (routeCredential, error) {
+	switch route.Name {
+	case "google":
+		apiKey := firstEnvironmentValue("GOOGLE_API_KEY", "GOOGLE_CLOUD_API_KEY")
+		if apiKey == "" {
+			return routeCredential{}, fmt.Errorf("GOOGLE_API_KEY or GOOGLE_CLOUD_API_KEY is required for live google image probing")
+		}
+		return routeCredential{apiKey: apiKey}, nil
+	case routeGoogleVertex:
+		return googleVertexCredential()
+	}
+
 	apiKey := os.Getenv(route.APIKeyEnv)
 	if apiKey == "" {
 		return routeCredential{}, fmt.Errorf("%s is required for live %s image probing", route.APIKeyEnv, route.Name)
 	}
 	return routeCredential{apiKey: apiKey}, nil
+}
+
+func selectedImageProbeCases(route imageRouteSpec, selected map[string]bool) ([]imageProbeCase, []probeResult) {
+	cases := route.Cases(route)
+	if len(selected) == 0 {
+		return cases, nil
+	}
+
+	selectedCases := make([]imageProbeCase, 0, len(cases))
+	for _, testCase := range cases {
+		if imageProbeCaseSelected(testCase, selected) {
+			selectedCases = append(selectedCases, testCase)
+		}
+	}
+	if route.Name != "google" && route.Name != routeGoogleVertex {
+		return selectedCases, nil
+	}
+
+	invalid := make([]string, 0)
+	for modelID := range selected {
+		if !googleImageModelMatchesRoute(route, modelID) {
+			invalid = append(invalid, modelID)
+		}
+	}
+	sort.Strings(invalid)
+	skipped := make([]probeResult, 0, len(invalid))
+	for _, modelID := range invalid {
+		skipped = append(skipped, probeResult{
+			Route:   route.Name,
+			Model:   modelID,
+			Case:    "images",
+			Attempt: "model_selection",
+			Outcome: outcomeSkipped,
+			Error:   fmt.Sprintf("model %q is not a built-in %s image model", modelID, route.Name),
+		})
+	}
+	return selectedCases, skipped
 }
 
 func imageProbeCaseSelected(testCase imageProbeCase, selected map[string]bool) bool {
@@ -857,7 +931,7 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 		Attempt: testCase.Name,
 	}
 	client := imageProbeClient(route, model.ID)
-	options := append(imageAuthOptions(credential), testCase.Options...)
+	options := append(imageAuthOptions(route, credential), testCase.Options...)
 	var images sigma.AssistantImages
 	var err error
 	partialSeen := false
@@ -871,9 +945,9 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 		result.Error = err.Error()
 		return result
 	}
-	if testCase.RequireImage && len(images.Images) == 0 {
+	if testCase.RequireImage && !hasGeneratedImage(images) {
 		result.Outcome = "no_working_attempt"
-		result.Error = "image response did not include generated images"
+		result.Error = "image response did not include a non-empty base64 or URL image"
 		return result
 	}
 	if testCase.RequirePartial && !partialSeen {
@@ -884,6 +958,16 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 	result.Outcome = "ok"
 	result.Hint = testCase.SuccessHint
 	return result
+}
+
+func runImageCaseWithTimeout(ctx context.Context, timeout time.Duration, route imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
+	if timeout <= 0 {
+		return runImageCase(ctx, route, testCase, credential)
+	}
+
+	caseCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return runImageCase(caseCtx, route, testCase, credential)
 }
 
 func runResponsesImageToolCase(ctx context.Context, imageRoute imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
@@ -971,6 +1055,21 @@ func hasImageOutputBlock(final sigma.AssistantMessage) bool {
 	return false
 }
 
+func hasGeneratedImage(images sigma.AssistantImages) bool {
+	for _, image := range images.Images {
+		if image.Type != sigma.ImageInputImage {
+			continue
+		}
+		if image.Source == sigma.ImageSourceBase64 && image.Data != "" {
+			return true
+		}
+		if image.Source == sigma.ImageSourceURL && image.URL != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func imageProbeClient(route imageRouteSpec, modelID sigma.ModelID) *sigma.Client {
 	registry := sigma.NewRegistry()
 	_ = route.RegisterProvider(registry, route)
@@ -988,7 +1087,7 @@ func generateHandoffSource(ctx context.Context, route routeSpec, modelID string,
 	}
 	if !cfg.includeUnavailable && knownUnavailable(route.Name, modelID) {
 		result.Attempt = "skip_known_unavailable"
-		result.Outcome = "skipped"
+		result.Outcome = outcomeSkipped
 		return handoffSource{}, result
 	}
 
@@ -1008,7 +1107,7 @@ func generateHandoffSource(ctx context.Context, route routeSpec, modelID string,
 	}
 	toolCall, ok := firstToolCall(first)
 	if !ok {
-		result.Outcome = "skipped"
+		result.Outcome = outcomeSkipped
 		result.Error = "source response did not emit a tool call"
 		return handoffSource{}, result
 	}
@@ -1133,6 +1232,28 @@ func registerOpenAIImagesProvider(registry *sigma.Registry, route imageRouteSpec
 	return nil
 }
 
+func registerGoogleImagesProvider(registry *sigma.Registry, route imageRouteSpec) error {
+	options := make([]google.ProviderOption, 0, 1)
+	if route.BaseURL != "" {
+		options = append(options, google.WithBaseURL(route.BaseURL))
+	}
+	if err := google.RegisterImages(registry, route.Provider, options...); err != nil {
+		return fmt.Errorf("register google images provider: %w", err)
+	}
+	return nil
+}
+
+func registerGoogleVertexImagesProvider(registry *sigma.Registry, route imageRouteSpec) error {
+	options := make([]google.VertexProviderOption, 0, 1)
+	if route.BaseURL != "" {
+		options = append(options, google.WithVertexBaseURL(route.BaseURL))
+	}
+	if err := google.RegisterVertexImages(registry, route.Provider, options...); err != nil {
+		return fmt.Errorf("register google vertex images provider: %w", err)
+	}
+	return nil
+}
+
 func registerOpenAICodexProvider(registry *sigma.Registry, route routeSpec) error {
 	if err := openai.RegisterCodexResponses(registry, route.Provider, openai.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register openai codex responses provider: %w", err)
@@ -1235,6 +1356,41 @@ func openAIImageProbeModel(route imageRouteSpec, id string) sigma.ImageModel {
 			"probeSurface":    "openai-images",
 		},
 	}
+}
+
+func googleImageProbeModel(route imageRouteSpec, id string) sigma.ImageModel {
+	model, ok := sigma.GetImageModel(route.Provider, sigma.ModelID(id))
+	if !ok || !googleImageModelMatchesRoute(route, id) {
+		return sigma.ImageModel{
+			ID:               sigma.ModelID(id),
+			Provider:         route.Provider,
+			API:              googleImageAPI(route),
+			Name:             id,
+			SupportedSizes:   []string{"1:1"},
+			SupportedFormats: []string{"image/png"},
+		}
+	}
+	if route.BaseURL != "" {
+		metadata := make(map[string]any, len(model.ProviderMetadata))
+		for key, value := range model.ProviderMetadata {
+			metadata[key] = value
+		}
+		metadata["baseURL"] = route.BaseURL
+		model.ProviderMetadata = metadata
+	}
+	return model
+}
+
+func googleImageModelMatchesRoute(route imageRouteSpec, id string) bool {
+	model, ok := sigma.GetImageModel(route.Provider, sigma.ModelID(id))
+	return ok && model.API == googleImageAPI(route)
+}
+
+func googleImageAPI(route imageRouteSpec) sigma.ImageAPI {
+	if route.Name == routeGoogleVertex {
+		return sigma.ImageAPIGoogleVertexImages
+	}
+	return sigma.ImageAPIGoogleImages
 }
 
 func discoveredOpenAIResponsesModel(route routeSpec, id string) sigma.Model {
@@ -1557,8 +1713,61 @@ func authOptions(route routeSpec, credential routeCredential) []sigma.Option {
 	return []sigma.Option{sigma.WithAPIKey(credential.apiKey)}
 }
 
-func imageAuthOptions(credential routeCredential) []sigma.ImageOption {
+func imageAuthOptions(route imageRouteSpec, credential routeCredential) []sigma.ImageOption {
+	if route.Name == routeGoogleVertex {
+		options := []sigma.ImageOption{sigma.WithImageProviderOptions(route.Provider, map[string]any{
+			"projectID": credential.projectID,
+			"location":  credential.location,
+		})}
+		if credential.accessToken != "" {
+			resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+				return sigma.Credential{
+					Type:   sigma.CredentialTypeOAuthToken,
+					Value:  credential.accessToken,
+					Source: "env:GOOGLE_CLOUD_ACCESS_TOKEN",
+				}, nil
+			})
+			return append(options, sigma.WithImageProviderAuthResolver(route.Provider, resolver))
+		}
+		return append(options, sigma.WithImageAPIKey(credential.apiKey))
+	}
 	return []sigma.ImageOption{sigma.WithImageAPIKey(credential.apiKey)}
+}
+
+func googleImageProbeCases(route imageRouteSpec) []imageProbeCase {
+	cases := []imageProbeCase{
+		{
+			Name:        "generate_gemini_3_1",
+			Description: "Gemini 3.1 image generation",
+			ModelID:     defaultGoogleCurrentImageProbeModel,
+			Request: sigma.ImageRequest{
+				Prompt:   "Create a simple square icon with the word sigma.",
+				Size:     "1:1",
+				MIMEType: "image/png",
+				Count:    1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+	}
+	if route.Name == routeGoogleVertex {
+		return cases
+	}
+	return append([]imageProbeCase{
+		{
+			Name:        "generate_gemini",
+			Description: "Gemini image generation",
+			ModelID:     defaultGoogleGeminiImageProbeModel,
+			Request: sigma.ImageRequest{
+				Prompt:   "Create a simple square icon with the word sigma.",
+				Size:     "1:1",
+				MIMEType: "image/png",
+				Count:    1,
+			},
+			SuccessHint:  "image_generated",
+			RequireImage: true,
+		},
+	}, cases...)
 }
 
 func openAIImageProbeCases(_ imageRouteSpec) []imageProbeCase {
@@ -2132,6 +2341,7 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	case strings.Contains(message, "free promotion has ended"),
 		strings.Contains(message, "model_not_found"),
 		strings.Contains(message, "path not found"),
+		strings.Contains(message, "status=404"),
 		strings.Contains(message, "no provider available"),
 		strings.Contains(message, "status=429"),
 		strings.Contains(message, "rate limit"),
@@ -2263,7 +2473,7 @@ func (s *summary) add(result probeResult) {
 	switch result.Outcome {
 	case "ok":
 		s.OK++
-	case "skipped":
+	case outcomeSkipped:
 		s.Skipped++
 	case "sigma_request_shape":
 		s.SigmaRequestShape++

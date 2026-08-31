@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "08a48efadc49c81f95bb3782465830ee02a2ae1b47dcab04faafd50cefd8b397"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "5649c1036e5eb721ef3cd5b685ce403accad6cfb384ee9a18bd3116cae32a207"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -65,6 +65,30 @@ func TestCatalogAdditionalToolsCapabilityCohorts(t *testing.T) {
 		"openai-codex/gpt-5.6-terra",
 	}; !reflect.DeepEqual(codexModels, want) {
 		t.Fatalf("Codex additional-tools cohort = %v, want %v", codexModels, want)
+	}
+}
+
+func TestCatalogGoogleImageModelsExcludeRetiredImagen4(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := Load("catalog.json")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	providers := make(map[string]bool)
+	for _, model := range catalog.ImageModels {
+		if model.Provider != "google" && model.Provider != "google-vertex" {
+			continue
+		}
+		if model.ID == "imagen-4.0-generate-001" {
+			t.Fatalf("retired image model remains in catalog for provider %q", model.Provider)
+		}
+		if model.ID == "gemini-3.1-flash-image" {
+			providers[model.Provider] = true
+		}
+	}
+	if !providers["google"] || !providers["google-vertex"] {
+		t.Fatalf("Gemini 3.1 Flash Image providers = %#v, want direct and Vertex rows", providers)
 	}
 }
 

@@ -306,6 +306,53 @@ func TestVertexImagenRoutesThroughProjectLocation(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Goog-Api-Key", "vertex-key")
 }
 
+func TestVertexGeminiImageUsesGenerateContentAndInlineDataResponse(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"candidates":[{"content":{"parts":[{"text":"caption"},{"inlineData":{"mimeType":"image/png","data":"dmVydGV4"}}]}}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	model := googleImageModel(sigma.ProviderGoogleVertex, "gemini-3.1-flash-image", sigma.ImageAPIGoogleVertexImages)
+	client := googleImageTestClient(
+		t,
+		model,
+		google.NewVertexImagesProvider(
+			google.WithVertexBaseURL(server.URL+"/v1"),
+			google.WithVertexConfig(google.VertexConfig{ProjectID: "project-123", Location: "global", CredentialMode: google.VertexCredentialToken}),
+		),
+	)
+	got, err := client.GenerateImages(
+		context.Background(),
+		model,
+		sigma.ImageRequest{Prompt: "draw", Count: 1, Size: "1:1"},
+		sigma.WithImageProviderAuthResolver(model.Provider, sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+			return sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "vertex-token"}, nil
+		})),
+	)
+	if err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	if len(got.Images) != 2 || got.Images[0].Text != "caption" || got.Images[1].Data != "dmVydGV4" {
+		t.Fatalf("images = %#v", got.Images)
+	}
+	request := receiveRequest(t, requests)
+	if gotPath, want := request.Path, "/v1/projects/project-123/locations/global/publishers/google/models/gemini-3.1-flash-image:generateContent"; gotPath != want {
+		t.Fatalf("path = %q, want %q", gotPath, want)
+	}
+	assertHeader(t, request.Headers, "Authorization", "Bearer vertex-token")
+	payload := decodeRequestPayload(t, request.Body)
+	config := payload["generationConfig"].(map[string]any)
+	modalities := config["responseModalities"].([]any)
+	if len(modalities) != 2 || modalities[0] != "TEXT" || modalities[1] != "IMAGE" {
+		t.Fatalf("responseModalities = %#v", modalities)
+	}
+}
+
 func googleEmbeddingTestClient(t *testing.T, model sigma.EmbeddingModel, provider sigma.EmbeddingProvider) *sigma.Client {
 	t.Helper()
 
