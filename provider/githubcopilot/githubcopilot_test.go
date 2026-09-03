@@ -7,6 +7,7 @@ package githubcopilot_test
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,13 +18,13 @@ import (
 	"github.com/wintermi/sigma/provider/githubcopilot"
 )
 
-func TestGeneratedFableUsesChatCompletionsWithCopilotHeaders(t *testing.T) {
+func TestGeneratedFableUsesAnthropicMessagesWithReasoningAndCopilotHeaders(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captureRequest(t, requests, r)
-		writeChatCompleted(w)
+		writeAnthropicCompleted(w)
 	}))
 	t.Cleanup(server.Close)
 
@@ -32,8 +33,8 @@ func TestGeneratedFableUsesChatCompletionsWithCopilotHeaders(t *testing.T) {
 	if !ok {
 		t.Fatal("default registry missing GitHub Copilot Claude Fable 5 model")
 	}
-	if err := githubcopilot.Register(registry); err != nil {
-		t.Fatalf("Register returned error: %v", err)
+	if err := githubcopilot.RegisterAnthropic(registry, githubcopilot.WithAnthropicBaseURL(server.URL+"/v1")); err != nil {
+		t.Fatalf("RegisterAnthropic returned error: %v", err)
 	}
 
 	client := sigma.NewClient(sigma.WithRegistry(registry))
@@ -42,13 +43,14 @@ func TestGeneratedFableUsesChatCompletionsWithCopilotHeaders(t *testing.T) {
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserContent(sigma.Text("hi"), sigma.ImageBase64("image/png", "aGk="))}},
 		sigma.WithAPIKey("copilot-token"),
-		sigma.WithProviderOption(sigma.ProviderGitHubCopilot, "baseURL", server.URL),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelXHigh),
+		sigma.WithProviderOption(sigma.ProviderGitHubCopilot, "baseURL", server.URL+"/v1"),
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
 
 	request := receiveRequest(t, requests)
-	if got, want := request.Path, "/chat/completions"; got != want {
+	if got, want := request.Path, "/v1/messages"; got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer copilot-token")
@@ -56,6 +58,24 @@ func TestGeneratedFableUsesChatCompletionsWithCopilotHeaders(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Initiator", "user")
 	assertHeader(t, request.Headers, "Openai-Intent", "conversation-edits")
 	assertHeader(t, request.Headers, "Copilot-Vision-Request", "true")
+
+	var payload struct {
+		Thinking struct {
+			Type string `json:"type"`
+		} `json:"thinking"`
+		OutputConfig struct {
+			Effort string `json:"effort"`
+		} `json:"output_config"`
+	}
+	if err := json.Unmarshal(request.Body, &payload); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+	if got, want := payload.Thinking.Type, "adaptive"; got != want {
+		t.Fatalf("thinking type = %q, want %q", got, want)
+	}
+	if got, want := payload.OutputConfig.Effort, "xhigh"; got != want {
+		t.Fatalf("output effort = %q, want %q", got, want)
+	}
 }
 
 func TestResponsesWrapperSendsCopilotHeaders(t *testing.T) {
@@ -157,13 +177,14 @@ func registerModel(t *testing.T, registry *sigma.Registry, model sigma.Model) {
 type capturedRequest struct {
 	Path    string
 	Headers http.Header
+	Body    []byte
 }
 
 func captureRequest(t *testing.T, ch chan<- capturedRequest, r *http.Request) {
 	t.Helper()
 
-	_, _ = io.Copy(io.Discard, r.Body)
-	ch <- capturedRequest{Path: r.URL.Path, Headers: r.Header.Clone()}
+	body, _ := io.ReadAll(r.Body)
+	ch <- capturedRequest{Path: r.URL.Path, Headers: r.Header.Clone(), Body: body}
 }
 
 func receiveRequest(t *testing.T, ch <-chan capturedRequest) capturedRequest {
@@ -184,12 +205,6 @@ func assertHeader(t *testing.T, headers http.Header, key string, want string) {
 	if got := headers.Get(key); got != want {
 		t.Fatalf("%s header = %q, want %q", key, got, want)
 	}
-}
-
-func writeChatCompleted(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	_, _ = io.WriteString(w, `data: {"id":"chatcmpl_test","model":"gpt-test","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
-	_, _ = io.WriteString(w, "data: [DONE]\n\n")
 }
 
 func writeResponsesCompleted(w http.ResponseWriter) {

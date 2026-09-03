@@ -133,6 +133,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- GitHub Copilot Claude Fable 5 now uses its Anthropic-compatible Messages
+  route so selected reasoning levels are transmitted through adaptive thinking
+  controls while preserving existing authentication, headers, capabilities,
+  pricing, and limits.
 - Generated OpenRouter text metadata now distinguishes optional and mandatory
   reasoning and exposes only the supported effort levels for the curated Claude
   Sonnet 5, DeepSeek V4 Pro, Gemini 3.5 Flash, GPT-5.2 Codex, and GPT-5.6

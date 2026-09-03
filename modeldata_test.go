@@ -2694,19 +2694,22 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if !ok {
 		t.Fatal("fresh registry missing generated GitHub Copilot Claude Fable 5 model")
 	}
-	if copilotFable.API != APIOpenAICompletions || !copilotFable.SupportsTools || !copilotFable.SupportsImages() || !copilotFable.SupportsReasoning() {
-		t.Fatalf("GitHub Copilot Claude Fable 5 metadata = %+v, want Chat Completions tools, images, and reasoning", copilotFable)
+	if copilotFable.API != APIAnthropicMessages || !copilotFable.SupportsTools || !copilotFable.SupportsImages() || !copilotFable.SupportsReasoning() {
+		t.Fatalf("GitHub Copilot Claude Fable 5 metadata = %+v, want Anthropic Messages tools, images, and reasoning", copilotFable)
 	}
 	if copilotFable.ContextWindow != 1000000 || copilotFable.MaxOutputTokens != 128000 ||
 		copilotFable.InputCostPerMillion != 10 || copilotFable.OutputCostPerMillion != 50 ||
 		copilotFable.CacheReadInputCostPerMillion != 1 || copilotFable.CacheWriteInputCostPerMillion != 12.5 {
 		t.Fatalf("GitHub Copilot Claude Fable 5 metadata = %+v, want reviewed limits and costs", copilotFable)
 	}
-	if copilotFable.OpenAICompletionsCompat == nil ||
-		copilotFable.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
-		copilotFable.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-		copilotFable.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
-		t.Fatalf("GitHub Copilot Claude Fable 5 compat = %#v, want conservative Chat Completions support", copilotFable.OpenAICompletionsCompat)
+	if copilotFable.OpenAICompletionsCompat != nil {
+		t.Fatalf("GitHub Copilot Claude Fable 5 Chat Completions compat = %#v, want absent", copilotFable.OpenAICompletionsCompat)
+	}
+	if copilotFable.AnthropicMessagesCompat == nil ||
+		copilotFable.AnthropicMessagesCompat.SupportsEagerToolInputStreaming != AnthropicCompatUnsupported ||
+		copilotFable.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported ||
+		copilotFable.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive {
+		t.Fatalf("GitHub Copilot Claude Fable 5 compat = %#v, want adaptive Messages support without eager tool input streaming or disabled thinking", copilotFable.AnthropicMessagesCompat)
 	}
 	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
 		if got, ok := copilotFable.ProviderThinkingLevel(level); !ok || got != want {
@@ -2716,7 +2719,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	if copilotFable.SupportsThinkingLevel(ThinkingLevelOff) {
 		t.Fatalf("GitHub Copilot Claude Fable 5 thinking support = %+v / %+v, want disabled thinking unsupported", copilotFable.ThinkingLevelMap, copilotFable.UnsupportedThinkingLevels)
 	}
-	assertMetadataString(t, copilotFable.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com")
+	assertMetadataString(t, copilotFable.ProviderMetadata, "baseURL", "https://api.individual.githubcopilot.com/v1")
 	assertMetadataStrings(t, copilotFable.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"COPILOT_GITHUB_TOKEN"})
 
 	for _, tt := range []struct {

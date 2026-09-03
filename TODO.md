@@ -715,7 +715,8 @@ upstream.
       Anthropic-compatible routes with deterministic modeldata assertions,
       while keeping broad catalog parity deferred to the reviewed refresh
       workflow.
-- [x] Add GitHub Copilot Claude Fable 5 Chat Completions metadata with
+- [x] Route GitHub Copilot Claude Fable 5 through Anthropic Messages so
+      selected reasoning levels use adaptive thinking controls, with
       deterministic registry and request-shape coverage.
 - [x] Add GitHub Copilot Kimi K2.7 Code and MAI-Code-1-Flash Chat Completions
       metadata with deterministic registry coverage while keeping the existing

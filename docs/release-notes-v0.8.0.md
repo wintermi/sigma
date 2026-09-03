@@ -331,6 +331,11 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- GitHub Copilot Claude Fable 5 now uses its Anthropic-compatible Messages
+  route instead of Chat Completions. Selected reasoning levels are sent through
+  adaptive thinking controls while authentication, Copilot headers, image and
+  tool support, pricing, context limits, and other provider routes remain
+  unchanged.
 - The curated OpenRouter Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3.5 Flash,
   GPT-5.2 Codex, and GPT-5.6 routes now expose only their reviewed reasoning
   efforts. Optional routes map omitted or explicitly disabled reasoning to

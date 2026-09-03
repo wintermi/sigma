@@ -9698,8 +9698,8 @@
       "id": "claude-fable-5",
       "name": "Claude Fable 5",
       "provider": "github-copilot",
-      "api": "openai-completions",
-      "baseURL": "https://api.individual.githubcopilot.com",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.individual.githubcopilot.com/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -9735,10 +9735,10 @@
       "unsupportedThinkingLevels": [
         "off"
       ],
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
       }
     },
     {
