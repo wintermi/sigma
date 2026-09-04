@@ -53,6 +53,9 @@ func TestRequestPersistenceRoundTripCoversReplayContent(t *testing.T) {
 	if got, want := roundTripped.Messages[2].AddedToolNames, []string{"forecast"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("tool additions after round trip = %#v, want %#v", got, want)
 	}
+	if got, want := roundTripped.Messages[1].ProviderThinkingLevel, "high"; got != want {
+		t.Fatalf("assistant provider thinking level = %q, want %q", got, want)
+	}
 	toolUsage := roundTripped.Messages[2].Usage
 	if toolUsage == nil {
 		t.Fatal("tool usage after round trip was nil")
@@ -136,6 +139,15 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 				AddedToolNames: []string{"late_lookup"},
 			}}},
 			errorText: "tool result fields require role",
+		},
+		{
+			name: "provider thinking level on a user message",
+			req: sigma.Request{Messages: []sigma.Message{{
+				Role:                  sigma.RoleUser,
+				Content:               []sigma.ContentBlock{sigma.Text("hello")},
+				ProviderThinkingLevel: "high",
+			}}},
+			errorText: "assistant metadata requires role",
 		},
 		{
 			name: "duplicate tool call id",
@@ -232,11 +244,22 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			before, marshalErr := json.Marshal(tt.req)
+			if marshalErr != nil {
+				t.Fatalf("json.Marshal before validation returned error: %v", marshalErr)
+			}
 			err := sigma.ValidateRequest(tt.req)
 			if err == nil {
 				t.Fatal("ValidateRequest returned nil error")
 			}
 			assertInvalidRequestError(t, err, tt.errorText)
+			after, marshalErr := json.Marshal(tt.req)
+			if marshalErr != nil {
+				t.Fatalf("json.Marshal after validation returned error: %v", marshalErr)
+			}
+			if string(after) != string(before) {
+				t.Fatalf("ValidateRequest mutated caller request:\nbefore: %s\nafter:  %s", before, after)
+			}
 		})
 	}
 }
@@ -344,10 +367,11 @@ func TestCrossProviderReplayAfterJSONRoundTrip(t *testing.T) {
 		Messages: []sigma.Message{
 			sigma.UserText("Check the forecast."),
 			{
-				Role:     sigma.RoleAssistant,
-				Provider: sigma.ProviderAnthropic,
-				API:      sigma.APIAnthropicMessages,
-				Model:    "claude-sonnet",
+				Role:                  sigma.RoleAssistant,
+				Provider:              sigma.ProviderAnthropic,
+				API:                   sigma.APIAnthropicMessages,
+				Model:                 "claude-sonnet",
+				ProviderThinkingLevel: "high",
 				Content: []sigma.ContentBlock{
 					{
 						Type:              sigma.ContentBlockThinking,
@@ -457,10 +481,11 @@ func persistedReplayRequest() sigma.Request {
 				sigma.DocumentBase64("application/pdf", "forecast.pdf", "JVBERi0xLjQ="),
 			),
 			{
-				Role:     sigma.RoleAssistant,
-				Provider: sigma.ProviderAnthropic,
-				API:      sigma.APIAnthropicMessages,
-				Model:    "claude-sonnet",
+				Role:                  sigma.RoleAssistant,
+				Provider:              sigma.ProviderAnthropic,
+				API:                   sigma.APIAnthropicMessages,
+				Model:                 "claude-sonnet",
+				ProviderThinkingLevel: "high",
 				Content: []sigma.ContentBlock{
 					{
 						Type:              sigma.ContentBlockThinking,

@@ -4894,16 +4894,17 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "supportsTemperature": "unsupported",
+        "supportsMidConversationEffort": "supported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported",
-        "allowedFallbackModels": [
-          "claude-opus-4-8"
-        ]
+        "supportsToolReferences": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
         "max": "max"
-      }
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
     },
     {
       "id": "claude-sonnet-4-0",

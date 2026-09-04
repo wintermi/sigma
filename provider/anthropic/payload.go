@@ -68,7 +68,11 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		deferredTools.Deferred = nil
 	}
 
-	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat, deferredTools.Deferred, normalizeToolName)
+	activeEffort, err := midConversationEffort(model, opts, compat)
+	if err != nil {
+		return nil, err
+	}
+	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat, deferredTools.Deferred, normalizeToolName, activeEffort)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +156,7 @@ func claudeCodeSystem(prompt string, retention sigma.CacheRetention, compat mess
 	return blocks
 }
 
-func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat messagesCompat, deferredTools map[string]sigma.Tool, normalizeToolName func(string) string) ([]map[string]any, error) {
+func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat messagesCompat, deferredTools map[string]sigma.Tool, normalizeToolName func(string) string, activeEffort string) ([]map[string]any, error) {
 	messages := make([]map[string]any, 0, len(req.Messages))
 	loadedToolNames := make(map[string]struct{})
 	for index := 0; index < len(req.Messages); index++ {
@@ -176,10 +180,63 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 		if err != nil {
 			return nil, err
 		}
+		if effort, ok := replayedMidConversationEffort(model, message, compat); ok {
+			messages = append(messages, anthropicEffortMessage(effort))
+		}
 		messages = append(messages, converted)
 	}
 	addCacheControlToLastUserMessage(messages, retention, compat)
+	if activeEffort != "" {
+		messages = append(messages, anthropicEffortMessage(activeEffort))
+	}
 	return messages, nil
+}
+
+func midConversationEffort(model sigma.Model, opts sigma.Options, compat messagesCompat) (string, error) {
+	if !compat.supportsMidConversationEffort {
+		return "", nil
+	}
+	if opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		return "", &sigma.Error{
+			Code:     sigma.ErrorInvalidOptions,
+			Message:  fmt.Sprintf("thinking level %q is not supported by model metadata", opts.ReasoningLevel),
+			Provider: model.Provider,
+			Model:    model.ID,
+			Err:      sigma.ErrInvalidOptions,
+		}
+	}
+	return adaptiveEffort(model, opts), nil
+}
+
+func replayedMidConversationEffort(model sigma.Model, message sigma.Message, compat messagesCompat) (string, bool) {
+	if !compat.supportsMidConversationEffort ||
+		message.Role != sigma.RoleAssistant ||
+		message.Provider != model.Provider ||
+		message.API != model.API ||
+		message.Model != model.ID ||
+		!validAnthropicEffort(message.ProviderThinkingLevel) {
+		return "", false
+	}
+	return message.ProviderThinkingLevel, true
+}
+
+func validAnthropicEffort(effort string) bool {
+	switch effort {
+	case "low", "medium", "high", "xhigh", "max":
+		return true
+	default:
+		return false
+	}
+}
+
+func anthropicEffortMessage(effort string) map[string]any {
+	return map[string]any{
+		"role":    "system",
+		"content": []map[string]any{},
+		"output_config": map[string]any{
+			"effort": effort,
+		},
+	}
 }
 
 func anthropicMessage(model sigma.Model, message sigma.Message, compat messagesCompat) (map[string]any, error) {
@@ -516,6 +573,17 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 		return false
 	}
 	display := thinkingDisplay(opts, model.Provider)
+	if compat.supportsMidConversationEffort {
+		payload["thinking"] = map[string]any{
+			"type":    "adaptive",
+			"display": display,
+			"block_binding": map[string]any{
+				"prefix_mismatch_behavior": "drop_block",
+			},
+		}
+		payload["output_config"] = map[string]any{"effort": "high"}
+		return true
+	}
 	if thinkingFormat(model, compat) == sigma.AnthropicThinkingAdaptive && thinkingRequested(opts) {
 		payload["thinking"] = map[string]any{
 			"type":    "adaptive",

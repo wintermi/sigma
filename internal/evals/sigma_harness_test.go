@@ -25,8 +25,9 @@ func TestSigmaHarnessRunsConversationAndAggregatesTelemetry(t *testing.T) {
 	model.OutputCostPerMillion = 4
 	provider := sigmatest.NewFauxProvider(
 		sigmatest.Script{Final: sigma.AssistantMessage{
-			Content: []sigma.ContentBlock{sigma.Thinking("work", "signature"), sigma.Text("first")},
-			Usage:   &sigma.Usage{InputTokens: 4, OutputTokens: 2, TotalTokens: 6, CacheReadInputTokens: 1},
+			Content:               []sigma.ContentBlock{sigma.Thinking("work", "signature"), sigma.Text("first")},
+			ProviderThinkingLevel: "high",
+			Usage:                 &sigma.Usage{InputTokens: 4, OutputTokens: 2, TotalTokens: 6, CacheReadInputTokens: 1},
 		}},
 		sigmatest.Script{Final: sigma.AssistantMessage{
 			Content: []sigma.ContentBlock{sigma.Text("second")},
@@ -68,6 +69,9 @@ func TestSigmaHarnessRunsConversationAndAggregatesTelemetry(t *testing.T) {
 	}
 	if len(requests[1].Request.Messages) != 3 || requests[1].Request.Messages[1].Role != sigma.RoleAssistant {
 		t.Fatalf("second request history = %#v", requests[1].Request.Messages)
+	}
+	if got, want := requests[1].Request.Messages[1].ProviderThinkingLevel, "high"; got != want {
+		t.Fatalf("second request provider thinking level = %q, want %q", got, want)
 	}
 	_, attachments := run.snapshot()
 	if len(attachments) != 1 || attachments[0].Name != "transcript.jsonl" ||

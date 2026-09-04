@@ -3593,6 +3593,7 @@ var builtinTextModels = []Model{
 			ThinkingLevel("max"):   "max",
 			ThinkingLevel("xhigh"): "xhigh",
 		},
+		UnsupportedThinkingLevels:     []ThinkingLevel{ThinkingLevel("off")},
 		InputCostPerMillion:           5,
 		OutputCostPerMillion:          25,
 		CacheReadInputCostPerMillion:  0.5,
@@ -3606,17 +3607,8 @@ var builtinTextModels = []Model{
 			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
+			SupportsMidConversationEffort:   AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
-			AllowedFallbackModels: []AnthropicFallbackModel{
-				{
-					Model:                         ModelID("claude-opus-4-8"),
-					InputCostPerMillion:           5,
-					OutputCostPerMillion:          25,
-					CacheReadInputCostPerMillion:  0.5,
-					CacheWriteInputCostPerMillion: 6.25,
-					CostCurrency:                  "USD",
-				},
-			},
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"ANTHROPIC_API_KEY"},

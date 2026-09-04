@@ -29,6 +29,8 @@ const (
 	fineGrainedToolStreamingBeta = "fine-grained-tool-streaming-2025-05-14"
 	interleavedThinkingBeta      = "interleaved-thinking-2025-05-14"
 	serverSideFallbackBeta       = "server-side-fallback-2026-07-01"
+	midConversationEffortBeta    = "mid-conversation-output-config-2026-07-01"
+	thinkingBindingControlsBeta  = "thinking-binding-controls-2026-08-01"
 	defaultSessionAffinityHeader = "x-session-affinity"
 )
 
@@ -145,6 +147,12 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		return
 	}
 	claudeCode := isAnthropicOAuthCredential(credential)
+	compat := anthropicMessagesCompat(model, p.baseURLForModel(model, opts), p.compat)
+	providerThinkingLevel := ""
+	if compat.supportsMidConversationEffort && opts.ReasoningLevel != sigma.ThinkingLevelOff {
+		providerThinkingLevel = adaptiveEffort(model, opts)
+		final.ProviderThinkingLevel = providerThinkingLevel
+	}
 
 	resp, err := p.do(ctx, model, req, opts, credential, claudeCode)
 	if err != nil {
@@ -168,9 +176,8 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		return
 	}
 
-	compat := anthropicMessagesCompat(model, p.baseURLForProvider(model.Provider, opts), p.compat)
 	compat.claudeCodeIdentity = claudeCode
-	final, err = parseMessagesStream(ctx, body, writer, model, compat, req.Tools)
+	final, err = parseMessagesStream(ctx, body, writer, model, compat, req.Tools, providerThinkingLevel)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -495,6 +502,10 @@ func anthropicBeta(model sigma.Model, opts sigma.Options, compat messagesCompat,
 	}
 	if opts.AnthropicOptions != nil && opts.AnthropicOptions.EnableRefusalFallbacks {
 		betas = appendBetas(betas, serverSideFallbackBeta)
+	}
+	if compat.supportsMidConversationEffort {
+		betas = appendBetas(betas, midConversationEffortBeta)
+		betas = appendBetas(betas, thinkingBindingControlsBeta)
 	}
 	return strings.Join(betas, ",")
 }

@@ -222,6 +222,9 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add proxy-aware Codex WebSocket dialing for standard HTTP(S) proxy
       environment variables and `NO_PROXY` exclusions while preserving SSE
       fallback.
+- [ ] Harden Codex WebSocket `NO_PROXY` matching for ordinary parent-domain
+      suffixes, wildcard and root-domain forms, port-qualified hosts, and IPv6
+      literals.
 - [x] Add Codex WebSocket-specific connect timeout and session-cache debug
       stats while keeping the preview transport on request contexts, explicit
       session cleanup helpers, and SSE fallback.
@@ -343,9 +346,11 @@ work until their API boundaries are explicit.
       provider metadata while retaining content-filter normalization and raw
       stop-reason diagnostics.
 - [x] Add disabled-by-default direct Anthropic server-side refusal fallbacks
-      for catalog-declared Fable 5 and Opus 5 targets, preserving requested
-      model identity while accounting known returned models with their own
-      generated pricing.
+      for catalog-declared Fable 5 targets, preserving requested model identity
+      while accounting known returned models with their own generated pricing.
+- [x] Preserve and replay provider-native thinking effort for exact-provenance
+      direct Anthropic Opus 5 assistant turns, including partial and terminal
+      messages, while leaving other Anthropic-compatible routes unchanged.
 - [x] Preserve Anthropic hosted server-tool metadata, citations,
       context-management metadata, container metadata, and thinking-token usage
       details through deterministic stream parsing.

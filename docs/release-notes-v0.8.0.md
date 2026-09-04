@@ -64,11 +64,13 @@ long-context pricing, and reasoning controls through `xhigh`.
 Anthropic Messages streams now surface text and thinking delivered with
 content-block start events immediately through incremental output. Refusal
 stops now also retain non-empty structured provider details for callers that
-need the refusal category or explanation. Direct Claude Fable 5 and Opus 5
-requests can additionally opt into catalog-declared server-side refusal
-fallbacks without changing default requests; known fallback responses retain
-the requested model identity while reporting usage and estimated cost against
-the returned model.
+need the refusal category or explanation. Direct Claude Fable 5 requests can
+additionally opt into catalog-declared server-side refusal fallbacks without
+changing default requests; known fallback responses retain the requested model
+identity while reporting usage and estimated cost against the returned model.
+Direct Claude Opus 5 now preserves the provider-native thinking effort on
+partial and terminal assistant messages and replays it for exact matching prior
+turns, preventing signed-thinking mismatches when effort changes between turns.
 In-progress text streams now identify every partial assistant snapshot as
 pending, beginning with an empty snapshot on the initial start event.
 OpenAI-compatible Chat Completions models can also opt into successful
@@ -189,12 +191,17 @@ selection remains available through existing provider-specific controls.
   reasoning retains the existing disabled payload without `clear_thinking`.
 - `AnthropicOptions.EnableRefusalFallbacks` enables direct Anthropic
   server-side refusal fallback only for models with generated allowed-target
-  metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets, while
-  Claude Opus 5 uses Opus 4.8. Disabled requests omit both the fallback payload
-  and beta header; unsupported opt-ins fail before dispatch. Provider-reported
-  declared fallback models drive usage identity and estimated pricing, while
-  unknown returned model IDs remain diagnostic and retain requested-model
-  accounting.
+  metadata. Claude Fable 5 uses the ordered Opus 4.8 and Opus 5 targets.
+  Disabled requests omit both the fallback payload and beta header; unsupported
+  opt-ins fail before dispatch. Provider-reported declared fallback models
+  drive usage identity and estimated pricing, while unknown returned model IDs
+  remain diagnostic and retain requested-model accounting.
+- `AnthropicMessagesCompat.SupportsMidConversationEffort` capability-gates
+  provider-native thinking-effort persistence and replay. Direct Claude Opus 5
+  records the resolved effort in `AssistantMessage.ProviderThinkingLevel` and
+  persisted `Message` values, emits it on partial and terminal results, and
+  inserts exact-provenance replay markers before matching assistant turns. An
+  omitted reasoning level defaults to `high`; explicit off is unsupported.
 - `WithToolChoice` accepts `ToolChoiceAuto` or `ToolChoiceNone` across OpenAI
   Chat Completions, Responses, Azure Responses, Codex Responses, Anthropic
   Messages, Google Gemini and Vertex, Mistral Conversations, and Bedrock
@@ -331,6 +338,9 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- Per-turn Anthropic thinking-effort replay is enabled only for direct Claude
+  Opus 5. Fable 5, Sonnet 5, routed aliases, and caller-registered models remain
+  unchanged unless their exact model configuration explicitly opts in.
 - GitHub Copilot Claude Fable 5 now uses its Anthropic-compatible Messages
   route instead of Chat Completions. Selected reasoning levels are sent through
   adaptive thinking controls while authentication, Copilot headers, image and

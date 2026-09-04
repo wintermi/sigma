@@ -408,6 +408,7 @@ type AnthropicMessagesCompat struct {
 	SupportsDisabledThinking        AnthropicCompatSupport   `json:"supportsDisabledThinking,omitempty"`
 	SupportsStrictTools             AnthropicCompatSupport   `json:"supportsStrictTools,omitempty"`
 	SupportsToolReferences          AnthropicCompatSupport   `json:"supportsToolReferences,omitempty"`
+	SupportsMidConversationEffort   AnthropicCompatSupport   `json:"supportsMidConversationEffort,omitempty"`
 	ThinkingFormat                  AnthropicThinkingFormat  `json:"thinkingFormat,omitempty"`
 	AllowedFallbackModels           []AnthropicFallbackModel `json:"allowedFallbackModels,omitempty"`
 }
@@ -487,7 +488,10 @@ type Message struct {
 	API            API            `json:"api,omitempty"`
 	Model          ModelID        `json:"model,omitempty"`
 	StopReason     StopReason     `json:"stopReason,omitempty"`
-	Usage          *Usage         `json:"usage,omitempty"`
+	// ProviderThinkingLevel is the exact provider-native thinking effort used
+	// for an assistant turn when its API requires that value during replay.
+	ProviderThinkingLevel string `json:"providerThinkingLevel,omitempty"`
+	Usage                 *Usage `json:"usage,omitempty"`
 }
 
 // ContentBlock is a discriminated unit of message content.
@@ -565,14 +569,17 @@ type Cost struct {
 
 // AssistantMessage is provider-neutral assistant output plus turn metadata.
 type AssistantMessage struct {
-	Content          []ContentBlock `json:"content,omitempty"`
-	StopReason       StopReason     `json:"stopReason,omitempty"`
-	Usage            *Usage         `json:"usage,omitempty"`
-	Cost             *Cost          `json:"cost,omitempty"`
-	Model            ModelID        `json:"model,omitempty"`
-	Provider         ProviderID     `json:"provider,omitempty"`
-	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
-	Diagnostics      []Diagnostic   `json:"diagnostics,omitempty"`
+	Content    []ContentBlock `json:"content,omitempty"`
+	StopReason StopReason     `json:"stopReason,omitempty"`
+	Usage      *Usage         `json:"usage,omitempty"`
+	Cost       *Cost          `json:"cost,omitempty"`
+	Model      ModelID        `json:"model,omitempty"`
+	Provider   ProviderID     `json:"provider,omitempty"`
+	// ProviderThinkingLevel is the exact provider-native thinking effort used
+	// for this response when its API requires that value during replay.
+	ProviderThinkingLevel string         `json:"providerThinkingLevel,omitempty"`
+	ProviderMetadata      map[string]any `json:"providerMetadata,omitempty"`
+	Diagnostics           []Diagnostic   `json:"diagnostics,omitempty"`
 }
 
 // UserText constructs a user message with a single text block.

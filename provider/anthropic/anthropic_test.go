@@ -1382,6 +1382,230 @@ func TestAdaptiveThinkingPayloadUsesOutputConfigEffort(t *testing.T) {
 	goldentest.AssertNoJSONPath(t, request.Body, "temperature")
 }
 
+func TestMidConversationThinkingEffortReplay(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-mid-conversation-effort-test")
+	model := anthropicTestModel(providerID)
+	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{
+		sigma.ThinkingLevelLow:     "low",
+		sigma.ThinkingLevelMedium:  "medium",
+		sigma.ThinkingLevelHigh:    "high",
+		sigma.ThinkingLevelXHigh:   "xhigh",
+		sigma.ThinkingLevel("max"): "max",
+	}
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+		ThinkingFormat:                sigma.AnthropicThinkingAdaptive,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	first := sigma.Message{
+		Role:                  sigma.RoleAssistant,
+		Content:               []sigma.ContentBlock{sigma.Text("first")},
+		Provider:              providerID,
+		API:                   sigma.APIAnthropicMessages,
+		Model:                 model.ID,
+		ProviderThinkingLevel: "low",
+	}
+	second := sigma.Message{
+		Role:                  sigma.RoleAssistant,
+		Content:               []sigma.ContentBlock{sigma.Text("second")},
+		Provider:              providerID,
+		API:                   sigma.APIAnthropicMessages,
+		Model:                 model.ID,
+		ProviderThinkingLevel: "medium",
+	}
+	third := sigma.Message{
+		Role:                  sigma.RoleAssistant,
+		Content:               []sigma.ContentBlock{sigma.Text("third")},
+		Provider:              providerID,
+		API:                   sigma.APIAnthropicMessages,
+		Model:                 model.ID,
+		ProviderThinkingLevel: "high",
+	}
+	fourth := sigma.Message{
+		Role:                  sigma.RoleAssistant,
+		Content:               []sigma.ContentBlock{sigma.Text("fourth")},
+		Provider:              providerID,
+		API:                   sigma.APIAnthropicMessages,
+		Model:                 model.ID,
+		ProviderThinkingLevel: "xhigh",
+	}
+	final, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("one"), first,
+			sigma.UserText("two"), second,
+			sigma.UserText("three"), third,
+			sigma.UserText("four"), fourth,
+			sigma.UserText("five"),
+		}},
+		sigma.WithReasoningLevel(sigma.ThinkingLevel("max")),
+		sigma.WithProviderOption(providerID, "anthropic_beta", "test-beta"),
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	if got, want := final.ProviderThinkingLevel, "max"; got != want {
+		t.Fatalf("provider thinking level = %q, want %q", got, want)
+	}
+
+	request := receiveRequest(t, requests)
+	wantBeta := strings.Join([]string{"test-beta", midConversationEffortBetaForTest, thinkingBindingControlsBetaForTest}, ",")
+	if got := request.Headers.Get("Anthropic-Beta"); got != wantBeta {
+		t.Fatalf("Anthropic-Beta = %q, want %q", got, wantBeta)
+	}
+	payload := decodePayload(t, request.Body)
+	if got, want := payload["output_config"].(map[string]any)["effort"], "high"; got != want {
+		t.Fatalf("top-level effort = %v, want %q", got, want)
+	}
+	thinking := payload["thinking"].(map[string]any)
+	binding := thinking["block_binding"].(map[string]any)
+	if got, want := binding["prefix_mismatch_behavior"], "drop_block"; got != want {
+		t.Fatalf("prefix mismatch behavior = %v, want %q", got, want)
+	}
+	messages := payload["messages"].([]any)
+	wantRoles := []string{
+		"user", "system", "assistant",
+		"user", "system", "assistant",
+		"user", "system", "assistant",
+		"user", "system", "assistant",
+		"user", "system",
+	}
+	if len(messages) != len(wantRoles) {
+		t.Fatalf("messages length = %d, want %d: %#v", len(messages), len(wantRoles), messages)
+	}
+	for index, want := range wantRoles {
+		if got := messages[index].(map[string]any)["role"]; got != want {
+			t.Fatalf("message %d role = %v, want %q", index, got, want)
+		}
+	}
+	for index, want := range map[int]string{1: "low", 4: "medium", 7: "high", 10: "xhigh", 13: "max"} {
+		message := messages[index].(map[string]any)
+		if got := message["output_config"].(map[string]any)["effort"]; got != want {
+			t.Fatalf("message %d effort = %v, want %q", index, got, want)
+		}
+	}
+}
+
+func TestMidConversationThinkingPreservesFinalOverrides(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-mid-conversation-overrides-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+	}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithHeader("Anthropic-Beta", "caller-beta"),
+		sigma.WithProviderOption(providerID, "extra_body", map[string]any{
+			"output_config": map[string]any{"effort": "caller-effort"},
+			"thinking":      map[string]any{"type": "disabled"},
+		}),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	if got, want := request.Headers.Get("Anthropic-Beta"), "caller-beta"; got != want {
+		t.Fatalf("Anthropic-Beta = %q, want %q", got, want)
+	}
+	payload := decodePayload(t, request.Body)
+	if got, want := payload["output_config"].(map[string]any)["effort"], "caller-effort"; got != want {
+		t.Fatalf("overridden effort = %v, want %q", got, want)
+	}
+	if got, want := payload["thinking"].(map[string]any)["type"], "disabled"; got != want {
+		t.Fatalf("overridden thinking type = %v, want %q", got, want)
+	}
+}
+
+func TestMidConversationThinkingEffortReplayIgnoresIncompatibleHistory(t *testing.T) {
+	t.Parallel()
+
+	providerID := sigma.ProviderID("anthropic-mid-conversation-history-test")
+	model := anthropicTestModel(providerID)
+	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelHigh: "high"}
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+	}
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	history := []sigma.Message{
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("legacy")}, Provider: model.Provider, API: model.API, Model: model.ID},
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("malformed")}, Provider: model.Provider, API: model.API, Model: model.ID, ProviderThinkingLevel: "extreme"},
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("foreign provider")}, Provider: "other-provider", API: model.API, Model: model.ID, ProviderThinkingLevel: "low"},
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("foreign api")}, Provider: model.Provider, API: sigma.APIOpenAICompletions, Model: model.ID, ProviderThinkingLevel: "medium"},
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("foreign model")}, Provider: model.Provider, API: model.API, Model: "other-model", ProviderThinkingLevel: "high"},
+		sigma.UserText("continue"),
+	}
+	if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: history}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	payload := decodePayload(t, receiveRequest(t, requests).Body)
+	messages := payload["messages"].([]any)
+	systemMessages := 0
+	for _, value := range messages {
+		if value.(map[string]any)["role"] == "system" {
+			systemMessages++
+		}
+	}
+	if got, want := systemMessages, 1; got != want {
+		t.Fatalf("effort system messages = %d, want %d: %#v", got, want, messages)
+	}
+	last := messages[len(messages)-1].(map[string]any)
+	if got, want := last["output_config"].(map[string]any)["effort"], "high"; got != want {
+		t.Fatalf("default active effort = %v, want %q", got, want)
+	}
+}
+
+func TestMidConversationThinkingRejectsOff(t *testing.T) {
+	t.Parallel()
+
+	providerID := sigma.ProviderID("anthropic-mid-conversation-off-test")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+	}
+	client := anthropicTestClient(t, providerID, model, "http://127.0.0.1:1")
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithReasoningLevel(sigma.ThinkingLevelOff),
+	)
+	if !errors.Is(err, sigma.ErrInvalidOptions) {
+		t.Fatalf("Complete error = %v, want ErrInvalidOptions", err)
+	}
+}
+
 func TestBudgetThinkingLevelFallbackAndMetadataFiltering(t *testing.T) {
 	t.Parallel()
 
@@ -2971,6 +3195,9 @@ func TestProviderErrorIsTypedAndRedacted(t *testing.T) {
 
 	providerID := sigma.ProviderID("anthropic-error-test")
 	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+	}
 	client := anthropicTestClient(t, providerID, model, server.URL)
 
 	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
@@ -2979,6 +3206,9 @@ func TestProviderErrorIsTypedAndRedacted(t *testing.T) {
 	}
 	if !errors.Is(err, sigma.ErrProviderResponse) {
 		t.Fatalf("error = %v, want ErrProviderResponse", err)
+	}
+	if got, want := final.ProviderThinkingLevel, "high"; got != want {
+		t.Fatalf("provider thinking level = %q, want %q", got, want)
 	}
 	if got, want := final.Diagnostics[0].API, sigma.APIAnthropicMessages; got != want {
 		t.Fatalf("diagnostic API = %q, want %q", got, want)
@@ -3066,12 +3296,19 @@ func TestCancellationAbortsStreamingRequest(t *testing.T) {
 
 	providerID := sigma.ProviderID("anthropic-cancel-test")
 	model := anthropicTestModel(providerID)
+	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelHigh: "high"}
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
+		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
+	}
 	client := anthropicTestClient(t, providerID, model, server.URL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	stream := client.Stream(ctx, model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
 	for {
 		event := receiveEvent(t, stream)
+		if event.PartialMessage == nil || event.PartialMessage.ProviderThinkingLevel != "high" {
+			t.Fatalf("partial provider thinking level = %#v, want high", event.PartialMessage)
+		}
 		if event.Kind == sigma.EventKindToolCallDelta &&
 			event.PartialToolCall != nil &&
 			event.PartialToolCall.ArgumentsDelta != "" {
@@ -3090,6 +3327,9 @@ func TestCancellationAbortsStreamingRequest(t *testing.T) {
 	}
 	if got, want := final.StopReason, sigma.StopReasonAborted; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
+	}
+	if got, want := final.ProviderThinkingLevel, "high"; got != want {
+		t.Fatalf("provider thinking level = %q, want %q", got, want)
 	}
 	if got, want := final.Content[0].ThinkingText, "partial plan"; got != want {
 		t.Fatalf("partial thinking = %q, want %q", got, want)
@@ -3424,3 +3664,8 @@ data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input
 
 data: {"type":"message_stop"}
 `
+
+const (
+	midConversationEffortBetaForTest   = "mid-conversation-output-config-2026-07-01"
+	thinkingBindingControlsBetaForTest = "thinking-binding-controls-2026-08-01"
+)

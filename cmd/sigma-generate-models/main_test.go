@@ -91,7 +91,8 @@ func TestRenderTextModelsIncludesAnthropicFallbackPricing(t *testing.T) {
 			Provider: "anthropic",
 			API:      "anthropic-messages",
 			AnthropicMessagesCompat: &modeldata.AnthropicMessagesCompat{
-				AllowedFallbackModels: []string{"fallback"},
+				SupportsMidConversationEffort: "supported",
+				AllowedFallbackModels:         []string{"fallback"},
 			},
 		},
 		{
@@ -122,6 +123,7 @@ func TestRenderTextModelsIncludesAnthropicFallbackPricing(t *testing.T) {
 		"CacheWriteInputCostPerMillion: 6.25",
 		"InputTokensAbove: 200000",
 		`CostCurrency: "USD"`,
+		`SupportsMidConversationEffort: AnthropicCompatSupport("supported")`,
 	} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("generated fallback metadata omitted %q: %s", want, rendered)

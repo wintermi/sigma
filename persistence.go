@@ -66,7 +66,7 @@ func validateMessage(message Message, index int, toolCalls map[string]string) er
 	if message.Role != RoleTool && (message.ToolCallID != "" || message.ToolName != "" || len(message.AddedToolNames) > 0 || message.IsError) {
 		return invalidRequestError("message %d: tool result fields require role %q", index, RoleTool)
 	}
-	if message.Role != RoleAssistant && (message.Provider != "" || message.API != "" || message.Model != "" || message.StopReason != "") {
+	if message.Role != RoleAssistant && (message.Provider != "" || message.API != "" || message.Model != "" || message.StopReason != "" || message.ProviderThinkingLevel != "") {
 		return invalidRequestError("message %d: assistant metadata requires role %q", index, RoleAssistant)
 	}
 	if message.Role != RoleAssistant && message.Role != RoleTool && message.Usage != nil {

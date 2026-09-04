@@ -616,6 +616,7 @@ func writeAnthropicCompatField(b *bytes.Buffer, model modeldata.TextModel, model
 	writeStringField(b, "SupportsDisabledThinking", "AnthropicCompatSupport", compat.SupportsDisabledThinking)
 	writeStringField(b, "SupportsStrictTools", "AnthropicCompatSupport", compat.SupportsStrictTools)
 	writeStringField(b, "SupportsToolReferences", "AnthropicCompatSupport", compat.SupportsToolReferences)
+	writeStringField(b, "SupportsMidConversationEffort", "AnthropicCompatSupport", compat.SupportsMidConversationEffort)
 	writeStringField(b, "ThinkingFormat", "AnthropicThinkingFormat", compat.ThinkingFormat)
 	if len(compat.AllowedFallbackModels) > 0 {
 		b.WriteString("\t\t\tAllowedFallbackModels: []AnthropicFallbackModel{\n")

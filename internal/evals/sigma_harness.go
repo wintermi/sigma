@@ -317,12 +317,13 @@ func cloneMessages(messages []sigma.Message) []sigma.Message {
 
 func assistantMessage(model sigma.Model, final sigma.AssistantMessage) sigma.Message {
 	message := sigma.Message{
-		Role:       sigma.RoleAssistant,
-		Content:    make([]sigma.ContentBlock, len(final.Content)),
-		Provider:   final.Provider,
-		API:        model.API,
-		Model:      final.Model,
-		StopReason: final.StopReason,
+		Role:                  sigma.RoleAssistant,
+		Content:               make([]sigma.ContentBlock, len(final.Content)),
+		Provider:              final.Provider,
+		API:                   model.API,
+		Model:                 final.Model,
+		StopReason:            final.StopReason,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
 	}
 	if message.Provider == "" {
 		message.Provider = model.Provider

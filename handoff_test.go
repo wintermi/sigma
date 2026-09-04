@@ -17,11 +17,12 @@ func TestTransformRequestForModelPreservesSameModelThinking(t *testing.T) {
 	t.Parallel()
 
 	request := sigma.Request{Messages: []sigma.Message{{
-		Role:     sigma.RoleAssistant,
-		Provider: sigma.ProviderAnthropic,
-		API:      sigma.APIAnthropicMessages,
-		Model:    "claude-sonnet",
-		Content:  []sigma.ContentBlock{sigma.Thinking("compare options", "sig")},
+		Role:                  sigma.RoleAssistant,
+		Provider:              sigma.ProviderAnthropic,
+		API:                   sigma.APIAnthropicMessages,
+		Model:                 "claude-sonnet",
+		ProviderThinkingLevel: "high",
+		Content:               []sigma.ContentBlock{sigma.Thinking("compare options", "sig")},
 	}}}
 	target := sigma.Model{
 		ID:               "claude-sonnet",
@@ -41,6 +42,9 @@ func TestTransformRequestForModelPreservesSameModelThinking(t *testing.T) {
 	}
 	if got := result.Report.ConvertedThinkingBlocks; got != 0 {
 		t.Fatalf("converted thinking blocks = %d, want 0", got)
+	}
+	if got, want := result.Request.Messages[0].ProviderThinkingLevel, "high"; got != want {
+		t.Fatalf("provider thinking level = %q, want %q", got, want)
 	}
 }
 

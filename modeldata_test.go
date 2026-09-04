@@ -341,13 +341,15 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	if opus5.AnthropicMessagesCompat == nil ||
 		opus5.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
-		opus5.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
-		t.Fatalf("Claude Opus 5 compat = %#v, want adaptive thinking without temperature", opus5.AnthropicMessagesCompat)
+		opus5.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported ||
+		opus5.AnthropicMessagesCompat.SupportsMidConversationEffort != AnthropicCompatSupported {
+		t.Fatalf("Claude Opus 5 compat = %#v, want managed adaptive thinking without temperature", opus5.AnthropicMessagesCompat)
 	}
-	if got := opus5.AnthropicMessagesCompat.AllowedFallbackModels; len(got) != 1 ||
-		got[0].Model != "claude-opus-4-8" || got[0].InputCostPerMillion != 5 ||
-		got[0].OutputCostPerMillion != 25 || got[0].CostCurrency != "USD" {
-		t.Fatalf("Claude Opus 5 fallback metadata = %#v, want Opus 4.8 pricing", got)
+	if got := opus5.AnthropicMessagesCompat.AllowedFallbackModels; len(got) != 0 {
+		t.Fatalf("Claude Opus 5 fallback metadata = %#v, want no incompatible fallback", got)
+	}
+	if opus5.SupportsThinkingLevel(ThinkingLevelOff) {
+		t.Fatal("Claude Opus 5 unexpectedly supports thinking off")
 	}
 	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
 		if got, ok := opus5.ProviderThinkingLevel(level); !ok || got != want {

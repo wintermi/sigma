@@ -1202,12 +1202,13 @@ func assistantMessage(model sigma.Model, final sigma.AssistantMessage) sigma.Mes
 		modelID = model.ID
 	}
 	return sigma.Message{
-		Role:       sigma.RoleAssistant,
-		Content:    append([]sigma.ContentBlock(nil), final.Content...),
-		Provider:   provider,
-		API:        model.API,
-		Model:      modelID,
-		StopReason: final.StopReason,
+		Role:                  sigma.RoleAssistant,
+		Content:               append([]sigma.ContentBlock(nil), final.Content...),
+		Provider:              provider,
+		API:                   model.API,
+		Model:                 modelID,
+		StopReason:            final.StopReason,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
 	}
 }
 

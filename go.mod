@@ -1,3 +1,3 @@
 module github.com/wintermi/sigma
 
-go 1.26.7
+go 1.26.8

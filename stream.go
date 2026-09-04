@@ -207,8 +207,9 @@ func Collect(ctx context.Context, stream *Stream) (AssistantMessage, error) {
 }
 
 type partialAccumulator struct {
-	mu     sync.Mutex
-	blocks map[int]*partialBlock
+	mu                    sync.Mutex
+	blocks                map[int]*partialBlock
+	providerThinkingLevel string
 }
 
 type partialBlock struct {
@@ -231,6 +232,9 @@ func newPartialAccumulator() *partialAccumulator {
 func (a *partialAccumulator) apply(event Event) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if event.PartialMessage != nil && event.PartialMessage.ProviderThinkingLevel != "" {
+		a.providerThinkingLevel = event.PartialMessage.ProviderThinkingLevel
+	}
 
 	index := eventContentIndex(event)
 	switch event.Kind { //nolint:exhaustive
@@ -329,7 +333,7 @@ func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool)
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if len(a.blocks) == 0 {
+	if len(a.blocks) == 0 && a.providerThinkingLevel == "" {
 		return AssistantMessage{}
 	}
 	indexes := make([]int, 0, len(a.blocks))
@@ -338,7 +342,7 @@ func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool)
 			indexes = append(indexes, index)
 		}
 	}
-	if len(indexes) == 0 {
+	if len(indexes) == 0 && a.providerThinkingLevel == "" {
 		return AssistantMessage{}
 	}
 	sort.Ints(indexes)
@@ -346,7 +350,7 @@ func (a *partialAccumulator) snapshot(includeStarted bool, decodeArguments bool)
 	for _, index := range indexes {
 		content = append(content, a.blocks[index].contentBlock(decodeArguments))
 	}
-	return AssistantMessage{Content: content}
+	return AssistantMessage{Content: content, ProviderThinkingLevel: a.providerThinkingLevel}
 }
 
 func eventContentIndex(event Event) int {

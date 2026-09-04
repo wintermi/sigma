@@ -110,7 +110,7 @@ type streamParser struct {
 	messageStopped bool
 }
 
-func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, compat messagesCompat, tools []sigma.Tool) (sigma.AssistantMessage, error) {
+func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, compat messagesCompat, tools []sigma.Tool, providerThinkingLevel string) (sigma.AssistantMessage, error) {
 	parser := streamParser{
 		writer:       writer,
 		model:        model,
@@ -120,8 +120,9 @@ func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWr
 		thinking:     make(map[int]*streamblocks.Thinking),
 		toolCalls:    make(map[int]*streamblocks.ToolCall),
 		final: sigma.AssistantMessage{
-			Model:    model.ID,
-			Provider: model.Provider,
+			Model:                 model.ID,
+			Provider:              model.Provider,
+			ProviderThinkingLevel: providerThinkingLevel,
 		},
 	}
 	err := sse.Parse(ctx, r, func(event sse.Event) error {
@@ -355,7 +356,12 @@ func (p *streamParser) emitStart(ctx context.Context) error {
 		return nil
 	}
 	p.started = true
-	return p.writer.Emit(ctx, sigma.Event{Kind: sigma.EventKindStart})
+	return p.writer.Emit(ctx, sigma.Event{
+		Kind: sigma.EventKindStart,
+		PartialMessage: &sigma.AssistantMessage{
+			ProviderThinkingLevel: p.final.ProviderThinkingLevel,
+		},
+	})
 }
 
 func (p *streamParser) emitText(ctx context.Context, index int, delta string) error {

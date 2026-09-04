@@ -29,11 +29,16 @@ See [release notes](docs/release-notes-v0.8.0.md).
   image input, tools, low through maximum reasoning, million-token limits, and
   conservative peak-rate cost estimates. Existing direct V4 Flash and V4 Pro
   estimates now use the same documented peak-rate basis.
-- Direct Anthropic Claude Fable 5 and Opus 5 requests can now opt into
+- Direct Anthropic Claude Fable 5 requests can now opt into
   catalog-declared server-side refusal fallbacks through
   `AnthropicOptions.EnableRefusalFallbacks`. Defaults remain unchanged, while
   declared fallback responses report usage and estimated cost against the
   returned model's generated pricing.
+- Direct Anthropic Claude Opus 5 now preserves the exact provider-native
+  thinking effort on partial and terminal assistant messages and replays it
+  for matching prior turns. Omitted reasoning defaults to `high`; explicit
+  thinking off is rejected locally, and other Anthropic-compatible routes
+  remain unchanged.
 - `WithToolChoice` now provides provider-neutral automatic or disabled tool
   selection across built-in text providers while retaining provider-specific
   controls for required and named-tool selection.

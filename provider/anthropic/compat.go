@@ -26,17 +26,18 @@ type MessagesCompat struct {
 }
 
 type messagesCompat struct {
-	eagerToolInputStreaming  bool
-	longCacheRetention       bool
-	sessionAffinityHeaders   bool
-	cacheControlOnTools      bool
-	adaptiveThinking         bool
-	emptyThinkingSignature   bool
-	supportsTemperature      bool
-	supportsDisabledThinking bool
-	supportsStrictTools      bool
-	supportsToolReferences   bool
-	thinkingFormat           sigma.AnthropicThinkingFormat
+	eagerToolInputStreaming       bool
+	longCacheRetention            bool
+	sessionAffinityHeaders        bool
+	cacheControlOnTools           bool
+	adaptiveThinking              bool
+	emptyThinkingSignature        bool
+	supportsTemperature           bool
+	supportsDisabledThinking      bool
+	supportsStrictTools           bool
+	supportsToolReferences        bool
+	supportsMidConversationEffort bool
+	thinkingFormat                sigma.AnthropicThinkingFormat
 	// claudeCodeIdentity is request-scoped: it is set when the resolved
 	// credential is an Anthropic OAuth token, which Anthropic only accepts
 	// from requests that identify as Claude Code.
@@ -141,6 +142,9 @@ func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMe
 	}
 	if value, ok := anthropicCompatBool(override.SupportsToolReferences); ok {
 		compat.supportsToolReferences = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsMidConversationEffort); ok {
+		compat.supportsMidConversationEffort = value
 	}
 	if override.ThinkingFormat != "" {
 		compat.thinkingFormat = override.ThinkingFormat

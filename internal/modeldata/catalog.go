@@ -161,6 +161,7 @@ type AnthropicMessagesCompat struct {
 	SupportsDisabledThinking        string   `json:"supportsDisabledThinking,omitempty"`
 	SupportsStrictTools             string   `json:"supportsStrictTools,omitempty"`
 	SupportsToolReferences          string   `json:"supportsToolReferences,omitempty"`
+	SupportsMidConversationEffort   string   `json:"supportsMidConversationEffort,omitempty"`
 	ThinkingFormat                  string   `json:"thinkingFormat,omitempty"`
 	AllowedFallbackModels           []string `json:"allowedFallbackModels,omitempty"`
 }
