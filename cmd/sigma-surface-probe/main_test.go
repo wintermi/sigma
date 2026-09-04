@@ -1690,6 +1690,81 @@ func TestGoogleImageProbeRequiresBinaryImage(t *testing.T) {
 	}
 }
 
+func TestImageProbeRetriesMissingOutput(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxImageProvider(
+		sigmatest.ImageScript{Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageText("I will create an image.")}}},
+		sigmatest.ImageScript{Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageOutputData("image/png", "aW1hZ2U=")}}},
+	)
+	model := sigmatest.ImageModel()
+	route := imageRouteSpec{
+		Name:     "sigmatest",
+		Provider: model.Provider,
+		RegisterProvider: func(registry *sigma.Registry, _ imageRouteSpec) error {
+			return sigmatest.RegisterImages(registry, provider, model)
+		},
+		Model: func(_ imageRouteSpec, _ string) sigma.ImageModel { return model },
+	}
+	testCase := imageProbeCase{
+		Name:         "generate",
+		ModelID:      string(model.ID),
+		Request:      sigma.ImageRequest{Prompt: "Create an icon.", Size: string(sigma.ImageSize1024x1024), Count: 1},
+		RequireImage: true,
+	}
+
+	result := runImageCaseWithTimeout(context.Background(), time.Second, route, testCase, routeCredential{})
+	if result.Outcome != "ok" {
+		t.Fatalf("result = %+v, want recovered image success", result)
+	}
+	if got, want := len(result.FailedAttempts), 1; got != want {
+		t.Fatalf("failed attempts = %#v, want %d missing-output attempt", result.FailedAttempts, want)
+	}
+	if result.OriginalError != "image response did not include a non-empty base64 or URL image" {
+		t.Fatalf("original error = %q, want missing-output failure", result.OriginalError)
+	}
+	requests := provider.Requests()
+	if got, want := len(requests), 2; got != want {
+		t.Fatalf("requests = %d, want %d", got, want)
+	}
+	if !reflect.DeepEqual(requests[0].Request, requests[1].Request) {
+		t.Fatalf("retry request = %#v, want identical to %#v", requests[1].Request, requests[0].Request)
+	}
+}
+
+func TestImageProbeReportsPersistentMissingOutput(t *testing.T) {
+	t.Parallel()
+
+	textOnly := sigmatest.ImageScript{Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageText("I cannot create an image.")}}}
+	provider := sigmatest.NewFauxImageProvider(textOnly, textOnly, textOnly)
+	model := sigmatest.ImageModel()
+	route := imageRouteSpec{
+		Name:     "sigmatest",
+		Provider: model.Provider,
+		RegisterProvider: func(registry *sigma.Registry, _ imageRouteSpec) error {
+			return sigmatest.RegisterImages(registry, provider, model)
+		},
+		Model: func(_ imageRouteSpec, _ string) sigma.ImageModel { return model },
+	}
+	testCase := imageProbeCase{
+		Name:         "generate",
+		ModelID:      string(model.ID),
+		Request:      sigma.ImageRequest{Prompt: "Create an icon.", Count: 1},
+		RequireImage: true,
+	}
+
+	result := runImageCaseWithTimeout(context.Background(), time.Second, route, testCase, routeCredential{})
+	if result.Outcome != "no_working_attempt" || result.Error != errImageProbeMissingOutput.Error() {
+		t.Fatalf("result = %+v, want persistent missing-output failure", result)
+	}
+	if got, want := len(result.FailedAttempts), maxTransientRetries; got != want {
+		t.Fatalf("failed attempts = %#v, want %d retried failures", result.FailedAttempts, want)
+	}
+	if got, want := len(provider.Requests()), maxTransientRetries+1; got != want {
+		t.Fatalf("requests = %d, want %d", got, want)
+	}
+}
+
 func TestGoogleVertexImageProbeRedactsCredentials(t *testing.T) {
 	t.Parallel()
 

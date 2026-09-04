@@ -306,9 +306,11 @@ const (
 	defaultOpenAIImageVariationModel     = "dall-e-2"
 	defaultOpenAIResponsesToolProbeModel = "gpt-5.5"
 	defaultCaseTimeout                   = time.Minute
-	maxTransportRetries                  = 2
-	transportRetryDelay                  = 100 * time.Millisecond
+	maxTransientRetries                  = 2
+	transientRetryDelay                  = 100 * time.Millisecond
 )
+
+var errImageProbeMissingOutput = errors.New("image response did not include a non-empty base64 or URL image")
 
 func main() {
 	cfg := parseConfig()
@@ -1079,7 +1081,8 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 	}
 	if testCase.RequireImage && !hasGeneratedImage(images) {
 		result.Outcome = "no_working_attempt"
-		result.Error = "image response did not include a non-empty base64 or URL image"
+		result.Error = errImageProbeMissingOutput.Error()
+		result.cause = errImageProbeMissingOutput
 		return result
 	}
 	if testCase.RequirePartial && !partialSeen {
@@ -1094,12 +1097,42 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 
 func runImageCaseWithTimeout(ctx context.Context, timeout time.Duration, route imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
 	if timeout <= 0 {
-		return runImageCase(ctx, route, testCase, credential)
+		return runImageCaseWithRetries(ctx, route, testCase, credential)
 	}
 
 	caseCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	return runImageCase(caseCtx, route, testCase, credential)
+	return runImageCaseWithRetries(caseCtx, route, testCase, credential)
+}
+
+func runImageCaseWithRetries(ctx context.Context, route imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
+	failed := make([]failedAttempt, 0, maxTransientRetries)
+	for retry := 0; ; retry++ {
+		result := runImageCase(ctx, route, testCase, credential)
+		if result.Outcome == "ok" {
+			if len(failed) > 0 {
+				result.OriginalError = failed[0].Error
+				result.FailedAttempts = failed
+			}
+			return result
+		}
+		if retry >= maxTransientRetries || !errors.Is(result.cause, errImageProbeMissingOutput) || ctx.Err() != nil {
+			if len(failed) > 0 {
+				result.OriginalError = failed[0].Error
+				result.FailedAttempts = failed
+			}
+			return result
+		}
+		failed = append(failed, failedAttempt{
+			Attempt: transientRetryAttempt(testCase.Name, retry),
+			Error:   result.Error,
+		})
+		if !waitForTransientRetry(ctx, transientRetryDelay*time.Duration(1<<retry)) {
+			result.OriginalError = failed[0].Error
+			result.FailedAttempts = failed
+			return result
+		}
+	}
 }
 
 func runResponsesImageToolCase(ctx context.Context, imageRoute imageRouteSpec, testCase imageProbeCase, credential routeCredential) probeResult {
@@ -1796,7 +1829,7 @@ func runCaseWithTimeout(ctx context.Context, timeout time.Duration, route routeS
 }
 
 func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
-	failed := make([]failedAttempt, 0, maxTransportRetries)
+	failed := make([]failedAttempt, 0, maxTransientRetries)
 	for retry := 0; ; retry++ {
 		result := runCase(ctx, route, client, model, testCase, credential, attempt)
 		if result.Outcome == "ok" {
@@ -1806,7 +1839,7 @@ func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *s
 			}
 			return result
 		}
-		if retry >= maxTransportRetries || !isRetryableTransportFailure(result.cause) || ctx.Err() != nil {
+		if retry >= maxTransientRetries || !isRetryableTransportFailure(result.cause) || ctx.Err() != nil {
 			if len(failed) > 0 {
 				result.OriginalError = failed[0].Error
 				result.FailedAttempts = failed
@@ -1814,10 +1847,10 @@ func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *s
 			return result
 		}
 		failed = append(failed, failedAttempt{
-			Attempt: transportRetryAttempt(attempt, retry),
+			Attempt: transientRetryAttempt(attempt, retry),
 			Error:   result.Error,
 		})
-		if !waitForTransportRetry(ctx, transportRetryDelay*time.Duration(1<<retry)) {
+		if !waitForTransientRetry(ctx, transientRetryDelay*time.Duration(1<<retry)) {
 			result.OriginalError = failed[0].Error
 			result.FailedAttempts = failed
 			return result
@@ -1825,14 +1858,14 @@ func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *s
 	}
 }
 
-func transportRetryAttempt(attempt string, retry int) string {
+func transientRetryAttempt(attempt string, retry int) string {
 	if retry == 0 {
 		return attempt
 	}
 	return fmt.Sprintf("%s_retry_%d", attempt, retry)
 }
 
-func waitForTransportRetry(ctx context.Context, delay time.Duration) bool {
+func waitForTransientRetry(ctx context.Context, delay time.Duration) bool {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	select {
