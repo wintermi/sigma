@@ -87,8 +87,10 @@ type probeResult struct {
 	Error                      string          `json:"error,omitempty"`
 	OriginalError              string          `json:"originalError,omitempty"`
 	FailedAttempts             []failedAttempt `json:"failedAttempts,omitempty"`
+	SuccessfulControls         []string        `json:"successfulControls,omitempty"`
 	Hint                       string          `json:"hint,omitempty"`
 	AvailabilityOKAfterFailure bool            `json:"availabilityOKAfterFailure,omitempty"`
+	cause                      error
 }
 
 type failedAttempt struct {
@@ -116,6 +118,7 @@ type summary struct {
 	SigmaRequestShape          int `json:"sigmaRequestShape"`
 	ProviderCapabilityLimit    int `json:"providerCapabilityLimit"`
 	UpstreamAvailability       int `json:"upstreamAvailability"`
+	Inconclusive               int `json:"inconclusive"`
 	NoWorkingAttempt           int `json:"noWorkingAttempt"`
 	FixedByRepairVariant       int `json:"fixedByRepairVariant"`
 	AvailabilityOKAfterFailure int `json:"availabilityOKAfterFailure"`
@@ -303,6 +306,8 @@ const (
 	defaultOpenAIImageVariationModel     = "dall-e-2"
 	defaultOpenAIResponsesToolProbeModel = "gpt-5.5"
 	defaultCaseTimeout                   = time.Minute
+	maxTransportRetries                  = 2
+	transportRetryDelay                  = 100 * time.Millisecond
 )
 
 func main() {
@@ -659,6 +664,101 @@ func parseModelIDs(body []byte) ([]string, error) {
 	return ids, nil
 }
 
+type fireworksModelCapabilities struct {
+	State              string `json:"state"`
+	ContextLength      int    `json:"contextLength"`
+	SupportsImageInput bool   `json:"supportsImageInput"`
+	SupportsTools      bool   `json:"supportsTools"`
+}
+
+func resolveProbeModel(ctx context.Context, route routeSpec, modelID string, credential routeCredential) sigma.Model {
+	model := route.Model(route, modelID)
+	if route.Name != "fireworks-openai" || !isFireworksModelResource(modelID) {
+		return model
+	}
+
+	capabilities, err := fetchFireworksModelCapabilities(ctx, route.BaseURL, modelID, credential.apiKey)
+	if err != nil {
+		if registered, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID)); ok {
+			registered = annotateCapabilityMetadata(registered, "registry", "")
+			registered.ProviderMetadata["baseURL"] = route.BaseURL
+			return registered
+		}
+		model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
+		model.SupportsTools = false
+		model.SupportsThinking = false
+		model.ThinkingLevels = nil
+		return annotateCapabilityMetadata(model, "unavailable", err.Error())
+	}
+
+	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
+	if capabilities.SupportsImageInput {
+		model.SupportedInputs = append(model.SupportedInputs, sigma.ContentBlockImage)
+	}
+	model.SupportsTools = capabilities.SupportsTools
+	if capabilities.ContextLength > 0 {
+		model.ContextWindow = capabilities.ContextLength
+	}
+	model = annotateCapabilityMetadata(model, "fireworks_get_model", "")
+	model.ProviderMetadata["fireworksModelState"] = capabilities.State
+	return model
+}
+
+func fetchFireworksModelCapabilities(ctx context.Context, inferenceBaseURL string, modelID string, apiKey string) (fireworksModelCapabilities, error) {
+	baseURL := strings.TrimRight(inferenceBaseURL, "/")
+	baseURL = strings.TrimSuffix(baseURL, "/inference/v1") + "/v1"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/"+modelID, nil)
+	if err != nil {
+		return fireworksModelCapabilities{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fireworksModelCapabilities{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fireworksModelCapabilities{}, fmt.Errorf("GET Fireworks model metadata returned HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var capabilities fireworksModelCapabilities
+	if err := json.NewDecoder(resp.Body).Decode(&capabilities); err != nil {
+		return fireworksModelCapabilities{}, err
+	}
+	return capabilities, nil
+}
+
+func isFireworksModelResource(modelID string) bool {
+	parts := strings.Split(modelID, "/")
+	return len(parts) == 4 && parts[0] == "accounts" && parts[1] != "" && parts[2] == "models" && parts[3] != ""
+}
+
+func annotateCapabilityMetadata(model sigma.Model, source string, metadataErr string) sigma.Model {
+	metadata := make(map[string]any, len(model.ProviderMetadata)+2)
+	for key, value := range model.ProviderMetadata {
+		metadata[key] = value
+	}
+	metadata["probeCapabilitySource"] = source
+	if metadataErr != "" {
+		metadata["probeCapabilityError"] = metadataErr
+	}
+	model.ProviderMetadata = metadata
+	return model
+}
+
+func capabilityMetadataUnavailable(model sigma.Model) bool {
+	source, _ := model.ProviderMetadata["probeCapabilitySource"].(string)
+	return source == "unavailable"
+}
+
+func unavailableCapabilityMetadataState(model sigma.Model) (string, bool) {
+	source, _ := model.ProviderMetadata["probeCapabilitySource"].(string)
+	state, _ := model.ProviderMetadata["fireworksModelState"].(string)
+	return state, source == "fireworks_get_model" && state != "" && !strings.EqualFold(state, "READY")
+}
+
 func probeModelEach(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config, emit func(probeResult)) {
 	if !cfg.includeUnavailable && knownUnavailable(route.Name, modelID) {
 		emit(probeResult{
@@ -671,7 +771,30 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		return
 	}
 
-	model := route.Model(route, modelID)
+	model := resolveProbeModel(ctx, route, modelID, credential)
+	if capabilityMetadataUnavailable(model) {
+		errMessage, _ := model.ProviderMetadata["probeCapabilityError"].(string)
+		emit(probeResult{
+			Route:   route.Name,
+			Model:   modelID,
+			Case:    "optional_capabilities",
+			Attempt: "model_metadata",
+			Outcome: outcomeSkipped,
+			Error:   errMessage,
+			Hint:    "capability_metadata_unavailable",
+		})
+	}
+	if state, unavailable := unavailableCapabilityMetadataState(model); unavailable && !cfg.includeUnavailable {
+		emit(probeResult{
+			Route:   route.Name,
+			Model:   modelID,
+			Case:    "all",
+			Attempt: "skip_model_state",
+			Outcome: outcomeSkipped,
+			Error:   "provider model state is " + state,
+		})
+		return
+	}
 	if cfg.structuredOutput && model.API != sigma.APIOpenAICompletions {
 		emit(probeResult{
 			Route:   route.Name,
@@ -683,7 +806,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		return
 	}
 
-	client := probeClient(route, modelID)
+	client := probeClient(route, model)
 	cases := route.Cases(route, model)
 	if cfg.structuredOutput {
 		cases = structuredOutputProbeCases(cases)
@@ -705,20 +828,28 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		repaired := result
 		repairedByVariant := false
 		availability := probeResult{}
-		failedAttempts := []failedAttempt{{Attempt: result.Attempt, Error: result.Error}}
+		failedAttempts := append([]failedAttempt(nil), result.FailedAttempts...)
+		failedAttempts = append(failedAttempts, failedAttempt{Attempt: result.Attempt, Error: result.Error})
+		successfulControls := make([]string, 0)
 		for _, variant := range repairVariants(route, testCase) {
 			attempt := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, variant, credential, variant.Name)
 			if attempt.Outcome == "ok" {
+				transportFailures := append([]failedAttempt(nil), attempt.FailedAttempts...)
 				attempt.Case = testCase.Name
 				attempt.OriginalError = result.Error
-				attempt.FailedAttempts = append([]failedAttempt(nil), failedAttempts...)
+				attempt.FailedAttempts = append(append([]failedAttempt(nil), failedAttempts...), transportFailures...)
 				attempt.Hint = repairHint(testCase.Name, attempt.Attempt)
 				if attempt.Attempt == "minimal_basic_text" {
 					attempt.AvailabilityOKAfterFailure = true
 					availability = attempt
 					continue
 				}
+				if !repairPreservesCapability(testCase.Name, attempt.Attempt) {
+					successfulControls = append(successfulControls, attempt.Attempt)
+					continue
+				}
 				attempt.Outcome = "fixed_by_repair_variant"
+				attempt.SuccessfulControls = append([]string(nil), successfulControls...)
 				repaired = attempt
 				repairedByVariant = true
 				break
@@ -733,6 +864,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			repaired.FailedAttempts = append([]failedAttempt(nil), availability.FailedAttempts...)
 			repaired.Hint = availability.Hint
 		}
+		repaired.SuccessfulControls = append([]string(nil), successfulControls...)
 		repaired = annotateStructuredOutputResult(cfg, repaired)
 		emit(repaired)
 	}
@@ -980,7 +1112,7 @@ func runResponsesImageToolCase(ctx context.Context, imageRoute imageRouteSpec, t
 		Case:    testCase.Name,
 		Attempt: testCase.Name,
 	}
-	client := probeClient(textRoute, string(model.ID))
+	client := probeClient(textRoute, model)
 	options := append(authOptions(textRoute, credential), testCase.ResponsesOptions...)
 	final, err := client.Complete(ctx, model, testCase.ResponsesRequest, options...)
 	if err != nil {
@@ -1078,7 +1210,7 @@ func imageProbeClient(route imageRouteSpec, modelID sigma.ModelID) *sigma.Client
 }
 
 func generateHandoffSource(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config) (handoffSource, probeResult) {
-	model := route.Model(route, modelID)
+	model := resolveProbeModel(ctx, route, modelID, credential)
 	result := probeResult{
 		Route:   route.Name,
 		Model:   string(model.ID),
@@ -1091,7 +1223,7 @@ func generateHandoffSource(ctx context.Context, route routeSpec, modelID string,
 		return handoffSource{}, result
 	}
 
-	client := probeClient(route, modelID)
+	client := probeClient(route, model)
 	user := sigma.UserText("Use the double_number tool with value 21, then wait for the tool result.")
 	req := sigma.Request{
 		SystemPrompt: "You are a handoff probe source. Use tools when requested.",
@@ -1144,7 +1276,7 @@ func generateHandoffSource(ctx context.Context, route routeSpec, modelID string,
 }
 
 func runHandoffTarget(ctx context.Context, source handoffSource, target handoffSource) probeResult {
-	client := probeClient(target.Route, string(target.Model.ID))
+	client := probeClient(target.Route, target.Model)
 	messages := append([]sigma.Message(nil), source.Messages...)
 	messages = append(messages, sigma.UserText("Great, thanks. Reply with exactly: Hello, handoff successful."))
 	result := probeResult{
@@ -1212,10 +1344,10 @@ func assistantMessage(model sigma.Model, final sigma.AssistantMessage) sigma.Mes
 	}
 }
 
-func probeClient(route routeSpec, modelID string) *sigma.Client {
+func probeClient(route routeSpec, model sigma.Model) *sigma.Client {
 	registry := sigma.NewRegistry()
 	_ = route.RegisterProvider(registry, route)
-	_ = registry.RegisterModel(route.Model(route, modelID))
+	_ = registry.RegisterModel(model)
 	return sigma.NewClient(sigma.WithRegistry(registry))
 }
 
@@ -1655,12 +1787,60 @@ func discoveredFireworksAnthropicModel(route routeSpec, id string) sigma.Model {
 
 func runCaseWithTimeout(ctx context.Context, timeout time.Duration, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
 	if timeout <= 0 {
-		return runCase(ctx, route, client, model, testCase, credential, attempt)
+		return runCaseWithTransportRetries(ctx, route, client, model, testCase, credential, attempt)
 	}
 
 	attemptCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	return runCase(attemptCtx, route, client, model, testCase, credential, attempt)
+	return runCaseWithTransportRetries(attemptCtx, route, client, model, testCase, credential, attempt)
+}
+
+func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
+	failed := make([]failedAttempt, 0, maxTransportRetries)
+	for retry := 0; ; retry++ {
+		result := runCase(ctx, route, client, model, testCase, credential, attempt)
+		if result.Outcome == "ok" {
+			if len(failed) > 0 {
+				result.OriginalError = failed[0].Error
+				result.FailedAttempts = failed
+			}
+			return result
+		}
+		if retry >= maxTransportRetries || !isRetryableTransportFailure(result.cause) || ctx.Err() != nil {
+			if len(failed) > 0 {
+				result.OriginalError = failed[0].Error
+				result.FailedAttempts = failed
+			}
+			return result
+		}
+		failed = append(failed, failedAttempt{
+			Attempt: transportRetryAttempt(attempt, retry),
+			Error:   result.Error,
+		})
+		if !waitForTransportRetry(ctx, transportRetryDelay*time.Duration(1<<retry)) {
+			result.OriginalError = failed[0].Error
+			result.FailedAttempts = failed
+			return result
+		}
+	}
+}
+
+func transportRetryAttempt(attempt string, retry int) string {
+	if retry == 0 {
+		return attempt
+	}
+	return fmt.Sprintf("%s_retry_%d", attempt, retry)
+}
+
+func waitForTransportRetry(ctx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func runCase(ctx context.Context, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
@@ -1682,6 +1862,7 @@ func runCase(ctx context.Context, route routeSpec, client *sigma.Client, model s
 		Attempt: attempt,
 		Outcome: classifyFailure(route, model, err),
 		Error:   err.Error(),
+		cause:   err,
 	}
 }
 
@@ -1973,18 +2154,28 @@ func openAICompatibleProbeCases(route routeSpec, model sigma.Model) []probeCase 
 			sigma.WithCacheRetention(sigma.CacheRetentionEphemeral),
 			sigma.WithMaxTokens(128),
 		}),
-		singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}),
-		singleTurnCase("thinking_string_none", "raw thinking string none", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": "none"})),
-		singleTurnCase("thinking_object_disabled", "raw thinking object disabled", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": map[string]any{jsonTypeKey: "disabled"}})),
-		singleTurnCase("thinking_bool_false", "raw thinking false", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": false})),
-		singleTurnCase("enable_thinking_false", "raw enable_thinking false", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"enable_thinking": false})),
-		singleTurnCase("reasoning_effort_low", "raw reasoning effort low", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "low"})),
-		singleTurnCase("reasoning_effort_medium", "raw reasoning effort medium", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "medium"})),
-		singleTurnCase("reasoning_effort_high", "raw reasoning effort high", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "high"})),
-		toolCase("tool_auto_file_read", "auto read-file tool", "auto"),
-		toolCase("tool_required_file_read", "required read-file tool", "required"),
-		toolCase("strict_tool_required_write", "required strict write-file tool", "required"),
-		toolCase("three_turn_file_update", "multi-turn file update", "auto"),
+	}
+	if model.SupportsImages() {
+		cases = append(cases, singleTurnCase("image_input", "text plus image input", imageRequest(), []sigma.Option{sigma.WithMaxTokens(512)}))
+	}
+	if model.SupportsReasoning() {
+		cases = append(cases,
+			singleTurnCase("thinking_string_none", "raw thinking string none", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": "none"})),
+			singleTurnCase("thinking_object_disabled", "raw thinking object disabled", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": map[string]any{jsonTypeKey: "disabled"}})),
+			singleTurnCase("thinking_bool_false", "raw thinking false", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"thinking": false})),
+			singleTurnCase("enable_thinking_false", "raw enable_thinking false", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"enable_thinking": false})),
+			singleTurnCase("reasoning_effort_low", "raw reasoning effort low", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "low"})),
+			singleTurnCase("reasoning_effort_medium", "raw reasoning effort medium", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "medium"})),
+			singleTurnCase("reasoning_effort_high", "raw reasoning effort high", basicRequest("Reply with exactly: 5."), rawBodyOptions(route, map[string]any{"reasoning_effort": "high"})),
+		)
+	}
+	if model.SupportsTools {
+		cases = append(cases,
+			toolCase("tool_auto_file_read", "auto read-file tool", "auto"),
+			toolCase("tool_required_file_read", "required read-file tool", "required"),
+			toolCase("strict_tool_required_write", "required strict write-file tool", "required"),
+			toolCase("three_turn_file_update", "multi-turn file update", "auto"),
+		)
 	}
 	if route.Provider != sigma.ProviderFireworks && !isOpenCodeGoReasoningEffortKimi(model) && !modelUnsupportedThinkingOff(model) {
 		return cases
@@ -2200,7 +2391,6 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 		variants = append(variants,
 			singleTurnCase("image_more_tokens", "image with larger output cap", imageRequest(), []sigma.Option{sigma.WithMaxTokens(2048)}),
 			singleTurnCase("image_url_fallback", "same image task with an HTTPS image URL", imageURLRequest(), []sigma.Option{sigma.WithMaxTokens(512)}),
-			singleTurnCase("text_only_fallback", "same task without image input", basicRequest("Answer with one short colour word: red."), []sigma.Option{sigma.WithMaxTokens(64)}),
 		)
 	case "thinking_string_none", "thinking_bool_false", "thinking_object_disabled", "enable_thinking_false":
 		variants = append(variants,
@@ -2244,6 +2434,29 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 		)
 	}
 	return uniqueCases(variants)
+}
+
+func repairPreservesCapability(caseName string, attempt string) bool {
+	switch caseName {
+	case "basic_text":
+		return attempt == "basic_text_more_tokens"
+	case "image_input":
+		return attempt == "image_more_tokens" || attempt == "image_url_fallback"
+	case "thinking_string_none", "thinking_bool_false", "thinking_object_disabled", "enable_thinking_false":
+		return attempt == "thinking_object_disabled_repair"
+	case "reasoning_effort_low", "reasoning_effort_medium", "reasoning_effort_high":
+		return attempt == "typed_"+caseName
+	case "json_schema":
+		return attempt == "json_schema_more_tokens"
+	case "logprobs":
+		return attempt == "logprobs_more_tokens"
+	case "tool_auto_file_read":
+		return attempt == "tool_auto_more_turns" || attempt == "three_turn_more_tokens"
+	case "three_turn_file_update":
+		return attempt == "three_turn_more_tokens"
+	default:
+		return false
+	}
 }
 
 func rawBodyOptions(route routeSpec, body map[string]any) []sigma.Option {
@@ -2336,10 +2549,16 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		return "upstream_availability"
 	}
 	message := strings.ToLower(err.Error())
+	statusCode := providerStatusCode(err)
 	switch {
 	case strings.Contains(message, "image") && strings.Contains(message, "support"):
 		return "provider_capability_limit"
-	case strings.Contains(message, "free promotion has ended"),
+	case statusCode >= http.StatusInternalServerError && statusCode <= 599,
+		strings.Contains(message, "connection refused"),
+		strings.Contains(message, "connection reset"),
+		strings.Contains(message, "upstream connect error"),
+		strings.Contains(message, "disconnect/reset before headers"),
+		strings.Contains(message, "free promotion has ended"),
 		strings.Contains(message, "model_not_found"),
 		strings.Contains(message, "path not found"),
 		strings.Contains(message, "status=404"),
@@ -2358,8 +2577,37 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		strings.Contains(message, "integer below minimum"):
 		return "sigma_request_shape"
 	default:
-		return "no_working_attempt"
+		return "inconclusive"
 	}
+}
+
+func isRetryableTransportFailure(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	if statusCode := providerStatusCode(err); statusCode >= http.StatusInternalServerError && statusCode <= 599 {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "connection refused") ||
+		strings.Contains(message, "connection reset") ||
+		strings.Contains(message, "upstream connect error") ||
+		strings.Contains(message, "disconnect/reset before headers")
+}
+
+func providerStatusCode(err error) int {
+	var providerErr *sigma.ProviderError
+	if errors.As(err, &providerErr) {
+		return providerErr.StatusCode
+	}
+	message := strings.ToLower(err.Error())
+	index := strings.Index(message, "status=")
+	if index < 0 {
+		return 0
+	}
+	var statusCode int
+	_, _ = fmt.Sscanf(message[index:], "status=%d", &statusCode)
+	return statusCode
 }
 
 func classifyImageFailure(route imageRouteSpec, model sigma.ImageModel, err error) string {
@@ -2407,9 +2655,7 @@ func repairHint(caseName string, attempt string) string {
 	case attempt == "minimal_basic_text":
 		return "minimal_text_available_after_failure"
 	case caseName == "image_input" && attempt == "image_url_fallback":
-		return "base64_image_rejected_url_image_ok"
-	case caseName == "image_input" && attempt == "text_only_fallback":
-		return "image_input_rejected_text_only_ok"
+		return "base64_image_failed_url_image_ok"
 	case caseName == "image_input" && attempt == "image_more_tokens":
 		return "image_input_needs_larger_output_budget"
 	case strings.HasPrefix(caseName, "thinking_") && attempt == "thinking_object_disabled_repair":
@@ -2418,25 +2664,11 @@ func repairHint(caseName string, attempt string) string {
 		return "use_thinking_object_disabled"
 	case strings.HasPrefix(caseName, "reasoning_effort_") && strings.HasPrefix(attempt, "typed_reasoning_effort_"):
 		return "use_typed_reasoning_effort_option"
-	case strings.HasPrefix(caseName, "reasoning_effort_") && attempt == "no_reasoning_control":
-		return "omit_reasoning_control"
-	case caseName == "cache_ephemeral" && strings.HasPrefix(attempt, "cache_none"):
-		return "cache_marker_rejected"
-	case caseName == "json_schema" && attempt == "json_object_fallback":
-		return "json_schema_rejected_json_object_ok"
-	case caseName == "json_schema" && attempt == "manual_json":
-		return "structured_output_rejected_prompt_json_ok"
 	case caseName == "json_schema" && attempt == "json_schema_more_tokens":
 		return "json_schema_needs_larger_output_budget"
 	case caseName == "logprobs" && attempt == "logprobs_more_tokens":
 		return "logprobs_needs_larger_output_budget"
-	case caseName == "logprobs" && attempt == "no_logprobs":
-		return "logprobs_rejected"
-	case caseName == "logprobs" && attempt == "no_logprobs_more_tokens":
-		return "logprobs_output_budget_interaction"
 	case strings.HasPrefix(caseName, "tool_") && attempt == "tool_auto_more_turns":
-		return "auto_tool_choice_with_larger_budget_ok"
-	case caseName == "strict_tool_required_write" && attempt == "tool_auto_more_turns":
 		return "auto_tool_choice_with_larger_budget_ok"
 	case caseName == "three_turn_file_update" && attempt == "three_turn_more_tokens":
 		return "multi_turn_tool_flow_needs_larger_output_budget"
@@ -2451,11 +2683,16 @@ func recommendationFor(result probeResult) (probeRecommendation, bool) {
 	if result.Hint == "" {
 		return probeRecommendation{}, false
 	}
-	evidence := fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt)
-	if result.AvailabilityOKAfterFailure {
+	var evidence string
+	switch {
+	case result.AvailabilityOKAfterFailure:
 		evidence = fmt.Sprintf("%s failed; minimal text remained available", result.Case)
-	} else if result.Outcome == "ok" {
+	case result.Outcome == "ok":
 		evidence = fmt.Sprintf("%s supported by %s", result.Case, result.Attempt)
+	case result.Outcome == "fixed_by_repair_variant":
+		evidence = fmt.Sprintf("%s repaired by %s", result.Case, result.Attempt)
+	default:
+		return probeRecommendation{}, false
 	}
 	return probeRecommendation{
 		Route:    result.Route,
@@ -2482,6 +2719,8 @@ func (s *summary) add(result probeResult) {
 		s.ProviderCapabilityLimit++
 	case "upstream_availability":
 		s.UpstreamAvailability++
+	case "inconclusive":
+		s.Inconclusive++
 	case "fixed_by_repair_variant":
 		s.FixedByRepairVariant++
 	default:

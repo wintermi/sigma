@@ -32,7 +32,8 @@ Common flags:
 
 Each primary case and repair attempt receives its own `-case-timeout`, bounded
 by the overall `-timeout`. Set `-case-timeout=0` to use only the overall
-deadline.
+deadline. Retryable HTTP 5xx and connection-reset failures are retried twice
+with the identical request before they are reported as upstream availability.
 
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.
@@ -105,6 +106,13 @@ Use `accounts/fireworks/models/...` IDs with `fireworks-anthropic`; model IDs
 that Fireworks also serves through Chat Completions can be probed with
 `fireworks-openai`. `accounts/fireworks/routers/...` IDs are for
 `fireworks-openai`.
+
+For `accounts/.../models/...` IDs, the Fireworks OpenAI route reads the model's
+current state, `supportsImageInput`, `supportsTools`, and context-length
+metadata before choosing optional cases. Non-ready models are skipped. If that
+lookup fails and no generated registry entry is available, the probe uses
+text-only conservative defaults and emits an `optional_capabilities` skip
+instead of assuming support.
 
 Probe direct Moonshot K2.7 routes:
 
@@ -353,10 +361,11 @@ Each completed case is written immediately:
 ```
 
 When `-repair` is enabled, a failed original case may be followed by a working
-repair variant:
+repair variant. A variant counts as a repair only when it preserves the
+capability under test:
 
 ```json
-{"route":"fireworks-openai","model":"accounts/fireworks/routers/kimi-k2p6-turbo","case":"image_input","attempt":"image_url_fallback","outcome":"fixed_by_repair_variant","originalError":"provider rejected base64 image input","failedAttempts":[{"attempt":"image_input","error":"provider rejected base64 image input"}],"hint":"base64_image_rejected_url_image_ok"}
+{"route":"fireworks-openai","model":"accounts/fireworks/routers/kimi-k2p6-turbo","case":"image_input","attempt":"image_url_fallback","outcome":"fixed_by_repair_variant","originalError":"provider rejected base64 image input","failedAttempts":[{"attempt":"image_input","error":"provider rejected base64 image input"}],"hint":"base64_image_failed_url_image_ok"}
 ```
 
 Handoff replay results include the target route/model in `route` and `model`,
@@ -369,7 +378,7 @@ and the source context in `sourceRoute` and `sourceModel`:
 The final line is a summary report:
 
 ```json
-{"summary":{"total":18,"ok":17,"skipped":0,"sigmaRequestShape":0,"providerCapabilityLimit":0,"upstreamAvailability":0,"noWorkingAttempt":0,"fixedByRepairVariant":1,"availabilityOKAfterFailure":0},"recommendations":[{"route":"fireworks-openai","model":"accounts/fireworks/routers/kimi-k2p6-turbo","case":"image_input","hint":"base64_image_rejected_url_image_ok","evidence":"image_input repaired by image_url_fallback"}]}
+{"summary":{"total":18,"ok":17,"skipped":0,"sigmaRequestShape":0,"providerCapabilityLimit":0,"upstreamAvailability":0,"inconclusive":0,"noWorkingAttempt":0,"fixedByRepairVariant":1,"availabilityOKAfterFailure":0},"recommendations":[{"route":"fireworks-openai","model":"accounts/fireworks/routers/kimi-k2p6-turbo","case":"image_input","hint":"base64_image_failed_url_image_ok","evidence":"image_input repaired by image_url_fallback"}]}
 ```
 
 Outcome meanings:
@@ -381,10 +390,13 @@ Outcome meanings:
 | `sigma_request_shape` | The provider rejected the request shape. |
 | `provider_capability_limit` | The provider does not appear to support the tested capability. |
 | `upstream_availability` | The upstream route or model is currently unavailable. |
+| `inconclusive` | The failure does not contain enough evidence for a request-shape, capability, or availability conclusion. |
 | `fixed_by_repair_variant` | The original case failed, but a targeted variant worked. |
 | `no_working_attempt` | The original case and repair variants did not produce a working request. |
 
 When a failed case still passes the minimal-text availability check, the
 result keeps its original outcome and includes
 `"availabilityOKAfterFailure":true`. The summary counts that evidence
-separately from the failure classification.
+separately from the failure classification. Successful diagnostic controls
+that remove the tested capability are listed in `successfulControls`; they do
+not change the original outcome or produce a repair recommendation.

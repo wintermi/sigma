@@ -144,6 +144,103 @@ func TestFireworksRoutesBuildExpectedModels(t *testing.T) {
 	assertMetadataStrings(t, anthropic.ProviderMetadata, "apiKeyEnvVars", []string{"FIREWORKS_API_KEY"})
 }
 
+func TestFireworksModelCapabilitiesComeFromProviderMetadata(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.URL.Path, "/v1/accounts/fireworks/models/qwen3p8-max"; got != want {
+			t.Errorf("path = %q, want %q", got, want)
+		}
+		if got, want := r.Header.Get("Authorization"), "Bearer key"; got != want {
+			t.Errorf("authorization = %q, want %q", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"state":"READY","contextLength":262144,"supportsImageInput":false,"supportsTools":true}`)
+	}))
+	t.Cleanup(server.Close)
+
+	route := routes["fireworks-openai"]
+	route.BaseURL = server.URL + "/inference/v1"
+	model := resolveProbeModel(context.Background(), route, "accounts/fireworks/models/qwen3p8-max", routeCredential{apiKey: "key"})
+	if model.SupportsImages() {
+		t.Fatal("resolved Fireworks model supports images, want provider metadata to disable image input")
+	}
+	if !model.SupportsTools {
+		t.Fatal("resolved Fireworks model does not support tools, want provider metadata to enable tools")
+	}
+	if got, want := model.ContextWindow, 262144; got != want {
+		t.Fatalf("context window = %d, want %d", got, want)
+	}
+	if hasString(probeCaseNames(route.Cases(route, model)), "image_input") {
+		t.Fatal("image_input case present for model whose provider metadata disables images")
+	}
+}
+
+func TestFireworksModelMetadataFailureUsesConservativeCapabilities(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	route := routes["fireworks-openai"]
+	route.BaseURL = server.URL + "/inference/v1"
+	model := resolveProbeModel(context.Background(), route, "accounts/fireworks/models/unknown", routeCredential{apiKey: "key"})
+	if model.SupportsImages() || model.SupportsTools || model.SupportsReasoning() {
+		t.Fatalf("fallback model has optimistic optional capabilities: %+v", model)
+	}
+	if !capabilityMetadataUnavailable(model) {
+		t.Fatalf("fallback model metadata = %#v, want explicit unavailable marker", model.ProviderMetadata)
+	}
+}
+
+func TestFireworksModelMetadataFailureEmitsExplicitSkip(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	route := routes["fireworks-openai"]
+	route.BaseURL = server.URL + "/inference/v1"
+	route.Cases = func(routeSpec, sigma.Model) []probeCase { return nil }
+	var results []probeResult
+	probeModelEach(context.Background(), route, "accounts/fireworks/models/unknown", routeCredential{apiKey: "key"}, config{}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got, want := len(results), 1; got != want {
+		t.Fatalf("results = %d, want %d: %#v", got, want, results)
+	}
+	if result := results[0]; result.Case != "optional_capabilities" || result.Attempt != "model_metadata" || result.Outcome != "skipped" || result.Hint != "capability_metadata_unavailable" {
+		t.Fatalf("metadata result = %+v, want explicit optional-capability skip", result)
+	}
+}
+
+func TestFireworksNonReadyModelIsSkipped(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"state":"UPLOADING","supportsImageInput":true,"supportsTools":true}`)
+	}))
+	t.Cleanup(server.Close)
+
+	route := routes["fireworks-openai"]
+	route.BaseURL = server.URL + "/inference/v1"
+	var results []probeResult
+	probeModelEach(context.Background(), route, "accounts/fireworks/models/uploading", routeCredential{apiKey: "key"}, config{}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got, want := len(results), 1; got != want {
+		t.Fatalf("results = %d, want %d: %#v", got, want, results)
+	}
+	if result := results[0]; result.Case != "all" || result.Attempt != "skip_model_state" || result.Outcome != "skipped" {
+		t.Fatalf("result = %+v, want provider-state skip", result)
+	}
+}
+
 func TestOpenAIRoutesBuildExpectedModels(t *testing.T) {
 	t.Parallel()
 
@@ -528,7 +625,8 @@ func TestStructuredOutputProbeCasesSelectsJSONOnly(t *testing.T) {
 func TestFireworksOpenAIProbeCasesSkipScalarThinkingControls(t *testing.T) {
 	t.Parallel()
 
-	cases := openAICompatibleProbeCases(routes["fireworks-openai"], sigma.Model{})
+	model := sigma.Model{SupportsThinking: true}
+	cases := openAICompatibleProbeCases(routes["fireworks-openai"], model)
 	if hasRepairVariant(cases, "thinking_string_none") {
 		t.Fatal("fireworks-openai should not probe scalar thinking string controls")
 	}
@@ -541,7 +639,7 @@ func TestFireworksOpenAIProbeCasesSkipScalarThinkingControls(t *testing.T) {
 	if !hasRepairVariant(cases, "thinking_object_disabled") {
 		t.Fatal("fireworks-openai should still probe object disabled thinking")
 	}
-	if !hasRepairVariant(openAICompatibleProbeCases(routes["xai"], sigma.Model{}), "thinking_string_none") {
+	if !hasRepairVariant(openAICompatibleProbeCases(routes["xai"], model), "thinking_string_none") {
 		t.Fatal("non-Fireworks OpenAI-compatible routes should keep scalar thinking probes")
 	}
 }
@@ -875,7 +973,7 @@ func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 			route := routes["google-vertex"]
 			route.BaseURL = server.URL + "/v1"
 			model := route.Model(route, "gemini-2.5-flash")
-			result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+			result := runCase(context.Background(), route, probeClient(route, model), model,
 				singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
 				tt.credential, "basic_text")
 			if result.Outcome != "ok" || result.Error != "" {
@@ -933,7 +1031,7 @@ func TestGoogleVertexAnthropicProbeRequestRoutingAndAuthentication(t *testing.T)
 			route := routes["google-vertex-anthropic"]
 			route.BaseURL = server.URL + "/v1"
 			model := route.Model(route, defaultGoogleVertexAnthropicModel)
-			result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+			result := runCase(context.Background(), route, probeClient(route, model), model,
 				singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
 				tt.credential, "basic_text")
 			if result.Outcome != "ok" || result.Error != "" {
@@ -955,7 +1053,7 @@ func TestGoogleVertexProbeErrorDoesNotLeakAccessToken(t *testing.T) {
 	route := routes["google-vertex"]
 	route.BaseURL = server.URL + "/v1"
 	model := route.Model(route, "gemini-2.5-flash")
-	result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+	result := runCase(context.Background(), route, probeClient(route, model), model,
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
 		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
 	if result.Error == "" {
@@ -978,7 +1076,7 @@ func TestGoogleVertexAnthropicProbeErrorDoesNotLeakAccessToken(t *testing.T) {
 	route := routes["google-vertex-anthropic"]
 	route.BaseURL = server.URL + "/v1"
 	model := route.Model(route, defaultGoogleVertexAnthropicModel)
-	result := runCase(context.Background(), route, probeClient(route, string(model.ID)), model,
+	result := runCase(context.Background(), route, probeClient(route, model), model,
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
 		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
 	if result.Error == "" {
@@ -2110,7 +2208,7 @@ func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
 	}
 }
 
-func TestStructuredOutputProbeReportsJSONSchemaFallbackToJSONObject(t *testing.T) {
+func TestStructuredOutputProbeReportsJSONObjectAsControl(t *testing.T) {
 	t.Parallel()
 
 	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
@@ -2120,27 +2218,32 @@ func TestStructuredOutputProbeReportsJSONSchemaFallbackToJSONObject(t *testing.T
 		sigmatest.Script{},
 		sigmatest.Script{Err: errors.New("larger schema failed")},
 		sigmatest.Script{},
+		sigmatest.Script{Err: errors.New("manual json failed")},
 	)
 	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true})
 	if len(results) != 1 {
 		t.Fatalf("results length = %d, want 1", len(results))
 	}
-	if got, want := results[0].Outcome, "fixed_by_repair_variant"; got != want {
+	if got, want := results[0].Outcome, "inconclusive"; got != want {
 		t.Fatalf("outcome = %q, want %q", got, want)
 	}
-	if got, want := results[0].Attempt, "json_object_fallback"; got != want {
+	if got, want := results[0].Attempt, "json_schema"; got != want {
 		t.Fatalf("attempt = %q, want %q", got, want)
 	}
-	if got, want := results[0].Hint, "json_schema_rejected_json_object_ok"; got != want {
+	if got, want := results[0].Hint, "minimal_text_available_after_failure"; got != want {
 		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	if got, want := results[0].SuccessfulControls, []string{"json_object_fallback"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("successful controls = %v, want %v", got, want)
 	}
 	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
 		{Attempt: "json_schema", Error: "strict schema failed"},
 		{Attempt: "json_schema_more_tokens", Error: "larger schema failed"},
+		{Attempt: "manual_json", Error: "manual json failed"},
 	})
 }
 
-func TestStructuredOutputProbeReportsPromptJSONFallback(t *testing.T) {
+func TestStructuredOutputProbeReportsPromptJSONAsControl(t *testing.T) {
 	t.Parallel()
 
 	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
@@ -2156,14 +2259,17 @@ func TestStructuredOutputProbeReportsPromptJSONFallback(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("results length = %d, want 1", len(results))
 	}
-	if got, want := results[0].Outcome, "fixed_by_repair_variant"; got != want {
+	if got, want := results[0].Outcome, "inconclusive"; got != want {
 		t.Fatalf("outcome = %q, want %q", got, want)
 	}
-	if got, want := results[0].Attempt, "manual_json"; got != want {
+	if got, want := results[0].Attempt, "json_schema"; got != want {
 		t.Fatalf("attempt = %q, want %q", got, want)
 	}
-	if got, want := results[0].Hint, "structured_output_rejected_prompt_json_ok"; got != want {
+	if got, want := results[0].Hint, "minimal_text_available_after_failure"; got != want {
 		t.Fatalf("hint = %q, want %q", got, want)
+	}
+	if got, want := results[0].SuccessfulControls, []string{"manual_json"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("successful controls = %v, want %v", got, want)
 	}
 	assertFailedAttempts(t, results[0].FailedAttempts, []failedAttempt{
 		{Attempt: "json_schema", Error: "strict schema failed"},
@@ -2234,6 +2340,75 @@ func TestProbeModelDoesNotRepairUpstreamAvailability(t *testing.T) {
 	}
 }
 
+func TestRunCaseRetriesIdenticalTransportFailure(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxProvider(
+		sigmatest.Script{Err: errors.New("status=503 body=upstream connect error: connection refused")},
+		sigmatest.Script{Err: errors.New("connection reset by peer")},
+		sigmatest.Script{},
+	)
+	route := routeSpec{
+		Name:      "sigmatest-retry",
+		Provider:  sigmatest.ProviderID,
+		BaseURL:   "https://example.test",
+		APIKeyEnv: "SIGMATEST_API_KEY",
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
+		},
+		Model: func(_ routeSpec, id string) sigma.Model {
+			model := sigmatest.TextModel()
+			model.ID = sigma.ModelID(id)
+			return model
+		},
+	}
+	model := route.Model(route, "model")
+	testCase := singleTurnCase("basic_text", "plain text", basicRequest("same request"), []sigma.Option{sigma.WithMaxTokens(64)})
+	result := runCaseWithTimeout(context.Background(), time.Second, route, probeClient(route, model), model, testCase, routeCredential{apiKey: "key"}, testCase.Name)
+	if got, want := result.Outcome, "ok"; got != want {
+		t.Fatalf("outcome = %q, want %q: %+v", got, want, result)
+	}
+	if got, want := len(result.FailedAttempts), 2; got != want {
+		t.Fatalf("failed attempts = %#v, want %d transport failures", result.FailedAttempts, want)
+	}
+	requests := provider.Requests()
+	if got, want := len(requests), 3; got != want {
+		t.Fatalf("requests = %d, want %d", got, want)
+	}
+	for i := 1; i < len(requests); i++ {
+		if !reflect.DeepEqual(requests[0], requests[i]) {
+			t.Fatalf("retry request %d = %#v, want identical to %#v", i, requests[i], requests[0])
+		}
+	}
+}
+
+func TestProbeReportsRepeatedImage503AsUpstreamAvailability(t *testing.T) {
+	t.Parallel()
+
+	transportFailure := errors.New("status=503 body=upstream connect error or disconnect/reset before headers: connection refused")
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("image_input", "text plus image input", imageRequest(), nil),
+	},
+		sigmatest.Script{Err: transportFailure},
+		sigmatest.Script{Err: transportFailure},
+		sigmatest.Script{Err: transportFailure},
+	)
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{repair: true})
+	if got, want := len(results), 1; got != want {
+		t.Fatalf("results = %d, want %d", got, want)
+	}
+	result := results[0]
+	if got, want := result.Outcome, "upstream_availability"; got != want {
+		t.Fatalf("outcome = %q, want %q: %+v", got, want, result)
+	}
+	if result.Attempt != "image_input" || result.Hint != "" || result.AvailabilityOKAfterFailure {
+		t.Fatalf("result = %+v, must retain the original image attempt without a false repair", result)
+	}
+	if _, ok := recommendationFor(result); ok {
+		t.Fatalf("repeated image 503 produced a recommendation: %+v", result)
+	}
+}
+
 func TestProbeModelUsesIndependentCaseTimeouts(t *testing.T) {
 	t.Parallel()
 
@@ -2268,7 +2443,7 @@ func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 	}{
 		{name: "basic_text", want: "basic_text_more_tokens"},
 		{name: "cache_ephemeral", want: "cache_none_more_tokens"},
-		{name: "image_input", want: "text_only_fallback"},
+		{name: "image_input", want: "image_url_fallback"},
 		{name: "thinking_string_none", want: "thinking_object_disabled_repair"},
 		{name: "reasoning_effort_high", want: "typed_reasoning_effort_high"},
 		{name: "json_schema", want: "json_object_fallback"},
@@ -2285,6 +2460,49 @@ func TestRepairVariantsCoverTargetedFallbacks(t *testing.T) {
 				t.Fatalf("repairVariants(%q) missing %q", tt.name, tt.want)
 			}
 		})
+	}
+}
+
+func TestImageRepairVariantsNeverRemoveImageInput(t *testing.T) {
+	t.Parallel()
+
+	for _, variant := range repairVariants(routes["fireworks-openai"], probeCase{Name: "image_input"}) {
+		if variant.Name == "minimal_basic_text" {
+			continue
+		}
+		for _, message := range variant.Request.Messages {
+			for _, block := range message.Content {
+				if block.Type == sigma.ContentBlockImage {
+					goto nextVariant
+				}
+			}
+		}
+		t.Fatalf("image repair %q removed the capability under test", variant.Name)
+	nextVariant:
+	}
+}
+
+func TestProbeDoesNotCallCapabilityRemovingFallbackARepair(t *testing.T) {
+	t.Parallel()
+
+	route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
+	},
+		sigmatest.Script{Err: errors.New("unclassified schema failure")},
+		sigmatest.Script{},
+		sigmatest.Script{Err: errors.New("larger schema failed")},
+		sigmatest.Script{},
+		sigmatest.Script{},
+	)
+	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{repair: true})
+	if got, want := results[0].Outcome, "inconclusive"; got != want {
+		t.Fatalf("outcome = %q, want %q: %+v", got, want, results[0])
+	}
+	if results[0].Attempt != "json_schema" {
+		t.Fatalf("attempt = %q, want original json_schema", results[0].Attempt)
+	}
+	if recommendation, ok := recommendationFor(results[0]); ok && strings.Contains(recommendation.Evidence, "repaired") {
+		t.Fatalf("recommendation = %+v, must not call JSON object/manual JSON controls repairs", recommendation)
 	}
 }
 
@@ -2339,29 +2557,41 @@ func TestProbeModelDiagnosesLogprobsWithIndependentRepairs(t *testing.T) {
 	tests := []struct {
 		name         string
 		scripts      []sigmatest.Script
+		wantOutcome  string
 		wantAttempt  string
 		wantHint     string
+		wantControls []string
 		wantFailures []failedAttempt
 	}{
 		{
 			name:         "larger cap preserves logprobs",
 			scripts:      []sigmatest.Script{{Err: errors.New("request failed")}, {}, {}},
+			wantOutcome:  "fixed_by_repair_variant",
 			wantAttempt:  "logprobs_more_tokens",
 			wantHint:     "logprobs_needs_larger_output_budget",
 			wantFailures: []failedAttempt{{Attempt: "logprobs", Error: "request failed"}},
 		},
 		{
-			name:        "omitting logprobs preserves original cap",
-			scripts:     []sigmatest.Script{{Err: errors.New("request failed")}, {}, {Err: errors.New("larger logprobs request failed")}, {}},
-			wantAttempt: "no_logprobs",
-			wantHint:    "logprobs_rejected",
+			name: "omitting logprobs is only a control",
+			scripts: []sigmatest.Script{
+				{Err: errors.New("request failed")},
+				{},
+				{Err: errors.New("larger logprobs request failed")},
+				{},
+				{Err: errors.New("larger no-logprobs request failed")},
+			},
+			wantOutcome:  "inconclusive",
+			wantAttempt:  "logprobs",
+			wantHint:     "minimal_text_available_after_failure",
+			wantControls: []string{"no_logprobs"},
 			wantFailures: []failedAttempt{
 				{Attempt: "logprobs", Error: "request failed"},
 				{Attempt: "logprobs_more_tokens", Error: "larger logprobs request failed"},
+				{Attempt: "no_logprobs_more_tokens", Error: "larger no-logprobs request failed"},
 			},
 		},
 		{
-			name: "both changes are required",
+			name: "omitting logprobs and raising cap is only a control",
 			scripts: []sigmatest.Script{
 				{Err: errors.New("request failed")},
 				{},
@@ -2369,8 +2599,10 @@ func TestProbeModelDiagnosesLogprobsWithIndependentRepairs(t *testing.T) {
 				{Err: errors.New("no logprobs request failed")},
 				{},
 			},
-			wantAttempt: "no_logprobs_more_tokens",
-			wantHint:    "logprobs_output_budget_interaction",
+			wantOutcome:  "inconclusive",
+			wantAttempt:  "logprobs",
+			wantHint:     "minimal_text_available_after_failure",
+			wantControls: []string{"no_logprobs_more_tokens"},
 			wantFailures: []failedAttempt{
 				{Attempt: "logprobs", Error: "request failed"},
 				{Attempt: "logprobs_more_tokens", Error: "larger logprobs request failed"},
@@ -2389,38 +2621,32 @@ func TestProbeModelDiagnosesLogprobsWithIndependentRepairs(t *testing.T) {
 			if len(results) != 1 {
 				t.Fatalf("results length = %d, want 1", len(results))
 			}
+			if got, want := results[0].Outcome, tt.wantOutcome; got != want {
+				t.Fatalf("outcome = %q, want %q", got, want)
+			}
 			if got, want := results[0].Attempt, tt.wantAttempt; got != want {
 				t.Fatalf("attempt = %q, want %q", got, want)
 			}
 			if got, want := results[0].Hint, tt.wantHint; got != want {
 				t.Fatalf("hint = %q, want %q", got, want)
 			}
+			if got, want := results[0].SuccessfulControls, tt.wantControls; !reflect.DeepEqual(got, want) {
+				t.Fatalf("successful controls = %v, want %v", got, want)
+			}
 			assertFailedAttempts(t, results[0].FailedAttempts, tt.wantFailures)
 		})
 	}
 }
 
-func TestImageRepairVariantsTryURLBeforeTextOnly(t *testing.T) {
+func TestImageRepairVariantsPreserveImageInput(t *testing.T) {
 	t.Parallel()
 
-	var imageURLIndex int
-	var textOnlyIndex int
-	for i, variant := range repairVariants(routes["xai"], probeCase{Name: "image_input"}) {
-		switch variant.Name {
-		case "image_url_fallback":
-			imageURLIndex = i
-		case "text_only_fallback":
-			textOnlyIndex = i
-		}
-	}
-	if imageURLIndex == 0 {
+	variants := repairVariants(routes["xai"], probeCase{Name: "image_input"})
+	if !hasRepairVariant(variants, "image_url_fallback") {
 		t.Fatal("image_url_fallback missing from image repair variants")
 	}
-	if textOnlyIndex == 0 {
-		t.Fatal("text_only_fallback missing from image repair variants")
-	}
-	if imageURLIndex > textOnlyIndex {
-		t.Fatalf("image_url_fallback index = %d, text_only_fallback index = %d; want URL fallback first", imageURLIndex, textOnlyIndex)
+	if hasRepairVariant(variants, "text_only_fallback") {
+		t.Fatal("text_only_fallback must be an availability control, not an image repair")
 	}
 }
 
@@ -2450,6 +2676,12 @@ func TestClassifyFailure(t *testing.T) {
 	if got := classifyFailure(route, model, errors.New("status=429 provider_rate_limit_exceeded: provider rate limit exceeded")); got != "upstream_availability" {
 		t.Fatalf("rate-limit classification = %q", got)
 	}
+	if got := classifyFailure(route, model, errors.New("status=503 body=upstream connect error: connection refused")); got != "upstream_availability" {
+		t.Fatalf("503 connection-refused classification = %q", got)
+	}
+	if got := classifyFailure(route, model, errors.New("unexpected provider response")); got != "inconclusive" {
+		t.Fatalf("ambiguous failure classification = %q", got)
+	}
 	model.ID = "claude-opus-4-6"
 	if got := classifyFailure(route, model, errors.New("No provider available")); got != "upstream_availability" {
 		t.Fatalf("availability classification = %q", got)
@@ -2477,15 +2709,16 @@ func TestSummaryCounts(t *testing.T) {
 		"sigma_request_shape",
 		"provider_capability_limit",
 		"upstream_availability",
+		"inconclusive",
 		"fixed_by_repair_variant",
 		"other",
 	} {
 		totals.add(probeResult{Outcome: outcome})
 	}
 	totals.add(probeResult{Outcome: "sigma_request_shape", AvailabilityOKAfterFailure: true})
-	if totals.Total != 8 || totals.OK != 1 || totals.Skipped != 1 ||
+	if totals.Total != 9 || totals.OK != 1 || totals.Skipped != 1 ||
 		totals.SigmaRequestShape != 2 || totals.ProviderCapabilityLimit != 1 ||
-		totals.UpstreamAvailability != 1 || totals.FixedByRepairVariant != 1 ||
+		totals.UpstreamAvailability != 1 || totals.Inconclusive != 1 || totals.FixedByRepairVariant != 1 ||
 		totals.AvailabilityOKAfterFailure != 1 ||
 		totals.NoWorkingAttempt != 1 {
 		t.Fatalf("summary = %+v", totals)
