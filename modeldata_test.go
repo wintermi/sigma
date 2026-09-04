@@ -956,413 +956,145 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENROUTER_API_KEY"})
 	}
 
+	openCodeIDs := map[ModelID]struct{}{
+		"big-pickle": {}, "claude-fable-5": {}, "claude-fable-5-1": {}, "claude-haiku-4-5": {},
+		"claude-opus-4-5": {}, "claude-opus-4-6": {}, "claude-opus-4-7": {}, "claude-opus-4-8": {},
+		"claude-opus-5": {}, "claude-sonnet-4": {}, "claude-sonnet-4-5": {}, "claude-sonnet-4-6": {},
+		"claude-sonnet-5": {}, "deepseek-v4-flash": {}, "deepseek-v4-pro": {}, "gemini-3-flash": {},
+		"gemini-3.1-pro": {}, "gemini-3.5-flash": {}, "gemini-3.5-flash-lite": {}, "gemini-3.6-flash": {},
+		"gemini-3.7-flash": {}, "gemini-3.8-flash": {}, "glm-5": {}, "glm-5.1": {}, "glm-5.2": {},
+		"gpt-5": {}, "gpt-5-codex": {}, "gpt-5-nano": {}, "gpt-5.1": {}, "gpt-5.1-codex": {},
+		"gpt-5.1-codex-max": {}, "gpt-5.1-codex-mini": {}, "gpt-5.2": {}, "gpt-5.2-codex": {},
+		"gpt-5.3-codex": {}, "gpt-5.4": {}, "gpt-5.4-mini": {}, "gpt-5.4-nano": {}, "gpt-5.4-pro": {},
+		"gpt-5.5": {}, "gpt-5.5-pro": {}, "gpt-5.6-luna": {}, "gpt-5.6-sol": {}, "gpt-5.6-terra": {},
+		"grok-4.5": {}, "grok-4.6": {}, "grok-build-0.1": {}, "kimi-k2.5": {}, "kimi-k2.6": {},
+		"kimi-k2.7-code": {}, "kimi-k3": {}, "ling-3.0-flash-fin-free": {}, "mimo-v2.5-free": {},
+		"minimax-m2.5": {}, "minimax-m2.7": {}, "minimax-m3": {}, "muse-spark-1.2": {},
+		"muse-spark-1.2-contributor-free": {}, "muse-spark-1.3-contributor-free": {},
+		"nemotron-3-ultra-free": {}, "nemotron-3.5-lightning-free": {}, "qwen3.5-plus": {}, "qwen3.6-plus": {},
+	}
+	openCodeGoIDs := map[ModelID]struct{}{
+		"deepseek-v4-flash": {}, "deepseek-v4-flash-vision-exp": {}, "deepseek-v4-pro": {},
+		"glm-5.1": {}, "glm-5.2": {}, "glm-5.3": {}, "glm-5.3-flash": {}, "gpt-5.6-luna": {},
+		"grok-4.6": {}, "hy3": {}, "hy4-preview": {}, "kimi-k2.6": {}, "kimi-k2.7-code": {},
+		"kimi-k3": {}, "longcat-2.0": {}, "mimo-v2.5": {}, "mimo-v2.5-pro": {}, "minimax-m2.7": {},
+		"minimax-m3": {}, "muse-spark-1.2-contributor": {}, "muse-spark-1.3-contributor": {},
+		"omen-alpha": {}, "qwen3.6-plus": {}, "qwen3.7-max": {}, "qwen3.7-plus": {},
+		"qwen3.8-flash": {}, "qwen3.8-max": {},
+	}
+	gotOpenCodeIDs := make(map[ModelID]struct{}, len(openCodeIDs))
+	gotOpenCodeGoIDs := make(map[ModelID]struct{}, len(openCodeGoIDs))
+	for _, model := range registry.ListModels() {
+		switch model.Provider {
+		case ProviderOpenCode:
+			gotOpenCodeIDs[model.ID] = struct{}{}
+		case ProviderOpenCodeGo:
+			gotOpenCodeGoIDs[model.ID] = struct{}{}
+		}
+	}
+	assertModelIDSet(t, ProviderOpenCode, gotOpenCodeIDs, openCodeIDs)
+	assertModelIDSet(t, ProviderOpenCodeGo, gotOpenCodeGoIDs, openCodeGoIDs)
+
+	for _, tt := range []struct {
+		provider ProviderID
+		id       ModelID
+		want     API
+	}{
+		{provider: ProviderOpenCode, id: "gemini-3.8-flash", want: APIGoogleGenerativeAI},
+		{provider: ProviderOpenCode, id: "claude-opus-5", want: APIAnthropicMessages},
+		{provider: ProviderOpenCode, id: "gpt-5.6-luna", want: APIOpenAIResponses},
+		{provider: ProviderOpenCode, id: "grok-4.6", want: APIOpenAIResponses},
+		{provider: ProviderOpenCode, id: "grok-build-0.1", want: APIOpenAIResponses},
+		{provider: ProviderOpenCode, id: "muse-spark-1.2", want: APIOpenAIResponses},
+		{provider: ProviderOpenCodeGo, id: "qwen3.8-flash", want: APIAnthropicMessages},
+		{provider: ProviderOpenCodeGo, id: "minimax-m3", want: APIAnthropicMessages},
+		{provider: ProviderOpenCodeGo, id: "gpt-5.6-luna", want: APIOpenAIResponses},
+		{provider: ProviderOpenCodeGo, id: "grok-4.6", want: APIOpenAIResponses},
+		{provider: ProviderOpenCodeGo, id: "muse-spark-1.3-contributor", want: APIOpenAIResponses},
+	} {
+		assertOpenCodeAPI(t, registry, tt.provider, tt.id, tt.want)
+	}
+
 	openCode, ok := registry.Model(ProviderOpenCode, "kimi-k2.6")
 	if !ok {
 		t.Fatal("fresh registry missing generated OpenCode Zen model")
 	}
-	if openCode.API != APIOpenAICompletions {
-		t.Fatalf("OpenCode Zen model API = %q, want %q", openCode.API, APIOpenAICompletions)
-	}
-	if !openCode.SupportsTools || !openCode.SupportsImages() || !openCode.SupportsReasoning() {
-		t.Fatalf("OpenCode Zen model capabilities were not generated: %+v", openCode)
+	if openCode.API != APIOpenAICompletions || !openCode.SupportsTools || !openCode.SupportsImages() || !openCode.SupportsReasoning() {
+		t.Fatalf("OpenCode Zen Kimi capabilities = %+v", openCode)
 	}
 	if openCode.OpenAICompletionsCompat == nil ||
-		openCode.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		openCode.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
-		t.Fatalf("OpenCode Zen Kimi compat = %#v, want deepseek reasoning without effort", openCode.OpenAICompletionsCompat)
+		openCode.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
+		openCode.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
+		t.Fatalf("OpenCode Zen Kimi compat = %#v, want conservative Chat Completions flags", openCode.OpenAICompletionsCompat)
 	}
 	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
 	assertMetadataStrings(t, openCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gemini-3-flash", APIGoogleGenerativeAI)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-fable-5", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-opus-4-7", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "claude-sonnet-5", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "qwen3.6-plus", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.1-codex", APIOpenAIResponses)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "gpt-5.4", APIOpenAIResponses)
-	assertOpenCodeAPI(t, registry, ProviderOpenCode, "minimax-m3-free", APIAnthropicMessages)
-	for _, id := range []ModelID{
-		"gpt-5", "gpt-5-codex", "gpt-5-nano", "gpt-5.1", "gpt-5.1-codex",
-		"gpt-5.1-codex-max", "gpt-5.1-codex-mini", "gpt-5.2", "gpt-5.2-codex",
-		"gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4-pro",
-		"gpt-5.5", "gpt-5.5-pro", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
-	} {
-		model, ok := registry.Model(ProviderOpenCode, id)
-		if !ok {
-			t.Fatalf("fresh registry missing generated OpenCode Zen Responses model %s", id)
-		}
-		assertMetadataString(t, model.ProviderMetadata, "opencodeAPI", string(APIOpenAIResponses))
-		if model.OpenAIResponsesCompat == nil ||
-			model.OpenAIResponsesCompat.SessionAffinityFormat != OpenAIResponsesSessionAffinityOpenAINoSession {
-			t.Fatalf("OpenCode Zen Responses %s compat = %#v, want OpenAI request-ID affinity", id, model.OpenAIResponsesCompat)
-		}
-	}
 
-	openCodeZenModels := []struct {
-		id                ModelID
-		images            bool
-		responses         bool
-		contextWindow     int
-		maxOutputTokens   int
-		inputCost         float64
-		outputCost        float64
-		cacheReadCost     float64
-		cacheWriteCost    float64
-		supportedThinking []ThinkingLevel
-		unsupported       []ThinkingLevel
-		thinkingMappings  map[ThinkingLevel]string
-		deepSeek          bool
-		genericCompat     bool
-	}{
-		{
-			id: "gpt-5.6-luna", images: true, responses: true,
-			contextWindow: 1_050_000, maxOutputTokens: 128_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25,
-			supportedThinking: []ThinkingLevel{ThinkingLevelXHigh},
-			unsupported:       []ThinkingLevel{ThinkingLevelOff, ThinkingLevelHigh},
-			thinkingMappings:  map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh"},
-		},
-		{
-			id: "gpt-5.6-sol", images: true, responses: true,
-			contextWindow: 1_050_000, maxOutputTokens: 128_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25,
-			supportedThinking: []ThinkingLevel{ThinkingLevelXHigh},
-			unsupported:       []ThinkingLevel{ThinkingLevelOff, ThinkingLevelHigh},
-			thinkingMappings:  map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh"},
-		},
-		{
-			id: "gpt-5.6-terra", images: true, responses: true,
-			contextWindow: 1_050_000, maxOutputTokens: 128_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125,
-			supportedThinking: []ThinkingLevel{ThinkingLevelXHigh},
-			unsupported:       []ThinkingLevel{ThinkingLevelOff, ThinkingLevelHigh},
-			thinkingMappings:  map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh"},
-		},
-		{
-			id: "deepseek-v4-pro", contextWindow: 1_000_000, maxOutputTokens: 384_000, inputCost: 1.74, outputCost: 3.84, cacheReadCost: 0.145,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelHigh, ThinkingLevelXHigh},
-			unsupported:       []ThinkingLevel{ThinkingLevelLow},
-			thinkingMappings:  map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevelXHigh: "max"},
-			deepSeek:          true,
-		},
-		{
-			id: "glm-5.2", contextWindow: 1_000_000, maxOutputTokens: 131_072, inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.26,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "grok-4.5", images: true, contextWindow: 500_000, maxOutputTokens: 500_000, inputCost: 2, outputCost: 6, cacheReadCost: 0.5,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "hy3-free", contextWindow: 190_000, maxOutputTokens: 64_000,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "kimi-k2.7-code", images: true, contextWindow: 262_144, maxOutputTokens: 262_144, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "minimax-m3", images: true, contextWindow: 512_000, maxOutputTokens: 128_000, inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "nemotron-3-ultra-free", contextWindow: 1_000_000, maxOutputTokens: 128_000,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-		{
-			id: "north-mini-code-free", contextWindow: 256_000, maxOutputTokens: 64_000,
-			supportedThinking: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelLow, ThinkingLevelXHigh}, genericCompat: true,
-		},
-	}
-	for _, tt := range openCodeZenModels {
-		model, ok := registry.Model(ProviderOpenCode, tt.id)
-		if !ok {
-			t.Fatalf("fresh registry missing generated OpenCode Zen model %s", tt.id)
-		}
-		if model.API != APIOpenAICompletions || !model.SupportsInput(ContentBlockText) || !model.SupportsTools || !model.SupportsReasoning() || model.SupportsImages() != tt.images {
-			t.Fatalf("OpenCode Zen %s capabilities = %+v", tt.id, model)
-		}
-		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
-			t.Fatalf("OpenCode Zen %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
-		}
-		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
-			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != tt.cacheWriteCost {
-			t.Fatalf("OpenCode Zen %s costs = %v/%v/%v/%v, want %v/%v/%v/%v", tt.id,
-				model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion,
-				tt.inputCost, tt.outputCost, tt.cacheReadCost, tt.cacheWriteCost)
-		}
-		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
-		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
-		for _, level := range tt.supportedThinking {
-			if !model.SupportsThinkingLevel(level) {
-				t.Fatalf("OpenCode Zen %s does not support %q thinking", tt.id, level)
-			}
-		}
-		for _, level := range tt.unsupported {
-			if model.SupportsThinkingLevel(level) {
-				t.Fatalf("OpenCode Zen %s unexpectedly supports %q thinking", tt.id, level)
-			}
-		}
-		for level, want := range tt.thinkingMappings {
-			if got, ok := model.ProviderThinkingLevel(level); !ok || got != want {
-				t.Fatalf("OpenCode Zen %s thinking level %q = %q, %v; want %q, true", tt.id, level, got, ok, want)
-			}
-		}
-		if tt.responses {
-			assertMetadataString(t, model.ProviderMetadata, "opencodeAPI", string(APIOpenAIResponses))
-			if model.OpenAIResponsesCompat == nil ||
-				model.OpenAIResponsesCompat.SessionAffinityFormat != OpenAIResponsesSessionAffinityOpenAINoSession {
-				t.Fatalf("OpenCode Zen %s Responses compat = %#v, want OpenAI request-ID affinity", tt.id, model.OpenAIResponsesCompat)
-			}
-		} else if _, ok := model.ProviderMetadata["opencodeAPI"]; ok {
-			t.Fatalf("OpenCode Zen %s route metadata = %#v, want Chat Completions default", tt.id, model.ProviderMetadata)
-		}
-		if tt.deepSeek {
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens ||
-				model.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-				t.Fatalf("OpenCode Zen %s compat = %#v, want DeepSeek replay and max_tokens", tt.id, model.OpenAICompletionsCompat)
-			}
-		}
-		if tt.genericCompat {
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
-				t.Fatalf("OpenCode Zen %s compat = %#v, want conservative Chat Completions flags", tt.id, model.OpenAICompletionsCompat)
-			}
-		}
-	}
-
-	openCodeDeepSeek, ok := registry.Model(ProviderOpenCode, "deepseek-v4-flash")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Zen DeepSeek V4 Flash model")
-	}
-	if openCodeDeepSeek.OpenAICompletionsCompat == nil ||
-		openCodeDeepSeek.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		openCodeDeepSeek.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-		t.Fatalf("OpenCode Zen DeepSeek compat = %#v, want deepseek reasoning content replay", openCodeDeepSeek.OpenAICompletionsCompat)
-	}
-	openCodeDeepSeekFree, ok := registry.Model(ProviderOpenCode, "deepseek-v4-flash-free")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Zen DeepSeek V4 Flash Free model")
-	}
-	for _, tt := range []struct {
-		name  string
-		model Model
-	}{
-		{name: "OpenCode Zen", model: openCodeDeepSeek},
-		{name: "OpenCode Zen Free", model: openCodeDeepSeekFree},
-	} {
-		if !tt.model.SupportsThinkingLevel(ThinkingLevelOff) ||
-			!tt.model.SupportsThinkingLevel(ThinkingLevelLow) ||
-			tt.model.SupportsThinkingLevel(ThinkingLevelMinimal) ||
-			tt.model.SupportsThinkingLevel(ThinkingLevelMedium) {
-			t.Fatalf("%s DeepSeek thinking level support = %+v / %+v, want off/low without minimal/medium", tt.name, tt.model.ThinkingLevelMap, tt.model.UnsupportedThinkingLevels)
-		}
-		if got, ok := tt.model.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
-			t.Fatalf("%s DeepSeek low level = %q, %v; want low, true", tt.name, got, ok)
-		}
-	}
-	for _, provider := range []ProviderID{ProviderOpenCode, ProviderOpenCodeGo} {
-		deepSeekPro, ok := registry.Model(provider, "deepseek-v4-pro")
-		if !ok {
-			t.Fatalf("fresh registry missing %s DeepSeek V4 Pro model", provider)
-		}
-		if deepSeekPro.SupportsThinkingLevel(ThinkingLevelLow) {
-			t.Fatalf("%s DeepSeek V4 Pro unexpectedly supports low thinking: %+v", provider, deepSeekPro.ThinkingLevelMap)
-		}
-	}
-
-	openCodeClaude, ok := registry.Model(ProviderOpenCode, "claude-opus-4-8")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Zen Claude Opus model")
-	}
+	openCodeClaude, _ := registry.Model(ProviderOpenCode, "claude-opus-5")
 	if openCodeClaude.AnthropicMessagesCompat == nil ||
 		openCodeClaude.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
 		openCodeClaude.AnthropicMessagesCompat.SupportsTemperature != AnthropicCompatUnsupported {
-		t.Fatalf("OpenCode Zen Claude compat = %#v, want adaptive thinking without temperature", openCodeClaude.AnthropicMessagesCompat)
+		t.Fatalf("OpenCode Zen Claude Opus 5 compat = %#v, want adaptive thinking without temperature", openCodeClaude.AnthropicMessagesCompat)
 	}
-	openCodeFable, ok := registry.Model(ProviderOpenCode, "claude-fable-5")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Zen Claude Fable model")
-	}
-	if openCodeFable.AnthropicMessagesCompat == nil ||
-		openCodeFable.AnthropicMessagesCompat.ThinkingFormat != AnthropicThinkingAdaptive ||
-		openCodeFable.AnthropicMessagesCompat.SupportsDisabledThinking != AnthropicCompatUnsupported {
-		t.Fatalf("OpenCode Zen Fable compat = %#v, want adaptive thinking without disabled payload", openCodeFable.AnthropicMessagesCompat)
-	}
-	if got, ok := openCodeFable.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "xhigh" {
-		t.Fatalf("OpenCode Zen Fable xhigh level = %q, %v; want xhigh, true", got, ok)
+	if !openCodeClaude.SupportsThinkingLevel(ThinkingLevel("max")) || !openCodeClaude.SupportsImages() {
+		t.Fatalf("OpenCode Zen Claude Opus 5 capabilities = %+v", openCodeClaude)
 	}
 
-	grokBuild, ok := registry.Model(ProviderOpenCode, "grok-build-0.1")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Zen Grok Build model")
+	openCodeLuna, _ := registry.Model(ProviderOpenCode, "gpt-5.6-luna")
+	if openCodeLuna.InputCostPerMillion != 0.2 || openCodeLuna.OutputCostPerMillion != 1.2 ||
+		openCodeLuna.CacheReadInputCostPerMillion != 0.02 || openCodeLuna.CacheWriteInputCostPerMillion != 0.25 {
+		t.Fatalf("OpenCode Zen GPT-5.6 Luna costs = %v/%v/%v/%v, want 0.2/1.2/0.02/0.25", openCodeLuna.InputCostPerMillion, openCodeLuna.OutputCostPerMillion, openCodeLuna.CacheReadInputCostPerMillion, openCodeLuna.CacheWriteInputCostPerMillion)
 	}
-	if grokBuild.API != APIOpenAICompletions || !grokBuild.SupportsTools || !grokBuild.SupportsImages() || !grokBuild.SupportsReasoning() {
-		t.Fatalf("OpenCode Zen Grok Build model was not generated as an image-capable completions model: %+v", grokBuild)
-	}
-	if grokBuild.OpenAICompletionsCompat == nil ||
-		grokBuild.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
-		t.Fatalf("OpenCode Zen Grok Build compat = %#v, want no reasoning effort", grokBuild.OpenAICompletionsCompat)
-	}
-	if grokBuild.SupportsThinkingLevel(ThinkingLevelOff) ||
-		grokBuild.SupportsThinkingLevel(ThinkingLevelMedium) ||
-		!grokBuild.SupportsThinkingLevel(ThinkingLevelHigh) {
-		t.Fatalf("OpenCode Zen Grok Build thinking support = %+v / %+v, want high only", grokBuild.ThinkingLevelMap, grokBuild.UnsupportedThinkingLevels)
+	if openCodeLuna.OpenAIResponsesCompat == nil ||
+		openCodeLuna.OpenAIResponsesCompat.SessionAffinityFormat != OpenAIResponsesSessionAffinityOpenAINoSession ||
+		!openCodeLuna.OpenAIResponsesCompat.SupportsGrammarTools {
+		t.Fatalf("OpenCode Zen GPT-5.6 Luna Responses compat = %#v", openCodeLuna.OpenAIResponsesCompat)
 	}
 
-	openCodeGo, ok := registry.Model(ProviderOpenCodeGo, "deepseek-v4-flash")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Go model")
+	openCodeGoVision, _ := registry.Model(ProviderOpenCodeGo, "deepseek-v4-flash-vision-exp")
+	if !openCodeGoVision.SupportsImages() || !openCodeGoVision.SupportsTools || !openCodeGoVision.SupportsReasoning() ||
+		openCodeGoVision.ContextWindow != 1_000_000 || openCodeGoVision.MaxOutputTokens != 384_000 {
+		t.Fatalf("OpenCode Go DeepSeek vision capabilities and limits = %+v", openCodeGoVision)
 	}
-	if openCodeGo.API != APIOpenAICompletions {
-		t.Fatalf("OpenCode Go model API = %q, want %q", openCodeGo.API, APIOpenAICompletions)
+	if openCodeGoVision.InputCostPerMillion != 0.22 || openCodeGoVision.OutputCostPerMillion != 0.66 ||
+		openCodeGoVision.CacheReadInputCostPerMillion != 0.007 {
+		t.Fatalf("OpenCode Go DeepSeek vision costs = %v/%v/%v, want 0.22/0.66/0.007", openCodeGoVision.InputCostPerMillion, openCodeGoVision.OutputCostPerMillion, openCodeGoVision.CacheReadInputCostPerMillion)
 	}
-	if openCodeGo.OpenAICompletionsCompat == nil ||
-		openCodeGo.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		openCodeGo.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported ||
-		openCodeGo.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat != OpenAICompatUnsupported {
-		t.Fatalf("OpenCode Go DeepSeek compat = %#v, want deepseek reasoning replay and JSON Schema response downgrade", openCodeGo.OpenAICompletionsCompat)
+	if openCodeGoVision.OpenAICompletionsCompat == nil ||
+		openCodeGoVision.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
+		openCodeGoVision.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
+		t.Fatalf("OpenCode Go DeepSeek vision compat = %#v", openCodeGoVision.OpenAICompletionsCompat)
 	}
-	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
-		t.Fatalf("OpenCode Go xhigh level = %q, %v; want max, true", got, ok)
-	}
-	if got, ok := openCodeGo.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
-		t.Fatalf("OpenCode Go low level = %q, %v; want low, true", got, ok)
-	}
-	if !openCodeGo.SupportsThinkingLevel(ThinkingLevelOff) ||
-		!openCodeGo.SupportsThinkingLevel(ThinkingLevelLow) ||
-		openCodeGo.SupportsThinkingLevel(ThinkingLevelMinimal) ||
-		openCodeGo.SupportsThinkingLevel(ThinkingLevelMedium) {
-		t.Fatalf("OpenCode Go DeepSeek thinking support = %+v / %+v, want off/low without minimal/medium", openCodeGo.ThinkingLevelMap, openCodeGo.UnsupportedThinkingLevels)
-	}
-	assertMetadataString(t, openCodeGo.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
-	assertMetadataStrings(t, openCodeGo.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
-	openCodeGoGLM, ok := registry.Model(ProviderOpenCodeGo, "glm-5.2")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Go GLM-5.2 model")
-	}
-	if !openCodeGoGLM.SupportsTools || openCodeGoGLM.SupportsImages() || !openCodeGoGLM.SupportsReasoning() {
-		t.Fatalf("OpenCode Go GLM-5.2 capabilities = %+v, want text/tools/reasoning", openCodeGoGLM)
-	}
-	if openCodeGoGLM.ContextWindow != 1000000 || openCodeGoGLM.MaxOutputTokens != 131072 {
-		t.Fatalf("OpenCode Go GLM-5.2 limits = %d/%d, want 1000000/131072", openCodeGoGLM.ContextWindow, openCodeGoGLM.MaxOutputTokens)
-	}
-	if openCodeGoGLM.InputCostPerMillion != 1.4 ||
-		openCodeGoGLM.OutputCostPerMillion != 4.4 ||
+
+	openCodeGoGLM, _ := registry.Model(ProviderOpenCodeGo, "glm-5.3")
+	if openCodeGoGLM.SupportsImages() || openCodeGoGLM.ContextWindow != 1_000_000 || openCodeGoGLM.MaxOutputTokens != 131_072 ||
+		openCodeGoGLM.InputCostPerMillion != 1.4 || openCodeGoGLM.OutputCostPerMillion != 4.4 ||
 		openCodeGoGLM.CacheReadInputCostPerMillion != 0.26 {
-		t.Fatalf("OpenCode Go GLM-5.2 costs = %v/%v/%v, want 1.4/4.4/0.26", openCodeGoGLM.InputCostPerMillion, openCodeGoGLM.OutputCostPerMillion, openCodeGoGLM.CacheReadInputCostPerMillion)
+		t.Fatalf("OpenCode Go GLM-5.3 metadata = %+v", openCodeGoGLM)
 	}
-	if openCodeGoGLM.OpenAICompletionsCompat == nil ||
-		openCodeGoGLM.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
-		t.Fatalf("OpenCode Go GLM-5.2 compat = %#v, want max_tokens", openCodeGoGLM.OpenAICompletionsCompat)
-	}
-	for _, level := range []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelLow, ThinkingLevelMedium} {
-		if openCodeGoGLM.SupportsThinkingLevel(level) {
-			t.Fatalf("OpenCode Go GLM-5.2 unexpectedly supports %q thinking", level)
-		}
-	}
-	if got, ok := openCodeGoGLM.ProviderThinkingLevel(ThinkingLevelHigh); !ok || got != "high" {
-		t.Fatalf("OpenCode Go GLM-5.2 high thinking level = %q, %v; want high, true", got, ok)
-	}
-	if got, ok := openCodeGoGLM.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
-		t.Fatalf("OpenCode Go GLM-5.2 xhigh thinking level = %q, %v; want max, true", got, ok)
-	}
-	for _, tt := range []struct {
-		id              ModelID
-		contextWindow   int
-		maxOutputTokens int
-		inputCost       float64
-		outputCost      float64
-		cacheReadCost   float64
-		family          string
-		reasoningEffort bool
-	}{
-		{
-			id: "grok-4.5", contextWindow: 500_000, maxOutputTokens: 500_000,
-			inputCost: 2, outputCost: 6, cacheReadCost: 0.5, family: "grok",
-		},
-		{
-			id: "kimi-k3", contextWindow: 1_048_576, maxOutputTokens: 131_072,
-			inputCost: 3, outputCost: 15, cacheReadCost: 0.3, family: "kimi", reasoningEffort: true,
-		},
-	} {
-		model, ok := registry.Model(ProviderOpenCodeGo, tt.id)
-		if !ok {
-			t.Fatalf("fresh registry missing generated OpenCode Go model %s", tt.id)
-		}
-		if model.API != APIOpenAICompletions || !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
-			t.Fatalf("OpenCode Go %s capabilities = %+v", tt.id, model)
-		}
-		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
-			t.Fatalf("OpenCode Go %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
-		}
-		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost {
-			t.Fatalf("OpenCode Go %s costs = %v/%v/%v, want %v/%v/%v", tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
-		}
-		if tt.reasoningEffort {
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningEffort {
-				t.Fatalf("OpenCode Go %s compat = %#v, want reasoning effort", tt.id, model.OpenAICompletionsCompat)
-			}
-		} else if model.OpenAICompletionsCompat != nil {
-			t.Fatalf("OpenCode Go %s compat = %#v, want ordinary OpenCode compatibility", tt.id, model.OpenAICompletionsCompat)
-		}
-		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://opencode.ai/zen/go/v1")
-		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.family)
-		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
-	}
-	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "grok-4.5", APIOpenAIResponses)
-	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m2.5", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "minimax-m3", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-max", APIAnthropicMessages)
-	assertOpenCodeAPI(t, registry, ProviderOpenCodeGo, "qwen3.7-plus", APIAnthropicMessages)
-	openCodeGoQwen, ok := registry.Model(ProviderOpenCodeGo, "qwen3.7-plus")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenCode Go Qwen3.7 Plus model")
-	}
-	if !openCodeGoQwen.SupportsTools || !openCodeGoQwen.SupportsImages() || !openCodeGoQwen.SupportsReasoning() {
-		t.Fatalf("OpenCode Go Qwen3.7 Plus capabilities = %+v, want text/image/tools/reasoning", openCodeGoQwen)
-	}
-	if openCodeGoQwen.ContextWindow != 1000000 || openCodeGoQwen.MaxOutputTokens != 65536 {
-		t.Fatalf("OpenCode Go Qwen3.7 Plus limits = %d/%d, want 1000000/65536", openCodeGoQwen.ContextWindow, openCodeGoQwen.MaxOutputTokens)
-	}
-	if openCodeGoQwen.InputCostPerMillion != 0.4 ||
-		openCodeGoQwen.OutputCostPerMillion != 1.6 ||
-		openCodeGoQwen.CacheReadInputCostPerMillion != 0.04 ||
-		openCodeGoQwen.CacheWriteInputCostPerMillion != 0.5 {
-		t.Fatalf("OpenCode Go Qwen3.7 Plus costs = %v/%v/%v/%v, want 0.4/1.6/0.04/0.5", openCodeGoQwen.InputCostPerMillion, openCodeGoQwen.OutputCostPerMillion, openCodeGoQwen.CacheReadInputCostPerMillion, openCodeGoQwen.CacheWriteInputCostPerMillion)
+	if !openCodeGoGLM.SupportsThinkingLevel(ThinkingLevelLow) ||
+		!openCodeGoGLM.SupportsThinkingLevel(ThinkingLevelHigh) ||
+		!openCodeGoGLM.SupportsThinkingLevel(ThinkingLevel("max")) {
+		t.Fatalf("OpenCode Go GLM-5.3 thinking levels = %+v / %+v", openCodeGoGLM.ThinkingLevelMap, openCodeGoGLM.UnsupportedThinkingLevels)
 	}
 
-	for _, id := range []ModelID{"kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code"} {
-		model, ok := registry.Model(ProviderOpenCodeGo, id)
-		if !ok {
-			t.Fatalf("fresh registry missing generated OpenCode Go Kimi model %s", id)
-		}
-		if model.OpenAICompletionsCompat == nil ||
-			model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningEffort {
-			t.Fatalf("OpenCode Go Kimi %s compat = %#v, want reasoning effort", id, model.OpenAICompletionsCompat)
-		}
-		if !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
-			t.Fatalf("OpenCode Go Kimi %s capabilities were not generated: %+v", id, model)
-		}
+	openCodeGoQwen, _ := registry.Model(ProviderOpenCodeGo, "qwen3.8-max")
+	if !openCodeGoQwen.SupportsImages() || openCodeGoQwen.ContextWindow != 1_000_000 || openCodeGoQwen.MaxOutputTokens != 131_072 {
+		t.Fatalf("OpenCode Go Qwen3.8 Max metadata = %+v", openCodeGoQwen)
+	}
+	if _, ok := openCodeGoQwen.ProviderMetadata["opencodeAPI"]; ok {
+		t.Fatalf("OpenCode Go Qwen3.8 Max route metadata = %#v, want Chat Completions default", openCodeGoQwen.ProviderMetadata)
 	}
 
-	openCodeGoKimi, _ := registry.Model(ProviderOpenCodeGo, "kimi-k2.6")
-	if !openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelLow) ||
-		!openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelMedium) ||
-		!openCodeGoKimi.SupportsThinkingLevel(ThinkingLevelHigh) {
-		t.Fatalf("OpenCode Go Kimi K2.6 thinking support = %+v / %+v, want low, medium, and high", openCodeGoKimi.ThinkingLevelMap, openCodeGoKimi.UnsupportedThinkingLevels)
+	openCodeGoDeepSeek, _ := registry.Model(ProviderOpenCodeGo, "deepseek-v4-flash")
+	if openCodeGoDeepSeek.OpenAICompletionsCompat == nil ||
+		openCodeGoDeepSeek.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Go DeepSeek JSON Schema compatibility = %#v, want unsupported", openCodeGoDeepSeek.OpenAICompletionsCompat)
 	}
-
 	openCodeGoKimiCode, _ := registry.Model(ProviderOpenCodeGo, "kimi-k2.7-code")
-	if openCodeGoKimiCode.OpenAICompletionsCompat.SupportsRequiredToolChoice != OpenAICompatUnsupported {
-		t.Fatalf("OpenCode Go Kimi K2.7 Code required tool choice support = %q, want unsupported", openCodeGoKimiCode.OpenAICompletionsCompat.SupportsRequiredToolChoice)
-	}
-	if !openCodeGoKimiCode.SupportsThinkingLevel(ThinkingLevelLow) ||
-		!openCodeGoKimiCode.SupportsThinkingLevel(ThinkingLevelMedium) ||
-		!openCodeGoKimiCode.SupportsThinkingLevel(ThinkingLevelHigh) {
-		t.Fatalf("OpenCode Go Kimi K2.7 Code thinking support = %+v / %+v, want low, medium, and high", openCodeGoKimiCode.ThinkingLevelMap, openCodeGoKimiCode.UnsupportedThinkingLevels)
+	if openCodeGoKimiCode.OpenAICompletionsCompat == nil ||
+		openCodeGoKimiCode.OpenAICompletionsCompat.SupportsRequiredToolChoice != OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Go Kimi K2.7 Code required tool choice support = %#v, want unsupported", openCodeGoKimiCode.OpenAICompletionsCompat)
 	}
 
 	assertProviderConstantsHaveGeneratedTextMetadata(t, registry)
@@ -1813,22 +1545,26 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 
 	for _, tt := range []struct {
 		provider  ProviderID
+		input     float64
+		output    float64
 		cacheRead float64
 	}{
-		{provider: ProviderOpenCode, cacheRead: 0.03},
-		{provider: ProviderOpenCodeGo, cacheRead: 0.0028},
+		{provider: ProviderOpenCode, input: 0.14, output: 0.28, cacheRead: 0.028},
+		{provider: ProviderOpenCodeGo, input: 0.22, output: 0.66, cacheRead: 0.007},
 	} {
 		routed, ok := registry.Model(tt.provider, "deepseek-v4-flash")
 		if !ok {
 			t.Fatalf("fresh registry missing routed %s DeepSeek V4 Flash model", tt.provider)
 		}
-		if routed.InputCostPerMillion != 0.14 || routed.OutputCostPerMillion != 0.28 ||
+		if routed.InputCostPerMillion != tt.input || routed.OutputCostPerMillion != tt.output ||
 			routed.CacheReadInputCostPerMillion != tt.cacheRead {
-			t.Fatalf("routed %s DeepSeek V4 Flash costs = %f/%f/%f, want 0.14/0.28/%f",
+			t.Fatalf("routed %s DeepSeek V4 Flash costs = %f/%f/%f, want %f/%f/%f",
 				tt.provider,
 				routed.InputCostPerMillion,
 				routed.OutputCostPerMillion,
 				routed.CacheReadInputCostPerMillion,
+				tt.input,
+				tt.output,
 				tt.cacheRead)
 		}
 	}
@@ -3345,4 +3081,21 @@ func assertOpenCodeAPI(t *testing.T, registry *Registry, provider ProviderID, id
 		t.Fatalf("%s/%s API = %q, want registry-facing %q", provider, id, model.API, APIOpenAICompletions)
 	}
 	assertMetadataString(t, model.ProviderMetadata, "opencodeAPI", string(want))
+}
+
+func assertModelIDSet(t *testing.T, provider ProviderID, got map[ModelID]struct{}, want map[ModelID]struct{}) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("%s model count = %d, want %d", provider, len(got), len(want))
+	}
+	for id := range want {
+		if _, ok := got[id]; !ok {
+			t.Errorf("%s model catalog missing %s", provider, id)
+		}
+	}
+	for id := range got {
+		if _, ok := want[id]; !ok {
+			t.Errorf("%s model catalog includes unexpected %s", provider, id)
+		}
+	}
 }

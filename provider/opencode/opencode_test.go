@@ -96,9 +96,9 @@ func TestOpenCodeDispatchRoutesByModelMetadata(t *testing.T) {
 			supportsTools: true,
 		},
 		{
-			name:        "go qwen uses anthropic messages",
+			name:        "go qwen flash uses anthropic messages",
 			provider:    sigma.ProviderOpenCodeGo,
-			modelID:     "qwen3.7-max",
+			modelID:     "qwen3.8-flash",
 			opencodeAPI: sigma.APIAnthropicMessages,
 			register:    opencode.RegisterGo,
 			wantPath:    "/messages",
@@ -215,7 +215,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 		},
 		{
 			name:        "grok uses responses and max output tokens",
-			modelID:     "grok-4.5",
+			modelID:     "grok-4.6",
 			wantPath:    "/responses",
 			wantAuthKey: "Authorization",
 			response:    responsesCompletedEvent,
@@ -232,11 +232,13 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 			maxTokenKey: "max_tokens",
 		},
 		{
-			name:        "qwen uses anthropic messages",
+			name:        "qwen uses chat completions",
 			modelID:     "qwen3.7-plus",
-			wantPath:    "/messages",
-			wantAuthKey: "X-Api-Key",
-			response:    anthropicCompletedEvent,
+			wantPath:    "/chat/completions",
+			wantAuthKey: "Authorization",
+			response:    chatCompletedEvent,
+			maxTokens:   321,
+			maxTokenKey: "max_tokens",
 		},
 	}
 

@@ -70,9 +70,11 @@ func TestOpenCodeRouteAPI(t *testing.T) {
 		{route: "zen", id: "claude-opus-4-7", want: sigma.APIAnthropicMessages},
 		{route: "zen", id: "qwen3.6-plus", want: sigma.APIAnthropicMessages},
 		{route: "zen", id: "gpt-5.1-codex", want: sigma.APIOpenAIResponses},
+		{route: "zen", id: "grok-4.6", want: sigma.APIOpenAIResponses},
 		{route: "zen", id: "kimi-k2.6", want: sigma.APIOpenAICompletions},
-		{route: "go", id: "qwen3.7-max", want: sigma.APIAnthropicMessages},
-		{route: "go", id: "minimax-m2.5", want: sigma.APIAnthropicMessages},
+		{route: "go", id: "qwen3.8-flash", want: sigma.APIAnthropicMessages},
+		{route: "go", id: "qwen3.7-max", want: sigma.APIOpenAICompletions},
+		{route: "go", id: "grok-4.6", want: sigma.APIOpenAIResponses},
 		{route: "go", id: "kimi-k2.6", want: sigma.APIOpenAICompletions},
 	}
 
@@ -2753,6 +2755,10 @@ func TestClassifyFailure(t *testing.T) {
 	}
 	if got := classifyFailure(route, model, errors.New("status=503 body=upstream connect error: connection refused")); got != "upstream_availability" {
 		t.Fatalf("503 connection-refused classification = %q", got)
+	}
+	regionErr := &sigma.ProviderError{StatusCode: http.StatusForbidden, ProviderCode: "RegionError", ProviderMessage: "model requires explicit China hosting opt in"}
+	if got := classifyFailure(routes["go"], model, regionErr); got != "upstream_availability" {
+		t.Fatalf("region-error classification = %q", got)
 	}
 	if got := classifyFailure(route, model, errors.New("unexpected provider response")); got != "inconclusive" {
 		t.Fatalf("ambiguous failure classification = %q", got)

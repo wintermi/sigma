@@ -755,30 +755,25 @@ upstream.
 
 ## OpenCode parity
 
-Sigma now has a routed OpenCode Zen/Go preview provider for selected model
-families that need Google Generative AI, Anthropic Messages, OpenAI Responses,
-or OpenAI-compatible Chat Completions routes. Broader catalog coverage should
-still be promoted only with deterministic evidence.
+Sigma has routed OpenCode Zen/Go preview providers for models that use Google
+Generative AI, Anthropic Messages, OpenAI Responses, or OpenAI-compatible Chat
+Completions routes.
 
-- [x] Complete the reviewed OpenCode Zen catalog cohort for GPT-5.6 Luna/Sol/
-      Terra, DeepSeek V4 Pro, GLM-5.2, Grok 4.5, Hy3 Free, Kimi K2.7 Code,
-      MiniMax-M3, Nemotron 3 Ultra Free, and North Mini Code Free, including
-      cached Responses request-ID affinity compatibility.
-- [x] Add OpenCode Go Grok 4.5 OpenAI Responses and Kimi K3 Chat Completions
-      metadata with deterministic generated-registry and request-shape coverage.
-- [ ] Continue reviewing later OpenCode Zen and OpenCode Go catalog changes,
-      prioritizing high-value routed families and avoiding advertised-but-
-      unavailable models.
-- [x] Evaluate and fixture selected OpenCode-routed OpenAI Responses,
-      Anthropic Messages, and Google API models before promoting them to
-      built-in metadata.
-- [x] Promote strict OpenCode Zen/Go metadata for the covered DeepSeek V4,
-      MiniMax M3, Grok Build, Kimi K2.6/K2.7 Code, and Claude adaptive-thinking rows,
-      including unsupported thinking-level and temperature compatibility
-      metadata.
-- [x] Add deterministic generated-metadata, Responses route/header, and
-      DeepSeek V4 Pro payload coverage for the completed Zen cohort; no live
-      OpenCode calls are required.
+- [x] Regenerate the complete advertised OpenCode Zen and Go catalogues with
+      exact 63- and 27-model membership, removing ten stale models and adding
+      26 current models.
+- [x] Reconcile shared and newly added rows for route, supported inputs,
+      thinking levels, pricing, cache pricing, token limits, and compatibility
+      metadata while preserving the registry-facing routed-provider contract.
+- [x] Add deterministic exact-membership, representative metadata, route
+      dispatch, request-shape, and generated-artifact coverage for the refreshed
+      catalogues.
+- [x] Make live surface probes resolve known model routes from generated
+      metadata and classify `RegionError` as upstream availability.
+- [ ] Verify which OpenCode Go models require workspace-level China-hosting
+      opt-in, then add explicit availability metadata and actionable diagnostics
+      without duplicating provider IDs unless a distinct endpoint or credential
+      boundary is introduced.
 - [ ] Keep `cmd/sigma-surface-probe` as an opt-in live diagnostic tool for
       route-shape regressions, capability limits, and upstream availability
       changes; do not add live OpenCode calls to `mise run ci`.

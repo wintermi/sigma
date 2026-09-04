@@ -2530,6 +2530,17 @@ func jsonSchemaTextFormat() map[string]any {
 }
 
 func openCodeRouteAPI(route string, id string) sigma.API {
+	provider := sigma.ProviderOpenCode
+	if route == "go" {
+		provider = sigma.ProviderOpenCodeGo
+	}
+	if model, ok := sigma.GetModel(provider, sigma.ModelID(id)); ok {
+		if api, ok := model.ProviderMetadata["opencodeAPI"].(string); ok && api != "" {
+			return sigma.API(api)
+		}
+		return sigma.APIOpenAICompletions
+	}
+
 	switch route {
 	case "zen":
 		return zenRouteAPI(id)
@@ -2546,7 +2557,7 @@ func zenRouteAPI(id string) sigma.API {
 		return sigma.APIGoogleGenerativeAI
 	case strings.HasPrefix(id, "claude-") || strings.HasPrefix(id, "qwen3."):
 		return sigma.APIAnthropicMessages
-	case strings.HasPrefix(id, "gpt-"):
+	case strings.HasPrefix(id, "gpt-") || strings.HasPrefix(id, "grok-") || strings.HasPrefix(id, "muse-"):
 		return sigma.APIOpenAIResponses
 	default:
 		return sigma.APIOpenAICompletions
@@ -2554,9 +2565,11 @@ func zenRouteAPI(id string) sigma.API {
 }
 
 func goRouteAPI(id string) sigma.API {
-	switch id {
-	case "qwen3.7-max", "minimax-m2.5":
+	switch {
+	case id == "qwen3.8-flash" || id == "minimax-m3":
 		return sigma.APIAnthropicMessages
+	case strings.HasPrefix(id, "gpt-") || strings.HasPrefix(id, "grok-") || strings.HasPrefix(id, "muse-"):
+		return sigma.APIOpenAIResponses
 	default:
 		return sigma.APIOpenAICompletions
 	}
@@ -2579,6 +2592,10 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		return "upstream_availability"
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
+		return "upstream_availability"
+	}
+	var providerErr *sigma.ProviderError
+	if errors.As(err, &providerErr) && strings.EqualFold(providerErr.ProviderCode, "RegionError") {
 		return "upstream_availability"
 	}
 	message := strings.ToLower(err.Error())

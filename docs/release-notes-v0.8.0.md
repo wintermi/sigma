@@ -42,6 +42,12 @@ reasoning behavior and exact effort availability. Optional routes explicitly
 send `reasoning.effort: "none"` when reasoning is omitted; mandatory routes
 retain provider defaults and reject explicit off or unsupported efforts before
 dispatch.
+OpenCode Zen and Go now expose the complete current 63- and 27-model
+catalogues. The generated refresh adds 26 models, removes ten no longer
+advertised, and reconciles routed APIs, inputs, thinking levels, pricing,
+cache pricing, and token limits. Known live-probe models now resolve their
+route from generated metadata, and region opt-in failures are reported as
+upstream availability rather than an inconclusive request-shape failure.
 The curated OpenRouter image catalog now also includes Seedream 5.0 Lite and
 Pro, Qwen Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and four
 Recraft V4 Styles variants through the existing image adapter. Their estimated
@@ -50,7 +56,7 @@ Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
 through the latest non-empty tool result.
-Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
+Direct DeepSeek V4 Flash plus its OpenCode Zen and Go routes now
 support low reasoning effort while retaining their existing high and
 maximum-effort mappings.
 Direct DeepSeek also adds the experimental V4 Flash Vision model through the
@@ -338,6 +344,10 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- OpenCode retains one Zen provider and one Go provider because regional model
+  availability is controlled by workspace opt-in rather than a distinct API
+  endpoint or credential. Models requiring China hosting may return a
+  `RegionError`; live probes now classify that result as upstream availability.
 - Per-turn Anthropic thinking-effort replay is enabled only for direct Claude
   Opus 5. Fable 5, Sonnet 5, routed aliases, and caller-registered models remain
   unchanged unless their exact model configuration explicitly opts in.
@@ -553,7 +563,7 @@ selection remains available through existing provider-specific controls.
   without sending unsupported reasoning-effort values.
 - Fireworks GLM 5.2 and GLM 5.2 Fast requests now send session affinity when
   prompt caching is enabled and omit unsupported explicit long-cache retention.
-- Direct DeepSeek V4 Flash plus its OpenCode Zen, Zen Free, and Go routes now
+- Direct DeepSeek V4 Flash plus its OpenCode Zen and Go routes now
   map `ThinkingLevelLow` to the provider's `low` reasoning effort. DeepSeek V4
   Pro and models exposed through other routes retain their existing
   independently reviewed level mappings.
@@ -567,6 +577,11 @@ selection remains available through existing provider-specific controls.
 
 ## Deferred work
 
+- OpenCode Go may require workspace-level China-hosting opt-in for individual
+  models. A later evidence-backed pass should identify the affected set, add
+  explicit availability metadata and actionable diagnostics, and introduce a
+  separate regional provider only if the endpoint or credential boundary
+  actually differs.
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 
 ## Validation status

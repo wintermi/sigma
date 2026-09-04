@@ -131,6 +131,14 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Changed
 
+- Regenerated the OpenCode Zen and Go catalogues to the current 63- and
+  27-model sets. The refresh adds newer Claude, Gemini, GPT, Grok, DeepSeek,
+  GLM, Kimi, Qwen, Muse, and related models, reconciles route, capability,
+  thinking-level, pricing, cache-pricing, and token-limit metadata, and removes
+  ten models no longer present in the advertised catalogues.
+- OpenCode live surface probes now use generated route metadata for known
+  models and classify provider `RegionError` responses as upstream availability
+  failures, including workspace-level China-hosting opt-in requirements.
 - Kimi and Kimi Coding requests now use the Sigma-owned `sigma/kimi-coding`
   default user agent from the shared provider wrapper instead of duplicated
   model-catalog headers. Explicit provider, model, and request header overrides
@@ -219,7 +227,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
   prompt-cache marker on the latest non-empty tool result instead of the
   preceding assistant or user message, while retaining the bounded system and
   tool-definition markers.
-- Direct DeepSeek V4 Flash and its OpenCode Zen, Zen Free, and Go routes now
+- Direct DeepSeek V4 Flash and its OpenCode Zen and Go routes now
   expose their supported low reasoning effort while preserving the existing
   high and `xhigh`-to-`max` mappings; other routed DeepSeek models retain their
   independently reviewed level support.
