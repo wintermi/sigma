@@ -95,6 +95,10 @@ sampling fields that remain below Sigma's core and typed request values,
 request-scoped sampling overrides, and raw provider body overrides. OpenAI
 Responses-compatible and Azure OpenAI Responses requests now also clamp typed
 output-token limits below 16 to the accepted request minimum.
+Models can now opt out of that automatic output-token field through
+`OpenAIResponsesCompat.SupportsMaxOutputTokens`. Cache-options-capable
+Responses models now also map automatic long retention to
+`prompt_cache_options.ttl: "30m"`, including the existing direct GPT-5.6 rows.
 Direct OpenAI Responses requests can now run in the background through an
 explicit provider-neutral lifecycle. Callers receive a JSON-serializable,
 provenance-bearing handle, can perform one status fetch at a time, and can
@@ -344,6 +348,25 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- `OpenAIResponsesCompat.SupportsMaxOutputTokens` uses the existing tri-state
+  `OpenAICompatSupport` values. Unspecified or supported retains typed output
+  limits and the minimum of 16; unsupported omits their automatic serialization.
+  Explicit model sampling defaults, request sampling parameters, and raw body
+  overrides remain available, with their existing precedence. Codex still
+  removes the field after all overrides. Local validation and context budgeting
+  are unchanged, but opting out means the provider does not enforce the typed
+  output cap. No catalog row enables this opt-out by default.
+- `SupportsExplicitPromptCacheMode` now selects the automatic long-cache wire
+  format as well as explicit no-cache mode. Flagged models use
+  `prompt_cache_options: {"ttl":"30m"}`; unflagged models retain
+  `prompt_cache_retention: "24h"`, and unsupported long retention remains
+  omitted. Typed `PromptCacheRetention` stays literal under its existing
+  capability gate. Either cache field in request sampling or `extra_body`
+  suppresses automatic long-cache directives, including explicit null values.
+  Raw body values retain final precedence without nested-object merging or
+  repair of caller-authored conflicts. Unset, short, none, affinity keys, and
+  existing Azure/Codex catalog capabilities remain unchanged. Direct background
+  submission uses the same builder and compatibility behavior.
 - OpenCode retains one Zen provider and one Go provider because regional model
   availability is controlled by workspace opt-in rather than a distinct API
   endpoint or credential. Models requiring China hosting may return a
@@ -577,6 +600,11 @@ selection remains available through existing provider-specific controls.
 
 ## Deferred work
 
+- Codex WebSocket `NO_PROXY` suffix/IPv6 hardening, catalog additions and
+  retirements, and additional routed Claude effort support remain deferred.
+  Mistral lifecycle operations, broader cloud credential loading, and agent
+  orchestration retain their existing boundaries. vLLM priority already fits
+  the existing sampling-parameter surface.
 - OpenCode Go may require workspace-level China-hosting opt-in for individual
   models. A later evidence-backed pass should identify the affected set, add
   explicit availability metadata and actionable diagnostics, and introduce a
@@ -585,6 +613,13 @@ selection remains available through existing provider-specific controls.
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 
 ## Validation status
+
+The Responses cache and output-token compatibility changes passed deterministic
+payload and local-server coverage for direct, Azure, Codex, and background
+requests, plus metadata persistence, registry copying, and generator tests.
+`mise run go:generate` left the catalog and generated model outputs unchanged;
+`mise run go:fmt`, `mise run ci` (including race tests), and `git diff --check`
+passed. No live provider calls were made for this validation.
 
 Validate this release with the process in [RELEASING.md](../RELEASING.md),
 including the local CI-equivalent `mise run ci` gate before tagging.

@@ -67,7 +67,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if opts.Temperature != nil {
 		payload["temperature"] = *opts.Temperature
 	}
-	if opts.MaxTokens != nil {
+	if opts.MaxTokens != nil && responsesSupportsMaxOutputTokens(model) {
 		payload["max_output_tokens"] = max(*opts.MaxTokens, responsesMinOutputTokens)
 	}
 	if len(opts.Metadata) > 0 {
@@ -224,10 +224,34 @@ func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, op
 		payload["prompt_cache_key"] = key
 	}
 	if opts.CacheRetention.CacheLongLived() &&
-		(opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") &&
+		!responsesHasExplicitLongCacheDirective(model.Provider, opts) &&
 		responsesSupportsLongCacheRetention(model) {
-		payload["prompt_cache_retention"] = "24h"
+		if responsesSupportsExplicitPromptCacheMode(model) {
+			payload[providerOptionPromptCacheOptions] = map[string]any{"ttl": "30m"}
+		} else {
+			payload[providerOptionPromptCacheRetention] = "24h"
+		}
 	}
+}
+
+func responsesHasExplicitLongCacheDirective(provider sigma.ProviderID, opts sigma.Options) bool {
+	var sampling map[string]any
+	if opts.OpenAIOptions != nil {
+		if opts.OpenAIOptions.PromptCacheRetention != "" {
+			return true
+		}
+		sampling = opts.OpenAIOptions.SamplingParameters
+	}
+	extra := extraBody(opts, provider)
+	for _, key := range []string{providerOptionPromptCacheRetention, providerOptionPromptCacheOptions} {
+		if _, ok := sampling[key]; ok {
+			return true
+		}
+		if _, ok := extra[key]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 func responsesSupportsExplicitPromptCacheMode(model sigma.Model) bool {
@@ -258,6 +282,11 @@ func responsesHasExplicitPromptCacheDirective(provider sigma.ProviderID, opts si
 func responsesSupportsLongCacheRetention(model sigma.Model) bool {
 	return model.OpenAIResponsesCompat == nil ||
 		model.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported
+}
+
+func responsesSupportsMaxOutputTokens(model sigma.Model) bool {
+	return model.OpenAIResponsesCompat == nil ||
+		model.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported
 }
 
 func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {

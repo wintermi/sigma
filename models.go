@@ -233,6 +233,10 @@ const (
 // OpenAIResponsesCompat describes OpenAI Responses API capabilities that vary
 // by model or compatible endpoint.
 type OpenAIResponsesCompat struct {
+	// SupportsMaxOutputTokens controls automatic serialization of the typed output
+	// limit. Unsupported omits it; explicit sampling/body overrides still apply.
+	// Unspecified preserves support. Codex always omits the field.
+	SupportsMaxOutputTokens         OpenAICompatSupport                  `json:"supportsMaxOutputTokens,omitempty"`
 	SupportsAdditionalTools         bool                                 `json:"supportsAdditionalTools,omitempty"`
 	SupportsToolSearch              bool                                 `json:"supportsToolSearch,omitempty"`
 	SupportsGrammarTools            bool                                 `json:"supportsGrammarTools,omitempty"`

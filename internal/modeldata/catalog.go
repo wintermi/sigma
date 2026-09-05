@@ -168,6 +168,7 @@ type AnthropicMessagesCompat struct {
 
 // OpenAIResponsesCompat mirrors sigma.OpenAIResponsesCompat.
 type OpenAIResponsesCompat struct {
+	SupportsMaxOutputTokens         string `json:"supportsMaxOutputTokens,omitempty"`
 	SupportsAdditionalTools         bool   `json:"supportsAdditionalTools,omitempty"`
 	SupportsToolSearch              bool   `json:"supportsToolSearch,omitempty"`
 	SupportsGrammarTools            bool   `json:"supportsGrammarTools,omitempty"`

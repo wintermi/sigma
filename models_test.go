@@ -32,6 +32,7 @@ func TestModelMetadataJSONRoundTrip(t *testing.T) {
 			SupportsTemperature: sigma.AnthropicCompatUnsupported,
 		},
 		OpenAIResponsesCompat: &sigma.OpenAIResponsesCompat{
+			SupportsMaxOutputTokens:         sigma.OpenAICompatUnsupported,
 			SupportsAdditionalTools:         true,
 			SupportsExplicitPromptCacheMode: true,
 			SupportsLongCacheRetention:      sigma.OpenAICompatUnsupported,
@@ -54,6 +55,7 @@ func TestModelMetadataJSONRoundTrip(t *testing.T) {
 		t.Fatalf("anthropic compat changed after round trip: %#v", roundTripped.AnthropicMessagesCompat)
 	}
 	if roundTripped.OpenAIResponsesCompat == nil ||
+		roundTripped.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported ||
 		!roundTripped.OpenAIResponsesCompat.SupportsAdditionalTools ||
 		!roundTripped.OpenAIResponsesCompat.SupportsExplicitPromptCacheMode ||
 		roundTripped.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported ||

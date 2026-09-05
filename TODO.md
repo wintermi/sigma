@@ -178,6 +178,12 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add capability-gated explicit prompt-cache mode for reviewed OpenAI
       Responses models so `CacheRetentionNone` disables implicit cache writes
       without changing default or unsupported-model payloads.
+- [x] Map automatic long retention to `prompt_cache_options.ttl: "30m"` for
+      cache-options-capable Responses models, preserving legacy `24h` retention,
+      unsupported-capability gates, and explicit request cache directives.
+- [x] Add a tri-state Responses output-token compatibility opt-out that omits
+      automatic typed limits while preserving sampling/body overrides, local
+      budgeting, and Codex's unconditional output-token field omission.
 - [x] Clamp Codex request-affinity headers to the provider's 64-character
       session-ID limit while preserving Sigma's local session-cache keys.
 - [x] Use monotonic UUIDv7 handshake IDs for sessionless Codex WebSocket

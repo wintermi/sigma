@@ -1577,6 +1577,9 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 		},
 		CostTiers:        []sigma.ModelCostTier{{InputTokensAbove: 272_000, InputCostPerMillion: 2}},
 		ProviderMetadata: nestedProviderMetadata(),
+		OpenAIResponsesCompat: &sigma.OpenAIResponsesCompat{
+			SupportsMaxOutputTokens: sigma.OpenAICompatUnsupported,
+		},
 		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
 			SupportsGrammarTools: sigma.OpenAICompatSupported,
 		},
@@ -1592,6 +1595,7 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	mutateNestedProviderMetadata(model.ProviderMetadata)
 	model.CostTiers[0].InputCostPerMillion = 20
+	model.OpenAIResponsesCompat.SupportsMaxOutputTokens = sigma.OpenAICompatSupported
 	model.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 	model.AnthropicMessagesCompat.AllowedFallbackModels[0].Model = "mutated"
 	model.AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion = 40
@@ -1600,6 +1604,7 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	listed[0].ThinkingLevels[0] = sigma.ThinkingLevelHigh
 	listed[0].UnsupportedThinkingLevels[0] = sigma.ThinkingLevelMedium
 	listed[0].CostTiers[0].InputCostPerMillion = 20
+	listed[0].OpenAIResponsesCompat.SupportsMaxOutputTokens = sigma.OpenAICompatSupported
 	listed[0].OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 	listed[0].AnthropicMessagesCompat.AllowedFallbackModels[0].Model = "mutated"
 	listed[0].AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion = 40
@@ -1628,26 +1633,37 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	if got.ProviderMetadata["family"] != "gpt" {
 		t.Fatalf("provider metadata family = %q, want %q", got.ProviderMetadata["family"], "gpt")
 	}
+	if got.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported {
+		t.Fatalf("Responses output-token compatibility mutated through a copy: %#v", got.OpenAIResponsesCompat)
+	}
 	assertNestedProviderMetadata(t, got.ProviderMetadata)
 
 	got.ProviderMetadata["family"] = "mutated"
 	got.CostTiers[0].InputCostPerMillion = 20
+	got.OpenAIResponsesCompat.SupportsMaxOutputTokens = sigma.OpenAICompatSupported
 	got.AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion = 40
 	mutateNestedProviderMetadata(got.ProviderMetadata)
 	got, ok = registry.Model(sigma.ProviderOpenAI, "gpt-custom")
 	if !ok {
 		t.Fatal("model was not registered")
 	}
+	if got.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported {
+		t.Fatalf("Responses output-token compatibility mutated through a copy: %#v", got.OpenAIResponsesCompat)
+	}
 	assertNestedProviderMetadata(t, got.ProviderMetadata)
 
 	snapshot := registry.Snapshot()
 	snapshot.Models[0].CostTiers[0].InputCostPerMillion = 20
+	snapshot.Models[0].OpenAIResponsesCompat.SupportsMaxOutputTokens = sigma.OpenAICompatSupported
 	snapshot.Models[0].AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion = 40
 	snapshot.Models[0].ProviderMetadata["family"] = "mutated"
 	mutateNestedProviderMetadata(snapshot.Models[0].ProviderMetadata)
 	got, ok = registry.Model(sigma.ProviderOpenAI, "gpt-custom")
 	if !ok {
 		t.Fatal("model was not registered")
+	}
+	if got.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported {
+		t.Fatalf("Responses output-token compatibility mutated through a copy: %#v", got.OpenAIResponsesCompat)
 	}
 	assertNestedProviderMetadata(t, got.ProviderMetadata)
 
@@ -1656,8 +1672,12 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	if !ok {
 		t.Fatal("cloned model was not registered")
 	}
+	if cloned.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported {
+		t.Fatalf("cloned Responses compatibility = %#v", cloned.OpenAIResponsesCompat)
+	}
 	cloned.ProviderMetadata["family"] = "mutated"
 	cloned.CostTiers[0].InputCostPerMillion = 20
+	cloned.OpenAIResponsesCompat.SupportsMaxOutputTokens = sigma.OpenAICompatSupported
 	cloned.OpenAICompletionsCompat.SupportsGrammarTools = sigma.OpenAICompatUnsupported
 	cloned.AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion = 40
 	mutateNestedProviderMetadata(cloned.ProviderMetadata)
@@ -1673,6 +1693,9 @@ func TestRegistryReturnsDefensiveModelCopies(t *testing.T) {
 	}
 	if got.AnthropicMessagesCompat.AllowedFallbackModels[0].CostTiers[0].InputCostPerMillion != 4 {
 		t.Fatalf("cloned fallback pricing leaked into original: %#v", got.AnthropicMessagesCompat)
+	}
+	if got.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported {
+		t.Fatalf("Responses output-token compatibility mutated through a copy: %#v", got.OpenAIResponsesCompat)
 	}
 	assertNestedProviderMetadata(t, got.ProviderMetadata)
 	cloned, ok = clone.Model(sigma.ProviderOpenAI, "gpt-custom")

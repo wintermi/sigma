@@ -554,7 +554,7 @@ func TestResponsesExplicitNoCacheModeRequiresExplicitNoneAndCompatibility(t *tes
 	}{
 		{name: "unset", compatible: true},
 		{name: "short", retention: sigma.CacheRetentionShort, compatible: true, wantKey: true},
-		{name: "long", retention: sigma.CacheRetentionLong, compatible: true, wantKey: true, wantLong: true},
+		{name: "long legacy", retention: sigma.CacheRetentionLong, wantKey: true, wantLong: true},
 		{name: "unmarked", retention: sigma.CacheRetentionNone},
 	}
 

@@ -674,6 +674,7 @@ func writeOpenAIResponsesCompatField(b *bytes.Buffer, compat *modeldata.OpenAIRe
 		return
 	}
 	b.WriteString("\t\tOpenAIResponsesCompat: &OpenAIResponsesCompat{\n")
+	writeStringField(b, "SupportsMaxOutputTokens", "OpenAICompatSupport", compat.SupportsMaxOutputTokens)
 	writeBoolField(b, "SupportsAdditionalTools", compat.SupportsAdditionalTools)
 	writeBoolField(b, "SupportsToolSearch", compat.SupportsToolSearch)
 	writeBoolField(b, "SupportsGrammarTools", compat.SupportsGrammarTools)

@@ -12,6 +12,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Responses models can now opt out of automatic `max_output_tokens` through
+  `OpenAIResponsesCompat.SupportsMaxOutputTokens`. Unspecified capability keeps
+  existing behavior; explicit sampling and body overrides remain available,
+  while Codex continues omitting the field unconditionally.
 - Generated OpenRouter image metadata now includes Seedream 5.0 Lite and Pro,
   Qwen Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and four
   Recraft V4 Styles variants through the existing image adapter. Models without
@@ -146,6 +150,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Automatic long-cache requests for Responses models marked
+  `SupportsExplicitPromptCacheMode` now use `prompt_cache_options.ttl: "30m"`
+  instead of legacy `prompt_cache_retention: "24h"`. Explicit request sampling
+  or body cache fields suppress automatic long-cache directives, including
+  explicit nulls, while legacy models and existing no-cache behavior retain
+  their current contracts.
 - GitHub Copilot Claude Fable 5 now uses its Anthropic-compatible Messages
   route so selected reasoning levels are transmitted through adaptive thinking
   controls while preserving existing authentication, headers, capabilities,

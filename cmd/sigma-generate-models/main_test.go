@@ -384,3 +384,28 @@ func assertBefore(t *testing.T, value, before, after string) {
 		t.Fatalf("%q appeared after %q:\n%s", before, after, value)
 	}
 }
+
+func TestRenderTextModelsPreservesResponsesOutputTokenSupport(t *testing.T) {
+	t.Parallel()
+	for _, support := range []string{"", "supported", "unsupported"} {
+		name := support
+		if name == "" {
+			name = "unspecified"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			catalog := modeldata.Catalog{TextModels: []modeldata.TextModel{{
+				ID: "custom", Provider: "custom", API: "openai-responses",
+				OpenAIResponsesCompat: &modeldata.OpenAIResponsesCompat{SupportsMaxOutputTokens: support},
+			}}}
+			rendered := string(renderTextModels(catalog))
+			if support == "" {
+				if strings.Contains(rendered, "SupportsMaxOutputTokens") {
+					t.Fatal("unspecified support was emitted")
+				}
+			} else if !strings.Contains(rendered, `SupportsMaxOutputTokens: OpenAICompatSupport("`+support+`")`) {
+				t.Fatalf("generated model lost output-token support: %s", rendered)
+			}
+		})
+	}
+}
