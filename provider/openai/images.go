@@ -20,6 +20,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/sse"
+	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
 
 const maxImagesResponseBytes = 64 << 20
@@ -93,10 +94,9 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 
 // StreamImages sends req to OpenAI's streaming image endpoint.
 func (p *ImagesProvider) StreamImages(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) *sigma.ImageStream {
-	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
-	stream, writer := sigma.NewImageStream(ctx)
+	ctx, stream, writer, cleanup := streamlifecycle.NewImageStream(ctx, opts)
 	go func() {
-		defer cancel()
+		defer cleanup()
 		resp, err := sigma.DoHTTPWithRetry(
 			ctx,
 			p.base.httpClient(opts),
@@ -119,6 +119,7 @@ func (p *ImagesProvider) StreamImages(ctx context.Context, model sigma.ImageMode
 			_ = writer.Error(ctx, err, final)
 			return
 		}
+		resp.Body = sse.CloseOnContextDone(ctx, resp.Body)
 		defer resp.Body.Close()
 		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
@@ -154,6 +155,10 @@ func (p *ImagesProvider) newStreamRequest(ctx context.Context, model sigma.Image
 }
 
 func (p *ImagesProvider) newRequestWithStream(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options, stream bool) (*http.Request, error) {
+	opts, credential, err := sigma.ResolveAuthForRequest(ctx, imageAuthModel(model), opts)
+	if err != nil {
+		return nil, fmt.Errorf("openai images: resolve auth: %w", err)
+	}
 	body, contentType, err := imagesRequestBody(model, req, opts, stream)
 	if err != nil {
 		return nil, err
@@ -179,8 +184,8 @@ func (p *ImagesProvider) newRequestWithStream(ctx context.Context, model sigma.I
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
-		return nil, err
+	if credential.Value != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+credential.Value)
 	}
 	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunImagePayloadDebugHooks(ctx, opts, model.Provider, sigma.ImageAPIOpenAIImages, model.ID, body, httpReq.Header); err != nil {
@@ -581,25 +586,6 @@ func (p *ImagesProvider) addProviderHeaders(req *http.Request, provider sigma.Pr
 	if project, ok := stringOption(options, providerOptionProject); ok {
 		req.Header.Set("OpenAI-Project", project)
 	}
-}
-
-func (p *ImagesProvider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.ImageModel, opts sigma.Options) error {
-	if opts.AuthResolver == nil {
-		return &sigma.Error{
-			Code:     sigma.ErrorUnsupported,
-			Message:  "openai images: auth resolver is required",
-			Provider: model.Provider,
-			Model:    model.ID,
-		}
-	}
-	credential, err := opts.AuthResolver.Resolve(ctx, imageAuthModel(model), opts)
-	if err != nil {
-		return err
-	}
-	if credential.Value != "" {
-		req.Header.Set("Authorization", "Bearer "+credential.Value)
-	}
-	return nil
 }
 
 func imageAuthModel(model sigma.ImageModel) sigma.Model {

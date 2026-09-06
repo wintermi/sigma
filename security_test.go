@@ -19,6 +19,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/sigmatest"
@@ -418,6 +419,34 @@ func assertSecurityNoSecrets(t *testing.T, value string) {
 	for _, secret := range secrets {
 		if strings.Contains(value, secret) {
 			t.Fatalf("value leaked %q: %q", secret, value)
+		}
+	}
+}
+
+func TestSecurityProviderErrorRedactsEveryCredentialCutoff(t *testing.T) {
+	t.Parallel()
+	const value = `synthetic\"credential\\tail`
+	const prefix = `{"safe":"context","access_token":"`
+	for cut := 0; cut <= len(value); cut++ {
+		err := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(prefix+value[:cut]), nil)
+		for _, output := range []string{err.Error(), err.BodyPreview, err.String()} {
+			if !strings.Contains(output, `"access_token":"[redacted]"`) || strings.Contains(output, "synthetic") {
+				t.Fatalf("cutoff %d not redacted: %q", cut, output)
+			}
+		}
+	}
+}
+
+func TestSecurityProviderErrorKeepsBoundedUTF8Preview(t *testing.T) {
+	t.Parallel()
+	body := `{"nested":{"access_token":"synthetic\"token"},"safe":"` + strings.Repeat("界", 1000) + `"}`
+	providerErr := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(body), nil)
+	if !utf8.ValidString(providerErr.BodyPreview) || len(providerErr.BodyPreview) > 2051 || !strings.Contains(providerErr.BodyPreview, "界") {
+		t.Fatalf("invalid bounded preview: bytes=%d", len(providerErr.BodyPreview))
+	}
+	for _, output := range []string{providerErr.BodyPreview, providerErr.Error(), providerErr.String()} {
+		if strings.Contains(output, "synthetic") || !strings.Contains(output, "[redacted]") {
+			t.Fatalf("credential leaked: %q", output)
 		}
 	}
 }

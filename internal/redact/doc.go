@@ -19,7 +19,7 @@ var (
 	authorizationLinePattern = regexp.MustCompile(`(?im)^([ \t]*authorization[ \t]*:[ \t]*)(?:bearer|basic|api-key|apikey)?[ \t]*[^\r\n]+`)
 	bearerPattern            = regexp.MustCompile(`(?i)\bbearer[ \t]+[A-Za-z0-9._~+/=-]+`)
 	cookieLinePattern        = regexp.MustCompile(`(?im)^([ \t]*(?:cookie|set-cookie)[ \t]*:[ \t]*)[^\r\n]+`)
-	jsonSecretPattern        = regexp.MustCompile(`(?i)("(?:(?:api[_-]?key)|(?:access[_-]?token)|(?:refresh[_-]?token)|(?:id[_-]?token)|(?:client[_-]?secret)|(?:device[_-]?code)|(?:user[_-]?code)|(?:secret[_-]?access[_-]?key)|(?:session[_-]?token)|(?:provider[_-]?signature)|authorization|cookie|signature)"[ \t]*:[ \t]*)("[^"\\]*(?:\\.[^"\\]*)*"|null|true|false|-?[0-9]+(?:\.[0-9]+)?)`)
+	jsonSecretPattern        = regexp.MustCompile(`(?i)("(?:(?:api[_-]?key)|(?:access[_-]?token)|(?:refresh[_-]?token)|(?:id[_-]?token)|(?:client[_-]?secret)|(?:device[_-]?code)|(?:user[_-]?code)|(?:secret[_-]?access[_-]?key)|(?:session[_-]?token)|(?:provider[_-]?signature)|authorization|cookie|signature)"[ \t]*:[ \t]*)("[^"\\]*(?:\\[\s\S][^"\\]*)*(?:"|\\?\z)|null|true|false|-?[0-9]+(?:\.[0-9]+)?)`)
 	querySecretPattern       = regexp.MustCompile(`(?i)([?&](?:api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|device[_-]?code|user[_-]?code|signature|sig|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential|x-goog-security-token|awsaccesskeyid)=)[^&#\s]+`)
 	formSecretPattern        = regexp.MustCompile(`(?i)\b(api[_-]?key|access[_-]?token|refresh[_-]?token|id[_-]?token|client[_-]?secret|device[_-]?code|user[_-]?code)=([^&\s]+)`)
 	apiKeyPattern            = regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{8,}|sk-proj-[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{16,})\b`)

@@ -312,10 +312,7 @@ func WithSessionID(sessionID string) Option {
 // WithHeader adds or replaces a request header.
 func WithHeader(key, value string) Option {
 	return func(options *Options) {
-		if options.Headers == nil {
-			options.Headers = make(map[string]string)
-		}
-		options.Headers[key] = value
+		options.Headers = mergeHeaders(options.Headers, map[string]string{key: value})
 	}
 }
 
@@ -325,12 +322,7 @@ func WithHeaders(headers map[string]string) Option {
 		if len(headers) == 0 {
 			return
 		}
-		if options.Headers == nil {
-			options.Headers = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			options.Headers[key] = value
-		}
+		options.Headers = mergeHeaders(options.Headers, headers)
 	}
 }
 
@@ -558,7 +550,7 @@ func cloneOptions(options Options) Options {
 		Transport:                    options.Transport,
 		CacheRetention:               options.CacheRetention,
 		SessionID:                    options.SessionID,
-		Headers:                      copyStringStringMap(options.Headers),
+		Headers:                      mergeHeaders(nil, options.Headers),
 		SuppressedHeaders:            append([]string(nil), options.SuppressedHeaders...),
 		Timeout:                      cloneDurationPtr(options.Timeout),
 		MaxRetries:                   cloneIntPtr(options.MaxRetries),

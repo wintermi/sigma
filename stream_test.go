@@ -8,6 +8,8 @@ package sigma_test
 import (
 	"context"
 	stderrors "errors"
+	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -798,6 +800,120 @@ func TestStreamPartialSnapshotDoesNotAliasAccumulatorState(t *testing.T) {
 		args := block.ToolArguments.(map[string]any)
 		if got, want := args["city"], "Melbourne"; got != want {
 			t.Fatalf("final tool city = %v, want %v (snapshot aliased accumulator state)", got, want)
+		}
+	}
+}
+
+func TestStreamCancellationPreservesAcceptedTerminal(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"parent", "collector", "close", "canceled-close"} {
+		for _, failure := range []bool{false, true} {
+			name := mode + "/success"
+			if failure {
+				name = mode + "/error"
+			}
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				stream, writer := sigma.NewStream(ctx)
+				defer stream.Close()
+				if err := writer.Emit(ctx, sigma.Event{Kind: sigma.EventKindTextDelta, DeltaText: "queued"}); err != nil {
+					t.Fatal(err)
+				}
+				final := sigma.AssistantMessage{Model: "accepted", StopReason: sigma.StopReasonEndTurn, Content: []sigma.ContentBlock{sigma.Text("accepted")}}
+				var terminalErr error
+				if failure {
+					terminalErr = stderrors.New("accepted failure")
+					final.StopReason = sigma.StopReasonError
+				}
+				finished := make(chan error, 1)
+				go func() {
+					if failure {
+						finished <- writer.Error(context.Background(), terminalErr, final)
+					} else {
+						finished <- writer.Done(context.Background(), final)
+					}
+				}()
+				deadline := time.Now().Add(2 * time.Second)
+				for {
+					if _, ok := stream.Final(); ok {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatal("terminal was never accepted")
+					}
+					runtime.Gosched()
+				}
+				collectCtx := context.Background()
+				switch mode {
+				case "parent":
+					cancel()
+				case "collector":
+					var stop context.CancelFunc
+					collectCtx, stop = context.WithCancel(collectCtx)
+					stop()
+				case "close":
+					stream.Close()
+				case "canceled-close":
+					cancel()
+					stream.Close()
+				}
+				if mode != "collector" {
+					select {
+					case <-stream.Done():
+					case <-time.After(2 * time.Second):
+						t.Fatal("abandoned stream did not close")
+					}
+					if _, open := <-stream.Events(); !open {
+						t.Fatal("queued event was discarded")
+					}
+					select {
+					case _, open := <-stream.Events():
+						if open {
+							t.Fatal("undeliverable terminal was delivered")
+						}
+					default:
+						t.Fatal("Events not closed before Done")
+					}
+				}
+				got, err := sigma.Collect(collectCtx, stream)
+				if !reflect.DeepEqual(got, final) || !stderrors.Is(err, terminalErr) {
+					t.Fatalf("result changed: got %#v, %v; want %#v, %v", got, err, final, terminalErr)
+				}
+				select {
+				case <-stream.Done():
+				case <-time.After(2 * time.Second):
+					t.Fatal("stream did not close")
+				}
+				// Cancellation may retain a buffered event in the closed channel.
+			drained:
+				for {
+					select {
+					case _, open := <-stream.Events():
+						if !open {
+							break drained
+						}
+					default:
+						t.Fatal("Events not closed after Done")
+					}
+				}
+				select {
+				case writeErr := <-finished:
+					if mode != "collector" {
+						var closedErr *sigma.Error
+						if !stderrors.As(writeErr, &closedErr) || closedErr.Code != sigma.ErrorStreamClosed {
+							t.Fatalf("abandoned writer error = %v", writeErr)
+						}
+					}
+				case <-time.After(2 * time.Second):
+					t.Fatal("terminal writer blocked")
+				}
+				stable, ok := stream.Final()
+				if !ok || !reflect.DeepEqual(stable, final) || !stderrors.Is(stream.Err(), terminalErr) {
+					t.Fatal("accepted state changed after closure")
+				}
+			})
 		}
 	}
 }

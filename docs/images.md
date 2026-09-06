@@ -63,6 +63,26 @@ Image provider options mirror text options but use `ImageOption` helpers:
 generated image can be base64 data (`sigma.ImageOutputData`) or a URL
 (`sigma.ImageOutputURL`), depending on the provider response.
 
+## Streaming and cancellation
+
+`ImageStream.Close` cancels in-flight OpenAI image requests, including requests
+waiting for response headers or stalled response-body reads. The root streaming
+fallback also cancels the context passed to `ImageProvider.Generate`; custom
+providers must honor that context. Parent cancellation and request timeouts use
+the same lifecycle. Normal completion releases timeout and watcher resources.
+Repeated calls to `Close` are safe.
+
+Explicit closure does not synthesize an aborted result. Before a terminal result
+is accepted, context cancellation preserves available partials with an aborted
+stop reason. Once accepted, success or error remains available through `Final`,
+`Err`, and `CollectImages`, even if cancellation prevents terminal-event delivery.
+See [Cancellation](cancellation.md).
+
+OpenAI image generation, streaming, edits, and variations apply auth-derived
+base URLs, endpoints, headers, and provider options before building each request.
+Explicit request configuration overrides these defaults, with case-insensitive
+header matching. Embedding requests follow the same auth-resolution contract.
+
 ## OpenRouter Images
 
 An implemented image-generation adapter is `provider/openrouter`, which sends

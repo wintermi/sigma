@@ -24,6 +24,12 @@ Diagnostic paths redact common credential shapes before exposing them:
   `client_secret`, `secret_access_key`, and `session_token`
 - provider error body previews and underlying error messages
 
+Recognized JSON credential fields are also redacted in incomplete diagnostics.
+An unterminated string value is hidden through the end of the diagnostic,
+including escaped quotes, backslashes, and multiline content. Complete values
+preserve neighboring non-sensitive content. Previews remain bounded and safe at
+UTF-8 boundaries; this does not extend redaction to arbitrary unknown secrets.
+
 Debug hooks receive redacted copies of request payloads, request headers, and
 response headers. Mutating a debug value does not mutate the provider request or
 later hooks. There is currently no unsafe opt-in for raw debug payloads; callers

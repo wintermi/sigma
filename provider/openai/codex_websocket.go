@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha1" // #nosec G505 -- RFC 6455 requires SHA-1 for Sec-WebSocket-Accept.
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
@@ -56,6 +57,7 @@ type codexWebSocketConnection struct {
 }
 
 type codexWebSocketSessionEntry struct {
+	fingerprint  [sha256.Size]byte
 	conn         *codexWebSocketConnection
 	busy         bool
 	idleTimer    *time.Timer
@@ -292,6 +294,10 @@ func (p *CodexResponsesProvider) runSSE(ctx context.Context, writer sigma.Stream
 }
 
 func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer sigma.StreamWriter, model sigma.Model, req sigma.Request, opts sigma.Options) (*responsesStreamParser, error) {
+	opts, credential, hasCredential, err := p.resolveRequestAuth(ctx, model, opts)
+	if err != nil {
+		return nil, err
+	}
 	body, err := p.requestBody(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -312,23 +318,21 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 	if err != nil {
 		return nil, err
 	}
-	headers, accountID, err := p.codexWebSocketHeaders(ctx, model, opts, requestID)
+	headers, accountID, err := p.codexWebSocketHeaders(ctx, model, opts, requestID, credential, hasCredential)
 	if err != nil {
 		return nil, err
 	}
-	acquired, err := acquireCodexWebSocket(ctx, wsURL, headers, opts.SessionID, accountID, codexWebSocketConnectTimeout(opts))
+	acquired, err := acquireCodexWebSocket(ctx, wsURL, headers, opts.SessionID, accountID, codexWebSocketConnectTimeout(opts), codexWebSocketFingerprint(model.Provider, wsURL, headers))
 	if err != nil {
 		return nil, err
 	}
 	keepConnection := false
+	defer func() { acquired.release(keepConnection) }()
 	streamOptions, err := codexResponsesStreamOptions(model, req, opts)
 	if err != nil {
 		return nil, err
 	}
 	parser := newResponsesStreamParser(writer, model, streamOptions)
-	defer func() {
-		acquired.release(keepConnection)
-	}()
 
 	fullBody := cloneJSONMap(requestBody)
 	sendBody := requestBody
@@ -382,7 +386,18 @@ type acquiredCodexWebSocket struct {
 	release func(keep bool)
 }
 
-func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Header, sessionID string, accountID string, connectTimeout time.Duration) (*acquiredCodexWebSocket, error) {
+// codexWebSocketFingerprint binds continuation state to the effective route and
+// authentication without retaining another copy of credential-bearing headers.
+func codexWebSocketFingerprint(provider sigma.ProviderID, endpoint string, headers http.Header) [sha256.Size]byte {
+	data, _ := json.Marshal(struct {
+		Provider sigma.ProviderID
+		Endpoint string
+		Headers  http.Header
+	}{provider, endpoint, headers})
+	return sha256.Sum256(data)
+}
+
+func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Header, sessionID string, accountID string, connectTimeout time.Duration, fingerprint [sha256.Size]byte) (*acquiredCodexWebSocket, error) {
 	if sessionID == "" {
 		conn, err := dialCodexWebSocket(ctx, wsURL, headers, connectTimeout)
 		if err != nil {
@@ -403,7 +418,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 			entry.idleTimer.Stop()
 			entry.idleTimer = nil
 		}
-		if !entry.busy && entry.conn.IsOpen() {
+		if !entry.busy && entry.conn.IsOpen() && entry.fingerprint == fingerprint {
 			entry.busy = true
 			cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
 			codexWebSocketSessions.Unlock()
@@ -420,7 +435,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 			deleteCodexWebSocketSessionEntryLocked(sessionID, accountID, entry)
 			codexWebSocketSessions.Unlock()
 			closeCodexWebSocketEntry(entry)
-			return acquireCodexWebSocket(ctx, wsURL, headers, sessionID, accountID, connectTimeout)
+			return acquireCodexWebSocket(ctx, wsURL, headers, sessionID, accountID, connectTimeout, fingerprint)
 		}
 		codexWebSocketSessions.Unlock()
 		conn, err := dialCodexWebSocket(ctx, wsURL, headers, connectTimeout)
@@ -440,12 +455,16 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 	if err != nil {
 		return nil, err
 	}
-	entry := &codexWebSocketSessionEntry{conn: conn, busy: true}
+	entry := &codexWebSocketSessionEntry{conn: conn, busy: true, fingerprint: fingerprint}
 	codexWebSocketSessions.Lock()
 	accountEntries = codexWebSocketSessions.entries[sessionID]
 	if accountEntries == nil {
 		accountEntries = make(map[string]*codexWebSocketSessionEntry)
 		codexWebSocketSessions.entries[sessionID] = accountEntries
+	}
+	if accountEntries[accountID] != nil {
+		codexWebSocketSessions.Unlock()
+		return &acquiredCodexWebSocket{conn: conn, release: func(bool) { conn.Close() }}, nil
 	}
 	accountEntries[accountID] = entry
 	cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
@@ -709,11 +728,7 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 	return out
 }
 
-func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options, requestID string) (http.Header, string, error) {
-	opts, credential, hasCredential, err := p.resolveRequestAuth(ctx, model, opts)
-	if err != nil {
-		return nil, "", err
-	}
+func (p *CodexResponsesProvider) codexWebSocketHeaders(ctx context.Context, model sigma.Model, opts sigma.Options, requestID string, credential sigma.Credential, hasCredential bool) (http.Header, string, error) {
 	endpoint, err := p.endpoint(model, opts)
 	if err != nil {
 		return nil, "", err

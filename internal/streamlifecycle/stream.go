@@ -39,3 +39,31 @@ func NewTextStream(ctx context.Context, opts sigma.Options) (context.Context, *s
 
 	return ctx, stream, writer, cleanup
 }
+
+// NewImageStream creates a sigma image stream whose request context is canceled when
+// the consumer closes the stream or the stream naturally finishes.
+func NewImageStream(ctx context.Context, opts sigma.Options) (context.Context, *sigma.ImageStream, sigma.ImageStreamWriter, func()) {
+	ctx, stopTimeout := sigma.ContextWithRequestTimeout(ctx, opts)
+	ctx, cancel := context.WithCancel(ctx)
+	stream, writer := sigma.NewImageStream(ctx)
+
+	done := make(chan struct{})
+	var once sync.Once
+	cleanup := func() {
+		once.Do(func() {
+			close(done)
+			cancel()
+			stopTimeout()
+		})
+	}
+
+	go func() {
+		select {
+		case <-stream.Done():
+			cancel()
+		case <-done:
+		}
+	}()
+
+	return ctx, stream, writer, cleanup
+}

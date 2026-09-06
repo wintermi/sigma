@@ -2280,3 +2280,191 @@ func receiveMap(t *testing.T, requests <-chan map[string]any) map[string]any {
 		return nil
 	}
 }
+
+func TestCodexResponsesWebSocketSessionSeparatesEndpoints(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	routed := make(chan string, 4)
+	server := func(name string) *codexWebSocketTestServer {
+		return newCodexWebSocketTestServer(t, func(_ *http.Request, ws *codexWebSocketTestConn) {
+			for {
+				if _, err := ws.readJSONError(); err != nil {
+					return
+				}
+				routed <- name
+				writeCodexWebSocketTextResponse(t, ws, "resp_"+name, "msg_"+name, "txt_"+name, name)
+			}
+		})
+	}
+	a, b := server("A"), server("B")
+	defer a.Close()
+	defer b.Close()
+	defer openai.CloseCodexResponsesWebSocketSessions()
+	providerID := sigma.ProviderID("codex-route-test")
+	model := codexResponsesTestModel(providerID)
+	clientA := codexResponsesTestClient(t, providerID, model, a.URL, codexTokenProvider("synthetic"))
+	clientB := codexResponsesTestClient(t, providerID, model, b.URL, codexTokenProvider("synthetic"))
+	completeCodexWebSocket(t, clientA, model, "shared-endpoint-session", "request A")
+	completeCodexWebSocket(t, clientB, model, "shared-endpoint-session", "request B")
+	first, second := <-routed, <-routed
+	if first != "A" || second != "B" {
+		t.Fatalf("requests routed to %s, %s; want A, B", first, second)
+	}
+}
+
+type codexRoutingAuth struct {
+	result sigma.AuthResolution
+	err    error
+	calls  atomic.Int32
+}
+
+func (a *codexRoutingAuth) Resolve(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+	panic("rich resolution must not call credential-only resolver")
+}
+
+func (a *codexRoutingAuth) ResolveAuthResolution(context.Context, sigma.Model, sigma.Options) (sigma.AuthResolution, error) {
+	a.calls.Add(1)
+	return a.result, a.err
+}
+
+func TestCodexResponsesWebSocketHonorsResolvedAuth(t *testing.T) {
+	for _, mode := range []string{"base URL", "endpoint", "explicit override", "explicit token", "resolver failure"} {
+		t.Run(mode, func(t *testing.T) {
+			type capture struct {
+				name    string
+				headers http.Header
+				body    map[string]any
+			}
+			routed := make(chan capture, 2)
+			server := func(name string) *codexWebSocketTestServer {
+				return newCodexWebSocketTestServer(t, func(r *http.Request, ws *codexWebSocketTestConn) {
+					body, err := ws.readJSONError()
+					if err != nil {
+						return
+					}
+					routed <- capture{name, r.Header.Clone(), body}
+					writeCodexWebSocketTextResponse(t, ws, "resp_"+name, "msg_"+name, "txt_"+name, name)
+				})
+			}
+			a, b := server("default"), server("resolved")
+			defer a.Close()
+			defer b.Close()
+			model := codexResponsesTestModel("codex-auth-route-test")
+			client := codexResponsesTestClient(t, model.Provider, model, a.URL, nil)
+			resolver := &codexRoutingAuth{result: sigma.AuthResolution{
+				Credential: sigma.Credential{Value: "synthetic", Metadata: map[string]any{"accountID": "routing-account"}},
+				BaseURL:    b.URL, Headers: map[string]string{"X-Tenant": "resolved"},
+				ProviderOptions: map[string]any{"extra_body": map[string]any{"instructions": "resolved instructions"}},
+			}}
+			options := []sigma.Option{sigma.WithTransport(sigma.TransportWebSocket), sigma.WithProviderAuthResolver(model.Provider, resolver)}
+			wantRoute, wantTenant, wantInstructions := "resolved", "resolved", "resolved instructions"
+			switch mode {
+			case "endpoint":
+				resolver.result.BaseURL = a.URL
+				resolver.result.ProviderOptions["endpoint"] = b.URL + "/custom"
+			case "explicit override":
+				options = append(options, sigma.WithProviderOption(model.Provider, "endpoint", a.URL+"/custom"), sigma.WithHeader("x-tenant", "explicit"), sigma.WithProviderOption(model.Provider, "extra_body", map[string]any{"instructions": "explicit instructions"}))
+				wantRoute, wantTenant, wantInstructions = "default", "explicit", "explicit instructions"
+			case "explicit token":
+				resolver.err = errors.New("must not resolve")
+				options = append(options, openai.WithCodexResponsesOAuthTokenProvider(model.Provider, codexTokenProvider("explicit")))
+				wantRoute, wantTenant = "default", ""
+			case "resolver failure":
+				resolver.err = errors.New("resolution failed")
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_, err := client.Complete(ctx, model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, options...)
+			wantCalls := int32(1)
+			if mode == "resolver failure" {
+				// The existing pre-output SSE fallback starts a separate attempt.
+				wantCalls = 2
+			}
+			if mode == "explicit token" {
+				wantCalls = 0
+			}
+			if resolver.calls.Load() != wantCalls {
+				t.Fatalf("resolution calls=%d want %d", resolver.calls.Load(), wantCalls)
+			}
+			if mode == "resolver failure" {
+				if !errors.Is(err, resolver.err) {
+					t.Fatalf("lost resolver error: %v", err)
+				}
+				select {
+				case got := <-routed:
+					t.Fatalf("network after resolution failure: %#v", got)
+				default:
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := <-routed
+			if got.name != wantRoute || got.headers.Get("X-Tenant") != wantTenant {
+				t.Fatalf("resolved routing discarded: %#v", got)
+			}
+			if mode != "explicit token" && got.body["instructions"] != wantInstructions {
+				t.Fatalf("resolved body discarded: %#v", got.body)
+			}
+			if mode == "explicit token" && got.headers.Get("Authorization") != "Bearer explicit" {
+				t.Fatalf("explicit token lost: %#v", got.headers)
+			}
+		})
+	}
+}
+
+func TestCodexResponsesWebSocketHandshakeIdentity(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	defer openai.CloseCodexResponsesWebSocketSessions()
+	var connections atomic.Int32
+	type capture struct {
+		connection int32
+		headers    http.Header
+		body       map[string]any
+	}
+	requests := make(chan capture, 8)
+	server := newCodexWebSocketTestServer(t, func(r *http.Request, ws *codexWebSocketTestConn) {
+		id := connections.Add(1)
+		for {
+			body, err := ws.readJSONError()
+			if err != nil {
+				return
+			}
+			requests <- capture{id, r.Header.Clone(), body}
+			writeCodexWebSocketTextResponse(t, ws, fmt.Sprintf("resp_%d", id), "msg", "txt", "answer")
+		}
+	})
+	defer server.Close()
+	defer openai.CloseCodexResponsesWebSocketSessions()
+	model := codexResponsesTestModel("handshake-identity-test")
+	client := codexResponsesTestClient(t, model.Provider, model, server.URL, nil)
+	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}}
+	for index, tc := range []struct {
+		token, tenant, account string
+		connection             int32
+	}{
+		{"token-a", "tenant-a", "account-a", 1},
+		{"token-a", "tenant-a", "account-a", 1},
+		{"token-b", "tenant-a", "account-a", 2},
+		{"token-b", "tenant-b", "account-a", 3},
+		{"token-b", "tenant-b", "account-b", 4},
+	} {
+		final, err := client.Complete(context.Background(), model, req,
+			sigma.WithTransport(sigma.TransportWebSocket), sigma.WithSessionID("identity-session"),
+			openai.WithCodexResponsesOAuthTokenProvider(model.Provider, codexTokenProvider(tc.token)),
+			sigma.WithHeader("X-Tenant", tc.tenant), sigma.WithHeader("chatgpt-account-id", tc.account))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := <-requests
+		if got.connection != tc.connection || got.headers.Get("Authorization") != "Bearer "+tc.token || got.headers.Get("X-Tenant") != tc.tenant || got.headers.Get("chatgpt-account-id") != tc.account {
+			t.Fatalf("request %d used wrong connection: %#v", index, got)
+		}
+		_, hasPrevious := got.body["previous_response_id"]
+		if hasPrevious != (index == 1) {
+			t.Fatalf("request %d continuation crossed identity: %v", index, got.body)
+		}
+		req.Messages = append(req.Messages, sigma.Message{Role: sigma.RoleAssistant, Content: final.Content, Provider: final.Provider, Model: final.Model, StopReason: final.StopReason}, sigma.UserText(fmt.Sprintf("next %d", index)))
+	}
+}

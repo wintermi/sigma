@@ -8,6 +8,7 @@ package redact
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestStringRedactsCredentialMatrix(t *testing.T) {
@@ -132,5 +133,39 @@ func assertNoRawSecrets(t *testing.T, value string, secrets []string) {
 		if strings.Contains(value, secret) {
 			t.Fatalf("value leaked %q: %q", secret, value)
 		}
+	}
+}
+
+func TestStringRedactsTruncatedJSONCredentials(t *testing.T) {
+	t.Parallel()
+	for _, field := range []string{"api_key", "ACCESS_TOKEN", "refresh-token", "client_secret", "session_token", "authorization"} {
+		prefix := `{"safe":"context","nested":{"` + field + `":"`
+		for _, value := range []string{`syntheticcredential`, `escaped\"quote\\tail`, "multiline\ncredential", "unicode-秘密", "ends-in-escape\\"} {
+			for cut := 0; cut <= len(value); cut++ {
+				input := prefix + value[:cut]
+				want := prefix + replacement + `"`
+				got := String(input)
+				if got != want {
+					t.Fatalf("field %s cutoff %d: got %q, want %q", field, cut, got, want)
+				}
+				preview := Preview(input, 19)
+				if !utf8.ValidString(preview) || len(preview) > 22 {
+					t.Fatalf("invalid bounded preview %q", preview)
+				}
+			}
+		}
+	}
+	for _, input := range []string{
+		`{"access_token":"synthetic\"secret","safe":"context"} trailing`,
+		`{"access_token":"synthetic\\secret","safe":"context"} trailing`,
+	} {
+		got := String(input)
+		if strings.Contains(got, "synthetic") || !strings.Contains(got, `"safe":"context"`) {
+			t.Fatalf("redaction lost boundary: %s", got)
+		}
+	}
+	safe := `{"message":"incomplete ordinary text`
+	if got := String(safe); got != safe {
+		t.Fatalf("ordinary text changed: %q", got)
 	}
 }

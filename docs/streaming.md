@@ -120,6 +120,18 @@ Streams use a small event buffer. Providers can emit one unread event, but a
 slow consumer applies backpressure after that. Call `stream.Close()` when a UI
 or caller stops reading early.
 
+Terminal acceptance commits the result before event delivery. If parent or
+collector cancellation, or explicit closure, interrupts blocked terminal
+delivery, `Final` and `Err` keep that accepted outcome. The undeliverable terminal
+event is abandoned, already queued events remain readable, and `Events` closes
+before `Done`. Collectors return the accepted result even when their context is
+canceled. This contract also applies to image streams.
+
+Anthropic Messages requires `message_start`, `message_stop`, and a nonempty
+provider stop reason for successful completion, including empty output.
+Incomplete streams preserve partial content and usage and classify as transient
+stream failures. Sigma does not automatically retry after streamed output.
+
 Cancellation is controlled by `context.Context`; see [Errors](errors.md) and
 [Cancellation](cancellation.md).
 

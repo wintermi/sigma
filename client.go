@@ -93,12 +93,7 @@ func WithDefaultHeaders(headers map[string]string) ClientOption {
 		if len(headers) == 0 {
 			return
 		}
-		if client.defaultHeaders == nil {
-			client.defaultHeaders = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			client.defaultHeaders[key] = value
-		}
+		client.defaultHeaders = mergeHeaders(client.defaultHeaders, headers)
 	}
 }
 
@@ -347,12 +342,7 @@ func mergeOptions(base Options, override Options) Options {
 		merged.SessionID = override.SessionID
 	}
 	if len(override.Headers) > 0 {
-		if merged.Headers == nil {
-			merged.Headers = make(map[string]string, len(override.Headers))
-		}
-		for key, value := range override.Headers {
-			merged.Headers[key] = value
-		}
+		merged.Headers = mergeHeaders(merged.Headers, override.Headers)
 	}
 	if len(override.SuppressedHeaders) > 0 {
 		merged.SuppressedHeaders = append(merged.SuppressedHeaders, override.SuppressedHeaders...)

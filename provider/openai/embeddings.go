@@ -98,6 +98,10 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 }
 
 func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
+	opts, credential, err := sigma.ResolveAuthForRequest(ctx, embeddingAuthModel(model), opts)
+	if err != nil {
+		return nil, fmt.Errorf("openai embeddings: resolve auth: %w", err)
+	}
 	payload := embeddingsPayload(model, req, opts)
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -124,8 +128,8 @@ func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.Embeddi
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
-		return nil, err
+	if credential.Value != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+credential.Value)
 	}
 	sigma.ApplySuppressedHeaders(httpReq.Header, opts)
 	if err := sigma.RunEmbeddingPayloadDebugHooks(ctx, opts, model.Provider, sigma.EmbeddingAPIOpenAIEmbeddings, model.ID, body, httpReq.Header); err != nil {
@@ -160,25 +164,6 @@ func (p *EmbeddingsProvider) addProviderHeaders(req *http.Request, provider sigm
 	if project, ok := stringOption(options, providerOptionProject); ok {
 		req.Header.Set("OpenAI-Project", project)
 	}
-}
-
-func (p *EmbeddingsProvider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.EmbeddingModel, opts sigma.Options) error {
-	if opts.AuthResolver == nil {
-		return &sigma.Error{
-			Code:     sigma.ErrorUnsupported,
-			Message:  "openai embeddings: auth resolver is required",
-			Provider: model.Provider,
-			Model:    model.ID,
-		}
-	}
-	credential, err := opts.AuthResolver.Resolve(ctx, embeddingAuthModel(model), opts)
-	if err != nil {
-		return err
-	}
-	if credential.Value != "" {
-		req.Header.Set("Authorization", "Bearer "+credential.Value)
-	}
-	return nil
 }
 
 func (p *EmbeddingsProvider) endpoint(model sigma.EmbeddingModel, opts sigma.Options) (string, error) {

@@ -1,11 +1,13 @@
 # Cancellation
 
-Sigma uses `context.Context` for text-generation cancellation. Pass a cancelable
-context to `Client.Stream`, `Client.Complete`, or the package-level helpers, then
-call the cancel function when the user aborts the turn.
+Sigma uses `context.Context` for text and image generation cancellation. Pass a
+cancelable context to `Client.Stream`, `Client.Complete`, `Client.StreamImages`,
+or the package-level helpers, then call the cancel function when the user aborts
+the turn.
 
-Canceled text streams end with `StopReasonAborted`. `Collect` returns the final
-assistant message available at cancellation time plus an inspectable error:
+Before terminal acceptance, canceled text streams end with `StopReasonAborted`.
+`Collect` returns the final assistant message available at cancellation time
+plus an inspectable error:
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())
@@ -22,14 +24,23 @@ if errors.Is(err, sigma.ErrAborted) || errors.Is(err, context.Canceled) {
 
 The context passed to `Collect` is also an active cancellation boundary. If it
 is canceled while the context used to create the stream remains live, Sigma
-aborts the stream with the same contract: partial output is retained, the final
-stop reason is `StopReasonAborted`, and the returned error matches both
+aborts an unfinished stream with the same contract: partial output is retained,
+the final stop reason is `StopReasonAborted`, and the returned error matches both
 `ErrAborted` and the collector context error. `CollectImages` behaves the same
 way for image streams.
 
 Calling `Stream.Close` or `ImageStream.Close` intentionally still closes the
 stream without synthesizing an aborted result. Use context cancellation when
-the operation should be recorded as aborted.
+the unfinished operation should be recorded as aborted. Closing an OpenAI image
+stream cancels its underlying HTTP request and stalled body reads. The root image
+streaming fallback cancels the context passed to `Generate`.
+
+Once a terminal result is accepted, parent cancellation, collector cancellation,
+and explicit closure preserve its final message and error. Acceptance can precede
+delivery of the terminal event. If delivery is blocked, cancellation abandons
+that event and closes promptly while retaining queued events. `Final`, `Err`,
+`Collect`, and `CollectImages` still expose the accepted outcome; cancellation
+does not synthesize a second terminal result. `Events` closes before `Done`.
 
 When a provider has already emitted text, thinking, or tool-call deltas, Sigma
 preserves those deltas in the aborted final assistant message. This lets callers

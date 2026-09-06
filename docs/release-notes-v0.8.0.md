@@ -365,6 +365,30 @@ selection remains available through existing provider-specific controls.
 
 ## Compatibility
 
+- Codex WebSocket sessions reuse idle connections only when provider identity,
+  effective URL, and final handshake headers match. Changed credentials or
+  routing start fresh continuation state; overlapping requests and concurrent
+  connection creation retain independent ownership and cleanup.
+- Codex WebSocket, OpenAI images (including streaming, edits, and variations),
+  and embeddings apply auth-derived routes, headers, and provider options before
+  request construction. Explicit request configuration retains precedence and
+  credentials resolve once per attempt. Header merges ignore capitalization,
+  preserve the winning spelling, and resolve duplicate variants within one map
+  in lexical order, with the last variant winning.
+- An accepted text or image terminal result survives subsequent parent or
+  collector cancellation and explicit closure. Blocked terminal delivery can be
+  abandoned to close promptly; queued events remain readable and `Final`/`Err`
+  retain the accepted outcome. Before acceptance, cancellation retains aborted
+  partials. Closing OpenAI image streams or the root generation fallback cancels
+  provider work, including stalled response reads, without synthesizing aborts.
+- Anthropic Messages completion requires start and stop markers and a nonempty
+  provider stop reason, even for empty output. Incomplete streams retain partials
+  and classify as transient; automatic retry behavior is unchanged.
+- Credential-field redaction covers unterminated JSON strings through the end of
+  diagnostics, including escape boundaries and multiline values. Preview bounds
+  and UTF-8 safety remain unchanged. Public interfaces, serialized formats,
+  provider scope, and generated catalog metadata are unchanged by this hardening.
+
 - `OpenAIResponsesCompat.SupportsMaxOutputTokens` uses the existing tri-state
   `OpenAICompatSupport` values. Unspecified or supported retains typed output
   limits and the minimum of 16; unsupported omits their automatic serialization.

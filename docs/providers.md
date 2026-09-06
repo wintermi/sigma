@@ -67,6 +67,27 @@ _, _ = names, configured
 Do not put credentials in `Request`, `ProviderMetadata`, tool arguments, or
 persisted JSON. See [Security](security.md) for redaction behavior.
 
+### Resolved request configuration
+
+Resolvers implementing `AuthResolutionResolver` can return an `AuthResolution`
+containing credentials and request defaults. Codex SSE and WebSocket requests,
+OpenAI images, and embeddings apply those defaults before constructing their
+endpoint, payload, and headers. Credentials resolve once per request or
+connection attempt; retries and SSE fallback have their own attempt lifecycle.
+Explicit Codex token providers retain precedence over the general resolver.
+
+Explicit caller configuration overrides auth-derived defaults. Header names
+merge without regard to case across client defaults and request options; later
+options win and retain their supplied spelling. Within one map, duplicate case
+variants are processed in lexical order, with the last variant winning.
+Auth-derived headers fill only absent caller names. Caller maps are copied,
+and final header suppression still applies.
+
+Codex cached WebSocket connections require matching provider, effective URL,
+and final handshake headers for reuse. Changing routing, credentials, or account
+headers starts a fresh connection and continuation state. Busy connections remain
+owned by their active request, with overlaps using separate connections.
+
 ### Request-scoped OAuth lifetime
 
 Long-running streams and tool workflows can require an OAuth credential to

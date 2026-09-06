@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -608,4 +609,110 @@ func imageEventKinds(events []sigma.ImageEvent) []sigma.ImageEventKind {
 		kinds[i] = event.Kind
 	}
 	return kinds
+}
+
+type imageBlockingTransport struct {
+	started chan struct{}
+	stopped chan struct{}
+}
+
+func (a imageBlockingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	close(a.started)
+	<-req.Context().Done()
+	close(a.stopped)
+	return nil, req.Context().Err()
+}
+
+func TestImageStreamCloseCancelsTransport(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	transport := imageBlockingTransport{started: make(chan struct{}), stopped: make(chan struct{})}
+	p := openai.NewImagesProvider(openai.WithBaseURL("https://unused.invalid/v1"))
+	s := p.StreamImages(ctx, openAIImageModel(), sigma.ImageRequest{Prompt: "test"}, sigma.Options{
+		HTTPClient: &http.Client{Transport: transport},
+		AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+			return sigma.Credential{Value: "synthetic"}, nil
+		}),
+	})
+	select {
+	case <-transport.started:
+	case <-time.After(time.Second):
+		t.Fatal("request did not start")
+	}
+	s.Close()
+	select {
+	case <-transport.stopped:
+	case <-time.After(2 * time.Second):
+		t.Error("ImageStream.Close left HTTP request running")
+	}
+	cancel()
+	<-transport.stopped
+}
+
+type imageStalledBody struct {
+	started, closed      chan struct{}
+	startOnce, closeOnce sync.Once
+}
+
+func (b *imageStalledBody) Read([]byte) (int, error) {
+	b.startOnce.Do(func() { close(b.started) })
+	<-b.closed
+	return 0, io.EOF
+}
+func (b *imageStalledBody) Close() error { b.closeOnce.Do(func() { close(b.closed) }); return nil }
+
+type imageBodyTransport struct{ body *imageStalledBody }
+
+func (a imageBodyTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: a.body}, nil
+}
+
+func TestImageStreamStalledBodyCancellation(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"close", "parent", "timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			body := &imageStalledBody{started: make(chan struct{}), closed: make(chan struct{})}
+			defer body.Close()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			opts := sigma.Options{HTTPClient: &http.Client{Transport: imageBodyTransport{body}}, AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+				return sigma.Credential{Value: "synthetic"}, nil
+			})}
+			if mode == "timeout" {
+				timeout := 200 * time.Millisecond
+				opts.Timeout = &timeout
+			}
+			stream := openai.NewImagesProvider().StreamImages(ctx, openAIImageModel(), sigma.ImageRequest{Prompt: "test"}, opts)
+			defer stream.Close()
+			select {
+			case <-body.started:
+			case <-time.After(2 * time.Second):
+				t.Fatal("body read did not start")
+			}
+			switch mode {
+			case "close":
+				stream.Close()
+				stream.Close()
+			case "parent":
+				cancel()
+			}
+			select {
+			case <-body.closed:
+			case <-time.After(2 * time.Second):
+				t.Fatal("stalled body was not closed")
+			}
+			if mode == "close" {
+				if stream.Err() != nil {
+					t.Fatal("Close synthesized cancellation")
+				}
+			} else {
+				final, err := sigma.CollectImages(context.Background(), stream)
+				if !errors.Is(err, sigma.ErrAborted) || final.StopReason != sigma.StopReasonAborted {
+					t.Fatalf("canceled result: %#v %v", final, err)
+				}
+			}
+		})
+	}
 }

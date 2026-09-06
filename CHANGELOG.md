@@ -158,6 +158,22 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Codex WebSocket reuse now requires matching provider, endpoint, and final
+  handshake headers, isolating continuation state when routing or credentials
+  change and safely handling concurrent connections.
+- Codex WebSocket, OpenAI image, and embedding requests now apply resolved auth
+  configuration before constructing requests. Header overrides merge without
+  regard to case, with deterministic duplicate handling and explicit caller
+  configuration retaining precedence.
+- Text and image cancellation now closes streams promptly when terminal delivery
+  is blocked while preserving accepted results. Closing OpenAI image streams or
+  the image-generation fallback cancels their underlying work and stalled reads.
+- Anthropic Messages requires start and stop markers plus a nonempty stop reason
+  before accepting completion, preserving partials and transient classification
+  for incomplete streams without adding retries.
+- Diagnostic redaction now covers truncated JSON credential strings, including
+  escaped and multiline values, while retaining bounded UTF-8-safe previews.
+
 - Automatic long-cache requests for Responses models marked
   `SupportsExplicitPromptCacheMode` now use `prompt_cache_options.ttl: "30m"`
   instead of legacy `prompt_cache_retention: "24h"`. Explicit request sampling

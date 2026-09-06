@@ -54,6 +54,16 @@ cancellation/error coverage (see the coverage standards in
 
 ## Core streaming
 
+- [x] Preserve accepted text/image terminals through cancellation and blocked
+      delivery; cancel OpenAI image transport and fallback generation on Close.
+- [x] Isolate Codex cached connections and continuation state by effective
+      handshake identity, including concurrent publication and busy overlap.
+- [x] Apply resolved auth configuration before Codex WebSocket, image, and
+      embedding request construction; merge caller/auth headers deterministically
+      without regard to case and without mutating caller maps.
+- [x] Require Anthropic start/stop markers and a supplied completion reason;
+      redact unterminated JSON credential values through diagnostic boundaries.
+
 - [x] Expose an explicit pending stop reason on every non-terminal text-stream
       partial snapshot, including the initial start event, while preserving
       provider-authored partial reasons and terminal stop behavior.

@@ -134,8 +134,11 @@ func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWr
 	if err != nil {
 		return parser.finalize(ctx), err
 	}
-	if parser.messageStarted && !parser.messageStopped {
+	if !parser.messageStarted || !parser.messageStopped {
 		return parser.finalize(ctx), fmt.Errorf("anthropic messages: stream ended before message_stop")
+	}
+	if parser.rawStopReason == "" {
+		return parser.finalize(ctx), fmt.Errorf("anthropic messages: stream ended without a stop reason")
 	}
 	return parser.finalize(ctx), nil
 }

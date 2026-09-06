@@ -169,8 +169,8 @@ func (p *Producer[T, F]) send(ctx context.Context, req request[T, F]) error {
 }
 
 func (p *Producer[T, F]) run() {
-	defer close(p.events)
 	defer close(p.done)
+	defer close(p.events)
 
 	var active *request[T, F]
 	terminated := false
@@ -192,11 +192,6 @@ func (p *Producer[T, F]) run() {
 			in = p.in
 		}
 
-		var ctxDone <-chan struct{}
-		if !terminated {
-			ctxDone = p.ctx.Done()
-		}
-
 		select {
 		case req := <-in:
 			if req.terminal {
@@ -213,7 +208,7 @@ func (p *Producer[T, F]) run() {
 			}
 			active = nil
 
-		case <-ctxDone:
+		case <-p.ctx.Done():
 			p.abort(p.ctx.Err(), active)
 			return
 
@@ -239,6 +234,11 @@ func (p *Producer[T, F]) run() {
 }
 
 func (p *Producer[T, F]) abort(err error, active *request[T, F]) {
+	if active != nil && active.terminal {
+		// Acceptance commits the outcome even when its event cannot be delivered.
+		active.reply <- ErrClosed
+		return
+	}
 	terminal := p.cancel(err)
 	p.record(terminal.Final, terminal.HasFinal, terminal.Err)
 	p.closeWrites()

@@ -11,8 +11,11 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -372,5 +375,101 @@ func clearCodexProxyEnv(t *testing.T) {
 		"all_proxy",
 	} {
 		t.Setenv(key, "")
+	}
+}
+
+func TestCodexWebSocketConcurrentConnectionPublication(t *testing.T) {
+	CloseCodexResponsesWebSocketSessions()
+	defer CloseCodexResponsesWebSocketSessions()
+	arrived, closed := make(chan struct{}, 3), make(chan struct{}, 3)
+	allow := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		arrived <- struct{}{}
+		select {
+		case <-allow:
+		case <-r.Context().Done():
+			return
+		}
+		conn, rw, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer conn.Close()
+		_, err = fmt.Fprintf(rw, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", webSocketAccept(r.Header.Get("Sec-WebSocket-Key")))
+		if err == nil {
+			err = rw.Flush()
+		}
+		if err != nil {
+			t.Error(err)
+		}
+		_, _ = rw.ReadByte()
+		closed <- struct{}{}
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	endpoint := "ws" + strings.TrimPrefix(server.URL, "http")
+	headers := http.Header{"X-Tenant": []string{"test"}}
+	fingerprint := codexWebSocketFingerprint("test", endpoint, headers)
+	type result struct {
+		acquired *acquiredCodexWebSocket
+		err      error
+	}
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			a, err := acquireCodexWebSocket(ctx, endpoint, headers, "concurrent-publication", "account", time.Second, fingerprint)
+			results <- result{a, err}
+		}()
+	}
+	for range 2 {
+		select {
+		case <-arrived:
+		case <-ctx.Done():
+			close(allow)
+			t.Fatal("both dials did not arrive")
+		}
+	}
+	close(allow)
+	first, second := <-results, <-results
+	if first.err != nil || second.err != nil {
+		t.Fatalf("dial errors: %v, %v", first.err, second.err)
+	}
+	defer first.acquired.release(false)
+	defer second.acquired.release(false)
+	if (first.acquired.entry == nil) == (second.acquired.entry == nil) {
+		t.Fatal("expected exactly one published connection")
+	}
+	cached, uncached := first.acquired, second.acquired
+	if cached.entry == nil {
+		cached, uncached = uncached, cached
+	}
+	// A third request overlaps a busy cached entry and must also be uncached.
+	busy, err := acquireCodexWebSocket(ctx, endpoint, headers, "concurrent-publication", "account", time.Second, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.release(false)
+	if busy.entry != nil || busy.reused {
+		t.Fatal("overlap reused a busy entry")
+	}
+	uncached.release(true)
+	busy.release(true)
+	cached.release(true)
+	reused, err := acquireCodexWebSocket(ctx, endpoint, headers, "concurrent-publication", "account", time.Second, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reused.reused || reused.conn != cached.conn {
+		t.Fatal("compatible idle connection was not reused")
+	}
+	reused.release(false)
+	for range 3 {
+		select {
+		case <-closed:
+		case <-ctx.Done():
+			t.Fatal("connection leaked after release")
+		}
 	}
 }

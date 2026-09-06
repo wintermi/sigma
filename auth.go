@@ -223,14 +223,7 @@ func mergeAuthResolutionHeaders(opts *Options, headers map[string]string) {
 	if len(headers) == 0 {
 		return
 	}
-	if opts.Headers == nil {
-		opts.Headers = make(map[string]string, len(headers))
-	}
-	for key, value := range headers {
-		if _, exists := opts.Headers[key]; !exists {
-			opts.Headers[key] = value
-		}
-	}
+	opts.Headers = mergeHeaders(headers, opts.Headers)
 }
 
 func mergeAuthResolutionProviderOptions(opts *Options, provider ProviderID, baseURL string, values map[string]any) {

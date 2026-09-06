@@ -1124,3 +1124,59 @@ func testBoolPtr(value bool) *bool {
 func testFloat64Ptr(value float64) *float64 {
 	return &value
 }
+
+type headerResolutionAuth struct{}
+
+func (headerResolutionAuth) Resolve(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+	return sigma.Credential{Value: "synthetic"}, nil
+}
+
+func (headerResolutionAuth) ResolveAuthResolution(context.Context, sigma.Model, sigma.Options) (sigma.AuthResolution, error) {
+	return sigma.AuthResolution{Credential: sigma.Credential{Value: "synthetic"}, Headers: map[string]string{"X-Tenant": "stored-tenant"}}, nil
+}
+
+func TestHeaderOptionsCaseInsensitivePrecedenceAndCopies(t *testing.T) {
+	t.Parallel()
+	defaults := map[string]string{"X-Tenant": "default", "X-Keep": "keep"}
+	request := map[string]string{"X-TENANT": "upper", "x-tenant": "lexical winner"}
+	for _, sequential := range []bool{false, true} {
+		client, provider, model := newOptionsTestClient(t,
+			sigma.WithDefaultHeaders(defaults),
+			sigma.WithDefaultHeader("x-Tenant", "second default"),
+			sigma.WithDefaultOptions(sigma.WithHeader("X-Tenant", "default option")),
+		)
+		opts := []sigma.Option{sigma.WithHeaders(request)}
+		want, key := "lexical winner", "x-tenant"
+		if sequential {
+			opts = append(opts, sigma.WithHeader("X-tENANT", "last"))
+			want, key = "last", "X-tENANT"
+		}
+		if _, err := client.Complete(context.Background(), model, sigma.Request{}, opts...); err != nil {
+			t.Fatal(err)
+		}
+		resolved, _, err := sigma.ResolveAuthForRequest(context.Background(), model, sigma.Options{Headers: provider.opts.Headers, AuthResolver: headerResolutionAuth{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(resolved.Headers) != 2 || resolved.Headers[key] != want || resolved.Headers["X-Keep"] != "keep" {
+			t.Fatalf("merged headers = %v", resolved.Headers)
+		}
+		resolved.Headers[key] = "mutated"
+	}
+	if !reflect.DeepEqual(defaults, map[string]string{"X-Tenant": "default", "X-Keep": "keep"}) || !reflect.DeepEqual(request, map[string]string{"X-TENANT": "upper", "x-tenant": "lexical winner"}) {
+		t.Fatal("caller maps mutated")
+	}
+}
+
+func TestWithHeaderDoesNotMutateInput(t *testing.T) {
+	t.Parallel()
+	original := map[string]string{"X-Tenant": "old"}
+	opts := sigma.Options{Headers: original}
+	sigma.WithHeader("x-tenant", "new")(&opts)
+	if original["X-Tenant"] != "old" || len(original) != 1 {
+		t.Fatal("caller map mutated")
+	}
+	if opts.Headers["x-tenant"] != "new" || len(opts.Headers) != 1 {
+		t.Fatalf("case override lost: %#v", opts.Headers)
+	}
+}

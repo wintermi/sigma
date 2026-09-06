@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -423,5 +424,186 @@ func TestGenerateImagesAcceptsURLInputWithoutMIMEType(t *testing.T) {
 	}
 	if got := len(provider.Requests()); got != 1 {
 		t.Fatalf("provider request count = %d, want 1", got)
+	}
+}
+
+func TestImageStreamCancellationPreservesAcceptedTerminal(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"parent", "collector", "close", "canceled-close"} {
+		for _, failure := range []bool{false, true} {
+			name := mode + "/success"
+			if failure {
+				name = mode + "/error"
+			}
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				stream, writer := sigma.NewImageStream(ctx)
+				defer stream.Close()
+				if err := writer.Emit(ctx, sigma.ImageEvent{Kind: sigma.ImageEventKindStart}); err != nil {
+					t.Fatal(err)
+				}
+				final := sigma.AssistantImages{Model: "accepted", StopReason: sigma.StopReasonEndTurn}
+				var terminalErr error
+				if failure {
+					terminalErr = errors.New("accepted failure")
+					final.StopReason = sigma.StopReasonError
+				}
+				finished := make(chan error, 1)
+				go func() {
+					if failure {
+						finished <- writer.Error(context.Background(), terminalErr, final)
+					} else {
+						finished <- writer.Done(context.Background(), final)
+					}
+				}()
+				deadline := time.Now().Add(2 * time.Second)
+				for {
+					if _, ok := stream.Final(); ok {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatal("terminal was never accepted")
+					}
+					runtime.Gosched()
+				}
+				collectCtx := context.Background()
+				switch mode {
+				case "parent":
+					cancel()
+				case "collector":
+					var stop context.CancelFunc
+					collectCtx, stop = context.WithCancel(collectCtx)
+					stop()
+				case "close":
+					stream.Close()
+				case "canceled-close":
+					cancel()
+					stream.Close()
+				}
+				if mode != "collector" {
+					select {
+					case <-stream.Done():
+					case <-time.After(2 * time.Second):
+						t.Fatal("abandoned stream did not close")
+					}
+					if _, open := <-stream.Events(); !open {
+						t.Fatal("queued event was discarded")
+					}
+					select {
+					case _, open := <-stream.Events():
+						if open {
+							t.Fatal("undeliverable terminal was delivered")
+						}
+					default:
+						t.Fatal("Events not closed before Done")
+					}
+				}
+				got, err := sigma.CollectImages(collectCtx, stream)
+				if !reflect.DeepEqual(got, final) || !errors.Is(err, terminalErr) {
+					t.Fatalf("result changed: got %#v, %v; want %#v, %v", got, err, final, terminalErr)
+				}
+				select {
+				case <-stream.Done():
+				case <-time.After(2 * time.Second):
+					t.Fatal("stream did not close")
+				}
+				// Cancellation may retain a buffered event in the closed channel.
+			drained:
+				for {
+					select {
+					case _, open := <-stream.Events():
+						if !open {
+							break drained
+						}
+					default:
+						t.Fatal("Events not closed after Done")
+					}
+				}
+				select {
+				case writeErr := <-finished:
+					if mode != "collector" {
+						var closedErr *sigma.Error
+						if !errors.As(writeErr, &closedErr) || closedErr.Code != sigma.ErrorStreamClosed {
+							t.Fatalf("abandoned writer error = %v", writeErr)
+						}
+					}
+				case <-time.After(2 * time.Second):
+					t.Fatal("terminal writer blocked")
+				}
+				stable, ok := stream.Final()
+				if !ok || !reflect.DeepEqual(stable, final) || !errors.Is(stream.Err(), terminalErr) {
+					t.Fatal("accepted state changed after closure")
+				}
+			})
+		}
+	}
+}
+
+type cancelableImageProvider struct {
+	started chan struct{}
+	stopped chan struct{}
+}
+
+func (*cancelableImageProvider) API() sigma.ImageAPI { return sigmatest.ImageAPI }
+func (p *cancelableImageProvider) Generate(ctx context.Context, _ sigma.ImageModel, _ sigma.ImageRequest, _ sigma.Options) (sigma.AssistantImages, error) {
+	close(p.started)
+	<-ctx.Done()
+	close(p.stopped)
+	return sigma.AssistantImages{}, ctx.Err()
+}
+
+func TestImageStreamFallbackCancellation(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"close", "parent", "timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			t.Parallel()
+			provider := &cancelableImageProvider{started: make(chan struct{}), stopped: make(chan struct{})}
+			registry := sigma.NewRegistry()
+			model := sigmatest.ImageModel()
+			if err := registry.RegisterImageProvider(model.Provider, provider); err != nil {
+				t.Fatal(err)
+			}
+			if err := registry.RegisterImageModel(model); err != nil {
+				t.Fatal(err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var opts []sigma.ImageOption
+			if mode == "timeout" {
+				opts = append(opts, sigma.WithImageTimeout(200*time.Millisecond))
+			}
+			stream := client.StreamImages(ctx, model, sigma.ImageRequest{Prompt: "test"}, opts...)
+			defer stream.Close()
+			select {
+			case <-provider.started:
+			case <-time.After(2 * time.Second):
+				t.Fatal("provider did not start")
+			}
+			switch mode {
+			case "close":
+				stream.Close()
+				stream.Close()
+			case "parent":
+				cancel()
+			}
+			select {
+			case <-provider.stopped:
+			case <-time.After(2 * time.Second):
+				t.Fatal("provider was not canceled")
+			}
+			if mode == "close" {
+				if stream.Err() != nil {
+					t.Fatal("Close synthesized an aborted result")
+				}
+			} else {
+				final, err := sigma.CollectImages(context.Background(), stream)
+				if final.StopReason != sigma.StopReasonAborted || !errors.Is(err, sigma.ErrAborted) {
+					t.Fatalf("cancellation result = %#v, %v", final, err)
+				}
+			}
+		})
 	}
 }

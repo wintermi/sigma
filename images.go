@@ -229,8 +229,19 @@ func (c *Client) StreamImages(ctx context.Context, model ImageModel, req ImageRe
 }
 
 func (c *Client) generateImagesAsStream(ctx context.Context, model ImageModel, req ImageRequest, provider ImageProvider, options Options) *ImageStream {
+	ctx, stopTimeout := ContextWithRequestTimeout(ctx, options)
+	ctx, cancel := context.WithCancel(ctx)
 	stream, writer := NewImageStream(ctx)
 	go func() {
+		select {
+		case <-stream.Done():
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	go func() {
+		defer stopTimeout()
+		defer cancel()
 		images, err := provider.Generate(ctx, model, req, options)
 		images = finalImages(model, images, err)
 		if err != nil {

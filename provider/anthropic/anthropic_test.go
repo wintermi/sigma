@@ -3669,3 +3669,49 @@ const (
 	midConversationEffortBetaForTest   = "mid-conversation-output-config-2026-07-01"
 	thinkingBindingControlsBetaForTest = "thinking-binding-controls-2026-08-01"
 )
+
+func TestMessagesCompletionMarkers(t *testing.T) {
+	t.Parallel()
+	const start = "data: {\"type\":\"message_start\",\"message\":{\"id\":\"test\",\"usage\":{\"input_tokens\":3}}}\n\n"
+	const reason = "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\n"
+	const stop = "data: {\"type\":\"message_stop\"}\n\n"
+	const partial = "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"partial\"}}\n\n"
+	for _, tc := range []struct {
+		name, body        string
+		valid, hasPartial bool
+	}{
+		{name: "empty"},
+		{name: "ping", body: "event: ping\ndata: {\"type\":\"ping\"}\n\n"},
+		{name: "missing start", body: reason + stop},
+		{name: "missing stop", body: start + reason},
+		{name: "missing reason", body: start + stop},
+		{name: "stop only", body: stop},
+		{name: "truncated partial", body: start + partial, hasPartial: true},
+		{name: "valid empty", body: start + reason + stop, valid: true},
+		{name: "valid trailing proxy", body: start + partial + reason + stop + "data: invalid proxy data\n\n", valid: true, hasPartial: true},
+		{name: "unknown supplied reason", body: start + strings.ReplaceAll(reason, "end_turn", "future_reason") + stop, valid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				writeMessagesSSE(t, w, tc.body)
+			}))
+			t.Cleanup(server.Close)
+			model := anthropicTestModel("anthropic-completion-markers")
+			client := anthropicTestClient(t, model.Provider, model, server.URL)
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}})
+			if (err == nil) != tc.valid {
+				t.Fatalf("completion validity: final=%#v err=%v", final, err)
+			}
+			if err != nil && sigma.ClassifyError(err).Class != sigma.ErrorClassTransient {
+				t.Fatalf("missing markers not transient: %v", err)
+			}
+			if tc.hasPartial && (len(final.Content) != 1 || final.Content[0].Text != "partial") {
+				t.Fatalf("lost partial content: %#v", final)
+			}
+			if strings.Contains(tc.body, "input_tokens") && (final.Usage == nil || final.Usage.InputTokens != 3) {
+				t.Fatalf("lost usage: %#v", final.Usage)
+			}
+		})
+	}
+}
