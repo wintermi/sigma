@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-09-05",
+  "snapshotDate": "2026-09-06",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -15829,6 +15829,61 @@
       }
     },
     {
+      "id": "gpt-6-astra",
+      "name": "GPT-6 Astra",
+      "provider": "openai-codex",
+      "api": "openai-codex-responses",
+      "baseURL": "https://chatgpt.com/backend-api",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 20,
+            "outputPerMillion": 75,
+            "cacheReadInputPerMillion": 2,
+            "cacheWriteInputPerMillion": 25
+          }
+        ]
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_CODEX_OAUTH_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "openAICodexResponses": {
+        "model": "gpt-6-astra",
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
       "id": "gpt-4",
       "name": "GPT-4",
       "provider": "openai",
@@ -17147,6 +17202,61 @@
         "supportsToolSearch": true,
         "supportsExplicitPromptCacheMode": true
       }
+    },
+    {
+      "id": "gpt-6-astra",
+      "name": "GPT-6 Astra",
+      "provider": "openai",
+      "api": "openai-responses",
+      "baseURL": "https://api.openai.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "currency": "USD",
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 20,
+            "outputPerMillion": 75,
+            "cacheReadInputPerMillion": 2,
+            "cacheWriteInputPerMillion": 25
+          }
+        ]
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
     },
     {
       "id": "o1",

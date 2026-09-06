@@ -665,6 +665,13 @@ upstream.
       counts, and provider/API buckets without changing the checked-in catalog.
 - [x] Add validated request-wide model cost tiers for high-context pricing,
       including generated metadata and deterministic input/cache accounting.
+- [x] Add exactly the direct OpenAI and OpenAI Codex GPT-6 Astra catalog
+      rows through existing Responses routes, with conservative 272K context
+      defaults, 128K output limits, low through maximum reasoning, deferred
+      tools, direct-only explicit cache controls, and API-equivalent Codex
+      cost estimates with high-context tiers. Keep Azure/router expansion,
+      broader grammar capability promotion, async tools, and mid-turn steering
+      deferred to separately reviewed work.
 - [x] Add focused direct OpenAI GPT-5.6 Luna, Sol, and Terra metadata with
       reasoning, cache-write pricing, and validated high-context cost tiers.
 - [x] Add focused GPT-5.6 Luna, Sol, and Terra metadata to existing Azure OpenAI

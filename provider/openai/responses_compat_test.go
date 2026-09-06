@@ -24,6 +24,9 @@ func TestResponsesCompatibilityAcrossRequestPaths(t *testing.T) {
 		catalogID                        sigma.ModelID
 		background, unsupported, wantTTL bool
 	}{
+		{name: "catalog astra", provider: sigma.ProviderOpenAI, catalogID: "gpt-6-astra", wantTTL: true},
+		{name: "Codex astra", provider: sigma.ProviderOpenAICodex, catalogID: "gpt-6-astra"},
+		{name: "background astra", provider: sigma.ProviderOpenAI, catalogID: "gpt-6-astra", background: true, wantTTL: true},
 		{name: "catalog luna", provider: sigma.ProviderOpenAI, catalogID: "gpt-5.6-luna", wantTTL: true},
 		{name: "catalog sol", provider: sigma.ProviderOpenAI, catalogID: "gpt-5.6-sol", wantTTL: true},
 		{name: "catalog terra", provider: sigma.ProviderOpenAI, catalogID: "gpt-5.6-terra", wantTTL: true},

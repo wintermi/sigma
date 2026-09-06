@@ -163,6 +163,23 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- Direct OpenAI and OpenAI Codex now include `gpt-6-astra` through their
+  existing Responses adapters, with text/image input, function tools,
+  low/medium/high/xhigh/max reasoning, and message-anchored deferred tools.
+  Explicit off and minimal reasoning are rejected locally. Direct OpenAI
+  supports explicit prompt-cache mode and 30-minute long retention; Codex
+  keeps its existing cache behavior and output-token field omission.
+  Both catalog rows use Sigma's conservative 272,000-token context default
+  and a 128,000-token output limit, although the documented API context
+  maximum is 1,050,000 tokens. USD estimates per million tokens are
+  10 input, 50 output, 1 cache read, and 12.5 cache write; requests above
+  272,000 input tokens use 20/75/2/25 for the full request. Codex costs are
+  API-equivalent estimates, not subscription charges. Catalog inclusion does
+  not guarantee account access. See the
+  [model documentation](https://developers.openai.com/api/docs/models/gpt-6-astra).
+  Provider maturity, existing models, and dispatch defaults are unchanged;
+  this addition does not introduce async tools or mid-turn steering.
+
 - OpenRouter image generation now exposes Seedream 5.0 Lite and Pro, Qwen
   Image 3 and 3 Pro, Meta Muse Image, Grok Imagine Image 2.0, and Recraft V4
   Styles, Styles Pro, Styles Vector, and Styles Pro Vector through the existing
@@ -600,7 +617,7 @@ selection remains available through existing provider-specific controls.
 
 ## Deferred work
 
-- Codex WebSocket `NO_PROXY` suffix/IPv6 hardening, catalog additions and
+- Codex WebSocket `NO_PROXY` suffix/IPv6 hardening, broader catalog additions and
   retirements, and additional routed Claude effort support remain deferred.
   Mistral lifecycle operations, broader cloud credential loading, and agent
   orchestration retain their existing boundaries. vLLM priority already fits
@@ -613,6 +630,14 @@ selection remains available through existing provider-specific controls.
 - Deferred work continues to be tracked in [TODO.md](../TODO.md).
 
 ## Validation status
+
+The GPT-6 Astra catalog addition passed catalog-backed local fixtures for both
+Responses routes, including reasoning rejection before dispatch, image/function
+tools, deferred-tool replay, cache controls, and cost boundaries with service
+tiers. The catalog diff adds exactly two text rows without changing existing
+rows. `mise run go:generate` refreshed the model outputs and snapshot headers;
+`mise run go:fmt`, `mise run go:build`, `mise run ci` (including race tests),
+and `git diff --check` passed. Validation made no live provider calls.
 
 The Responses cache and output-token compatibility changes passed deterministic
 payload and local-server coverage for direct, Azure, Codex, and background

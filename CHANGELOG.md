@@ -12,6 +12,14 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- GPT-6 Astra is now available in the direct OpenAI and OpenAI Codex catalogs
+  through their existing Responses routes, with text/image input, function
+  tools, low through maximum reasoning, and message-anchored deferred tools.
+  Both rows use a conservative 272K context default and 128K output limit,
+  with cache pricing and higher-input cost tiers; Codex costs are
+  API-equivalent estimates. Direct OpenAI also enables explicit prompt-cache
+  controls. Catalog inclusion does not guarantee account access.
+
 - Responses models can now opt out of automatic `max_output_tokens` through
   `OpenAIResponsesCompat.SupportsMaxOutputTokens`. Unspecified capability keeps
   existing behavior; explicit sampling and body overrides remain available,
