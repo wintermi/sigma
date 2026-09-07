@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -662,7 +663,7 @@ func imageModelHeaders(model sigma.ImageModel) map[string]string {
 	}
 	switch headers := raw.(type) {
 	case map[string]string:
-		return headers
+		return headerutil.Merge(nil, headers)
 	case map[string]any:
 		copied := make(map[string]string, len(headers))
 		for key, value := range headers {
@@ -672,7 +673,7 @@ func imageModelHeaders(model sigma.ImageModel) map[string]string {
 			}
 			copied[key] = text
 		}
-		return copied
+		return headerutil.Merge(nil, copied)
 	default:
 		return nil
 	}
@@ -775,6 +776,7 @@ func parseImagesStream(ctx context.Context, body io.Reader, writer sigma.ImageSt
 		Provider:   model.Provider,
 		StopReason: sigma.StopReasonEndTurn,
 	}
+	completed := false
 	started := false
 	emitStart := func() error {
 		if started {
@@ -794,6 +796,9 @@ func parseImagesStream(ctx context.Context, body io.Reader, writer sigma.ImageSt
 		if decoded.Error != nil {
 			body, _ := json.Marshal(map[string]any{"error": decoded.Error})
 			return sigma.NewProviderError(model.Provider, sigma.API(sigma.ImageAPIOpenAIImages), model.ID, 0, "", 0, body, sigma.ErrProviderResponse)
+		}
+		if decoded.Type == "image_generation.completed" || decoded.Type == "image_edit.completed" {
+			completed = true
 		}
 		if decoded.Response != nil {
 			response, err := decoded.Response.assistantImages(model, req)
@@ -841,6 +846,9 @@ func parseImagesStream(ctx context.Context, body io.Reader, writer sigma.ImageSt
 	})
 	if errors.Is(err, sse.ErrStop) {
 		err = nil
+	}
+	if err == nil && !completed {
+		err = errors.New("openai images: stream ended without completion event")
 	}
 	return final, err
 }

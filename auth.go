@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/redact"
 )
 
@@ -223,10 +224,11 @@ func mergeAuthResolutionHeaders(opts *Options, headers map[string]string) {
 	if len(headers) == 0 {
 		return
 	}
-	opts.Headers = mergeHeaders(headers, opts.Headers)
+	opts.Headers = headerutil.Merge(headers, opts.Headers)
 }
 
 func mergeAuthResolutionProviderOptions(opts *Options, provider ProviderID, baseURL string, values map[string]any) {
+	const baseURLKey, baseURLCamelKey = "base_url", "baseURL"
 	if baseURL == "" && len(values) == 0 {
 		return
 	}
@@ -237,14 +239,17 @@ func mergeAuthResolutionProviderOptions(opts *Options, provider ProviderID, base
 		opts.ProviderOptions[provider] = make(map[string]any, len(values)+1)
 	}
 	providerOptions := opts.ProviderOptions[provider]
-	if baseURL != "" {
-		if _, hasSnake := providerOptions["base_url"]; !hasSnake {
-			if _, hasCamel := providerOptions["baseURL"]; !hasCamel {
-				providerOptions["base_url"] = baseURL
-			}
-		}
+	_, hasSnake := providerOptions[baseURLKey]
+	_, hasCamel := providerOptions[baseURLCamelKey]
+	hasExplicitBaseURL := hasSnake || hasCamel
+	if baseURL != "" && !hasExplicitBaseURL {
+		providerOptions[baseURLKey] = baseURL
 	}
 	for key, value := range values {
+		// Both supported spellings represent the caller's same routing choice.
+		if hasExplicitBaseURL && (key == baseURLKey || key == baseURLCamelKey) {
+			continue
+		}
 		if _, exists := providerOptions[key]; !exists {
 			providerOptions[key] = value
 		}

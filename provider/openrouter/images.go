@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 )
 
 const (
@@ -74,15 +75,7 @@ func WithImagesHeader(key, value string) ImagesProviderOption {
 // WithImagesHeaders configures image provider default request headers.
 func WithImagesHeaders(headers map[string]string) ImagesProviderOption {
 	return func(provider *ImagesProvider) {
-		if len(headers) == 0 {
-			return
-		}
-		if provider.headers == nil {
-			provider.headers = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			provider.headers[key] = value
-		}
+		provider.headers = headerutil.Merge(provider.headers, headers)
 	}
 }
 

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+
+	"github.com/wintermi/sigma/internal/headerutil"
 )
 
 // ClientOption configures a Client.
@@ -93,7 +95,7 @@ func WithDefaultHeaders(headers map[string]string) ClientOption {
 		if len(headers) == 0 {
 			return
 		}
-		client.defaultHeaders = mergeHeaders(client.defaultHeaders, headers)
+		client.defaultHeaders = headerutil.Merge(client.defaultHeaders, headers)
 	}
 }
 
@@ -342,7 +344,7 @@ func mergeOptions(base Options, override Options) Options {
 		merged.SessionID = override.SessionID
 	}
 	if len(override.Headers) > 0 {
-		merged.Headers = mergeHeaders(merged.Headers, override.Headers)
+		merged.Headers = headerutil.Merge(merged.Headers, override.Headers)
 	}
 	if len(override.SuppressedHeaders) > 0 {
 		merged.SuppressedHeaders = append(merged.SuppressedHeaders, override.SuppressedHeaders...)

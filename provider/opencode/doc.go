@@ -5,4 +5,10 @@
 
 // Package opencode routes OpenCode Zen and OpenCode Go models to the Sigma
 // adapter matching each model's OpenCode API family.
+//
+// Use sigma.WithSessionID with a stable conversation ID to send
+// x-opencode-session on every routed API, including when caching is disabled.
+// Explicit provider, model, and request session headers retain precedence,
+// and final header suppression still applies. The caller owns session IDs;
+// this package does not generate an ID when none is supplied.
 package opencode

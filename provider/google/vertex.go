@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -132,15 +133,7 @@ func WithVertexHeader(key, value string) VertexProviderOption {
 // WithVertexHeaders configures provider default request headers.
 func WithVertexHeaders(headers map[string]string) VertexProviderOption {
 	return func(provider *VertexProvider) {
-		if len(headers) == 0 {
-			return
-		}
-		if provider.headers == nil {
-			provider.headers = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			provider.headers[key] = value
-		}
+		provider.headers = headerutil.Merge(provider.headers, headers)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -814,6 +815,10 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		cases = structuredOutputProbeCases(cases)
 	}
 	for _, testCase := range cases {
+		if route.Name == "go" || route.Name == "zen" {
+			// Each case is a conversation; retries and repairs share its client.
+			client = probeClient(route, model)
+		}
 		result := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, testCase, credential, testCase.Name)
 		if result.Outcome == "ok" {
 			emit(annotateStructuredOutputResult(cfg, result))
@@ -828,6 +833,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			continue
 		}
 		repaired := result
+		safetyRejected := isSafetyRejection(result.Error)
 		repairedByVariant := false
 		availability := probeResult{}
 		failedAttempts := append([]failedAttempt(nil), result.FailedAttempts...)
@@ -850,6 +856,12 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 					successfulControls = append(successfulControls, attempt.Attempt)
 					continue
 				}
+				if safetyRejected {
+					// A later success does not explain the original safety rejection.
+					successfulControls = append(successfulControls, attempt.Attempt)
+					failedAttempts = attempt.FailedAttempts
+					break
+				}
 				attempt.Outcome = "fixed_by_repair_variant"
 				attempt.SuccessfulControls = append([]string(nil), successfulControls...)
 				repaired = attempt
@@ -865,6 +877,10 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 			repaired.AvailabilityOKAfterFailure = true
 			repaired.FailedAttempts = append([]failedAttempt(nil), availability.FailedAttempts...)
 			repaired.Hint = availability.Hint
+		}
+		if safetyRejected {
+			repaired.Hint = ""
+			repaired.FailedAttempts = append([]failedAttempt(nil), failedAttempts...)
 		}
 		repaired.SuccessfulControls = append([]string(nil), successfulControls...)
 		repaired = annotateStructuredOutputResult(cfg, repaired)
@@ -1381,7 +1397,11 @@ func probeClient(route routeSpec, model sigma.Model) *sigma.Client {
 	registry := sigma.NewRegistry()
 	_ = route.RegisterProvider(registry, route)
 	_ = registry.RegisterModel(model)
-	return sigma.NewClient(sigma.WithRegistry(registry))
+	opts := []sigma.ClientOption{sigma.WithRegistry(registry)}
+	if route.Name == "go" || route.Name == "zen" {
+		opts = append(opts, sigma.WithDefaultOptions(sigma.WithSessionID("sigma-probe-"+rand.Text())))
+	}
+	return sigma.NewClient(opts...)
 }
 
 func registerOpenAIResponsesProvider(registry *sigma.Registry, route routeSpec) error {
@@ -2587,6 +2607,12 @@ func knownUnavailable(route string, id string) bool {
 	}
 }
 
+func isSafetyRejection(message string) bool {
+	message = strings.ToLower(message)
+	return strings.Contains(message, "content violates usage guidelines") ||
+		strings.Contains(message, "safety_check_type_")
+}
+
 func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	if knownUnavailable(route.Name, string(model.ID)) {
 		return "upstream_availability"
@@ -2601,6 +2627,8 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 	message := strings.ToLower(err.Error())
 	statusCode := providerStatusCode(err)
 	switch {
+	case isSafetyRejection(message):
+		return "inconclusive"
 	case strings.Contains(message, "image") && strings.Contains(message, "support"):
 		return "provider_capability_limit"
 	case statusCode >= http.StatusInternalServerError && statusCode <= 599,
@@ -2617,7 +2645,8 @@ func classifyFailure(route routeSpec, model sigma.Model, err error) string {
 		strings.Contains(message, "rate limit"),
 		strings.Contains(message, "not supported when using codex with a chatgpt account"):
 		return "upstream_availability"
-	case strings.Contains(message, "unknown parameter"),
+	case strings.Contains(message, "provider_code=missingsessionid"),
+		strings.Contains(message, "unknown parameter"),
 		strings.Contains(message, "missing required parameter"),
 		strings.Contains(message, "unsupported parameter"),
 		strings.Contains(message, "thinking_level is not supported"),

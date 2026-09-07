@@ -336,6 +336,9 @@ func TestOpenCodeZenGeneratedGPT56ResponsesAffinity(t *testing.T) {
 	if got, want := request.Headers.Get("x-client-request-id"), "zen-session"; got != want {
 		t.Fatalf("request ID = %q, want %q", got, want)
 	}
+	if got := request.Headers.Get("x-opencode-session"); got != "zen-session" {
+		t.Fatalf("OpenCode session = %q, want zen-session", got)
+	}
 	if got := request.Headers.Get("session_id"); got != "" {
 		t.Fatalf("session_id = %q, want omitted", got)
 	}

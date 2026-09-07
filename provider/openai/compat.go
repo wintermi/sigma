@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 )
 
 type completionsCompat struct {
@@ -268,7 +269,7 @@ func openAICompatibleModelHeaders(model sigma.Model) map[string]string {
 	}
 	switch headers := raw.(type) {
 	case map[string]string:
-		return headers
+		return headerutil.Merge(nil, headers)
 	case map[string]any:
 		copied := make(map[string]string, len(headers))
 		for key, value := range headers {
@@ -278,7 +279,7 @@ func openAICompatibleModelHeaders(model sigma.Model) map[string]string {
 			}
 			copied[key] = text
 		}
-		return copied
+		return headerutil.Merge(nil, copied)
 	default:
 		return nil
 	}

@@ -139,18 +139,27 @@ func assertNoRawSecrets(t *testing.T, value string, secrets []string) {
 func TestStringRedactsTruncatedJSONCredentials(t *testing.T) {
 	t.Parallel()
 	for _, field := range []string{"api_key", "ACCESS_TOKEN", "refresh-token", "client_secret", "session_token", "authorization"} {
-		prefix := `{"safe":"context","nested":{"` + field + `":"`
-		for _, value := range []string{`syntheticcredential`, `escaped\"quote\\tail`, "multiline\ncredential", "unicode-秘密", "ends-in-escape\\"} {
-			for cut := 0; cut <= len(value); cut++ {
-				input := prefix + value[:cut]
-				want := prefix + replacement + `"`
-				got := String(input)
-				if got != want {
-					t.Fatalf("field %s cutoff %d: got %q, want %q", field, cut, got, want)
+		for _, before := range []string{"", "\n", "\r\n", " \t\r\n"} {
+			for _, after := range []string{"", "\n", "\r\n", " \t\r\n"} {
+				prefix := `{"safe":"context","nested":{"` + field + `"` + before + ":" + after + `"`
+				for _, value := range []string{`syntheticcredential`, `escaped\"quote\\tail`, "multiline\ncredential", "unicode-秘密", "ends-in-escape\\"} {
+					for cut := 0; cut <= len(value); cut++ {
+						input := prefix + value[:cut]
+						want := prefix + replacement + `"`
+						if got := String(input); got != want {
+							t.Fatalf("input %q: got %q, want %q", input, got, want)
+						}
+						preview := Preview(input, 19)
+						if !utf8.ValidString(preview) || len(preview) > 22 {
+							t.Fatalf("invalid bounded preview %q", preview)
+						}
+					}
 				}
-				preview := Preview(input, 19)
-				if !utf8.ValidString(preview) || len(preview) > 22 {
-					t.Fatalf("invalid bounded preview %q", preview)
+				for _, suffix := range []string{`"},"neighbor":"safe"}`, `"},"neighbor":"safe"} trailing`} {
+					got := String(prefix + "synthetic" + suffix)
+					if strings.Contains(got, "synthetic") || !strings.Contains(got, `"neighbor":"safe"`) {
+						t.Fatalf("redaction lost boundary: %q", got)
+					}
 				}
 			}
 		}

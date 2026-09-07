@@ -76,17 +76,28 @@ endpoint, payload, and headers. Credentials resolve once per request or
 connection attempt; retries and SSE fallback have their own attempt lifecycle.
 Explicit Codex token providers retain precedence over the general resolver.
 
-Explicit caller configuration overrides auth-derived defaults. Header names
-merge without regard to case across client defaults and request options; later
-options win and retain their supplied spelling. Within one map, duplicate case
+Explicit caller configuration overrides auth-derived defaults. A caller-supplied
+`base_url` or `baseURL` blocks auth defaults under either spelling, including
+defaults in `AuthResolution.ProviderOptions`; explicit endpoint precedence is
+unchanged. Header names merge without regard to case across provider constructors,
+model metadata, client defaults, and request options. Later options win and retain
+their supplied spelling. Within one map, duplicate case
 variants are processed in lexical order, with the last variant winning.
 Auth-derived headers fill only absent caller names. Caller maps are copied,
-and final header suppression still applies.
+and each adapter retains its existing provider/model/request precedence and final
+header suppression.
 
 Codex cached WebSocket connections require matching provider, effective URL,
 and final handshake headers for reuse. Changing routing, credentials, or account
 headers starts a fresh connection and continuation state. Busy connections remain
 owned by their active request, with overlaps using separate connections.
+
+`InMemoryCredentialStore` serializes modifications and deletions per provider.
+Cancellation or a deadline interrupts a wait for ownership without running the
+waiting modifier or deleting credentials. An active modifier retains ownership
+until its callback returns and keeps its existing commit behavior, including
+persisting a successful refresh rotation. Callbacks must honor their own contexts;
+operations for other providers remain independent.
 
 ### Request-scoped OAuth lifetime
 
@@ -587,6 +598,19 @@ Environment: `OPENROUTER_API_KEY`.
 OpenRouter image generation is non-streaming and uses image-capable Chat
 Completions responses. OpenAI Images uses the dedicated OpenAI Images adapter
 for generation, edits, variations, and streaming partial image events.
+
+### OpenCode Zen and Go
+
+The OpenCode wrapper maps `sigma.WithSessionID(conversationID)` to
+`x-opencode-session` across Chat Completions, Responses, Anthropic Messages,
+and Google Generative AI routes. Use a stable ID within a conversation and a
+distinct ID for each new conversation. OpenCode Go requires this header for
+routing and prompt-cache affinity.
+
+Session routing remains enabled when `CacheRetentionNone` is selected.
+Explicit provider, model, and request session headers keep their normal
+precedence, and `WithSuppressedHeader` can remove the final header. The wrapper
+does not generate IDs when callers omit `WithSessionID`.
 
 ## Provider Options
 

@@ -116,6 +116,13 @@ partial content.
 See [Cancellation](cancellation.md) for persistence guidance around aborted
 assistant messages.
 
+Missing OpenAI Chat Completions `finish_reason` and image generation/edit
+completion events classify as `ErrorClassTransient` with retryable advice.
+Available output and usage remain attached to the failed result. This advice
+supports caller recovery decisions; it does not automatically replay a request
+after streaming starts. The opt-in Chat Completions `[DONE]` compatibility mode
+continues accepting an explicit `[DONE]` without `finish_reason`.
+
 ## Retries And Timeouts
 
 HTTP providers share sigma's retry policy:

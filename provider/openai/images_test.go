@@ -716,3 +716,67 @@ func TestImageStreamStalledBodyCancellation(t *testing.T) {
 		})
 	}
 }
+
+func TestStreamImagesRequiresCompletion(t *testing.T) {
+	t.Parallel()
+	const partial = `{"type":"image_generation.partial_image","partial_image_index":0,"b64_json":"cGFydGlhbA==","usage":{"total_tokens":5}}`
+	for _, tc := range []struct {
+		name, body                          string
+		wantImages, wantPartials, wantUsage int
+		complete                            bool
+	}{
+		{name: "empty"},
+		{name: "keepalive", body: ":ping\n\n"},
+		{name: "done only", body: "data: [DONE]\n\n"},
+		{name: "partial EOF", body: "data: " + partial + "\n\n", wantPartials: 1, wantUsage: 5},
+		{name: "partial done", body: "data: " + partial + "\n\ndata: [DONE]\n\n", wantPartials: 1, wantUsage: 5},
+		{name: "unmarked image", body: "data: " + `{"data":[{"b64_json":"ZmluYWw="}],"usage":{"total_tokens":5}}` + "\n\n", wantImages: 1, wantUsage: 5},
+		{name: "generation data", body: "data: " + partial + "\n\ndata: " + `{"type":"image_generation.completed","data":[{"b64_json":"ZmluYWw="}],"usage":{"total_tokens":7}}` + "\n\n", complete: true, wantImages: 1, wantPartials: 1, wantUsage: 7},
+		{name: "generation top level", body: "data: " + `{"type":"image_generation.completed","b64_json":"ZmluYWw="}` + "\n\ndata: [DONE]\n\n", complete: true, wantImages: 1},
+		{name: "edit URL", body: "data: " + `{"type":"image_edit.completed","url":"https://example.test/image.png"}` + "\n\n", complete: true, wantImages: 1},
+		{name: "nested response", body: "data: " + `{"type":"image_edit.completed","response":{"data":[{"b64_json":"ZmluYWw="}],"usage":{"total_tokens":7},"size":"1024x1024"}}` + "\n\n", complete: true, wantImages: 1, wantUsage: 7},
+		{name: "explicit empty completion", body: "data: " + `{"type":"image_generation.completed"}` + "\n\n", complete: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			t.Cleanup(server.Close)
+			client := openAIImagesTestClient(t, server.URL)
+			stream := client.StreamImages(context.Background(), openAIImageModel(), sigma.ImageRequest{Prompt: "draw"})
+			partials := 0
+			var terminal sigma.ImageEventKind
+			for event := range stream.Events() {
+				if event.Kind == sigma.ImageEventKindPartial {
+					partials++
+					if event.PartialImage == nil || event.PartialImage.Data != "cGFydGlhbA==" {
+						t.Fatalf("lost partial preview: %#v", event)
+					}
+				}
+				terminal = event.Kind
+			}
+			final, err := sigma.CollectImages(context.Background(), stream)
+			if tc.complete {
+				if err != nil || final.StopReason != sigma.StopReasonEndTurn || terminal != sigma.ImageEventKindDone {
+					t.Fatalf("valid completion failed: final=%#v err=%v terminal=%s", final, err, terminal)
+				}
+			} else {
+				classification := sigma.ClassifyError(err)
+				if err == nil || final.StopReason != sigma.StopReasonError || terminal != sigma.ImageEventKindError || classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+					t.Fatalf("incomplete stream: final=%#v err=%v classification=%#v", final, err, classification)
+				}
+			}
+			if len(final.Images) != tc.wantImages || partials != tc.wantPartials {
+				t.Fatalf("images=%d partials=%d, want %d/%d", len(final.Images), partials, tc.wantImages, tc.wantPartials)
+			}
+			if tc.wantUsage > 0 && (final.Usage == nil || final.Usage.TotalTokens != tc.wantUsage) {
+				t.Fatalf("lost usage: %#v", final.Usage)
+			}
+			if tc.name == "nested response" && final.ProviderMetadata["size"] != "1024x1024" {
+				t.Fatalf("lost response metadata: %#v", final.ProviderMetadata)
+			}
+		})
+	}
+}

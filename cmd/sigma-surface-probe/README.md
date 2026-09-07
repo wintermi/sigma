@@ -84,6 +84,12 @@ OPENCODE_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -repair
 ```
 
+The `go` and `zen` routes create a fresh conversation ID for each probe case.
+The same ID is reused for that case's turns, transport retries, and repair
+variants and sent as `x-opencode-session` across the routed APIs. OpenCode Go
+requires this header for routing. A provider `MissingSessionID` error is
+classified as `sigma_request_shape`.
+
 Probe the Fireworks OpenAI-compatible route:
 
 ```bash
@@ -362,7 +368,8 @@ Each completed case is written immediately:
 
 When `-repair` is enabled, a failed original case may be followed by a working
 repair variant. A variant counts as a repair only when it preserves the
-capability under test:
+capability under test and the original failure is not a recognized safety
+rejection:
 
 ```json
 {"route":"fireworks-openai","model":"accounts/fireworks/routers/kimi-k2p6-turbo","case":"image_input","attempt":"image_url_fallback","outcome":"fixed_by_repair_variant","originalError":"provider rejected base64 image input","failedAttempts":[{"attempt":"image_input","error":"provider rejected base64 image input"}],"hint":"base64_image_failed_url_image_ok"}
@@ -400,3 +407,11 @@ result keeps its original outcome and includes
 separately from the failure classification. Successful diagnostic controls
 that remove the tested capability are listed in `successfulControls`; they do
 not change the original outcome or produce a repair recommendation.
+
+Recognized safety rejections (`Content violates usage guidelines` or
+`SAFETY_CHECK_TYPE_*`) remain `inconclusive`, with the original error retained.
+A later successful variant is recorded in `successfulControls`, and a successful
+minimal-text check still sets `availabilityOKAfterFailure`. Neither produces a
+recommendation for that case: success with a larger output cap does not establish
+that the cap caused the safety rejection. A generic HTTP 403 alone is not treated
+as a safety rejection.

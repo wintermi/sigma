@@ -1822,11 +1822,11 @@ func TestCodexResponsesTokenProviderErrorIsRedacted(t *testing.T) {
 	}
 }
 
-func codexResponsesTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.Model, baseURL string, tokenProvider sigma.OAuthTokenProvider) *sigma.Client {
+func codexResponsesTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.Model, baseURL string, tokenProvider sigma.OAuthTokenProvider, providerOpts ...openai.ProviderOption) *sigma.Client {
 	t.Helper()
 
 	registry := sigma.NewRegistry()
-	if err := registry.RegisterTextProvider(providerID, openai.NewCodexResponsesProvider(openai.WithBaseURL(baseURL))); err != nil {
+	if err := registry.RegisterTextProvider(providerID, openai.NewCodexResponsesProvider(append([]openai.ProviderOption{openai.WithBaseURL(baseURL)}, providerOpts...)...)); err != nil {
 		t.Fatalf("RegisterTextProvider returned error: %v", err)
 	}
 	if err := registry.RegisterModel(model); err != nil {
@@ -2328,7 +2328,7 @@ func (a *codexRoutingAuth) ResolveAuthResolution(context.Context, sigma.Model, s
 }
 
 func TestCodexResponsesWebSocketHonorsResolvedAuth(t *testing.T) {
-	for _, mode := range []string{"base URL", "endpoint", "explicit override", "explicit token", "resolver failure"} {
+	for _, mode := range []string{"base URL", "endpoint", "explicit override", "explicit token", "resolver failure", "caller camel auth snake", "caller snake auth camel"} {
 		t.Run(mode, func(t *testing.T) {
 			type capture struct {
 				name    string
@@ -2365,6 +2365,15 @@ func TestCodexResponsesWebSocketHonorsResolvedAuth(t *testing.T) {
 			case "explicit override":
 				options = append(options, sigma.WithProviderOption(model.Provider, "endpoint", a.URL+"/custom"), sigma.WithHeader("x-tenant", "explicit"), sigma.WithProviderOption(model.Provider, "extra_body", map[string]any{"instructions": "explicit instructions"}))
 				wantRoute, wantTenant, wantInstructions = "default", "explicit", "explicit instructions"
+			case "caller camel auth snake", "caller snake auth camel":
+				resolver.result.BaseURL = ""
+				callerKey, authKey := "baseURL", "base_url"
+				if mode == "caller snake auth camel" {
+					callerKey, authKey = authKey, callerKey
+				}
+				resolver.result.ProviderOptions[authKey] = b.URL
+				options = append(options, sigma.WithProviderOption(model.Provider, callerKey, a.URL))
+				wantRoute = "default"
 			case "explicit token":
 				resolver.err = errors.New("must not resolve")
 				options = append(options, openai.WithCodexResponsesOAuthTokenProvider(model.Provider, codexTokenProvider("explicit")))
@@ -2438,7 +2447,7 @@ func TestCodexResponsesWebSocketHandshakeIdentity(t *testing.T) {
 	defer server.Close()
 	defer openai.CloseCodexResponsesWebSocketSessions()
 	model := codexResponsesTestModel("handshake-identity-test")
-	client := codexResponsesTestClient(t, model.Provider, model, server.URL, nil)
+	client := codexResponsesTestClient(t, model.Provider, model, server.URL, nil, openai.WithHeaders(map[string]string{"X-Constructor": "first"}), openai.WithHeaders(map[string]string{"X-CONSTRUCTOR": "loser", "x-constructor": "last"}))
 	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}}
 	for index, tc := range []struct {
 		token, tenant, account string
@@ -2458,7 +2467,7 @@ func TestCodexResponsesWebSocketHandshakeIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := <-requests
-		if got.connection != tc.connection || got.headers.Get("Authorization") != "Bearer "+tc.token || got.headers.Get("X-Tenant") != tc.tenant || got.headers.Get("chatgpt-account-id") != tc.account {
+		if got.headers.Get("X-Constructor") != "last" || got.connection != tc.connection || got.headers.Get("Authorization") != "Bearer "+tc.token || got.headers.Get("X-Tenant") != tc.tenant || got.headers.Get("chatgpt-account-id") != tc.account {
 			t.Fatalf("request %d used wrong connection: %#v", index, got)
 		}
 		_, hasPrevious := got.body["previous_response_id"]

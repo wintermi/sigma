@@ -158,6 +158,26 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenCode Zen/Go now map caller session IDs to `x-opencode-session` across
+  routed APIs independently of caching, preserving explicit header overrides
+  and suppression. Surface probes supply stable per-case IDs across turns,
+  retries, and repairs, and classify `MissingSessionID` as a request-shape error.
+- Surface probes now preserve recognized safety rejections as inconclusive
+  failures and record later successful variants as diagnostic controls, without
+  inferring token-budget repairs or emitting recommendations for those cases.
+- Credential redaction now handles LF/CRLF whitespace around JSON field colons
+  in truncated diagnostics, retaining escape handling and UTF-8-safe previews.
+- Explicit `base_url` and `baseURL` request options now consistently override
+  auth-derived routing defaults under either spelling.
+- OpenAI image streams now require a generation or edit completion event;
+  incomplete image and Chat Completions streams report transient/retryable
+  advice while preserving available output and usage. Retry execution is unchanged.
+- Canceled in-memory credential modifications and deletions now leave provider
+  lock waits promptly without interrupting an active refresh or its stored result.
+- Provider constructor and model-metadata headers now use deterministic,
+  case-insensitive merging across affected adapters, preserving later overrides,
+  caller maps, existing precedence, and final suppression.
+
 - Codex WebSocket reuse now requires matching provider, endpoint, and final
   handshake headers, isolating continuation state when routing or credentials
   change and safely handling concurrent connections.

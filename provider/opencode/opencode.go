@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/google"
 	"github.com/wintermi/sigma/provider/openai"
@@ -27,10 +28,11 @@ const (
 
 // Provider dispatches OpenCode models to their real API-compatible route.
 type Provider struct {
-	chat      sigma.TextProvider
-	responses sigma.TextProvider
-	anthropic sigma.TextProvider
-	google    sigma.TextProvider
+	sessionHeaderConfigured bool
+	chat                    sigma.TextProvider
+	responses               sigma.TextProvider
+	anthropic               sigma.TextProvider
+	google                  sigma.TextProvider
 }
 
 type providerConfig struct {
@@ -54,10 +56,11 @@ func NewProvider(opts ...ProviderOption) *Provider {
 	anthropicOpts := anthropicOptions(cfg)
 	googleOpts := googleOptions(cfg)
 	return &Provider{
-		chat:      openai.NewProvider(openAIOpts...),
-		responses: openai.NewResponsesProvider(openAIOpts...),
-		anthropic: anthropic.NewProvider(anthropicOpts...),
-		google:    google.NewProvider(googleOpts...),
+		sessionHeaderConfigured: hasSessionHeader(cfg.headers),
+		chat:                    openai.NewProvider(openAIOpts...),
+		responses:               openai.NewResponsesProvider(openAIOpts...),
+		anthropic:               anthropic.NewProvider(anthropicOpts...),
+		google:                  google.NewProvider(googleOpts...),
 	}
 }
 
@@ -83,15 +86,7 @@ func WithHeader(key, value string) ProviderOption {
 // WithHeaders configures provider default request headers.
 func WithHeaders(headers map[string]string) ProviderOption {
 	return func(cfg *providerConfig) {
-		if len(headers) == 0 {
-			return
-		}
-		if cfg.headers == nil {
-			cfg.headers = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			cfg.headers[key] = value
-		}
+		cfg.headers = headerutil.Merge(cfg.headers, headers)
 	}
 }
 
@@ -147,6 +142,16 @@ func (p *Provider) API() sigma.API {
 func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
 	api := OpenCodeAPI(model)
 	model.API = api
+	modelHeaders := model.ProviderMetadata["headers"]
+	if api == sigma.APIOpenAICompletions || api == sigma.APIOpenAIResponses {
+		if headers, ok := model.ProviderMetadata[sigma.MetadataOpenAICompatibleHeaders]; ok {
+			modelHeaders = headers
+		}
+	}
+	if opts.SessionID != "" && !p.sessionHeaderConfigured && !hasSessionHeader(modelHeaders) {
+		// Routing identity is independent of optional prompt caching.
+		opts.Headers = headerutil.Merge(map[string]string{"x-opencode-session": opts.SessionID}, opts.Headers)
+	}
 	switch api {
 	case sigma.APIGoogleGenerativeAI:
 		return p.google.Stream(ctx, model, req, opts)
@@ -157,6 +162,24 @@ func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Requ
 	default:
 		return p.chat.Stream(ctx, model, req, opts)
 	}
+}
+
+func hasSessionHeader(raw any) bool {
+	switch headers := raw.(type) {
+	case map[string]string:
+		for key := range headers {
+			if strings.EqualFold(key, "x-opencode-session") {
+				return true
+			}
+		}
+	case map[string]any:
+		for key, value := range headers {
+			if _, ok := value.(string); ok && strings.EqualFold(key, "x-opencode-session") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // OpenCodeAPI returns the real API family for model.

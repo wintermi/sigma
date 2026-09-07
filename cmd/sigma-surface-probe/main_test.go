@@ -2285,6 +2285,84 @@ func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
 	}
 }
 
+func TestIsSafetyRejection(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		message string
+		want    bool
+	}{
+		{message: "Content violates usage guidelines", want: true},
+		{message: "Failed check: SAFETY_CHECK_TYPE_BIO", want: true},
+		{message: "status=403 permission-denied"},
+		{message: "maximum output tokens exceeded"},
+		{message: "unsupported parameter: response_format"},
+		{message: ""},
+	} {
+		t.Run(tt.message, func(t *testing.T) {
+			t.Parallel()
+			if got := isSafetyRejection(tt.message); got != tt.want {
+				t.Fatalf("isSafetyRejection(%q) = %v, want %v", tt.message, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProbeModelDoesNotAttributeSafetyRejectionToRepair(t *testing.T) {
+	t.Parallel()
+
+	const safetyMessage = "Content violates usage guidelines. Failed check: SAFETY_CHECK_TYPE_BIO"
+	safetyErr := sigma.NewProviderError(sigma.ProviderXAI, sigma.APIOpenAICompletions, "grok-4.6", http.StatusForbidden,
+		"082e5bc5-4916-9711-bf26-53964c03eb51", 0,
+		[]byte(`{"code":"permission-denied","error":"`+safetyMessage+`"}`), nil)
+	for _, tt := range []struct {
+		name         string
+		cfg          config
+		availability sigmatest.Script
+	}{
+		{name: "repair", cfg: config{repair: true}},
+		{name: "structured output", cfg: config{structuredOutput: true}},
+		{name: "availability fails", cfg: config{repair: true}, availability: sigmatest.Script{Err: safetyErr}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
+				singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), nil),
+			}, sigmatest.Script{Err: safetyErr}, tt.availability, sigmatest.Script{})
+			results := collectProbeModel(context.Background(), route, "grok-4.6", routeCredential{apiKey: "key"}, tt.cfg)
+			if len(results) != 1 {
+				t.Fatalf("results = %+v, want one result", results)
+			}
+			result := results[0]
+			if result.Outcome != "inconclusive" || result.Attempt != "json_schema" || result.Error != safetyErr.Error() {
+				t.Fatalf("original safety rejection was not preserved: %+v", result)
+			}
+			if !reflect.DeepEqual(result.SuccessfulControls, []string{"json_schema_more_tokens"}) {
+				t.Fatalf("successful controls = %v, want larger-budget attempt", result.SuccessfulControls)
+			}
+			if result.AvailabilityOKAfterFailure != (tt.availability.Err == nil) {
+				t.Fatalf("availability evidence = %v", result.AvailabilityOKAfterFailure)
+			}
+			wantFailures := []failedAttempt{{Attempt: "json_schema", Error: safetyErr.Error()}}
+			if tt.availability.Err != nil {
+				wantFailures = append(wantFailures, failedAttempt{Attempt: "minimal_basic_text", Error: safetyErr.Error()})
+			}
+			assertFailedAttempts(t, result.FailedAttempts, wantFailures)
+			if result.Hint != "" {
+				t.Fatalf("safety rejection produced a hint: %q", result.Hint)
+			}
+			if recommendation, ok := recommendationFor(result); ok {
+				t.Fatalf("safety rejection produced a recommendation: %+v", recommendation)
+			}
+			var totals summary
+			totals.add(result)
+			if totals.Inconclusive != 1 || totals.FixedByRepairVariant != 0 {
+				t.Fatalf("summary claims a repair: %+v", totals)
+			}
+		})
+	}
+}
+
 func TestStructuredOutputProbeReportsJSONObjectAsControl(t *testing.T) {
 	t.Parallel()
 

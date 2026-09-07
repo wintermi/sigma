@@ -26,7 +26,9 @@ Diagnostic paths redact common credential shapes before exposing them:
 
 Recognized JSON credential fields are also redacted in incomplete diagnostics.
 An unterminated string value is hidden through the end of the diagnostic,
-including escaped quotes, backslashes, and multiline content. Complete values
+including escaped quotes, backslashes, and multiline content. JSON whitespace
+(space, tab, CR, and LF) is accepted on either side of the field colon, including
+in truncated pretty-printed bodies. Complete values
 preserve neighboring non-sensitive content. Previews remain bounded and safe at
 UTF-8 boundaries; this does not extend redaction to arbitrary unknown secrets.
 

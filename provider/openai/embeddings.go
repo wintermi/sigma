@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 )
 
 // EmbeddingsProvider adapts OpenAI's embeddings API to sigma.
@@ -198,9 +199,6 @@ func (p *EmbeddingsProvider) baseURLForModel(model sigma.EmbeddingModel, opts si
 func addEmbeddingModelHeaders(req *http.Request, model sigma.EmbeddingModel) {
 	headers := embeddingModelHeaders(model)
 	for key, value := range headers {
-		if strings.TrimSpace(value) == "" || unsafeCredentialHeader(key) {
-			continue
-		}
 		req.Header.Set(key, value)
 	}
 }
@@ -210,22 +208,25 @@ func embeddingModelHeaders(model sigma.EmbeddingModel) map[string]string {
 	if !ok {
 		raw = model.ProviderMetadata["headers"]
 	}
-	switch headers := raw.(type) {
+	headers := make(map[string]string)
+	switch values := raw.(type) {
 	case map[string]string:
-		return headers
-	case map[string]any:
-		copied := make(map[string]string, len(headers))
-		for key, value := range headers {
-			text, ok := value.(string)
-			if !ok {
-				continue
-			}
-			copied[key] = text
+		for key, value := range values {
+			headers[key] = value
 		}
-		return copied
-	default:
-		return nil
+	case map[string]any:
+		for key, value := range values {
+			if text, ok := value.(string); ok {
+				headers[key] = text
+			}
+		}
 	}
+	for key, value := range headers {
+		if strings.TrimSpace(value) == "" || unsafeCredentialHeader(key) {
+			delete(headers, key)
+		}
+	}
+	return headerutil.Merge(nil, headers)
 }
 
 func embeddingAuthModel(model sigma.EmbeddingModel) sigma.Model {

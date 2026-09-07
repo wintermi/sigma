@@ -425,13 +425,21 @@ func assertSecurityNoSecrets(t *testing.T, value string) {
 
 func TestSecurityProviderErrorRedactsEveryCredentialCutoff(t *testing.T) {
 	t.Parallel()
-	const value = `synthetic\"credential\\tail`
-	const prefix = `{"safe":"context","access_token":"`
-	for cut := 0; cut <= len(value); cut++ {
-		err := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(prefix+value[:cut]), nil)
-		for _, output := range []string{err.Error(), err.BodyPreview, err.String()} {
-			if !strings.Contains(output, `"access_token":"[redacted]"`) || strings.Contains(output, "synthetic") {
-				t.Fatalf("cutoff %d not redacted: %q", cut, output)
+	for _, before := range []string{"", "\n", "\r\n", " \t\r\n"} {
+		for _, after := range []string{"", "\n", "\r\n", " \t\r\n"} {
+			prefix := `{"safe":"context","nested":{"access_token"` + before + ":" + after + `"`
+			for _, value := range []string{`synthetic\"credential\\tail`, "multiline\ncredential", "秘密", "unmatched\\"} {
+				for cut := 0; cut <= len(value); cut++ {
+					err := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(prefix+value[:cut]), nil)
+					if err.BodyPreview != prefix+`[redacted]"` {
+						t.Fatalf("cutoff %d not redacted: %q", cut, err.BodyPreview)
+					}
+					for _, output := range []string{err.Error(), err.String()} {
+						if !strings.Contains(output, "[redacted]") || strings.Contains(output, "synthetic") || strings.Contains(output, "秘密") {
+							t.Fatalf("cutoff %d not redacted: %q", cut, output)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -439,14 +447,18 @@ func TestSecurityProviderErrorRedactsEveryCredentialCutoff(t *testing.T) {
 
 func TestSecurityProviderErrorKeepsBoundedUTF8Preview(t *testing.T) {
 	t.Parallel()
-	body := `{"nested":{"access_token":"synthetic\"token"},"safe":"` + strings.Repeat("界", 1000) + `"}`
-	providerErr := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(body), nil)
-	if !utf8.ValidString(providerErr.BodyPreview) || len(providerErr.BodyPreview) > 2051 || !strings.Contains(providerErr.BodyPreview, "界") {
-		t.Fatalf("invalid bounded preview: bytes=%d", len(providerErr.BodyPreview))
-	}
-	for _, output := range []string{providerErr.BodyPreview, providerErr.Error(), providerErr.String()} {
-		if strings.Contains(output, "synthetic") || !strings.Contains(output, "[redacted]") {
-			t.Fatalf("credential leaked: %q", output)
+	for _, body := range []string{
+		`{"nested":{"access_token":"synthetic\"token"},"safe":"` + strings.Repeat("界", 1000) + `"}`,
+		"{\"nested\":{\"access_token\"\r\n:\n\"synthetic\"},\"safe\":\"" + strings.Repeat("界", 1000),
+	} {
+		providerErr := sigma.NewProviderError("test", sigma.APIOpenAICompletions, "test", 401, "", 0, []byte(body), nil)
+		if !utf8.ValidString(providerErr.BodyPreview) || len(providerErr.BodyPreview) > 2051 || !strings.Contains(providerErr.BodyPreview, "界") {
+			t.Fatalf("invalid bounded preview: bytes=%d", len(providerErr.BodyPreview))
+		}
+		for _, output := range []string{providerErr.BodyPreview, providerErr.Error(), providerErr.String()} {
+			if strings.Contains(output, "synthetic") || !strings.Contains(output, "[redacted]") {
+				t.Fatalf("credential leaked: %q", output)
+			}
 		}
 	}
 }

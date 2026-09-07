@@ -400,3 +400,136 @@ func TestStoredCredentialAuthResolverRefreshFailurePreservesCredential(t *testin
 		t.Fatalf("stored credential = %#v, %v; want old credential preserved", stored, ok)
 	}
 }
+
+// credentialWaitContext exposes when an operation starts selecting on cancellation.
+type credentialWaitContext struct {
+	context.Context
+	waiting chan struct{}
+	once    sync.Once
+}
+
+func (c *credentialWaitContext) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.waiting) })
+	return c.Context.Done()
+}
+
+func TestInMemoryCredentialStoreWaitHonorsCancellation(t *testing.T) {
+	t.Parallel()
+	for _, operation := range []string{"modify", "delete"} {
+		for _, cancellation := range []string{"already canceled", "while waiting", "deadline"} {
+			t.Run(operation+"/"+cancellation, func(t *testing.T) {
+				t.Parallel()
+				var store sigma.InMemoryCredentialStore
+				held, release := make(chan struct{}), make(chan struct{})
+				firstDone := make(chan error, 1)
+				firstCtx, firstCancel := context.WithCancel(context.Background())
+				defer firstCancel()
+				go func() {
+					_, _, err := store.ModifyCredential(firstCtx, "test", func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+						close(held)
+						<-release
+						return sigma.StoredCredential{Value: "refreshed"}, true, nil
+					})
+					firstDone <- err
+				}()
+				var releaseOnce sync.Once
+				releaseOwner := func() { releaseOnce.Do(func() { close(release) }) }
+				t.Cleanup(releaseOwner)
+				<-held
+
+				ctx, cancel := context.WithCancel(context.Background())
+				wantErr := error(context.Canceled)
+				if cancellation == "deadline" {
+					cancel()
+					ctx, cancel = context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+					wantErr = context.DeadlineExceeded
+				} else if cancellation == "already canceled" {
+					cancel()
+				}
+				defer cancel()
+				observed := &credentialWaitContext{Context: ctx, waiting: make(chan struct{})}
+				done := make(chan error, 1)
+				go func() {
+					if operation == "delete" {
+						done <- store.DeleteCredential(observed, "test")
+						return
+					}
+					_, _, err := store.ModifyCredential(observed, "test", func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+						t.Error("canceled modifier ran")
+						return sigma.StoredCredential{}, false, nil
+					})
+					done <- err
+				}()
+				if cancellation == "while waiting" {
+					select {
+					case <-observed.waiting:
+					case <-time.After(time.Second):
+						t.Fatal("operation did not start a cancelable wait")
+					}
+					cancel()
+				}
+				select {
+				case err := <-done:
+					if !errors.Is(err, wantErr) {
+						t.Fatalf("wait error = %v, want %v", err, wantErr)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("canceled operation remained blocked on provider ownership")
+				}
+
+				// Cancellation must not release the first modifier's ownership.
+				nextCtx, nextCancel := context.WithCancel(context.Background())
+				defer nextCancel()
+				next := &credentialWaitContext{Context: nextCtx, waiting: make(chan struct{})}
+				nextDone := make(chan error, 1)
+				go func() {
+					_, _, err := store.ModifyCredential(next, "test", func(current sigma.StoredCredential, ok bool) (sigma.StoredCredential, bool, error) {
+						if !ok || current.Value != "refreshed" {
+							t.Error("waiter bypassed the active modifier")
+						}
+						return current, false, nil
+					})
+					nextDone <- err
+				}()
+				select {
+				case <-next.waiting:
+				case <-time.After(time.Second):
+					t.Fatal("next modifier did not wait")
+				}
+				// A different provider remains available while this one is held.
+				otherDone := make(chan error, 1)
+				go func() {
+					_, _, err := store.ModifyCredential(context.Background(), "other", func(sigma.StoredCredential, bool) (sigma.StoredCredential, bool, error) {
+						return sigma.StoredCredential{Value: "other"}, true, nil
+					})
+					otherDone <- err
+				}()
+				select {
+				case err := <-otherDone:
+					if err != nil {
+						t.Fatal(err)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("unrelated provider blocked")
+				}
+				// An active callback still commits its rotated credential after cancellation.
+				firstCancel()
+				releaseOwner()
+				for _, result := range []<-chan error{firstDone, nextDone} {
+					select {
+					case err := <-result:
+						if err != nil {
+							t.Fatal(err)
+						}
+					case <-time.After(time.Second):
+						t.Fatal("modifier did not finish")
+					}
+				}
+				stored, ok, err := store.ReadCredential(context.Background(), "test")
+				if err != nil || !ok || stored.Value != "refreshed" {
+					t.Fatalf("canceled operation changed credential: %#v, %v", stored, err)
+				}
+			})
+		}
+	}
+}

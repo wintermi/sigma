@@ -65,6 +65,15 @@ generated image can be base64 data (`sigma.ImageOutputData`) or a URL
 
 ## Streaming and cancellation
 
+OpenAI image streams require an `image_generation.completed` or
+`image_edit.completed` event. EOF, keepalives, partial previews, unmarked image
+data, and `[DONE]` alone do not establish success. A completion event with empty
+output remains valid; no separate start event or image-count check is required.
+Incomplete streams return an error with transient/retryable advice and retain
+available completed images, usage, and metadata. Already-emitted previews remain
+partial events and are not promoted to completed images. Sigma does not
+automatically replay these streamed requests.
+
 `ImageStream.Close` cancels in-flight OpenAI image requests, including requests
 waiting for response headers or stalled response-body reads. The root streaming
 fallback also cancels the context passed to `ImageProvider.Generate`; custom

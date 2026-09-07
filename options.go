@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/wintermi/sigma/internal/headerutil"
 )
 
 const (
@@ -312,7 +314,7 @@ func WithSessionID(sessionID string) Option {
 // WithHeader adds or replaces a request header.
 func WithHeader(key, value string) Option {
 	return func(options *Options) {
-		options.Headers = mergeHeaders(options.Headers, map[string]string{key: value})
+		options.Headers = headerutil.Merge(options.Headers, map[string]string{key: value})
 	}
 }
 
@@ -322,7 +324,7 @@ func WithHeaders(headers map[string]string) Option {
 		if len(headers) == 0 {
 			return
 		}
-		options.Headers = mergeHeaders(options.Headers, headers)
+		options.Headers = headerutil.Merge(options.Headers, headers)
 	}
 }
 
@@ -550,7 +552,7 @@ func cloneOptions(options Options) Options {
 		Transport:                    options.Transport,
 		CacheRetention:               options.CacheRetention,
 		SessionID:                    options.SessionID,
-		Headers:                      mergeHeaders(nil, options.Headers),
+		Headers:                      headerutil.Merge(nil, options.Headers),
 		SuppressedHeaders:            append([]string(nil), options.SuppressedHeaders...),
 		Timeout:                      cloneDurationPtr(options.Timeout),
 		MaxRetries:                   cloneIntPtr(options.MaxRetries),

@@ -345,3 +345,41 @@ func assertHeader(t *testing.T, headers http.Header, key, value string) {
 		t.Fatalf("header %q = %q, want %q", key, got, value)
 	}
 }
+
+func TestImagesProviderHeadersCaseInsensitivePrecedence(t *testing.T) {
+	t.Parallel()
+	headers := make(chan http.Header, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers <- r.Header.Clone()
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, `{"error":{"message":"test response"}}`)
+	}))
+	t.Cleanup(server.Close)
+	first := map[string]string{"X-Tenant": "first", "X-Remove": "remove"}
+	last := map[string]string{"X-TENANT": "loser", "x-tenant": "last"}
+	provider := openrouter.NewImagesProvider(openrouter.WithImagesBaseURL(server.URL), openrouter.WithImagesHeaders(first), openrouter.WithImagesHeaders(last))
+	for _, override := range []bool{false, true} {
+		opts := sigma.Options{AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+			return sigma.Credential{Value: "synthetic"}, nil
+		}), SuppressedHeaders: []string{"x-remove"}}
+		want := "last"
+		if override {
+			opts.Headers = map[string]string{"X-Tenant": "request"}
+			want = "request"
+		}
+		for range 32 {
+			_, _ = provider.Generate(context.Background(), openRouterImageModel(), sigma.ImageRequest{Prompt: "test"}, opts)
+			select {
+			case got := <-headers:
+				if got.Get("X-Tenant") != want || got.Get("X-Remove") != "" {
+					t.Fatalf("headers = %v, want tenant %s", got, want)
+				}
+			default:
+				t.Fatal("request did not reach transport")
+			}
+		}
+	}
+	if !reflect.DeepEqual(first, map[string]string{"X-Tenant": "first", "X-Remove": "remove"}) || !reflect.DeepEqual(last, map[string]string{"X-TENANT": "loser", "x-tenant": "last"}) {
+		t.Fatal("caller headers mutated")
+	}
+}

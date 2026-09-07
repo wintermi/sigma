@@ -39,14 +39,14 @@ type CredentialStore interface {
 type InMemoryCredentialStore struct {
 	mu          sync.Mutex
 	credentials map[ProviderID]StoredCredential
-	locks       map[ProviderID]*sync.Mutex
+	locks       map[ProviderID]chan struct{}
 }
 
 // NewInMemoryCredentialStore constructs an empty in-memory credential store.
 func NewInMemoryCredentialStore() *InMemoryCredentialStore {
 	return &InMemoryCredentialStore{
 		credentials: make(map[ProviderID]StoredCredential),
-		locks:       make(map[ProviderID]*sync.Mutex),
+		locks:       make(map[ProviderID]chan struct{}),
 	}
 }
 
@@ -72,15 +72,11 @@ func (s *InMemoryCredentialStore) ModifyCredential(ctx context.Context, provider
 		return StoredCredential{}, false, credentialStoreError("credential modify function is required")
 	}
 	s.ensure()
-	lock := s.providerLock(provider)
-	lock.Lock()
-	defer lock.Unlock()
-
-	select {
-	case <-ctx.Done():
-		return StoredCredential{}, false, ctx.Err()
-	default:
+	lock, err := s.providerLock(ctx, provider)
+	if err != nil {
+		return StoredCredential{}, false, err
 	}
+	defer func() { <-lock }()
 
 	s.mu.Lock()
 	current, ok := s.credentials[provider]
@@ -102,14 +98,16 @@ func (s *InMemoryCredentialStore) ModifyCredential(ctx context.Context, provider
 }
 
 // DeleteCredential removes a provider credential.
-func (s *InMemoryCredentialStore) DeleteCredential(_ context.Context, provider ProviderID) error {
+func (s *InMemoryCredentialStore) DeleteCredential(ctx context.Context, provider ProviderID) error {
 	if provider == "" {
 		return credentialStoreError("provider id is required")
 	}
 	s.ensure()
-	lock := s.providerLock(provider)
-	lock.Lock()
-	defer lock.Unlock()
+	lock, err := s.providerLock(ctx, provider)
+	if err != nil {
+		return err
+	}
+	defer func() { <-lock }()
 
 	s.mu.Lock()
 	delete(s.credentials, provider)
@@ -124,22 +122,34 @@ func (s *InMemoryCredentialStore) ensure() {
 		s.credentials = make(map[ProviderID]StoredCredential)
 	}
 	if s.locks == nil {
-		s.locks = make(map[ProviderID]*sync.Mutex)
+		s.locks = make(map[ProviderID]chan struct{})
 	}
 }
 
-func (s *InMemoryCredentialStore) providerLock(provider ProviderID) *sync.Mutex {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.locks == nil {
-		s.locks = make(map[ProviderID]*sync.Mutex)
+// providerLock acquires ownership without making canceled callers wait for a refresh.
+func (s *InMemoryCredentialStore) providerLock(ctx context.Context, provider ProviderID) (chan struct{}, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
+	s.mu.Lock()
 	lock := s.locks[provider]
 	if lock == nil {
-		lock = &sync.Mutex{}
+		lock = make(chan struct{}, 1)
 		s.locks[provider] = lock
 	}
-	return lock
+	s.mu.Unlock()
+
+	select {
+	case lock <- struct{}{}:
+		// Both ownership and cancellation may become ready together.
+		if err := ctx.Err(); err != nil {
+			<-lock
+			return nil, err
+		}
+		return lock, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func cloneStoredCredential(credential StoredCredential) StoredCredential {

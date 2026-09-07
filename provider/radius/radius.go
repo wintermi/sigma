@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -96,15 +97,7 @@ func WithHeader(key, value string) ProviderOption {
 // WithHeaders configures provider default request headers.
 func WithHeaders(headers map[string]string) ProviderOption {
 	return func(config *config) {
-		if len(headers) == 0 {
-			return
-		}
-		if config.headers == nil {
-			config.headers = make(map[string]string, len(headers))
-		}
-		for key, value := range headers {
-			config.headers[key] = value
-		}
+		config.headers = headerutil.Merge(config.headers, headers)
 	}
 }
 

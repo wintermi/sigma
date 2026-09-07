@@ -1770,6 +1770,7 @@ func TestChatCompletionsStreamingRequiresFinishReason(t *testing.T) {
 		wantError    bool
 		wantStop     sigma.StopReason
 	}{
+		{name: "default rejects unmarked eof", wantError: true, wantStop: sigma.StopReasonError},
 		{name: "default requires finish reason", done: true, wantError: true, wantStop: sigma.StopReasonError},
 		{name: "explicit support requires finish reason", support: sigma.OpenAICompatSupported, done: true, wantError: true, wantStop: sigma.StopReasonError},
 		{name: "unsupported accepts done marker", support: sigma.OpenAICompatUnsupported, done: true, wantStop: sigma.StopReasonEndTurn},
@@ -1779,6 +1780,7 @@ func TestChatCompletionsStreamingRequiresFinishReason(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/event-stream")
 				finishReason := "null"
@@ -1806,6 +1808,10 @@ func TestChatCompletionsStreamingRequiresFinishReason(t *testing.T) {
 			}
 
 			if tt.wantError {
+				classification := sigma.ClassifyError(stream.Err())
+				if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+					t.Fatalf("incomplete stream classification = %#v", classification)
+				}
 				if err := stream.Err(); err == nil || !strings.Contains(err.Error(), "stream ended without finish_reason") {
 					t.Fatalf("stream error = %v, want missing finish_reason", err)
 				}

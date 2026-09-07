@@ -54,6 +54,15 @@ cancellation/error coverage (see the coverage standards in
 
 ## Core streaming
 
+- [x] Redact truncated pretty-printed JSON credentials across LF/CRLF separator
+      whitespace while retaining escape boundaries and bounded UTF-8 previews.
+- [x] Preserve explicit base-URL aliases over auth-derived routing defaults and
+      extend deterministic header merging to provider constructors/model maps.
+- [x] Require explicit OpenAI image completion events and classify missing image
+      completion or Chat Completions finish reasons as transient without replay.
+- [x] Make in-memory credential modification/deletion waits cancelable while
+      preserving provider ownership, refresh serialization, and stored rotations.
+
 - [x] Preserve accepted text/image terminals through cancellation and blocked
       delivery; cancel OpenAI image transport and fallback generation on Close.
 - [x] Isolate Codex cached connections and continuation state by effective
@@ -609,6 +618,8 @@ deterministic request-shape evidence.
       direct xAI image provider.
 - [x] Add opt-in live xAI/Grok surface probes only as diagnostics, keeping live
       provider calls out of `mise run ci`.
+- [x] Preserve recognized safety rejections in surface-probe results and suppress
+      repair recommendations while retaining later successful attempts as controls.
 - [ ] Evaluate direct xAI/Grok image-provider semantics only after the API
       shape is backed by deterministic request and response fixtures.
 - [x] Add caller-configured xAI device-code OAuth login, token refresh,
@@ -782,6 +793,9 @@ Sigma has routed OpenCode Zen/Go preview providers for models that use Google
 Generative AI, Anthropic Messages, OpenAI Responses, or OpenAI-compatible Chat
 Completions routes.
 
+- [x] Map caller session IDs to `x-opencode-session` across OpenCode APIs and
+      give probe conversations stable IDs across turns, retries, and repairs;
+      classify `MissingSessionID` as a request-shape error with offline coverage.
 - [x] Regenerate the complete advertised OpenCode Zen and Go catalogues with
       exact 63- and 27-model membership, removing ten stale models and adding
       26 current models.

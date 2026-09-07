@@ -8,6 +8,7 @@ package openai
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"reflect"
 	"testing"
@@ -34,7 +35,7 @@ func (a *requestResolutionAuth) ResolveAuthResolution(context.Context, sigma.Mod
 func TestRequestAuthResolutionAcrossBuilders(t *testing.T) {
 	t.Parallel()
 	for _, surface := range []string{"chat", "images", "stream images", "edit", "variation", "embeddings", "codex SSE"} {
-		for _, mode := range []string{"base URL", "resolved endpoint", "request override", "credential only", "resolver failure"} {
+		for _, mode := range []string{"base URL", "resolved endpoint", "request override", "credential only", "resolver failure", "caller camel auth snake", "caller snake auth camel", "caller snake auth snake", "caller camel auth camel", "caller both", "auth both", "top-level base URL", "provider headers", "model string headers", "model any headers", "caller camel top-level"} {
 			t.Run(surface+"/"+mode, func(t *testing.T) {
 				t.Parallel()
 				model := sigma.Model{ID: "test", Provider: "test", API: sigma.APIOpenAICompletions}
@@ -56,23 +57,71 @@ func TestRequestAuthResolutionAcrossBuilders(t *testing.T) {
 					host, tenant, organization = "request.invalid", "request", "request-org"
 				case "credential only":
 					opts.AuthResolver = sigma.AuthResolverFunc(resolver.Resolve)
-					host, tenant, organization = "default.invalid", "", ""
+					host, tenant, organization = "default.invalid", "provider last", ""
+				case "caller camel auth snake", "caller snake auth camel", "caller snake auth snake", "caller camel auth camel", "caller both", "auth both", "top-level base URL", "caller camel top-level":
+					resolver.result.BaseURL = ""
+					callerKey, authKey := "baseURL", "base_url"
+					if mode == "caller snake auth camel" || mode == "caller snake auth snake" {
+						callerKey = "base_url"
+					}
+					if mode == "caller snake auth camel" || mode == "caller camel auth camel" {
+						authKey = "baseURL"
+					}
+					resolver.result.ProviderOptions[authKey] = "https://resolved.invalid/v1"
+					opts.ProviderOptions = map[sigma.ProviderID]map[string]any{"test": {callerKey: "https://request.invalid/v1"}}
+					host = "request.invalid"
+					if mode == "caller camel top-level" {
+						resolver.result.BaseURL = "https://top.invalid/v1"
+					}
+					if mode == "caller both" {
+						opts.ProviderOptions["test"]["base_url"] = "https://request.invalid/v1"
+						opts.ProviderOptions["test"]["baseURL"] = "https://ignored.invalid/v1"
+					}
+					if mode == "auth both" || mode == "top-level base URL" {
+						opts.ProviderOptions = nil
+						resolver.result.ProviderOptions["baseURL"] = "https://ignored.invalid/v1"
+						host = "resolved.invalid"
+						if mode == "top-level base URL" {
+							resolver.result.BaseURL = "https://top.invalid/v1"
+							host = "top.invalid"
+						}
+					}
+				case "provider headers", "model string headers", "model any headers":
+					delete(resolver.result.Headers, "X-Tenant")
+					tenant = "provider last"
+					if mode != "provider headers" {
+						var headers any = map[string]string{"X-TENANT": "model loser", "x-tenant": "model last", "X-Nonempty": "keep", "x-nonempty": ""}
+						if mode == "model any headers" {
+							headers = map[string]any{"X-TENANT": "model loser", "x-tenant": "model last", "X-Invalid": 42, "X-Nonempty": "keep", "x-nonempty": ""}
+						}
+						model.ProviderMetadata = map[string]any{"headers": headers}
+						tenant = "model last"
+					}
 				case "resolver failure":
 					resolver.err = errors.New("resolution failed")
 				}
+				original := maps.Clone(opts.ProviderOptions["test"])
+				var originalHeaders any
+				switch headers := model.ProviderMetadata["headers"].(type) {
+				case map[string]string:
+					originalHeaders = maps.Clone(headers)
+				case map[string]any:
+					originalHeaders = maps.Clone(headers)
+				}
+				providerOpts := []ProviderOption{WithBaseURL("https://default.invalid/v1"), WithHeaders(map[string]string{"X-Tenant": "provider first"}), WithHeaders(map[string]string{"X-TENANT": "provider loser", "x-tenant": "provider last"})}
 				var req *http.Request
 				var err error
 				switch surface {
 				case "chat":
-					req, err = NewProvider(WithBaseURL("https://default.invalid/v1")).newRequest(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, opts)
+					req, err = NewProvider(providerOpts...).newRequest(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, opts)
 				case "codex SSE":
 					model.API = sigma.APIOpenAICodexResponses
-					req, err = NewCodexResponsesProvider(WithBaseURL("https://default.invalid/v1")).newRequest(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, opts)
+					req, err = NewCodexResponsesProvider(providerOpts...).newRequest(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, opts)
 				case "embeddings":
-					req, err = NewEmbeddingsProvider(WithBaseURL("https://default.invalid/v1")).newRequest(context.Background(), sigma.EmbeddingModel{ID: "test", Provider: "test", API: sigma.EmbeddingAPIOpenAIEmbeddings}, sigma.EmbeddingRequest{Inputs: []string{"test"}}, opts)
+					req, err = NewEmbeddingsProvider(providerOpts...).newRequest(context.Background(), sigma.EmbeddingModel{ID: "test", Provider: "test", API: sigma.EmbeddingAPIOpenAIEmbeddings, ProviderMetadata: model.ProviderMetadata}, sigma.EmbeddingRequest{Inputs: []string{"test"}}, opts)
 				default:
 					input := sigma.ImageRequest{Prompt: "test"}
-					imageModel := sigma.ImageModel{ID: "gpt-image-1", Provider: "test", API: sigma.ImageAPIOpenAIImages}
+					imageModel := sigma.ImageModel{ID: "gpt-image-1", Provider: "test", API: sigma.ImageAPIOpenAIImages, ProviderMetadata: model.ProviderMetadata}
 					if surface == "edit" || surface == "variation" {
 						input.Inputs = []sigma.ImageInput{{Type: sigma.ImageInputImage, Source: sigma.ImageSourceBase64, MIMEType: "image/png", Data: "aW1hZ2U="}}
 						input.Operation = sigma.ImageOperationEdit
@@ -82,7 +131,7 @@ func TestRequestAuthResolutionAcrossBuilders(t *testing.T) {
 						input.Operation = sigma.ImageOperationVariation
 						imageModel.ID = "dall-e-2"
 					}
-					req, err = NewImagesProvider(WithBaseURL("https://default.invalid/v1")).newRequestWithStream(context.Background(), imageModel, input, opts, surface == "stream images")
+					req, err = NewImagesProvider(providerOpts...).newRequestWithStream(context.Background(), imageModel, input, opts, surface == "stream images")
 				}
 				if mode == "resolver failure" {
 					if !errors.Is(err, resolver.err) || req != nil {
@@ -106,6 +155,18 @@ func TestRequestAuthResolutionAcrossBuilders(t *testing.T) {
 					}
 				} else if resolver.richCalls != 1 || resolver.plainCalls != 0 {
 					t.Fatalf("auth resolution calls rich=%d plain=%d", resolver.richCalls, resolver.plainCalls)
+				}
+				if !reflect.DeepEqual(originalHeaders, model.ProviderMetadata["headers"]) {
+					t.Fatal("model headers mutated")
+				}
+				if originalHeaders != nil && surface == "embeddings" && req.Header.Get("X-Nonempty") != "keep" {
+					t.Fatal("blank model header masked a valid case variant")
+				}
+				if req.Header.Get("X-Invalid") != "" {
+					t.Fatal("non-string model header reached request")
+				}
+				if !reflect.DeepEqual(original, opts.ProviderOptions["test"]) {
+					t.Fatal("caller provider options mutated")
 				}
 				if mode == "request override" && !reflect.DeepEqual(opts.Headers, map[string]string{"x-tenant": "request"}) {
 					t.Fatal("request headers mutated")

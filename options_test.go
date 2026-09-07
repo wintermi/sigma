@@ -8,11 +8,20 @@ package sigma_test
 import (
 	"context"
 	stderrors "errors"
+	"io"
+	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/provider/anthropic"
+	"github.com/wintermi/sigma/provider/google"
+	"github.com/wintermi/sigma/provider/mistral"
+	"github.com/wintermi/sigma/provider/openai"
+	"github.com/wintermi/sigma/provider/opencode"
+	"github.com/wintermi/sigma/provider/radius"
 )
 
 type optionsRecordingProvider struct {
@@ -1178,5 +1187,101 @@ func TestWithHeaderDoesNotMutateInput(t *testing.T) {
 	}
 	if opts.Headers["x-tenant"] != "new" || len(opts.Headers) != 1 {
 		t.Fatalf("case override lost: %#v", opts.Headers)
+	}
+}
+
+// headerCaptureTransport inspects final wire headers without contacting a provider.
+type headerCaptureTransport struct{ headers http.Header }
+
+func (tr *headerCaptureTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	tr.headers = req.Header.Clone()
+	return &http.Response{StatusCode: http.StatusBadRequest, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":{"message":"test response"}}`)), Request: req}, nil
+}
+
+func TestProviderHeadersCaseInsensitivePrecedence(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name         string
+		newProvider  func(map[string]string, map[string]string) sigma.TextProvider
+		modelHeaders bool
+	}{
+		{name: "openai/NewProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return openai.NewProvider(openai.WithHeaders(a), openai.WithHeaders(b))
+		}},
+		{name: "anthropic/NewProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return anthropic.NewProvider(anthropic.WithHeaders(a), anthropic.WithHeaders(b))
+		}},
+		{name: "google/NewProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return google.NewProvider(google.WithHeaders(a), google.WithHeaders(b))
+		}},
+		{name: "mistral/NewProvider", modelHeaders: false, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return mistral.NewProvider(mistral.WithHeaders(a), mistral.WithHeaders(b))
+		}},
+		{name: "openai/NewVertexProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return openai.NewVertexProvider(openai.WithVertexHeaders(a), openai.WithVertexHeaders(b))
+		}},
+		{name: "anthropic/NewVertexProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return anthropic.NewVertexProvider(anthropic.WithVertexHeaders(a), anthropic.WithVertexHeaders(b))
+		}},
+		{name: "google/NewVertexProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return google.NewVertexProvider(google.WithVertexHeaders(a), google.WithVertexHeaders(b))
+		}},
+		{name: "opencode/NewProvider", modelHeaders: true, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return opencode.NewProvider(opencode.WithHeaders(a), opencode.WithHeaders(b))
+		}},
+		{name: "radius/NewProvider", modelHeaders: false, newProvider: func(a, b map[string]string) sigma.TextProvider {
+			return radius.NewProvider(radius.WithHeaders(a), radius.WithHeaders(b))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			first := map[string]string{"X-Tenant": "first", "X-Remove": "remove"}
+			last := map[string]string{"X-TENANT": "same-map loser", "x-tenant": "last"}
+			provider := tc.newProvider(first, last)
+			for _, layer := range []string{"provider", "model string", "model any", "request", "suppressed"} {
+				if strings.HasPrefix(layer, "model") && !tc.modelHeaders {
+					continue
+				}
+				model := sigma.Model{ID: "test", Provider: "test", API: provider.API()}
+				opts := sigma.Options{
+					AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+						return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "synthetic"}, nil
+					}),
+					ProviderOptions:   map[sigma.ProviderID]map[string]any{"test": {"endpoint": "https://request.invalid/test"}},
+					SuppressedHeaders: []string{"x-remove"},
+				}
+				want := "last"
+				if tc.modelHeaders && layer != "provider" {
+					var headers any = map[string]string{"X-Tenant": "model loser", "x-tenant": "model"}
+					if layer == "model any" {
+						headers = map[string]any{"X-Tenant": "model loser", "x-tenant": "model", "X-Invalid": 42}
+					}
+					model.ProviderMetadata = map[string]any{"headers": headers}
+					want = "model"
+				}
+				if layer == "request" || layer == "suppressed" {
+					opts.Headers = map[string]string{"X-tENANT": "request"}
+					want = "request"
+				}
+				if layer == "suppressed" {
+					opts.SuppressedHeaders = append(opts.SuppressedHeaders, "x-tenant")
+					want = ""
+				}
+				for range 32 {
+					transport := &headerCaptureTransport{}
+					opts.HTTPClient = &http.Client{Transport: transport}
+					_, err := sigma.Collect(context.Background(), provider.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, opts))
+					if transport.headers == nil {
+						t.Fatalf("%s request did not reach transport: %v", layer, err)
+					}
+					if got := transport.headers.Get("X-Tenant"); got != want || transport.headers.Get("X-Remove") != "" || transport.headers.Get("X-Invalid") != "" {
+						t.Fatalf("%s headers=%v, want tenant=%q", layer, transport.headers, want)
+					}
+				}
+			}
+			if !reflect.DeepEqual(first, map[string]string{"X-Tenant": "first", "X-Remove": "remove"}) || !reflect.DeepEqual(last, map[string]string{"X-TENANT": "same-map loser", "x-tenant": "last"}) {
+				t.Fatal("caller headers mutated")
+			}
+		})
 	}
 }

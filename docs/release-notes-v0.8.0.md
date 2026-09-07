@@ -7,6 +7,15 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface probes now preserve recognized safety rejections as inconclusive
+failures. Later successful variants remain diagnostic controls and do not
+produce token-budget repair claims or recommendations for those cases.
+OpenCode Zen/Go now send caller session IDs as `x-opencode-session` across
+routed APIs even when caching is disabled, preserving explicit header overrides
+and suppression. Surface probes generate separate conversation IDs per case,
+reuse them across turns, retries, and repairs, and report `MissingSessionID` as
+a request-shape error.
+
 `sigma` v0.8.0 begins by tightening native Gemini 3 replay compatibility across
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Google and Vertex streams now also preserve
@@ -364,6 +373,24 @@ selection remains available through existing provider-specific controls.
   $4, $12, and $1 rates.
 
 ## Compatibility
+
+- Explicit `base_url` or `baseURL` request configuration blocks auth-derived
+  defaults under either spelling. Provider constructor and model-metadata header
+  maps now follow the same deterministic case-insensitive merging rules as
+  client/request options, with existing precedence and suppression retained.
+- OpenAI image streams require `image_generation.completed` or
+  `image_edit.completed`; EOF and `[DONE]` alone no longer indicate success.
+  Explicit empty completions remain valid. Available output and usage survive
+  incomplete-stream failures, and partial previews remain progress events.
+  Missing image completion and Chat Completions `finish_reason` classify as
+  transient/retryable without automatically replaying streamed requests.
+- Canceled `InMemoryCredentialStore` modifications and deletions stop waiting for
+  provider ownership promptly. Active callbacks retain serialized ownership and
+  their existing commit behavior; they remain responsible for cooperative
+  cancellation. Different providers can still progress independently.
+- Truncated JSON credential redaction also accepts LF/CRLF and mixed JSON
+  whitespace around field colons, preserving neighboring safe content and
+  bounded UTF-8 previews.
 
 - Codex WebSocket sessions reuse idle connections only when provider identity,
   effective URL, and final handshake headers match. Changed credentials or

@@ -72,3 +72,12 @@ Provider implementations should preserve any partial content they emit before
 reporting cancellation. Providers that do not expose text-streaming assistant
 messages, such as image-only providers, may only return an aborted stop reason
 without partial assistant content.
+
+## Credential-store waits
+
+Canceled `InMemoryCredentialStore.ModifyCredential` and `DeleteCredential` calls
+return their context error while waiting for another operation on the same
+provider. They do not run the waiting callback or remove credentials. Cancellation
+does not release an active callback's ownership or discard its successful
+credential rotation; that callback must cooperate with its own context. Other
+providers can continue independently.
