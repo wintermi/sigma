@@ -269,7 +269,7 @@ func TestEmbedBatchUsesExternalCacheAcrossCalls(t *testing.T) {
 	}
 	client := sigma.NewClient(sigma.WithRegistry(registry))
 	req := sigma.EmbeddingRequest{Inputs: []string{"cache me"}, Dimensions: 3}
-	config := sigma.EmbeddingBatchConfig{Cache: cache}
+	config := sigma.EmbeddingBatchConfig{CacheNamespace: "test", Cache: cache}
 
 	first, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), req, config)
 	if err != nil {
@@ -322,7 +322,7 @@ func TestEmbedBatchCacheKeyIncludesInputType(t *testing.T) {
 		t.Fatalf("EmbeddingRegistry returned error: %v", err)
 	}
 	client := sigma.NewClient(sigma.WithRegistry(registry))
-	config := sigma.EmbeddingBatchConfig{Cache: cache}
+	config := sigma.EmbeddingBatchConfig{CacheNamespace: "test", Cache: cache}
 
 	query, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), sigma.EmbeddingQuery("same text"), config)
 	if err != nil {
@@ -368,7 +368,7 @@ func TestEmbedBatchPropagatesExternalCacheErrors(t *testing.T) {
 			context.Background(),
 			sigmatest.EmbeddingModel(),
 			sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
-			sigma.EmbeddingBatchConfig{Cache: cache},
+			sigma.EmbeddingBatchConfig{CacheNamespace: "test", Cache: cache},
 		)
 		if err == nil || !strings.Contains(err.Error(), "cache get failed") {
 			t.Fatalf("error = %v, want cache get failure", err)
@@ -396,7 +396,7 @@ func TestEmbedBatchPropagatesExternalCacheErrors(t *testing.T) {
 			context.Background(),
 			sigmatest.EmbeddingModel(),
 			sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
-			sigma.EmbeddingBatchConfig{Cache: cache},
+			sigma.EmbeddingBatchConfig{CacheNamespace: "test", Cache: cache},
 		)
 		if err == nil || !strings.Contains(err.Error(), "cache set failed") {
 			t.Fatalf("error = %v, want cache set failure", err)
@@ -904,6 +904,7 @@ func TestEmbedBatchOrdersCachedOversizedSplitPartsBeforeAveraging(t *testing.T) 
 		sigma.ErrContextOverflow,
 	)
 	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{10}}}}},
 		sigmatest.EmbeddingScript{Err: overflowErr},
 		sigmatest.EmbeddingScript{Response: sigma.Embeddings{
 			Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{1}}},
@@ -914,14 +915,11 @@ func TestEmbedBatchOrdersCachedOversizedSplitPartsBeforeAveraging(t *testing.T) 
 		t.Fatalf("EmbeddingRegistry returned error: %v", err)
 	}
 	cache := newTestEmbeddingCache()
-	partHash := fmt.Sprintf("%x", sha256.Sum256([]byte("cde")))
-	cache.values[sigma.EmbeddingCacheKey{
-		Provider:    sigmatest.ProviderID,
-		API:         sigmatest.EmbeddingAPI,
-		Model:       sigmatest.EmbeddingModelID,
-		InputSHA256: partHash,
-	}] = sigma.Embedding{Vector: []float32{10}}
 	client := sigma.NewClient(sigma.WithRegistry(registry))
+	config := sigma.EmbeddingBatchConfig{MaxRetries: 2, SplitOversized: true, CacheNamespace: "test", Cache: cache}
+	if _, err := client.EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), sigma.EmbeddingRequest{Inputs: []string{"cde"}}, config); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := client.EmbedBatch(
 		context.Background(),
@@ -930,7 +928,7 @@ func TestEmbedBatchOrdersCachedOversizedSplitPartsBeforeAveraging(t *testing.T) 
 		sigma.EmbeddingBatchConfig{
 			MaxRetries:     2,
 			SplitOversized: true,
-			Cache:          cache,
+			CacheNamespace: "test", Cache: cache,
 		},
 	)
 	if err != nil {
@@ -943,11 +941,11 @@ func TestEmbedBatchOrdersCachedOversizedSplitPartsBeforeAveraging(t *testing.T) 
 		t.Fatalf("averaged vector = %v, want %v", got, want)
 	}
 	requests := provider.Requests()
-	if len(requests) != 2 {
-		t.Fatalf("requests = %d, want original plus uncached split part", len(requests))
+	if len(requests) != 3 {
+		t.Fatalf("requests = %d, want warmup, original, and uncached split part", len(requests))
 	}
-	if !reflect.DeepEqual(requests[1].Request.Inputs, []string{"ab"}) {
-		t.Fatalf("provider split inputs = %#v, want only uncached split part", requests[1].Request.Inputs)
+	if !reflect.DeepEqual(requests[2].Request.Inputs, []string{"ab"}) {
+		t.Fatalf("provider split inputs = %#v, want only uncached split part", requests[2].Request.Inputs)
 	}
 }
 

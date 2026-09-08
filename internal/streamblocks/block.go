@@ -6,10 +6,10 @@
 package streamblocks
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 )
 
 // ToolPartialMode controls how partial tool-call metadata is exposed.
@@ -218,7 +218,7 @@ func (c *ToolCall) DecodeArguments() (any, bool) {
 		return c.decoded, c.decodedOK
 	}
 	var decoded any
-	err := json.Unmarshal([]byte(arguments), &decoded)
+	err := jsonutil.Decode([]byte(arguments), &decoded)
 	c.decodedText = arguments
 	c.decoded = decoded
 	c.decodedOK = err == nil
@@ -245,7 +245,7 @@ func decodePartialJSON(input string) (any, bool) {
 	repaired := repairJSON(input)
 	if completed, ok := completePartialJSON(repaired); ok {
 		var decoded any
-		if err := json.Unmarshal([]byte(completed), &decoded); err == nil {
+		if err := jsonutil.Decode([]byte(completed), &decoded); err == nil {
 			return decoded, true
 		}
 	}

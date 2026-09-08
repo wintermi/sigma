@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamblocks"
 )
@@ -560,14 +561,14 @@ func isAnthropicStreamEvent(name string) bool {
 }
 
 func decodeStreamEvent(data string, event *streamEvent) error {
-	if err := json.Unmarshal([]byte(data), event); err == nil {
+	if err := jsonutil.Decode([]byte(data), event); err == nil {
 		return nil
 	}
 	repaired := repairJSON(data)
 	if repaired == data {
-		return json.Unmarshal([]byte(data), event)
+		return jsonutil.Decode([]byte(data), event)
 	}
-	return json.Unmarshal([]byte(repaired), event)
+	return jsonutil.Decode([]byte(repaired), event)
 }
 
 func anthropicToolCall(state *streamblocks.ToolCall) sigma.ToolCall {

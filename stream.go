@@ -7,7 +7,6 @@ package sigma
 
 import (
 	"context"
-	"encoding/json"
 	stderrors "errors"
 	"sort"
 	"sync"
@@ -420,7 +419,7 @@ func (b *partialBlock) toolArguments(decode bool) any {
 	// message still carries structured arguments.
 	if decode {
 		var decoded any
-		if err := json.Unmarshal([]byte(b.arguments), &decoded); err == nil {
+		if err := decodeUseNumber([]byte(b.arguments), &decoded); err == nil {
 			return decoded
 		}
 	}

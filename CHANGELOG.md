@@ -143,6 +143,16 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Changed
 
+- Provider-authored numeric tool arguments now use `json.Number` throughout
+  streaming, cancellation, persistence, validation, and replay; typed token
+  counters and costs are unchanged.
+- External embedding caches require a non-secret `CacheNamespace` and honor
+  version 2 keys including the configuration digest. Legacy entries are invalidated.
+- Chat Completions and Google/Vertex text generation enforce a single alternative
+  after effective payload overrides and hooks.
+- `mise run go:build` compiles all packages with CGO disabled, produces no binary
+  artifact, and runs in `mise run ci`. Cleaning remains an explicit task.
+
 - Regenerated the OpenCode Zen and Go catalogues to the current 63- and
   27-model sets. The refresh adds newer Claude, Gemini, GPT, Grok, DeepSeek,
   GLM, Kimi, Qwen, Muse, and related models, reconciles route, capability,
@@ -157,6 +167,16 @@ See [release notes](docs/release-notes-v0.8.0.md).
   retain their existing precedence.
 
 ### Fixed
+
+- Deferred Responses use per-attempt auth-derived routes and payload defaults,
+  retain successful-attempt conversion metadata, and honor timeouts through body decoding.
+- Streaming parsers isolate alternative index zero; Radius premature EOF retains
+  partial content and receives transient retry advice.
+- Embedding caches validate before lookup, apply options once, honor cancellation,
+  and isolate effective configurations. Retrieval insertions commit atomically
+  after normalization and dimensionality validation.
+- Signed empty assistant text survives persistence while unsigned empty text
+  remains invalid. The embedding guide now covers all existing adapter families.
 
 - OpenCode Zen/Go now map caller session IDs to `x-opencode-session` across
   routed APIs independently of caching, preserving explicit header overrides

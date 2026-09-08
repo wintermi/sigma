@@ -7,6 +7,7 @@ package sigma_test
 
 import (
 	"context"
+	"encoding/json"
 	stderrors "errors"
 	"reflect"
 	"runtime"
@@ -183,7 +184,7 @@ func TestStreamContextCancelReturnsPartialFinalMessage(t *testing.T) {
 				PartialToolCall: &sigma.PartialToolCall{
 					ID:             "call_partial",
 					Name:           "lookup",
-					ArgumentsDelta: `{"city":"Melbourne"}`,
+					ArgumentsDelta: `{"city":"Melbourne","id":9007199254740993}`,
 				},
 			},
 			assertion: func(t *testing.T, final sigma.AssistantMessage) {
@@ -196,6 +197,9 @@ func TestStreamContextCancelReturnsPartialFinalMessage(t *testing.T) {
 					t.Fatalf("tool name = %q, want %q", got, want)
 				}
 				args := block.ToolArguments.(map[string]any)
+				if got := args["id"]; got != json.Number("9007199254740993") {
+					t.Fatalf("aborted number = %#v", got)
+				}
 				if got, want := args["city"], "Melbourne"; got != want {
 					t.Fatalf("tool city = %v, want %v", got, want)
 				}

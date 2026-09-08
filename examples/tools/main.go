@@ -20,7 +20,7 @@ func main() {
 	provider := sigmatest.NewFauxProvider(
 		sigmatest.Script{
 			Final: sigma.AssistantMessage{
-				Content:    []sigma.ContentBlock{sigma.ToolCallBlock("call_bad", "weather", map[string]any{"city": 42})},
+				Content:    []sigma.ContentBlock{sigma.ToolCallBlock("call_bad", "weather", map[string]any{"city": json.Number("42")})},
 				StopReason: sigma.StopReasonToolCalls,
 			},
 		},

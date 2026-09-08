@@ -141,3 +141,26 @@ If you want to save a completed assistant turn, append an assistant `Message`
 containing `final.Content`, `final.Provider`, `final.Model`, and
 `final.StopReason` to your conversation history. Persist the next request with
 `sigma.MarshalRequest`; see [Request persistence](persistence.md).
+
+## Alternatives and interrupted results
+
+Sigma returns one assistant result. Chat Completions `n` and Google/Vertex
+`generationConfig.candidateCount` may be omitted or set to numeric one. Other
+supplied values return `ErrInvalidOptions`, including values introduced by raw
+overrides or Google payload hooks. Parsers isolate alternative index zero even
+if another index arrives first; response-level usage and provider errors remain
+visible.
+
+Radius streams that end without a terminal event return the accumulated partial
+message and a transient, retryable error. Retrying after response-body delivery
+remains the caller's responsibility.
+
+Empty assistant text blocks carrying a signature can be persisted. Persistence
+retains opaque signatures; each provider validates signature format and exact
+provider/API/model provenance before replay. Unsigned empty text remains invalid.
+
+Direct OpenAI deferred submit, fetch, and cancel operations apply `Options.Timeout`
+through authentication, HTTP retries, and body decoding. Each HTTP attempt
+resolves authentication once before constructing its route, payload, and headers.
+Submission handles retain conversion and service-tier metadata from the successful
+attempt, without credentials or auth-derived endpoints.

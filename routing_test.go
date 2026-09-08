@@ -269,6 +269,18 @@ func TestFallbackTransientRetriesSameModel(t *testing.T) {
 	}
 }
 
+func TestFallbackRadiusPrematureEOFRetriesSameModel(t *testing.T) {
+	t.Parallel()
+
+	policy := testRoutePolicy()
+	decision := sigma.RouteDecision{Model: routeRef("fast", "flash-1"), Tier: sigma.RouteTierSimple}
+	err := &sigma.Error{Code: sigma.ErrorStream, Message: "radius messages: stream ended without a terminal event"}
+	advice := policy.Fallback(decision, nil, err)
+	if advice.Action != sigma.RouteActionRetry || advice.Model != decision.Model {
+		t.Fatalf("advice = %+v, want retry of the same model", advice)
+	}
+}
+
 func TestFallbackUpstreamRequestBufferExhaustionRetriesSameModel(t *testing.T) {
 	t.Parallel()
 

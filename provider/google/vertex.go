@@ -258,6 +258,9 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 			return nil, err
 		}
 	}
+	if err := validateSingleCandidate(model, payload); err != nil {
+		return nil, err
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("google vertex: encode request: %w", err)

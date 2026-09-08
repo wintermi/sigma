@@ -127,7 +127,7 @@ func validateContentBlock(role Role, block ContentBlock, messageIndex int, conte
 	}
 	switch block.Type {
 	case ContentBlockText:
-		if block.Text == "" {
+		if block.Text == "" && (role != RoleAssistant || block.Signature == "" && block.ProviderSignature == "") {
 			return invalidRequestError("message %d content %d: text block is empty", messageIndex, contentIndex)
 		}
 	case ContentBlockThinking:

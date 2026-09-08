@@ -29,32 +29,40 @@ func (p *ResponsesProvider) SubmitDeferred(ctx context.Context, model sigma.Mode
 	if err := validateDirectOpenAIDeferredModel(model); err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	payload, err := responsesPayload(model, req, opts)
-	if err != nil {
-		return sigma.DeferredResponse{}, err
-	}
-	payload["background"] = true
-	payload["stream"] = false
-	handle, err := deferredHandle(model, "", req, opts)
-	if err != nil {
-		return sigma.DeferredResponse{}, err
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return sigma.DeferredResponse{}, fmt.Errorf("openai responses: encode deferred request: %w", err)
-	}
-
+	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
+	defer cancel()
+	var handle sigma.DeferredResponseHandle
+	resolved := opts
 	resp, err := p.doDeferred(ctx, model, opts, func(ctx context.Context) (*http.Request, error) {
-		endpoint, err := p.endpoint(model, opts)
+		attempt, credential, err := p.base.resolveAuth(ctx, model, opts)
 		if err != nil {
 			return nil, err
 		}
-		return p.newDeferredRequest(ctx, model, opts, http.MethodPost, endpoint, body)
+		payload, err := responsesPayload(model, req, attempt)
+		if err != nil {
+			return nil, err
+		}
+		payload["background"] = true
+		payload["stream"] = false
+		handle, err = deferredHandle(model, "", req, attempt, payload)
+		if err != nil {
+			return nil, err
+		}
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("openai responses: encode deferred request: %w", err)
+		}
+		endpoint, err := p.endpoint(model, attempt)
+		if err != nil {
+			return nil, err
+		}
+		resolved = attempt
+		return p.newDeferredRequest(ctx, model, attempt, credential, http.MethodPost, endpoint, body)
 	})
 	if err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	return p.decodeDeferredResponse(ctx, resp, model, handle, opts)
+	return p.decodeDeferredResponse(ctx, resp, model, handle, resolved)
 }
 
 // FetchDeferred retrieves one direct OpenAI Responses lifecycle observation.
@@ -65,17 +73,25 @@ func (p *ResponsesProvider) FetchDeferred(ctx context.Context, model sigma.Model
 	if err := validateDirectOpenAIDeferredHandle(model, handle); err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	endpoint, err := p.deferredEndpoint(model, handle.ID, "", opts)
-	if err != nil {
-		return sigma.DeferredResponse{}, err
-	}
+	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
+	defer cancel()
+	resolved := opts
 	resp, err := p.doDeferred(ctx, model, opts, func(ctx context.Context) (*http.Request, error) {
-		return p.newDeferredRequest(ctx, model, opts, http.MethodGet, endpoint, nil)
+		attempt, credential, err := p.base.resolveAuth(ctx, model, opts)
+		if err != nil {
+			return nil, err
+		}
+		endpoint, err := p.deferredEndpoint(model, handle.ID, "", attempt)
+		if err != nil {
+			return nil, err
+		}
+		resolved = attempt
+		return p.newDeferredRequest(ctx, model, attempt, credential, http.MethodGet, endpoint, nil)
 	})
 	if err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	return p.decodeDeferredResponse(ctx, resp, model, handle, opts)
+	return p.decodeDeferredResponse(ctx, resp, model, handle, resolved)
 }
 
 // CancelDeferred cancels one direct OpenAI Responses background request.
@@ -86,17 +102,25 @@ func (p *ResponsesProvider) CancelDeferred(ctx context.Context, model sigma.Mode
 	if err := validateDirectOpenAIDeferredHandle(model, handle); err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	endpoint, err := p.deferredEndpoint(model, handle.ID, "cancel", opts)
-	if err != nil {
-		return sigma.DeferredResponse{}, err
-	}
+	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
+	defer cancel()
+	resolved := opts
 	resp, err := p.doDeferred(ctx, model, opts, func(ctx context.Context) (*http.Request, error) {
-		return p.newDeferredRequest(ctx, model, opts, http.MethodPost, endpoint, nil)
+		attempt, credential, err := p.base.resolveAuth(ctx, model, opts)
+		if err != nil {
+			return nil, err
+		}
+		endpoint, err := p.deferredEndpoint(model, handle.ID, "cancel", attempt)
+		if err != nil {
+			return nil, err
+		}
+		resolved = attempt
+		return p.newDeferredRequest(ctx, model, attempt, credential, http.MethodPost, endpoint, nil)
 	})
 	if err != nil {
 		return sigma.DeferredResponse{}, err
 	}
-	return p.decodeDeferredResponse(ctx, resp, model, handle, opts)
+	return p.decodeDeferredResponse(ctx, resp, model, handle, resolved)
 }
 
 func (p *ResponsesProvider) doDeferred(
@@ -121,14 +145,11 @@ func (p *ResponsesProvider) newDeferredRequest(
 	ctx context.Context,
 	model sigma.Model,
 	opts sigma.Options,
+	credential sigma.Credential,
 	method string,
 	endpoint string,
 	body []byte,
 ) (*http.Request, error) {
-	opts, credential, err := p.base.resolveAuth(ctx, model, opts)
-	if err != nil {
-		return nil, err
-	}
 	httpReq, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -229,7 +250,7 @@ func (p *ResponsesProvider) decodeDeferredResponse(
 	return deferred, err
 }
 
-func deferredHandle(model sigma.Model, responseID string, req sigma.Request, opts sigma.Options) (sigma.DeferredResponseHandle, error) {
+func deferredHandle(model sigma.Model, responseID string, req sigma.Request, opts sigma.Options, payload map[string]any) (sigma.DeferredResponseHandle, error) {
 	properties, err := responsesGrammarToolInputProperties(model, req, opts)
 	if err != nil {
 		return sigma.DeferredResponseHandle{}, err
@@ -242,7 +263,7 @@ func deferredHandle(model sigma.Model, responseID string, req sigma.Request, opt
 		}
 		metadata[deferredGrammarToolPropertiesKey] = copied
 	}
-	if serviceTier := openAIRequestServiceTier(opts); serviceTier != "" {
+	if serviceTier, _ := payload["service_tier"].(string); serviceTier != "" {
 		metadata[deferredRequestServiceTierKey] = serviceTier
 	}
 	if len(metadata) == 0 {

@@ -27,10 +27,9 @@ run = """
 """
 
 [tasks."go:build"]
-description = "Build the CLI binary"
-depends = ["clean"]
+description = "Compile all library, example, and command packages"
 run = """
-  CGO_ENABLED=0 go build -ldflags='-w -s -X main.version={{ vars.VERSION }}' -o bin/{{ vars.PROJECT_NAME }} .
+  CGO_ENABLED=0 go build ./...
 """
 
 [tasks."go:test"]
@@ -75,6 +74,7 @@ run = """
   mise run mise:validate
   mise run go:fmt:check
   mise run go:lint
+  mise run go:build
   mise run go:vet
   mise run go:test
   mise run go:race

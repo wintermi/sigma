@@ -500,7 +500,8 @@ type Message struct {
 // Signature, Redacted, and ProviderSignature. Image blocks use MIMEType,
 // ImageSource, Data, and URL. Document blocks use MIMEType, DocumentSource,
 // Filename, Data, URL, and FileID. Tool-call blocks use ToolCallID, ToolName,
-// and ToolArguments. ProviderMetadata carries opaque provider fields for later
+// and ToolArguments, with provider-authored numbers represented as json.Number.
+// ProviderMetadata carries opaque provider fields for later
 // replay without requiring provider-specific conversion in this package.
 type ContentBlock struct {
 	Type              ContentBlockType `json:"type"`

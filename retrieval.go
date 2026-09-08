@@ -63,7 +63,8 @@ type InMemoryRetrievalIndex struct {
 	config InMemoryRetrievalIndexConfig
 	opts   []EmbeddingOption
 
-	items []indexedRetrievalChunk
+	dimensions int
+	items      []indexedRetrievalChunk
 }
 
 type indexedRetrievalChunk struct {
@@ -143,6 +144,7 @@ func (i *InMemoryRetrievalIndex) AddDocuments(ctx context.Context, docs []Retrie
 }
 
 // AddChunks embeds and indexes caller-supplied chunks as document inputs.
+// Failed or canceled insertions leave items and inferred dimensions unchanged.
 func (i *InMemoryRetrievalIndex) AddChunks(ctx context.Context, chunks []RetrievalChunk) error {
 	if i == nil {
 		return retrievalInvalidOptionsError(EmbeddingModel{}, "retrieval index is required")
@@ -170,16 +172,36 @@ func (i *InMemoryRetrievalIndex) AddChunks(ctx context.Context, chunks []Retriev
 	if len(vectors) != len(indexedChunks) {
 		return fmt.Errorf("retrieval index: embedding provider returned %d vectors for %d chunks", len(vectors), len(indexedChunks))
 	}
+	dimensions := i.dimensions
+	if i.config.Dimensions != 0 {
+		dimensions = i.config.Dimensions
+	}
+	pending := make([]indexedRetrievalChunk, 0, len(vectors))
 	for index, embedding := range vectors {
+		if ctx != nil && ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if dimensions == 0 {
+			dimensions = len(embedding.Vector)
+		}
+		if len(embedding.Vector) != dimensions {
+			return fmt.Errorf("retrieval index: chunk %d has %d dimensions, expected %d", index, len(embedding.Vector), dimensions)
+		}
+
 		normalized, err := NormalizeEmbeddingVector(embedding.Vector)
 		if err != nil {
 			return fmt.Errorf("retrieval index: normalize chunk %d: %w", index, err)
 		}
-		i.items = append(i.items, indexedRetrievalChunk{
+		pending = append(pending, indexedRetrievalChunk{
 			chunk:  indexedChunks[index],
 			vector: normalized,
 		})
 	}
+	if ctx != nil && ctx.Err() != nil {
+		return ctx.Err()
+	}
+	i.items = append(i.items, pending...)
+	i.dimensions = dimensions
 	return nil
 }
 

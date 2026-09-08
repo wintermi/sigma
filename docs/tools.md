@@ -23,6 +23,31 @@ tools := []sigma.Tool{{
 }}
 ```
 
+
+## Numeric Arguments
+
+Provider-authored JSON numbers in `ToolCall.Arguments`, `ContentBlock.ToolArguments`,
+and decoded partial argument metadata use `json.Number`. This preserves large
+integers, decimals, and exponent spellings through streaming, cancellation,
+persistence, validation, and replay. Migrate assertions against `float64` to
+`json.Number`; choose a conversion explicitly when executing a tool:
+
+```go
+number, ok := args["record_id"].(json.Number)
+if !ok {
+	return fmt.Errorf("record_id must be a JSON number")
+}
+recordID, err := number.Int64()
+if err != nil {
+	return fmt.Errorf("record_id must fit int64: %w", err)
+}
+```
+
+Use `number.String()` or a decimal/big-number representation when the destination
+requires more precision. `Float64()` is available when rounding is acceptable.
+Typed usage counters and cost fields are unchanged. Malformed or incomplete
+arguments retain the existing raw-text or conservative partial-object fallback.
+
 ## Provider-Defined Tools
 
 Some providers expose server-side tools that the provider executes itself.

@@ -8,6 +8,7 @@ package sigma
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -49,15 +50,19 @@ type EmbeddingBatchProgress struct {
 // EmbeddingCacheKey identifies one cacheable embedding input without exposing
 // the raw input text.
 type EmbeddingCacheKey struct {
-	Provider    ProviderID
-	API         EmbeddingAPI
-	Model       ModelID
-	Dimensions  int
-	InputType   EmbeddingInputType
-	InputSHA256 string
+	Version             int
+	Namespace           string
+	ConfigurationSHA256 string
+	Provider            ProviderID
+	API                 EmbeddingAPI
+	Model               ModelID
+	Dimensions          int
+	InputType           EmbeddingInputType
+	InputSHA256         string
 }
 
 // EmbeddingCache stores embeddings for reuse across EmbedBatch calls.
+// Implementations must honor every key field. Version 2 keys invalidate legacy entries.
 //
 // When EmbeddingBatchConfig.MaxParallelBatches is greater than zero, Get and Set
 // may be called concurrently from multiple goroutines, so implementations must be
@@ -82,7 +87,11 @@ type EmbeddingBatchConfig struct {
 	MaxBatchBytes        int
 	SplitOversized       bool
 	Cache                EmbeddingCache
-	SplitPolicy          EmbeddingSplitPolicy
+	// CacheNamespace is a required non-secret identity when Cache is configured.
+	// Callers must distinguish opaque endpoints, tenants, transports, and provider
+	// configuration that Sigma cannot inspect; change the namespace when these change.
+	CacheNamespace string
+	SplitPolicy    EmbeddingSplitPolicy
 	// Progress receives batch progress callbacks. When MaxParallelBatches is
 	// greater than zero it may be called concurrently from multiple goroutines,
 	// so it must be safe for concurrent use.
@@ -143,12 +152,13 @@ type embeddingBatchJob struct {
 type embeddingBatchWork func() ([]Embedding, error)
 
 type embeddingBatcher struct {
-	ctx    context.Context
-	client *Client
-	model  EmbeddingModel
-	req    EmbeddingRequest
-	config EmbeddingBatchConfig
-	opts   []EmbeddingOption
+	ctx                 context.Context
+	model               EmbeddingModel
+	req                 EmbeddingRequest
+	config              EmbeddingBatchConfig
+	opts                Options
+	provider            EmbeddingProvider
+	configurationSHA256 string
 
 	cache   map[EmbeddingCacheKey]Embedding
 	cacheMu sync.Mutex
@@ -284,13 +294,22 @@ func (c *Client) Embed(ctx context.Context, model EmbeddingModel, req EmbeddingR
 	if c == nil {
 		c = NewClient()
 	}
-	if err := ValidateModelRef(ModelRef{Provider: model.Provider, ID: model.ID}); err != nil {
+	model, provider, options, err := c.prepareEmbedding(model, req, opts)
+	if err != nil {
 		return Embeddings{Model: model.ID, Provider: model.Provider}, err
+	}
+	return dispatchEmbedding(ctx, provider, model, req, options)
+}
+
+// prepareEmbedding validates before either cache lookup or provider dispatch.
+func (c *Client) prepareEmbedding(model EmbeddingModel, req EmbeddingRequest, opts []EmbeddingOption) (EmbeddingModel, EmbeddingProvider, Options, error) {
+	if err := ValidateModelRef(ModelRef{Provider: model.Provider, ID: model.ID}); err != nil {
+		return model, nil, Options{}, err
 	}
 
 	registered, ok := c.GetEmbeddingModel(model.Provider, model.ID)
 	if !ok {
-		return Embeddings{Model: model.ID, Provider: model.Provider}, embeddingModelNotFoundError(model.Provider, model.ID)
+		return model, nil, Options{}, embeddingModelNotFoundError(model.Provider, model.ID)
 	}
 	if model.API == "" {
 		model = registered
@@ -298,13 +317,17 @@ func (c *Client) Embed(ctx context.Context, model EmbeddingModel, req EmbeddingR
 
 	provider, ok := c.registry.EmbeddingProvider(model.Provider)
 	if !ok {
-		return Embeddings{Model: model.ID, Provider: model.Provider}, embeddingProviderNotFoundError(model.Provider, model.ID)
+		return model, nil, Options{}, embeddingProviderNotFoundError(model.Provider, model.ID)
 	}
 
 	options := c.embeddingRequestOptions(opts)
 	if err := validateEmbeddingOptions(model, req, options); err != nil {
-		return Embeddings{Model: model.ID, Provider: model.Provider}, err
+		return model, nil, Options{}, err
 	}
+	return model, provider, options, nil
+}
+
+func dispatchEmbedding(ctx context.Context, provider EmbeddingProvider, model EmbeddingModel, req EmbeddingRequest, options Options) (Embeddings, error) {
 	if err := ctx.Err(); err != nil {
 		return Embeddings{Model: model.ID, Provider: model.Provider}, embeddingAbortedError(err)
 	}
@@ -345,22 +368,25 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 	if config.MaxBatchBytes < 0 {
 		return EmbeddingBatchResult{Embeddings: Embeddings{Model: model.ID, Provider: model.Provider}}, invalidEmbeddingOptionsError(model, "embedding batch max bytes must be non-negative")
 	}
-	if len(req.Inputs) == 0 {
-		embeddings, err := c.Embed(ctx, model, req, opts...)
-		return EmbeddingBatchResult{Embeddings: embeddings}, err
+	if config.Cache != nil && strings.TrimSpace(config.CacheNamespace) == "" {
+		return EmbeddingBatchResult{}, invalidEmbeddingOptionsError(model, "embedding cache namespace is required")
 	}
-	if registered, ok := c.GetEmbeddingModel(model.Provider, model.ID); ok && model.API == "" {
-		model = registered
+	model, provider, options, err := c.prepareEmbedding(model, req, opts)
+	if err != nil {
+		return EmbeddingBatchResult{Embeddings: Embeddings{Model: model.ID, Provider: model.Provider}}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return EmbeddingBatchResult{}, embeddingAbortedError(err)
+	}
+	batcher := &embeddingBatcher{ctx: ctx, model: model, req: req, config: config, opts: options, provider: provider}
+	if config.Cache != nil {
+		digest, err := embeddingConfigurationSHA256(model, req, options, config)
+		if err != nil {
+			return EmbeddingBatchResult{}, err
+		}
+		batcher.configurationSHA256 = digest
 	}
 
-	batcher := &embeddingBatcher{
-		ctx:    ctx,
-		client: c,
-		model:  model,
-		req:    req,
-		config: config,
-		opts:   append([]EmbeddingOption(nil), opts...),
-	}
 	if config.ReuseDuplicateInputs {
 		batcher.cache = make(map[EmbeddingCacheKey]Embedding)
 	}
@@ -402,6 +428,9 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 	result.Embeddings.Attempts = append([]EmbeddingAttempt(nil), result.Summary.Attempts...)
 	if err != nil {
 		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, embeddingAbortedError(err)
 	}
 	return result, nil
 }
@@ -585,7 +614,7 @@ func (b *embeddingBatcher) callProvider(jobs []embeddingBatchJob, attempt int) (
 		BatchBytes:   batchBytes(jobs),
 		InputIndexes: indexesForJobs(jobs),
 	})
-	embeddings, err := b.client.Embed(b.ctx, b.model, req, b.opts...)
+	embeddings, err := dispatchEmbedding(b.ctx, b.provider, b.model, req, b.opts)
 	if err != nil {
 		return embeddings, err
 	}
@@ -870,6 +899,9 @@ func (b *embeddingBatcher) maxBatchBytes() int {
 }
 
 func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedding, []embeddingBatchJob, error) {
+	if err := b.ctx.Err(); err != nil {
+		return nil, nil, embeddingAbortedError(err)
+	}
 	if b.cache == nil && b.config.Cache == nil {
 		return nil, jobs, nil
 	}
@@ -877,6 +909,9 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 	cached := make([]Embedding, 0, len(jobs))
 	misses := make([]embeddingBatchJob, 0, len(jobs))
 	for _, job := range jobs {
+		if err := b.ctx.Err(); err != nil {
+			return nil, nil, embeddingAbortedError(err)
+		}
 		key := b.cacheKey(job.text)
 		if embedding, ok := b.cacheLoad(key); ok {
 			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
@@ -900,6 +935,9 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 		}
 		misses = append(misses, job)
 	}
+	if err := b.ctx.Err(); err != nil {
+		return nil, nil, embeddingAbortedError(err)
+	}
 	return cached, misses, nil
 }
 
@@ -908,6 +946,9 @@ func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Emb
 		return nil
 	}
 	for i, job := range jobs {
+		if err := b.ctx.Err(); err != nil {
+			return embeddingAbortedError(err)
+		}
 		key := b.cacheKey(job.text)
 		embedding := Embedding{
 			Index:  0,
@@ -951,6 +992,7 @@ func (b *embeddingBatcher) cacheStoreLocal(key EmbeddingCacheKey, embedding Embe
 func (b *embeddingBatcher) cacheKey(text string) EmbeddingCacheKey {
 	sum := sha256.Sum256([]byte(text))
 	return EmbeddingCacheKey{
+		Version: 2, Namespace: b.config.CacheNamespace, ConfigurationSHA256: b.configurationSHA256,
 		Provider:    b.model.Provider,
 		API:         b.model.API,
 		Model:       b.model.ID,
@@ -1354,4 +1396,26 @@ func finalEmbeddings(model EmbeddingModel, embeddings Embeddings) Embeddings {
 		embeddings.Cost = &cost
 	}
 	return embeddings
+}
+
+// Only JSON request configuration is fingerprinted. Opaque identities belong in
+// CacheNamespace; resolver objects, credentials, transports, and callbacks do not.
+func embeddingConfigurationSHA256(model EmbeddingModel, req EmbeddingRequest, opts Options, config EmbeddingBatchConfig) (string, error) {
+	fingerprint := struct {
+		Model            EmbeddingModel
+		Dimensions       int
+		InputType        EmbeddingInputType
+		ProviderMetadata map[string]any
+		Metadata         map[string]any
+		ProviderOptions  map[string]any
+		SplitOversized   bool
+		MaxBatchBytes    int
+		SplitPolicy      EmbeddingSplitPolicy
+	}{model, req.Dimensions, req.InputType, req.ProviderMetadata, opts.Metadata, opts.ProviderOptions[model.Provider], config.SplitOversized, config.MaxBatchBytes, config.SplitPolicy}
+	data, err := json.Marshal(fingerprint)
+	if err != nil {
+		return "", invalidEmbeddingOptionsError(model, "embedding cache configuration must be JSON serializable")
+	}
+	sum := sha256.Sum256(data)
+	return fmt.Sprintf("%x", sum), nil
 }

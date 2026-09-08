@@ -135,6 +135,7 @@ result, err := client.EmbedBatch(ctx, model, sigma.EmbeddingRequest{
 	ReuseDuplicateInputs: true,
 	MaxBatchInputs:       256,
 	Cache:                cache,
+	CacheNamespace:       "search-production-tenant-a",
 	MaxRetries:           2,
 	SplitOversized:       true,
 	Progress: func(progress sigma.EmbeddingBatchProgress) error {
@@ -159,10 +160,30 @@ When left at zero, Sigma uses the selected `EmbeddingModel` limits when known.
 Byte limits count UTF-8 input bytes, not JSON payload bytes. Token-budget
 estimates remain caller-owned because provider tokenizers vary.
 
-Set `Cache` to reuse embeddings across separate `EmbedBatch` calls. Cache keys
-include provider, API, model, dimensions, and a SHA-256 hash of the input text;
-raw input text is not exposed to the cache key. `ReuseDuplicateInputs` remains
-the in-request duplicate coalescing option.
+Set `Cache` and a non-empty, non-secret `CacheNamespace` to reuse embeddings
+across separate `EmbedBatch` calls. A configured cache with a blank namespace
+returns `ErrInvalidOptions`. `ReuseDuplicateInputs` alone needs no namespace.
+
+Version 2 `EmbeddingCacheKey` values include `Version`, `Namespace`, and
+`ConfigurationSHA256`, alongside provider, API, model, dimensions, input type,
+and the per-input SHA-256 hash. The configuration digest covers the effective
+model, request dimensions and input type, request provider metadata, effective
+metadata and target-provider options, and oversized-input split settings.
+Map insertion order does not affect the digest. Raw inputs and fingerprint
+configuration are never included in keys or traces.
+
+Cache implementations must compare **every key field**. Old persisted entries
+are invalidated: Sigma does not read legacy keys. HTTP clients, callbacks, and
+credential resolvers are not fingerprinted. Callers own namespace isolation for
+opaque endpoints, tenants, custom transports, and provider configuration that
+Sigma cannot inspect, including auth-derived configuration. Change the namespace
+when any of those identities change; never use credentials as the namespace.
+
+Model registration, provider registration, inputs, and effective options are
+validated before cache lookup. Option functions run once per batch operation.
+Cache hits honor cancellation without requiring authentication or provider calls.
+The cache interface has no context argument, so a blocking cache implementation
+must arrange its own I/O bounds; Sigma checks cancellation between lookups.
 
 Oversized singleton recovery uses `EmbeddingSplitPolicy` to choose safer split
 points. The zero-value policy prefers a nearby newline, then nearby whitespace,
@@ -230,15 +251,22 @@ preference, and metadata copying. `InMemoryRetrievalIndex` embeds chunks as
 `EmbeddingInputTypeDocument`, embeds searches as `EmbeddingInputTypeQuery`,
 routes provider work through `Client.EmbedBatch`, stores normalized vectors
 internally, and returns `RetrievalResult` values without exposing stored
-vectors.
+vectors. Insertions validate and normalize the entire batch before changing the
+index. Configured dimensions are enforced; otherwise the first successful
+insertion establishes dimensions for later insertions. Failed or canceled
+insertions leave existing items and inferred dimensions unchanged. The index
+retains its existing caller-owned synchronization contract.
 
 ## Current Scope
 
-The first embedding provider is OpenAI's `/v1/embeddings` API. Sigma includes
-generated metadata for `text-embedding-3-small` and
-`text-embedding-3-large`, plus `sigma.OpenAICompatibleEmbeddingModel` for
-caller-registered OpenAI-compatible embedding endpoints.
+Embedding adapters cover OpenAI-compatible `/v1/embeddings`, Google Gemini,
+Google Vertex AI, and Amazon Bedrock. Register the route you use with
+`openai.RegisterEmbeddings`, `google.RegisterEmbeddings`,
+`google.RegisterVertexEmbeddings`, or `bedrock.RegisterEmbeddings` respectively.
+Generated metadata includes representative models for these routes;
+`sigma.OpenAICompatibleEmbeddingModel` supports caller-registered compatible
+endpoints. The existing stable and preview classifications remain unchanged;
+see the [release contract](../RELEASING.md).
 
-External vector stores, tokenizer-aware chunking and estimates,
-provider-selection fallback, and non-OpenAI embedding providers are
-intentionally outside this surface.
+External vector stores, tokenizer-aware chunking and estimates, and
+provider-selection fallback remain outside this surface.

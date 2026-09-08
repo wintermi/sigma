@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/providertext"
 	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
@@ -101,6 +102,9 @@ func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Opt
 		addAnthropicCacheControl(payload, cacheControl)
 	}
 	addRouting(payload, opts, model.Provider, compat)
+	if n, supplied := payload["n"]; supplied && !jsonutil.IsOne(n) {
+		return nil, &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: "chat completions requires n to be one"}
+	}
 	return payload, nil
 }
 

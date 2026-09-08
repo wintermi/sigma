@@ -492,9 +492,18 @@ func TestRadiusStreamFailuresAndCancellation(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 			client, model := registeredRadiusClient(t, server.URL)
-			_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
 			if err == nil {
 				t.Fatal("Complete returned nil error")
+			}
+			if tt.name == "missing terminal" {
+				classification := sigma.ClassifyError(err)
+				if classification.Class != sigma.ErrorClassTransient || !classification.RetryHint.Retryable {
+					t.Fatalf("classification = %#v", classification)
+				}
+				if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+					t.Fatalf("lost partial content: %#v", final)
+				}
 			}
 			var providerErr *sigma.ProviderError
 			if got := errors.As(err, &providerErr); got != tt.providerError {

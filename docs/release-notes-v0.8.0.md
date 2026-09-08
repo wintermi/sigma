@@ -372,6 +372,41 @@ selection remains available through existing provider-specific controls.
   cached input per million tokens; requests above 200k input tokens use the
   $4, $12, and $1 rates.
 
+## Reliability corrections
+
+Tool-argument decoding preserves provider-authored JSON numbers as `json.Number`,
+including structured initial inputs, partial deltas, cancellation snapshots,
+persistence, and replay. Callers asserting `float64` must migrate to `json.Number`
+and explicitly choose `Int64`, `Float64`, or a lossless representation. Token
+counters and cost fields retain their existing types. Signed empty assistant text
+can be persisted; provider-specific replay still checks format and provenance.
+
+Deferred Responses resolve auth once per HTTP attempt before building the route,
+payload, and headers. Retries rebuild submissions and preserve the successful
+attempt's conversion metadata and service tier. Submit, fetch, and cancel timeouts
+cover auth, retry waits, headers, and response decoding. Handles contain no
+credentials or auth-derived endpoints.
+
+Chat Completions `n` and Google/Vertex `candidateCount` must be omitted or numeric
+one, including after overrides and payload hooks. Nonzero alternatives cannot
+alter the accumulated result. Radius premature EOF retains partial content and
+returns transient retry advice; post-body retries remain caller-owned.
+
+External embedding caches now require a non-secret `CacheNamespace`. Version 2
+keys add namespace and a deterministic configuration digest; implementations must
+honor every field, and old persisted entries are invalidated. Callers must change
+namespaces when opaque tenant, endpoint, custom transport, or provider identities
+change. Warm cache paths perform the same preparation and validation as cold
+paths and honor cancellation without authenticating. Batch option functions run
+once. Retrieval insertions validate complete batches before publication and
+preserve existing results and inferred dimensions on failure or cancellation.
+
+`mise run go:build` is now a CGO-disabled compilation check of `./...`, including
+examples and command packages. It emits no binary or root archive, uses no
+`main.version` linker flags, and is included in CI. `mise run clean` remains
+available explicitly. The embedding guide covers OpenAI-compatible, Gemini,
+Vertex, and Bedrock adapters without changing release classifications.
+
 ## Compatibility
 
 - Explicit `base_url` or `baseURL` request configuration blocks auth-derived

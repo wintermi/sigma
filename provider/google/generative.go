@@ -200,6 +200,9 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 			return nil, err
 		}
 	}
+	if err := validateSingleCandidate(model, payload); err != nil {
+		return nil, err
+	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("google generative ai: encode request: %w", err)

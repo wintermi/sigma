@@ -203,6 +203,9 @@ func (p *completionStreamParser) handleEvent(ctx context.Context, event sse.Even
 		return err
 	}
 	for _, choice := range chunk.Choices {
+		if choice.Index != 0 {
+			continue
+		}
 		if chunk.Usage == nil && choice.Usage != nil {
 			usage := choice.Usage.sigmaUsage()
 			usage, _ = sigma.AccountUsage(p.model, usage, sigma.WithRawUsage(*choice.Usage))

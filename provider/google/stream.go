@@ -12,6 +12,7 @@ import (
 	"io"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamblocks"
 )
@@ -123,7 +124,7 @@ func parseGenerativeStream(ctx context.Context, r io.Reader, writer sigma.Stream
 
 func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	var response generateContentResponse
-	if err := json.Unmarshal([]byte(event.Data), &response); err != nil {
+	if err := jsonutil.Decode([]byte(event.Data), &response); err != nil {
 		return fmt.Errorf("google generative ai: decode stream event: %w", err)
 	}
 	if response.Error != nil {
@@ -137,6 +138,9 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 		return err
 	}
 	for _, candidate := range response.Candidates {
+		if candidate.Index != 0 {
+			continue
+		}
 		p.captureCandidate(candidate)
 		if candidate.FinishReason != "" {
 			p.finished = true

@@ -200,8 +200,12 @@ mise run go:generate
 git diff --exit-code
 ```
 
-Run `mise run ci` for the full CI-equivalent suite (formatting, lint, vet, and
-the race-enabled test run). The repository includes a Markdown internal-link
+Run `mise run ci` for the full CI-equivalent suite (package build, formatting, lint,
+vet, and the race-enabled test run). The repository includes a Markdown internal-link
 test and builds the examples as part of `mise run go:test`. External links and
 live provider calls are not checked by default so verification stays
 deterministic and does not require credentials.
+
+`mise run go:build` compiles all library, example, and command packages with CGO
+disabled. It produces no CLI artifact and sets no `main.version` linker value.
+Use `mise run clean` explicitly when you want to remove build output directories.

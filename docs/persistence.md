@@ -37,7 +37,16 @@ invariants:
 Open-ended JSON maps are intentionally preserved. `ProviderMetadata`,
 `ToolArguments`, and tool schemas may contain provider-specific fields that
 sigma does not interpret but that may be required to continue a conversation.
-Opaque provider signatures on thinking and tool-call blocks are also preserved.
+Opaque provider signatures on thinking, tool-call, and assistant text blocks are
+also preserved. Empty assistant text is valid only when `Signature` or
+`ProviderSignature` is non-empty; unsigned empty text remains invalid. Persistence
+does not interpret signatures. Provider replay validates their format and exact
+provider/API/model provenance before sending them.
+
+Provider-authored numbers in tool arguments are `json.Number`, including values
+retained from partial or canceled streams. Persistence preserves their exact JSON
+numeric spelling. See [numeric tool arguments](tools.md#numeric-arguments) for
+migration and explicit conversion guidance.
 
 ## Appending assistant turns
 

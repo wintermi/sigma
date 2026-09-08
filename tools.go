@@ -54,6 +54,7 @@ type Tool struct {
 }
 
 // ToolCall describes a model request to invoke a tool.
+// Provider-authored numeric Arguments use json.Number to preserve precision.
 type ToolCall struct {
 	ID                string         `json:"id"`
 	Name              string         `json:"name"`

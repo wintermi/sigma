@@ -21,6 +21,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -751,7 +752,7 @@ func parseStream(ctx context.Context, body io.Reader, writer sigma.StreamWriter,
 			return nil
 		}
 		var event radiusEvent
-		if err := json.Unmarshal([]byte(frame.Data), &event); err != nil {
+		if err := jsonutil.Decode([]byte(frame.Data), &event); err != nil {
 			return fmt.Errorf("radius messages: decode stream event: %w", err)
 		}
 		if err := accumulator.apply(ctx, writer, event); err != nil {
@@ -781,7 +782,7 @@ func parseStream(ctx context.Context, body io.Reader, writer sigma.StreamWriter,
 		return final, fmt.Errorf("radius messages: parse stream: %w", err)
 	}
 	if !terminated {
-		return final, errors.New("radius messages: stream ended without a terminal event")
+		return accumulator.final(model, radiusEvent{}), errors.New("radius messages: stream ended without a terminal event")
 	}
 	return final, nil
 }
@@ -901,7 +902,7 @@ func decodeToolArguments(arguments string) any {
 		return map[string]any{}
 	}
 	var decoded any
-	if err := json.Unmarshal([]byte(arguments), &decoded); err == nil {
+	if err := jsonutil.Decode([]byte(arguments), &decoded); err == nil {
 		return decoded
 	}
 	return arguments

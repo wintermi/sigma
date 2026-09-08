@@ -6,6 +6,15 @@ features — deterministic fixtures, golden payloads, or fake clients, plus
 cancellation/error coverage (see the coverage standards in
 [RELEASING.md](RELEASING.md)) — before it can be promoted out of "future" status.
 
+## Completed reliability corrections
+
+- [x] Preserve provider-authored tool numbers and signed empty assistant text.
+- [x] Apply deferred auth defaults per attempt and bound the complete operation by its timeout.
+- [x] Enforce single alternatives and retain Radius interrupted results with retry advice.
+- [x] Version external embedding cache identities, validate before lookup, and apply batch options once.
+- [x] Make retrieval insertions atomic and enforce inferred or configured dimensions.
+- [x] Compile all packages in the build/CI task and document all embedding adapters and migrations.
+
 ## Credential ergonomics
 
 - [x] Add model-aware environment credential discovery helpers that expose

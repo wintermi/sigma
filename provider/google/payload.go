@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/providertext"
 	"github.com/wintermi/sigma/internal/transform"
 )
@@ -862,4 +863,23 @@ func copyOption(target map[string]any, source map[string]any, sourceKey string, 
 	if value, ok := source[sourceKey]; ok {
 		target[targetKey] = value
 	}
+}
+
+func validateSingleCandidate(model sigma.Model, payload map[string]any) error {
+	config, supplied := payload["generationConfig"]
+	if !supplied {
+		return nil
+	}
+	data, err := json.Marshal(config)
+	var fields map[string]any
+	if err == nil {
+		err = jsonutil.Decode(data, &fields)
+	}
+	if err == nil {
+		count, supplied := fields["candidateCount"]
+		if !supplied || jsonutil.IsOne(count) {
+			return nil
+		}
+	}
+	return &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: "google generationConfig requires candidateCount to be one"}
 }

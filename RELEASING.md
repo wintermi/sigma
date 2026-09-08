@@ -30,7 +30,7 @@ Run the full CI-equivalent suite, which adds formatting and lint gates:
 mise run ci
 ```
 
-`mise run ci` runs `mise:validate`, `go:fmt:check`, `go:lint`, `go:vet`,
+`mise run ci` runs `mise:validate`, `go:fmt:check`, `go:lint`, `go:build`, `go:vet`,
 `go:test`, and `go:race`. It must be green, including `golangci-lint`, before
 tagging.
 
