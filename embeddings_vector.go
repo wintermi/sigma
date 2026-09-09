@@ -8,6 +8,7 @@ package sigma
 import (
 	"errors"
 	"math"
+	"math/big"
 	"sort"
 )
 
@@ -70,25 +71,35 @@ func CombineEmbeddingVectors(vectors [][]float32, weights []int) ([]float32, err
 		return nil, ErrEmbeddingVectorZeroWeight
 	}
 	dimensions := len(vectors[0])
-	combined := make([]float32, dimensions)
-	totalWeight := 0
+	combined := make([]float64, dimensions)
+	var totalWeight, weightValue big.Int
 	for i, vector := range vectors {
 		if len(vector) != dimensions {
 			return nil, ErrEmbeddingVectorDimensionMismatch
 		}
 		weight := weights[i]
-		totalWeight += weight
+		totalWeight.Add(&totalWeight, weightValue.SetInt64(int64(weight)))
 		for j, value := range vector {
-			combined[j] += value * float32(weight)
+			combined[j] += float64(value) * float64(weight)
 		}
 	}
-	if totalWeight == 0 {
+	if totalWeight.Sign() == 0 {
 		return nil, ErrEmbeddingVectorZeroWeight
 	}
-	for i := range combined {
-		combined[i] /= float32(totalWeight)
+	var norm float64
+	for _, value := range combined {
+		norm = math.Hypot(norm, value)
 	}
-	return NormalizeEmbeddingVector(combined)
+	if norm == 0 {
+		return nil, ErrEmbeddingVectorZeroNorm
+	}
+	// Normalization cancels the magnitude of the total weight. Its sign still
+	// determines the direction of an average with signed weights.
+	result := make([]float32, dimensions)
+	for i, value := range combined {
+		result[i] = float32(value / norm * float64(totalWeight.Sign()))
+	}
+	return result, nil
 }
 
 // RankEmbeddingsByCosine scores candidates against query and sorts by descending similarity.

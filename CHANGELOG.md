@@ -168,6 +168,31 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- The surface probe now offers an explicit `-json-text` workaround that requests
+  JSON through plain-text output and validates the completed probe answer locally.
+  It preserves provider errors and reports a separate case without claiming
+  provider-enforced JSON support.
+
+- xAI JSON-object surface-probe failures now receive same-prompt instruction,
+  schema, and plain-text diagnostic comparisons, plus three JSON-object value
+  variants using a string, number, and alternate boolean. The original safety rejection
+  and each failed request ID remain visible; successful controls do not claim
+  an unsupported repair or token-budget correction.
+
+- Closing a Bedrock text stream now cancels pending credential/request work and
+  releases idle or blocked transports. AWS credential/config file overrides
+  replace their corresponding default paths; requests no longer fall back to
+  an overridden home-directory file. The provider guide now documents the
+  existing default chain, caching, and resolver-only configuration.
+- Tool validation compares numeric bounds, integers, enums, and constants
+  without floating-point rounding. Decimal-string coercion preserves precision;
+  numerically invalid arguments previously accepted through rounding now fail.
+- Content, model, option, and credential copies now isolate typed JSON-compatible
+  containers while retaining concrete types and caller-owned opaque Go objects.
+- Tool-stream accumulation avoids rebuilding argument prefixes when accumulated
+  text is already available. Weighted embedding combination uses wider arithmetic
+  and exact weight totals to avoid overflow from finite inputs.
+
 - Deferred Responses use per-attempt auth-derived routes and payload defaults,
   retain successful-attempt conversion metadata, and honor timeouts through body decoding.
 - Streaming parsers isolate alternative index zero; Radius premature EOF retains

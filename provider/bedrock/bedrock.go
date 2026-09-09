@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
 
 // Config carries Bedrock-specific settings without adding AWS SDK types to the
@@ -178,10 +179,9 @@ func (p *Provider) API() sigma.API {
 
 // Stream sends req to Bedrock ConverseStream and emits sigma events.
 func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
-	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
-	stream, writer := sigma.NewStream(ctx)
+	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, opts)
 	go func() {
-		defer cancel()
+		defer cleanup()
 		p.run(ctx, writer, model, req, opts)
 	}()
 	return stream

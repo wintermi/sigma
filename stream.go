@@ -369,15 +369,14 @@ func (b *partialBlock) applyToolPartial(partial *PartialToolCall) {
 	if partial.Name != "" {
 		b.toolName = partial.Name
 	}
-	if partial.ArgumentsDelta != "" {
+	if argumentsText, ok := partial.ProviderMetadata["argumentsText"].(string); ok {
+		b.arguments = argumentsText
+	} else if partial.ArgumentsDelta != "" {
 		b.arguments += partial.ArgumentsDelta
 	}
 	if arguments, ok := partial.ProviderMetadata["arguments"]; ok {
 		b.argument = arguments
 		b.hasArg = true
-	}
-	if argumentsText, ok := partial.ProviderMetadata["argumentsText"].(string); ok {
-		b.arguments = argumentsText
 	}
 	b.hasContent = b.hasContent || b.toolID != "" || b.toolName != "" || b.arguments != "" || b.hasArg
 }

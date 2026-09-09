@@ -6,7 +6,6 @@
 package sigma
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -583,59 +582,9 @@ func cloneHandoffProviderDefinedOptions(values map[string]any) map[string]any {
 }
 
 func cloneHandoffProviderDefinedOption(value any) any {
-	switch v := value.(type) {
-	case nil:
-		return nil
-	case map[string]any:
-		return cloneHandoffProviderDefinedOptions(v)
-	case Schema:
-		cloned := make(Schema, len(v))
-		for key, value := range v {
-			cloned[key] = cloneHandoffProviderDefinedOption(value)
-		}
-		return cloned
-	case []any:
-		cloned := make([]any, len(v))
-		for index, item := range v {
-			cloned[index] = cloneHandoffProviderDefinedOption(item)
-		}
-		return cloned
-	case []string:
-		return append([]string(nil), v...)
-	case []byte:
-		return append([]byte(nil), v...)
-	case json.RawMessage:
-		return append(json.RawMessage(nil), v...)
-	default:
-		return v
-	}
+	return cloneJSONValue(value, cloneProviderOptions)
 }
 
 func cloneHandoffAny(value any) any {
-	switch v := value.(type) {
-	case nil:
-		return nil
-	case map[string]any:
-		return cloneHandoffStringAnyMap(v)
-	case Schema:
-		cloned := make(Schema, len(v))
-		for key, value := range v {
-			cloned[key] = cloneHandoffAny(value)
-		}
-		return cloned
-	case []any:
-		cloned := make([]any, len(v))
-		for index, item := range v {
-			cloned[index] = cloneHandoffAny(item)
-		}
-		return cloned
-	case []string:
-		return append([]string(nil), v...)
-	case []byte:
-		return append([]byte(nil), v...)
-	case json.RawMessage:
-		return append(json.RawMessage(nil), v...)
-	default:
-		return v
-	}
+	return cloneJSONValue(value, cloneContent)
 }

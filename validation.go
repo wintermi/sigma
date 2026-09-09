@@ -369,6 +369,12 @@ func coerceNumber(value any, integer bool) (any, bool) {
 		if trimmed == "" {
 			return value, false
 		}
+		if number, ok := parseDecimal(trimmed, true); ok {
+			if integer && !number.integer() {
+				return value, false
+			}
+			return json.Number(number.String()), true
+		}
 		number, err := strconv.ParseFloat(trimmed, 64)
 		if err != nil || math.IsInf(number, 0) || math.IsNaN(number) {
 			return value, false
@@ -1246,42 +1252,40 @@ func validateStringPattern(schema map[string]any, text string, path string, tool
 }
 
 func validateNumber(schema map[string]any, value any, path string, toolName string) error {
-	number, ok := numberFloat(value)
+	number, ok := exactNumber(value)
 	if !ok {
 		return nil
 	}
-	if raw, exists := schema["minimum"]; exists {
-		minimum, err := schemaNumber(raw)
-		if err != nil {
-			return toolValidationError(toolName, path, "numeric minimum", raw, "schema is malformed", err)
+	for _, bound := range []struct {
+		key, op, message string
+		direction        int
+	}{
+		{"minimum", ">= ", "number is below minimum", -1},
+		{"maximum", "<= ", "number is above maximum", 1},
+	} {
+		raw, exists := schema[bound.key]
+		if !exists {
+			continue
 		}
-		if number < minimum {
-			return toolValidationError(toolName, path, ">= "+formatNumber(minimum), value, "number is below minimum", nil)
+		limit, ok := exactNumber(raw)
+		if !ok {
+			return toolValidationError(toolName, path, "numeric "+bound.key, raw, "schema is malformed", fmt.Errorf("value must be numeric"))
 		}
-	}
-	if raw, exists := schema["maximum"]; exists {
-		maximum, err := schemaNumber(raw)
-		if err != nil {
-			return toolValidationError(toolName, path, "numeric maximum", raw, "schema is malformed", err)
-		}
-		if number > maximum {
-			return toolValidationError(toolName, path, "<= "+formatNumber(maximum), value, "number is above maximum", nil)
+		if number.compare(limit) == bound.direction {
+			return toolValidationError(toolName, path, bound.op+limit.String(), value, bound.message, nil)
 		}
 	}
 	return nil
 }
 
 func isJSONNumber(value any) bool {
-	_, ok := numberFloat(value)
+	_, ok := exactNumber(value)
 	return ok
 }
 
 func isJSONInteger(value any) bool {
-	number, ok := numberFloat(value)
-	if !ok {
-		return false
-	}
-	return math.Trunc(number) == number
+	number, ok := exactNumber(value)
+	return ok && number.integer()
 }
 
 func numberFloat(value any) (float64, bool) {
@@ -1318,14 +1322,6 @@ func numberFloat(value any) (float64, bool) {
 	}
 }
 
-func schemaNumber(value any) (float64, error) {
-	number, ok := numberFloat(value)
-	if !ok {
-		return 0, fmt.Errorf("value must be numeric")
-	}
-	return number, nil
-}
-
 func nonNegativeInt(value any) (int, error) {
 	number, ok := numberFloat(value)
 	if !ok || math.Trunc(number) != number || number < 0 {
@@ -1335,10 +1331,10 @@ func nonNegativeInt(value any) (int, error) {
 }
 
 func jsonEqual(left any, right any) bool {
-	leftNumber, leftIsNumber := numberFloat(left)
-	rightNumber, rightIsNumber := numberFloat(right)
+	leftNumber, leftIsNumber := exactNumber(left)
+	rightNumber, rightIsNumber := exactNumber(right)
 	if leftIsNumber || rightIsNumber {
-		return leftIsNumber && rightIsNumber && leftNumber == rightNumber
+		return leftIsNumber && rightIsNumber && leftNumber.compare(rightNumber) == 0
 	}
 	return reflect.DeepEqual(left, right)
 }

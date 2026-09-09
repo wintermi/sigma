@@ -136,6 +136,7 @@ type config struct {
 	codexOAuthBrowser  bool
 	handoff            bool
 	structuredOutput   bool
+	jsonText           bool
 	images             bool
 }
 
@@ -294,6 +295,7 @@ var imageRoutes = map[string]imageRouteSpec{
 }
 
 const (
+	jsonSchemaType                       = "json_schema"
 	jsonTypeKey                          = "type"
 	routeGoogleVertex                    = "google-vertex"
 	outcomeSkipped                       = "skipped"
@@ -395,6 +397,7 @@ func parseConfig() config {
 	var codexOAuthBrowser bool
 	var handoff bool
 	var structuredOutput bool
+	var jsonText bool
 	var images bool
 	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,google-vertex,google-vertex-anthropic,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
@@ -404,6 +407,7 @@ func parseConfig() config {
 	flag.BoolVar(&codexOAuthBrowser, "codex-oauth-browser", false, "run OpenAI Codex browser callback OAuth for the openai-codex route")
 	flag.BoolVar(&handoff, "handoff", false, "run cross-provider replay handoff diagnostics instead of per-route surface cases")
 	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
+	flag.BoolVar(&jsonText, "json-text", false, "run only the locally validated JSON text fallback on Chat Completions routes")
 	flag.BoolVar(&images, "images", false, "run focused image-generation surface probes")
 	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
 	flag.DurationVar(&caseTimeout, "case-timeout", defaultCaseTimeout, "maximum duration for one probe case or repair attempt; 0 uses only the overall timeout")
@@ -423,6 +427,7 @@ func parseConfig() config {
 		codexOAuthBrowser:  codexOAuthBrowser,
 		handoff:            handoff,
 		structuredOutput:   structuredOutput,
+		jsonText:           jsonText,
 		images:             images,
 	}
 }
@@ -798,11 +803,15 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		})
 		return
 	}
-	if cfg.structuredOutput && model.API != sigma.APIOpenAICompletions {
+	if (cfg.structuredOutput || cfg.jsonText) && model.API != sigma.APIOpenAICompletions {
+		caseName := "structured_output"
+		if cfg.jsonText {
+			caseName = jsonTextCase
+		}
 		emit(probeResult{
 			Route:   route.Name,
 			Model:   modelID,
-			Case:    "structured_output",
+			Case:    caseName,
 			Attempt: "unsupported_api",
 			Outcome: outcomeSkipped,
 		})
@@ -811,7 +820,9 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 
 	client := probeClient(route, model)
 	cases := route.Cases(route, model)
-	if cfg.structuredOutput {
+	if cfg.jsonText {
+		cases = []probeCase{jsonTextProbeCase(route)}
+	} else if cfg.structuredOutput {
 		cases = structuredOutputProbeCases(cases)
 	}
 	for _, testCase := range cases {
@@ -822,6 +833,10 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		result := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, testCase, credential, testCase.Name)
 		if result.Outcome == "ok" {
 			emit(annotateStructuredOutputResult(cfg, result))
+			continue
+		}
+		if testCase.Name == jsonTextCase {
+			emit(result)
 			continue
 		}
 		if result.Outcome == "upstream_availability" {
@@ -892,7 +907,7 @@ func structuredOutputProbeCases(cases []probeCase) []probeCase {
 	out := make([]probeCase, 0, 2)
 	for _, testCase := range cases {
 		switch testCase.Name {
-		case "json_object", "json_schema":
+		case "json_object", jsonSchemaType:
 			out = append(out, testCase)
 		}
 	}
@@ -906,7 +921,7 @@ func annotateStructuredOutputResult(cfg config, result probeResult) probeResult 
 	switch result.Case {
 	case "json_object":
 		result.Hint = "json_object_supported"
-	case "json_schema":
+	case jsonSchemaType:
 		result.Hint = "json_schema_supported"
 	}
 	return result
@@ -1898,7 +1913,10 @@ func waitForTransientRetry(ctx context.Context, delay time.Duration) bool {
 
 func runCase(ctx context.Context, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
 	options := append(authOptions(route, credential), testCase.Options...)
-	_, err := client.Complete(ctx, model, testCase.Request, options...)
+	message, err := client.Complete(ctx, model, testCase.Request, options...)
+	if err == nil && testCase.Name == jsonTextCase {
+		err = validateJSONTextProbe(message)
+	}
 	if err == nil {
 		return probeResult{
 			Route:   route.Name,
@@ -2113,7 +2131,7 @@ func openAIResponsesProbeCases(_ routeSpec, _ sigma.Model) []probeCase {
 			SystemPrompt: "Reply tersely.",
 			Messages:     []sigma.Message{sigma.UserText("Reply with exactly: dev-ok.")},
 		}, []sigma.Option{sigma.WithMaxTokens(128)}),
-		singleTurnCase("json_schema", "strict structured output", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), []sigma.Option{
+		singleTurnCase(jsonSchemaType, "strict structured output", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), []sigma.Option{
 			sigma.WithOpenAIOptions(sigma.OpenAIOptions{ResponseFormat: jsonSchemaTextFormat()}),
 			sigma.WithMaxTokens(512),
 		}),
@@ -2195,7 +2213,7 @@ func openAICompatibleProbeCases(route routeSpec, model sigma.Model) []probeCase 
 			sigma.WithProviderOption(route.Provider, "extra_body", map[string]any{"response_format": map[string]any{jsonTypeKey: "json_object"}}),
 			sigma.WithMaxTokens(256),
 		}),
-		singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), []sigma.Option{
+		singleTurnCase(jsonSchemaType, "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), []sigma.Option{
 			sigma.WithProviderOption(route.Provider, "extra_body", jsonSchemaBody()),
 			sigma.WithMaxTokens(256),
 		}),
@@ -2433,6 +2451,42 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 		singleTurnCase("minimal_basic_text", "minimal availability check", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(512)}),
 	}
 	switch failure.Name {
+	case "json_object":
+		if route.Name == "xai" {
+			instruction := failure.Request
+			instruction.SystemPrompt = strings.TrimSpace(instruction.SystemPrompt + "\nReturn only a JSON object. Do not include Markdown.")
+			withFormat := func(format map[string]any) []sigma.Option {
+				return append(append([]sigma.Option(nil), failure.Options...),
+					sigma.WithProviderOption(route.Provider, "extra_body", map[string]any{"response_format": format}))
+			}
+			// These are diagnostic controls, not evidence that the original
+			// rejection was repaired. Keep the user prompt and output budget.
+			variants = append(variants,
+				singleTurnCase("json_object_explicit_instruction", "JSON object with explicit formatting instruction", instruction, failure.Options),
+				singleTurnCase("json_object_schema_control", "same prompt with a matching JSON schema", failure.Request, withFormat(map[string]any{
+					jsonTypeKey: jsonSchemaType,
+					jsonSchemaType: map[string]any{
+						"name": "json_object_control", "strict": true,
+						"schema": map[string]any{
+							jsonTypeKey: "object", "properties": map[string]any{"ok": map[string]any{jsonTypeKey: "boolean"}},
+							"required": []string{"ok"}, "additionalProperties": false,
+						},
+					},
+				})),
+				singleTurnCase("json_object_text_control", "same prompt in plain-text mode", failure.Request, withFormat(map[string]any{jsonTypeKey: "text"})),
+			)
+			// Change only the requested value; keep JSON-object mode, the key,
+			// and the output budget to make content comparisons meaningful.
+			for _, value := range []struct{ name, object string }{
+				{"json_object_string_value", `{"ok":"ready"}`},
+				{"json_object_number_value", `{"ok":1}`},
+				{"json_object_false_value", `{"ok":false}`},
+			} {
+				request := failure.Request
+				request.Messages = []sigma.Message{sigma.UserText("Return JSON exactly " + value.object + ".")}
+				variants = append(variants, singleTurnCase(value.name, "JSON object with a different value", request, failure.Options))
+			}
+		}
 	case "basic_text":
 		variants = append(variants, singleTurnCase("basic_text_more_tokens", "larger output cap", failure.Request, []sigma.Option{sigma.WithMaxTokens(512)}))
 	case "cache_ephemeral":
@@ -2458,7 +2512,7 @@ func repairVariants(route routeSpec, failure probeCase) []probeCase {
 			singleTurnCase("typed_reasoning_effort_high", "typed reasoning high", basicRequest("Reply with exactly: 5."), []sigma.Option{sigma.WithOpenAIOptions(sigma.OpenAIOptions{ReasoningEffort: sigma.ThinkingLevelHigh}), sigma.WithMaxTokens(512)}),
 			singleTurnCase("no_reasoning_control", "omit reasoning control", basicRequest("Reply with exactly: 5."), []sigma.Option{sigma.WithMaxTokens(512)}),
 		)
-	case "json_schema":
+	case jsonSchemaType:
 		variants = append(variants,
 			singleTurnCase("json_schema_more_tokens", "strict schema with larger cap", failure.Request, []sigma.Option{
 				sigma.WithProviderOption(route.Provider, "extra_body", jsonSchemaBody()),
@@ -2499,7 +2553,7 @@ func repairPreservesCapability(caseName string, attempt string) bool {
 		return attempt == "thinking_object_disabled_repair"
 	case "reasoning_effort_low", "reasoning_effort_medium", "reasoning_effort_high":
 		return attempt == "typed_"+caseName
-	case "json_schema":
+	case jsonSchemaType:
 		return attempt == "json_schema_more_tokens"
 	case "logprobs":
 		return attempt == "logprobs_more_tokens"
@@ -2521,8 +2575,8 @@ func rawBodyOptions(route routeSpec, body map[string]any) []sigma.Option {
 
 func jsonSchemaBody() map[string]any {
 	return map[string]any{"response_format": map[string]any{
-		jsonTypeKey: "json_schema",
-		"json_schema": map[string]any{
+		jsonTypeKey: jsonSchemaType,
+		jsonSchemaType: map[string]any{
 			"name":   "answer",
 			"strict": true,
 			"schema": map[string]any{
@@ -2537,7 +2591,7 @@ func jsonSchemaBody() map[string]any {
 
 func jsonSchemaTextFormat() map[string]any {
 	return map[string]any{
-		jsonTypeKey: "json_schema",
+		jsonTypeKey: jsonSchemaType,
 		"name":      "answer",
 		"strict":    true,
 		"schema": map[string]any{
@@ -2743,7 +2797,7 @@ func repairHint(caseName string, attempt string) string {
 		return "use_thinking_object_disabled"
 	case strings.HasPrefix(caseName, "reasoning_effort_") && strings.HasPrefix(attempt, "typed_reasoning_effort_"):
 		return "use_typed_reasoning_effort_option"
-	case caseName == "json_schema" && attempt == "json_schema_more_tokens":
+	case caseName == jsonSchemaType && attempt == "json_schema_more_tokens":
 		return "json_schema_needs_larger_output_budget"
 	case caseName == "logprobs" && attempt == "logprobs_more_tokens":
 		return "logprobs_needs_larger_output_budget"

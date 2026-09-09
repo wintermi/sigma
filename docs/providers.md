@@ -554,12 +554,35 @@ _ = bedrock.Register(registry, sigma.ProviderAmazonBedrock,
 The Bedrock adapter uses stdlib HTTP, SigV4 signing, and EventStream parsing; it
 does not import the AWS SDK. Configure the region with `bedrock.WithRegion` or
 provider options; if neither is set, it falls back to `AWS_REGION` and then
-`AWS_DEFAULT_REGION`. The built-in environment credential path supports
-`AWS_BEARER_TOKEN_BEDROCK`, or `AWS_ACCESS_KEY_ID` plus
-`AWS_SECRET_ACCESS_KEY` and optional `AWS_SESSION_TOKEN`. AWS profiles, SSO,
-web identity, IMDS, and shared-config loading are intentionally not implemented;
-applications that need them should resolve credentials before calling Sigma and
-pass them through `sigma.WithAuthResolver` or a provider-specific auth resolver.
+`AWS_DEFAULT_REGION`. Bedrock first accepts a request-scoped bearer token, then
+uses the configured credential source. The default `CredentialSourceAuto`
+source tries the auth resolver before the built-in default chain; resolver
+failures other than unavailable credentials stop resolution. The default chain
+checks request-scoped static credentials,
+`AWS_BEARER_TOKEN_BEDROCK`, static AWS environment credentials
+(`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`),
+shared profiles, ECS credentials, web identity, and IMDS, in that order.
+A configured ECS or web
+identity source reports fetch failures instead of falling through to IMDS.
+
+Shared profile lookup uses `AWS_PROFILE` (or `default`).
+`AWS_SHARED_CREDENTIALS_FILE` and `AWS_CONFIG_FILE` each replace their respective
+home-directory default; the effective credentials file is checked before the
+effective config file. Missing files or profiles continue to remaining sources,
+without consulting an overridden default file.
+
+Profile and metadata-service credentials are cached against the credential
+environment: credentials without an expiry are cached for 15 minutes, and
+expiring credentials are cached until five minutes before expiry. A subsequent
+request resolves them again. Changing a profile file in place does not
+immediately invalidate that cache. Environment
+and request-scoped static credentials are checked before the cache.
+
+Use `bedrock.WithCredentialSource(bedrock.CredentialSourceAuthResolver)` and an
+explicit resolver to avoid built-in file and metadata-service discovery.
+AWS SDK integration and SSO remain unsupported. OAuth persistence remains
+caller-owned.
+
 Tests can inject `ConverseStreamClient` and `CredentialDetector` fakes, or use
 `bedrock.WithEndpoint` with an `httptest.Server`.
 

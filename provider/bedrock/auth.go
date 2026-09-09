@@ -29,7 +29,7 @@ type CredentialSource string
 const (
 	// CredentialSourceAuto checks sigma's auth resolver first, then the AWS default chain.
 	CredentialSourceAuto CredentialSource = ""
-	// CredentialSourceDefaultChain uses the stdlib environment credential chain.
+	// CredentialSourceDefaultChain uses the documented stdlib AWS credential chain.
 	CredentialSourceDefaultChain CredentialSource = "default-chain"
 	// CredentialSourceAuthResolver uses sigma.Options.AuthResolver only.
 	CredentialSourceAuthResolver CredentialSource = "auth-resolver"
@@ -75,7 +75,7 @@ type CredentialDetector interface {
 	Detect(context.Context, sigma.Model, sigma.Options, Config) (CredentialInfo, error)
 }
 
-// DefaultCredentialDetector uses sigma auth callbacks and a stdlib environment
+// DefaultCredentialDetector uses sigma auth callbacks and a stdlib AWS
 // credential chain.
 type DefaultCredentialDetector struct{}
 
@@ -310,7 +310,11 @@ func profileAWSCredentials() (CredentialInfo, bool) {
 	if profile == "" {
 		profile = "default"
 	}
-	for _, file := range awsCredentialFiles() {
+	return profileAWSCredentialsFromFiles(awsCredentialFiles(), profile)
+}
+
+func profileAWSCredentialsFromFiles(files []string, profile string) (CredentialInfo, bool) {
+	for _, file := range files {
 		values := readAWSProfile(file, profile)
 		accessKeyID := values["aws_access_key_id"]
 		secretAccessKey := values["aws_secret_access_key"]
@@ -328,18 +332,24 @@ func profileAWSCredentials() (CredentialInfo, bool) {
 }
 
 func awsCredentialFiles() []string {
+	home, _ := os.UserHomeDir()
+	return resolveAWSCredentialFiles(home, os.Getenv("AWS_SHARED_CREDENTIALS_FILE"), os.Getenv("AWS_CONFIG_FILE"))
+}
+
+func resolveAWSCredentialFiles(home, credentials, config string) []string {
+	if home != "" {
+		if credentials == "" {
+			credentials = filepath.Join(home, ".aws", "credentials")
+		}
+		if config == "" {
+			config = filepath.Join(home, ".aws", "config")
+		}
+	}
 	var files []string
-	if file := os.Getenv("AWS_SHARED_CREDENTIALS_FILE"); file != "" {
-		files = append(files, file)
-	}
-	if file := os.Getenv("AWS_CONFIG_FILE"); file != "" {
-		files = append(files, file)
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		files = append(files,
-			filepath.Join(home, ".aws", "credentials"),
-			filepath.Join(home, ".aws", "config"),
-		)
+	for _, file := range []string{credentials, config} {
+		if file != "" {
+			files = append(files, file)
+		}
 	}
 	return files
 }

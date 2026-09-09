@@ -525,8 +525,10 @@ type ContentBlock struct {
 }
 
 // Clone returns a deep copy of the block: mutating the copy's tool arguments,
-// provider metadata, or extra fields does not affect the original. New
-// reference-typed fields added to ContentBlock must be cloned here so every
+// provider metadata, or extra fields does not affect the original for JSON-compatible
+// maps, slices, and arrays. Opaque Go objects such as pointers and callbacks
+// remain caller-owned. New reference-typed fields added to ContentBlock must
+// be cloned here so every
 // package copying blocks picks up the change.
 func (b ContentBlock) Clone() ContentBlock {
 	b.ToolArguments = cloneHandoffAny(b.ToolArguments)

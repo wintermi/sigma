@@ -100,10 +100,13 @@ item in:
   fixtures or fake-client coverage.
 - Automatic live provider/model discovery as a side effect of normal dispatch.
 - Provider parity claims based only on generated metadata.
-- Browser login, credential refresh, or durable persistence triggered
-  implicitly by normal provider dispatch. Auth helpers and credential stores
-  remain explicit and caller-owned.
-- Hidden ambient credential loading inside provider adapters.
+- Browser login or durable credential persistence triggered implicitly by normal
+  provider dispatch. Auth helpers and credential stores remain caller-owned;
+  refresh through configured auth helpers and the documented Bedrock chain
+  is supported.
+- Ambient credential discovery beyond the documented Bedrock default chain.
+  Bedrock supports resolver-only configuration for applications that require
+  explicit credential selection.
 
 Deferred (not excluded) work is tracked in [TODO.md](TODO.md).
 

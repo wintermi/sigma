@@ -7,6 +7,29 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Failed xAI JSON-object probes now compare an explicit formatting instruction,
+a matching JSON schema, and plain-text mode using the same user prompt, plus
+three JSON-object variants with string, number, and alternate boolean values.
+All retain the output budget. Successful controls and per-attempt errors provide
+evidence for persistent failures while the original safety rejection remains
+inconclusive.
+An explicit `-json-text` mode runs the same JSON-object prompt in plain-text mode
+and validates the completed answer locally. It reports a separate `json_text`
+case and does not claim provider-enforced JSON support or downgrade application
+requests automatically.
+
+Bedrock stream closure now cancels outstanding work and releases idle transports.
+AWS credential/config file overrides replace their respective default paths;
+applications relying on fallback to an overridden home-directory file must
+configure their intended credential source explicitly. The provider guide now
+covers the existing default chain, caching, and resolver-only configuration.
+Tool validation now rejects numeric arguments that previously passed because of
+floating-point rounding, and decimal-string coercion retains exact values.
+Typed JSON-compatible containers are isolated across content, registry, option,
+and credential copies; opaque Go objects remain caller-owned. Tool streaming
+avoids redundant argument-prefix copies, and weighted embedding combination
+avoids overflow from finite coordinates and integer weight totals.
+
 Surface probes now preserve recognized safety rejections as inconclusive
 failures. Later successful variants remain diagnostic controls and do not
 produce token-budget repair claims or recommendations for those cases.

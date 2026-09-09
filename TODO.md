@@ -8,6 +8,15 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Add targeted xAI JSON-object format and value comparisons while preserving safety-rejection evidence.
+- [x] Add an opt-in JSON text surface probe with local output validation and unchanged provider-error reporting.
+- [x] Connect Bedrock stream closure to request cancellation and transport cleanup.
+- [x] Make AWS credential-file overrides replace defaults and document the supported chain.
+- [x] Validate numeric tool arguments and coerce decimal strings without precision loss.
+- [x] Isolate typed JSON-compatible containers across content, registry, options, and credentials.
+- [x] Avoid redundant accumulated tool-argument prefix allocation.
+- [x] Prevent finite weighted-vector overflow and preserve exact weight totals.
+
 - [x] Preserve provider-authored tool numbers and signed empty assistant text.
 - [x] Apply deferred auth defaults per attempt and bound the complete operation by its timeout.
 - [x] Enforce single alternatives and retain Radius interrupted results with retry advice.
@@ -43,8 +52,9 @@ cancellation/error coverage (see the coverage standards in
 - [x] Add advisory subscription metadata to OAuth descriptors and registry auth
       summaries so applications can distinguish known subscription-backed flows
       from generic OAuth sign-in without changing auth behavior.
-- [ ] Keep ambient cloud credential probing and OAuth token persistence deferred
-      unless they get separate public API contracts.
+- [ ] Keep ambient cloud credential probing beyond the documented Bedrock default
+      chain, AWS SDK/SSO integration, and automatic OAuth token persistence
+      deferred unless they get separate public API contracts.
 
 ## Request budgeting
 

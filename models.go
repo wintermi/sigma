@@ -527,28 +527,7 @@ func cloneBoolPtr(value *bool) *bool {
 }
 
 func cloneAnyValue(value any) any {
-	switch typed := value.(type) {
-	case Schema:
-		copied := make(Schema, len(typed))
-		for key, nested := range typed {
-			copied[key] = cloneAnyValue(nested)
-		}
-		return copied
-	case map[string]any:
-		return copyStringAnyMap(typed)
-	case []any:
-		copied := make([]any, len(typed))
-		for i, item := range typed {
-			copied[i] = cloneAnyValue(item)
-		}
-		return copied
-	case []string:
-		return append([]string(nil), typed...)
-	case map[string]string:
-		return copyStringStringMap(typed)
-	default:
-		return value
-	}
+	return cloneJSONValue(value, cloneMetadata)
 }
 
 func modelMatchesAll(model Model, filters []ModelFilter) bool {

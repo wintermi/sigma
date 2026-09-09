@@ -415,3 +415,84 @@ minimal-text check still sets `availabilityOKAfterFailure`. Neither produces a
 recommendation for that case: success with a larger output cap does not establish
 that the cap caused the safety rejection. A generic HTTP 403 alone is not treated
 as a safety rejection.
+
+### xAI JSON-object safety rejections
+
+The `json_object` case sends one user message, `Return JSON exactly {"ok":true}.`,
+with `response_format: {"type":"json_object"}` and no tools or previous history.
+A provider HTTP 403 containing `SAFETY_CHECK_TYPE_BIO` is a safety rejection;
+it does not establish that JSON-object mode is unsupported or that the output
+token budget is too small. xAI documents both JSON-object and JSON-schema modes
+in its [structured-output documentation](https://docs.x.ai/developers/model-capabilities/text/structured-outputs).
+
+If this case is `inconclusive` while `json_schema` is `ok` and
+`availabilityOKAfterFailure` is true, the model remains reachable and the
+separate schema case succeeded. The JSON-object case is still unresolved.
+The separate schema case uses a different prompt, so its success does not prove
+that switching the rejected prompt to JSON-schema mode will work. If JSON-object
+mode is required, retain the provider request ID, request timestamp, and redacted
+request/response payloads for an xAI support investigation. A false positive on
+the benign probe is possible, but the response alone does not establish the cause.
+`-repair` cannot override provider moderation, and a successful availability
+control must not be reported as a fix for that rejection.
+
+For persistent xAI failures, `-repair` (or `-structured-output`) adds six
+diagnostic requests after the availability check. All retain the original
+output-token budget; the first three also retain the original user prompt:
+
+| Attempt | Difference from the original request | What success establishes |
+| --- | --- | --- |
+| `json_object_explicit_instruction` | Adds a system instruction to return only a JSON object, without Markdown | JSON-object mode accepted this instruction variant. |
+| `json_object_schema_control` | Uses a strict schema with the requested boolean `ok` field | The same user prompt was accepted with schema-constrained output. |
+| `json_object_text_control` | Uses plain-text output mode | The same user prompt was accepted without JSON-object mode. |
+| `json_object_string_value` | Requests `{"ok":"ready"}` in JSON-object mode | This string-value prompt was accepted. |
+| `json_object_number_value` | Requests `{"ok":1}` in JSON-object mode | This number-value prompt was accepted. |
+| `json_object_false_value` | Requests `{"ok":false}` in JSON-object mode | This alternate boolean-value prompt was accepted. |
+
+The value comparisons keep the `ok` key, prompt wording, JSON-object mode, and
+request options unchanged. The three values are fixed so runs can be compared.
+Acceptance can vary between runs, so a successful
+variant does not establish the cause of the original rejection.
+
+Run these focused checks from a terminal with `XAI_API_KEY` configured:
+
+```bash
+mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.6 -structured-output -repair
+```
+
+Successful comparisons appear in `successfulControls`; failures retain their
+individual errors and request IDs in `failedAttempts`. These are comparisons,
+not automatic repair claims, and the original safety rejection remains
+`inconclusive`. If the instruction variant succeeds, it provides a concrete
+request shape to verify in the application. If only the schema/text comparisons
+succeed, the evidence points toward an interaction with JSON-object mode, but
+does not identify the provider's internal cause. These additional requests run
+only after a failed xAI JSON-object case; a passing primary case is unchanged.
+
+### Locally validated JSON text fallback
+
+When the same prompt succeeds in plain-text mode, run the explicit fallback:
+
+```bash
+mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.6 -json-text
+```
+
+`-json-text` runs only the `json_text` case on Chat Completions routes. It sends
+the original `Return JSON exactly {"ok":true}.` prompt and 256-token budget with
+`response_format: {"type":"text"}`. Sigma validates the completed response
+locally against the exact requested object, allowing whitespace. Prose,
+Markdown fences, duplicate keys, extra fields, wrong values, truncated output,
+and trailing JSON fail validation. Provider errors are returned unchanged.
+
+This is an opt-in workaround for obtaining JSON text, not a fix for an upstream
+safety rejection or evidence of provider-enforced JSON support. No provider
+adapter silently downgrades requests. Without the flag, the original capability
+checks and their error reporting remain unchanged. The flag takes precedence
+over `-structured-output`; `-repair` does not add variants to this fallback.
+
+Applications can use the same existing provider option,
+`sigma.WithProviderOption(sigma.ProviderXAI, "extra_body", map[string]any{"response_format": map[string]any{"type": "text"}})`,
+and validate returned JSON against their own expected structure before using it.
+Plain-text mode does not guarantee valid JSON. A successful diagnostic text
+control previously established only request acceptance; `json_text` also checks
+the returned value. Live success must still be verified in the calling environment.
