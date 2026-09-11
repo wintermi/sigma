@@ -168,6 +168,19 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Google and OpenAI Chat Completions now use opaque random synthetic tool-call
+  IDs that remain distinct across turns and concurrent streams, including custom
+  tools and shared Vertex text parsing. Existing invalid histories are not migrated.
+- Google text, images, and embeddings, plus OpenRouter images, apply rich auth
+  routing, headers, and payload defaults before constructing each request attempt.
+  Retries refresh these defaults while preserving caller overrides.
+- OpenAI and OpenRouter inline image errors redact structured messages, codes,
+  and error-type metadata as well as the returned Go error.
+- Direct Google and Vertex Gemini images preserve candidate terminal reasons and
+  prompt feedback, retain partial output, and reject empty malformed responses.
+- Oversized embedding batches average weighted coordinates in float64 to avoid
+  overflow from finite float32 inputs, without normalizing the result.
+
 - The surface probe now offers an explicit `-json-text` workaround that requests
   JSON through plain-text output and validates the completed probe answer locally.
   It preserves provider errors and reports a separate case without claiming

@@ -49,6 +49,13 @@ Providers emit provider-neutral events:
 Content events may be interleaved. Track state by `Event.ContentIndex` instead
 of assuming all text arrives before all tool calls or thinking blocks.
 
+Treat tool-call IDs as opaque. Google (including Vertex text) and OpenAI Chat
+Completions generate random fallback IDs when a provider omits an ID, keeping
+calls distinct across turns and concurrent streams. Each call retains its generated
+ID through its events and final result. A delayed first provider-authored Chat
+Completions ID can replace the fallback; track live events by content index and
+use the final ID for tool results and persistence. Custom tools follow the same rule.
+
 ```go
 textByIndex := map[int]string{}
 

@@ -2479,12 +2479,12 @@ func TestStreamingParsesOpenAICompatibleMetadataAndFallbackToolID(t *testing.T) 
 	}
 	var sawFallback bool
 	for _, event := range events {
-		if event.Kind == sigma.EventKindToolCallStart && event.PartialToolCall != nil && event.PartialToolCall.ID == "call_0" {
+		if event.Kind == sigma.EventKindToolCallStart && event.PartialToolCall != nil && strings.HasPrefix(event.PartialToolCall.ID, "call_") && event.PartialToolCall.ID != "real_call" {
 			sawFallback = true
 		}
 	}
 	if !sawFallback {
-		t.Fatal("tool-call start did not use fallback id call_0")
+		t.Fatal("tool-call start did not use a synthetic fallback id")
 	}
 	if got, want := final.ProviderMetadata["id"], "chatcmpl_meta"; got != want {
 		t.Fatalf("metadata id = %v, want %v", got, want)
@@ -3062,13 +3062,13 @@ func TestStreamingIDlessToolCallsAcrossChunksGetUniqueFallbackIDs(t *testing.T) 
 	if got, want := len(final.Content), 2; got != want {
 		t.Fatalf("content blocks = %d, want %d: %#v", got, want, final.Content)
 	}
-	// Each id-less call arrives in its own chunk at position 0; the synthetic
-	// ids must come from the provider index, not the position in the chunk.
-	if got, want := final.Content[0].ToolCallID, "call_0"; got != want {
-		t.Fatalf("first tool call id = %q, want %q", got, want)
+	// Each id-less call arrives in its own chunk at position 0 and must receive
+	// a distinct synthetic ID.
+	if got := final.Content[0].ToolCallID; !strings.HasPrefix(got, "call_") {
+		t.Fatalf("missing first synthetic tool call id: %q", got)
 	}
-	if got, want := final.Content[1].ToolCallID, "call_1"; got != want {
-		t.Fatalf("second tool call id = %q, want %q", got, want)
+	if got := final.Content[1].ToolCallID; !strings.HasPrefix(got, "call_") || got == final.Content[0].ToolCallID {
+		t.Fatalf("missing distinct second synthetic tool call id: %q", got)
 	}
 }
 

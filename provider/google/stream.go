@@ -7,6 +7,7 @@ package google
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -67,24 +68,23 @@ type googleAPIError struct {
 }
 
 type streamParser struct {
-	writer          sigma.StreamWriter
-	model           sigma.Model
-	final           sigma.AssistantMessage
-	started         bool
-	blocks          []*googleBlockState
-	currentText     *googleBlockState
-	currentThink    *googleBlockState
-	usage           *sigma.Usage
-	stopReason      sigma.StopReason
-	rawStopReason   string
-	responseID      string
-	modelVersion    string
-	promptFeedback  map[string]any
-	grounding       []map[string]any
-	sources         []map[string]any
-	toolCallIDs     map[string]struct{}
-	toolCallCounter int
-	finished        bool
+	writer         sigma.StreamWriter
+	model          sigma.Model
+	final          sigma.AssistantMessage
+	started        bool
+	blocks         []*googleBlockState
+	currentText    *googleBlockState
+	currentThink   *googleBlockState
+	usage          *sigma.Usage
+	stopReason     sigma.StopReason
+	rawStopReason  string
+	responseID     string
+	modelVersion   string
+	promptFeedback map[string]any
+	grounding      []map[string]any
+	sources        []map[string]any
+	toolCallIDs    map[string]struct{}
+	finished       bool
 }
 
 type googleBlockState struct {
@@ -303,8 +303,7 @@ func (p *streamParser) googleToolCallID(id string) string {
 		}
 	}
 	for {
-		p.toolCallCounter++
-		synthetic := fmt.Sprintf("google_tool_call_%d", p.toolCallCounter)
+		synthetic := "google_tool_call_" + rand.Text()
 		if _, exists := p.toolCallIDs[synthetic]; !exists {
 			p.toolCallIDs[synthetic] = struct{}{}
 			return synthetic

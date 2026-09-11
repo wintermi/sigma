@@ -397,6 +397,31 @@ selection remains available through existing provider-specific controls.
 
 ## Reliability corrections
 
+Synthetic tool-call IDs for Google and OpenAI Chat Completions are now random,
+opaque identifiers that remain distinct across turns and concurrent streams.
+This includes custom Chat Completions tools and Vertex text through the shared
+Google parser. Provider-authored IDs retain their existing behavior; already-invalid
+persisted histories with duplicate IDs are not automatically migrated.
+
+Google text, images, and embeddings and OpenRouter images now resolve rich auth
+before building each request's route, payload, and headers. Each retry starts
+from caller options and refreshes auth defaults once. Caller overrides, protected
+credential headers, final header suppression, and request timeouts retain their
+existing contracts. HTTP-client selection and embedding-cache namespaces remain
+caller-owned.
+
+OpenAI and OpenRouter inline image errors redact messages, codes, and error-type
+metadata in structured results, including serialized results. Direct Google and
+Vertex Gemini image results retain candidate finish reasons and prompt feedback
+in metadata. Safety and token-limit stops preserve partial output without automatic
+retry; explicit error reasons produce typed provider errors, and empty envelopes
+without terminal evidence are rejected. Imagen's separate protocol is unchanged.
+
+Oversized-input embedding batching now computes weighted averages in float64
+before returning float32 coordinates, avoiding overflow from large finite inputs.
+The result remains unnormalized. These corrections add no exported APIs,
+dependencies, persistence schema changes, catalog changes, or provider promotions.
+
 Tool-argument decoding preserves provider-authored JSON numbers as `json.Number`,
 including structured initial inputs, partial deltas, cancellation snapshots,
 persistence, and replay. Callers asserting `float64` must migrate to `json.Number`

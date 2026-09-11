@@ -30,6 +30,9 @@ func TestGoogleCandidateCountValidationAfterHooks(t *testing.T) {
 	}
 	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}
 	opts := sigma.Options{ProviderOptions: map[sigma.ProviderID]map[string]any{model.Provider: {"candidateCount": 1}}}
+	opts.AuthResolver = sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{}, nil
+	})
 	if _, err := NewProvider(WithPayloadHook(hook)).newRequest(context.Background(), model, req, opts); !errors.Is(err, sigma.ErrInvalidOptions) {
 		t.Fatalf("Gemini hook: %v", err)
 	}

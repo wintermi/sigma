@@ -1019,6 +1019,33 @@ func TestEmbedBatchSplitPolicyUsesSafeBoundaries(t *testing.T) {
 	}
 }
 
+func TestEmbedBatchAveragesLargeFiniteCoordinates(t *testing.T) {
+	t.Parallel()
+	large := float32(math.MaxFloat32)
+	provider := sigmatest.NewFauxEmbeddingProvider(
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{large, large, -large}}}}},
+		sigmatest.EmbeddingScript{Response: sigma.Embeddings{Vectors: []sigma.Embedding{{Index: 0, Vector: []float32{large, -large, large}}}}},
+	)
+	registry, err := sigmatest.EmbeddingRegistry(provider)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := sigma.NewClient(sigma.WithRegistry(registry)).EmbedBatch(context.Background(), sigmatest.EmbeddingModel(), sigma.EmbeddingRequest{Inputs: []string{"abcde"}}, sigma.EmbeddingBatchConfig{MaxBatchBytes: 3, SplitOversized: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := provider.Requests()
+	if len(requests) != 2 || !reflect.DeepEqual(requests[0].Request.Inputs, []string{"ab"}) || !reflect.DeepEqual(requests[1].Request.Inputs, []string{"cde"}) {
+		t.Fatalf("unexpected split: %#v", requests)
+	}
+	want := []float32{large, -float32(float64(large) / 5), float32(float64(large) / 5)}
+	for i, got := range result.Embeddings.Vectors[0].Vector {
+		if math.IsInf(float64(got), 0) || math.IsNaN(float64(got)) || math.Abs(float64(got-want[i])) > math.Abs(float64(want[i]))*1e-6 {
+			t.Errorf("coordinate %d = %g, want finite unnormalized %g", i, got, want[i])
+		}
+	}
+}
+
 func TestEmbedBatchRejectsUnsplittableOversizedInput(t *testing.T) {
 	t.Parallel()
 

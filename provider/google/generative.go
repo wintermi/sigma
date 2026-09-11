@@ -191,6 +191,10 @@ func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request,
 }
 
 func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Request, error) {
+	opts, credential, err := resolveRequestAuth(ctx, model, opts)
+	if err != nil {
+		return nil, err
+	}
 	payload, err := generativePayload(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -226,9 +230,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	for key, value := range googleModelHeaders(model) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.addAuthHeader(ctx, httpReq, model, opts); err != nil {
-		return nil, err
-	}
+	applyAuthHeader(httpReq, credential)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -239,28 +241,31 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 	return httpReq, nil
 }
 
-func (p *Provider) addAuthHeader(ctx context.Context, req *http.Request, model sigma.Model, opts sigma.Options) error {
+func resolveRequestAuth(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Options, sigma.Credential, error) {
 	if opts.AuthResolver == nil {
-		return &sigma.Error{
+		return sigma.Options{}, sigma.Credential{}, &sigma.Error{
 			Code:     sigma.ErrorUnsupported,
 			Message:  "google generative ai: auth resolver is required",
 			Provider: model.Provider,
 			Model:    model.ID,
 		}
 	}
-	credential, err := opts.AuthResolver.Resolve(ctx, model, opts)
+	resolved, credential, err := sigma.ResolveAuthForRequest(ctx, model, opts)
 	if err != nil {
-		return err
+		return sigma.Options{}, sigma.Credential{}, fmt.Errorf("google generative ai: resolve auth: %w", err)
 	}
+	return resolved, credential, nil
+}
+
+func applyAuthHeader(req *http.Request, credential sigma.Credential) {
 	if credential.Value == "" {
-		return nil
+		return
 	}
 	if credential.Type == sigma.CredentialTypeOAuthToken {
 		req.Header.Set("Authorization", "Bearer "+credential.Value)
-		return nil
+		return
 	}
 	req.Header.Set("X-Goog-Api-Key", credential.Value)
-	return nil
 }
 
 func (p *Provider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {

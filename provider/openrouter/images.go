@@ -19,6 +19,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -138,6 +139,18 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 }
 
 func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
+	if opts.AuthResolver == nil {
+		return nil, &sigma.Error{
+			Code:     sigma.ErrorUnsupported,
+			Message:  "openrouter images: auth resolver is required",
+			Provider: model.Provider,
+			Model:    model.ID,
+		}
+	}
+	opts, credential, err := sigma.ResolveAuthForRequest(ctx, authModel(model), opts)
+	if err != nil {
+		return nil, fmt.Errorf("openrouter images: resolve auth: %w", err)
+	}
 	payload, err := payload(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -158,8 +171,8 @@ func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel,
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", "sigma/openrouter-images")
-	if err := addAuthHeader(ctx, httpReq, model, opts); err != nil {
-		return nil, err
+	if credential.Value != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+credential.Value)
 	}
 	for key, value := range p.headers {
 		httpReq.Header.Set(key, value)
@@ -353,25 +366,6 @@ func providerOptions(opts sigma.Options) map[string]any {
 	return nil
 }
 
-func addAuthHeader(ctx context.Context, req *http.Request, model sigma.ImageModel, opts sigma.Options) error {
-	if opts.AuthResolver == nil {
-		return &sigma.Error{
-			Code:     sigma.ErrorUnsupported,
-			Message:  "openrouter images: auth resolver is required",
-			Provider: model.Provider,
-			Model:    model.ID,
-		}
-	}
-	credential, err := opts.AuthResolver.Resolve(ctx, authModel(model), opts)
-	if err != nil {
-		return err
-	}
-	if credential.Value != "" {
-		req.Header.Set("Authorization", "Bearer "+credential.Value)
-	}
-	return nil
-}
-
 func authModel(model sigma.ImageModel) sigma.Model {
 	return sigma.Model{
 		ID:               model.ID,
@@ -471,10 +465,10 @@ func decodeResponse(body []byte, model sigma.ImageModel) (sigma.AssistantImages,
 		images := sigma.AssistantImages{
 			StopReason: sigma.StopReasonError,
 			Errors: []sigma.ImageError{{
-				Code:    fmt.Sprint(decoded.Error.Code),
-				Message: decoded.Error.Message,
+				Code:    redact.String(fmt.Sprint(decoded.Error.Code)),
+				Message: redact.String(decoded.Error.Message),
 				ProviderMetadata: map[string]any{
-					"type": decoded.Error.Type,
+					"type": redact.String(decoded.Error.Type),
 				},
 			}},
 		}

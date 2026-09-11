@@ -109,6 +109,11 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 }
 
 func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
+	textModel := imageAuthModel(model, sigma.API(sigma.ImageAPIGoogleImages))
+	opts, credential, err := resolveRequestAuth(ctx, textModel, opts)
+	if err != nil {
+		return nil, err
+	}
 	body, err := googleImagesRequestBody(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -125,16 +130,13 @@ func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel,
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", "sigma/google-images")
 
-	textModel := imageAuthModel(model, sigma.API(sigma.ImageAPIGoogleImages))
 	for key, value := range p.base.headers {
 		httpReq.Header.Set(key, value)
 	}
 	for key, value := range googleModelHeaders(textModel) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.base.addAuthHeader(ctx, httpReq, textModel, opts); err != nil {
-		return nil, err
-	}
+	applyAuthHeader(httpReq, credential)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}
@@ -330,11 +332,13 @@ func decodeGoogleImagenResponse(body []byte, model sigma.ImageModel) (sigma.Assi
 }
 
 type googleGeminiImageResponse struct {
-	Candidates []googleGeminiImageCandidate `json:"candidates"`
+	Candidates     []googleGeminiImageCandidate `json:"candidates"`
+	PromptFeedback map[string]any               `json:"promptFeedback"`
 }
 
 type googleGeminiImageCandidate struct {
-	Content googleGeminiContent `json:"content"`
+	Content      googleGeminiContent `json:"content"`
+	FinishReason string              `json:"finishReason"`
 }
 
 type googleGeminiContent struct {
@@ -354,10 +358,34 @@ type googleGeminiInlineData struct {
 func decodeGoogleGeminiImageResponse(body []byte, model sigma.ImageModel) (sigma.AssistantImages, error) {
 	var decoded googleGeminiImageResponse
 	if err := json.Unmarshal(body, &decoded); err != nil {
-		return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}, fmt.Errorf("google images: decode response: %w", err)
+		return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}, sigma.NewProviderError(model.Provider, sigma.API(model.API), model.ID, http.StatusOK, "", 0, body, fmt.Errorf("google images: decode response: %w", err))
 	}
 	out := sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonEndTurn}
-	for _, candidate := range decoded.Candidates {
+	metadata := make(map[string]any)
+	if len(decoded.PromptFeedback) > 0 {
+		metadata["promptFeedback"] = decoded.PromptFeedback
+	}
+	terminalEvidence := false
+	var terminalError error
+	if len(decoded.Candidates) == 0 {
+		if reason, _ := decoded.PromptFeedback["blockReason"].(string); strings.TrimSpace(reason) != "" && reason != "BLOCK_REASON_UNSPECIFIED" {
+			out.StopReason = sigma.StopReasonContentFilter
+			terminalEvidence = true
+		}
+	}
+	reasons := make([]string, len(decoded.Candidates))
+	for i, candidate := range decoded.Candidates {
+		reasons[i] = candidate.FinishReason
+		if candidate.FinishReason != "" {
+			terminalEvidence = true
+			reason := googleStopReason(candidate.FinishReason)
+			if googleImageStopPriority(reason) > googleImageStopPriority(out.StopReason) {
+				out.StopReason = reason
+			}
+			if reason == sigma.StopReasonError && terminalError == nil {
+				terminalError = fmt.Errorf("google images: candidate finish reason %s: %w", candidate.FinishReason, sigma.ErrProviderResponse)
+			}
+		}
 		for _, part := range candidate.Content.Parts {
 			if part.Text != "" {
 				out.Images = append(out.Images, sigma.ImageText(part.Text))
@@ -367,7 +395,35 @@ func decodeGoogleGeminiImageResponse(body []byte, model sigma.ImageModel) (sigma
 			}
 		}
 	}
+	if len(reasons) > 0 {
+		metadata["finishReasons"] = reasons
+	}
+	if len(metadata) > 0 {
+		out.ProviderMetadata = metadata
+	}
+	if len(out.Images) == 0 && !terminalEvidence {
+		out.StopReason = sigma.StopReasonError
+		terminalError = fmt.Errorf("google images: response has no output or terminal evidence: %w", sigma.ErrProviderResponse)
+	}
+	if terminalError != nil {
+		return out, sigma.NewProviderError(model.Provider, sigma.API(model.API), model.ID, http.StatusOK, "", 0, body, terminalError)
+	}
 	return out, nil
+}
+
+func googleImageStopPriority(reason sigma.StopReason) int {
+	switch reason {
+	case sigma.StopReasonError:
+		return 4
+	case sigma.StopReasonContentFilter:
+		return 3
+	case sigma.StopReasonMaxTokens:
+		return 2
+	case sigma.StopReasonUnknown:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func imageMIMEType(value string) string {

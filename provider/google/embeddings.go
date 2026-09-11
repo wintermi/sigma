@@ -104,6 +104,11 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 }
 
 func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
+	textModel := embeddingAuthModel(model, sigma.API(sigma.EmbeddingAPIGoogleEmbeddings))
+	opts, credential, err := resolveRequestAuth(ctx, textModel, opts)
+	if err != nil {
+		return nil, err
+	}
 	payload := googleEmbeddingsPayload(model, req, opts)
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -122,16 +127,13 @@ func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.Embeddi
 	httpReq.Header.Set("Accept", "application/json")
 	httpReq.Header.Set("User-Agent", "sigma/google-embeddings")
 
-	textModel := embeddingAuthModel(model, sigma.API(sigma.EmbeddingAPIGoogleEmbeddings))
 	for key, value := range p.base.headers {
 		httpReq.Header.Set(key, value)
 	}
 	for key, value := range googleModelHeaders(textModel) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.base.addAuthHeader(ctx, httpReq, textModel, opts); err != nil {
-		return nil, err
-	}
+	applyAuthHeader(httpReq, credential)
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
 	}

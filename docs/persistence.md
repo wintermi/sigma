@@ -50,6 +50,12 @@ migration and explicit conversion guidance.
 
 ## Appending assistant turns
 
+Synthetic tool-call IDs are opaque and distinct across generated turns. Persist
+the final assistant IDs and use those exact IDs for matching tool results.
+Conversation-wide duplicate validation remains in place. Existing histories
+containing duplicate tool-call IDs are not automatically migrated; applications
+must repair ambiguous calls and their matching results before persisting them.
+
 `AssistantMessage` is output metadata. Persist conversation history by converting
 the final assistant response back into a `Message`:
 

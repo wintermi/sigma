@@ -189,6 +189,12 @@ Oversized singleton recovery uses `EmbeddingSplitPolicy` to choose safer split
 points. The zero-value policy prefers a nearby newline, then nearby whitespace,
 then a UTF-8-safe rune midpoint.
 
+Subdivision vectors are averaged using their rune counts as weights. Weighted
+products, sums, and division use float64 before converting the final coordinates
+to float32, preserving finite averages for large finite inputs and mixed signs.
+The batching result is not normalized; `CombineEmbeddingVectors` remains a
+separate utility that normalizes its output.
+
 `EmbeddingBatchSummary` keeps aggregate batch telemetry: successful provider
 result count, total request attempts, error count, vector count, status buckets,
 request IDs, attempts, trace events, usage, and cost. `Trace` records redacted

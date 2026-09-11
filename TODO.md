@@ -8,6 +8,12 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Generate opaque synthetic tool-call IDs across turns and concurrent streams.
+- [x] Apply rich auth per attempt to Google text/images/embeddings and OpenRouter images.
+- [x] Redact structured inline OpenAI and OpenRouter image errors.
+- [x] Preserve Gemini image terminal reasons and prompt blocking on Google and Vertex.
+- [x] Prevent overflow in unnormalized oversized-input embedding averages.
+
 - [x] Add targeted xAI JSON-object format and value comparisons while preserving safety-rejection evidence.
 - [x] Add an opt-in JSON text surface probe with local output validation and unchanged provider-error reporting.
 - [x] Connect Bedrock stream closure to request cancellation and transport cleanup.

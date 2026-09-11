@@ -24,6 +24,11 @@ Diagnostic paths redact common credential shapes before exposing them:
   `client_secret`, `secret_access_key`, and `session_token`
 - provider error body previews and underlying error messages
 
+OpenAI and OpenRouter HTTP 200 inline image errors apply the same redaction to
+`ImageError.Message`, `ImageError.Code`, and error-type metadata. Serialized image
+error results therefore retain useful diagnostics without exposing recognized
+credential shapes. Ordinary generated text and images remain unchanged.
+
 Recognized JSON credential fields are also redacted in incomplete diagnostics.
 An unterminated string value is hidden through the end of the diagnostic,
 including escaped quotes, backslashes, and multiline content. JSON whitespace

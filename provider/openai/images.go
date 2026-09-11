@@ -20,6 +20,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/redact"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -738,10 +739,10 @@ func decodeImagesResponse(body []byte, model sigma.ImageModel, req sigma.ImageRe
 		images := sigma.AssistantImages{
 			StopReason: sigma.StopReasonError,
 			Errors: []sigma.ImageError{{
-				Code:    fmt.Sprint(decoded.Error.Code),
-				Message: decoded.Error.Message,
+				Code:    redact.String(fmt.Sprint(decoded.Error.Code)),
+				Message: redact.String(decoded.Error.Message),
 				ProviderMetadata: map[string]any{
-					providerToolOptionTypeKey: decoded.Error.Type,
+					providerToolOptionTypeKey: redact.String(decoded.Error.Type),
 				},
 			}},
 		}

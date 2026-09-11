@@ -1255,6 +1255,7 @@ func weightedAverageEmbedding(vectors []Embedding, weights []int) ([]float32, er
 	}
 	dimensions := len(vectors[0].Vector)
 	out := make([]float32, dimensions)
+	sums := make([]float64, dimensions)
 	totalWeight := 0
 	for i, embedding := range vectors {
 		if len(embedding.Vector) != dimensions {
@@ -1265,15 +1266,15 @@ func weightedAverageEmbedding(vectors []Embedding, weights []int) ([]float32, er
 			weight = weights[i]
 		}
 		totalWeight += weight
-		for j := range out {
-			out[j] += embedding.Vector[j] * float32(weight)
+		for j := range sums {
+			sums[j] += float64(embedding.Vector[j]) * float64(weight)
 		}
 	}
 	if totalWeight == 0 {
 		return out, nil
 	}
 	for i := range out {
-		out[i] /= float32(totalWeight)
+		out[i] = float32(sums[i] / float64(totalWeight))
 	}
 	return out, nil
 }

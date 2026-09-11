@@ -8,6 +8,7 @@ package openai
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -117,7 +118,6 @@ type completionStreamParser struct {
 	thinking         *streamblocks.Thinking
 	toolCalls        map[string]*streamblocks.ToolCall
 	providerIDKeys   map[string]struct{}
-	toolCallOrdinals map[string]int
 	customToolCalls  map[*streamblocks.ToolCall]*completionCustomToolCall
 	grammarTools     map[string]string
 	lastToolCallKey  string
@@ -139,13 +139,12 @@ type completionCustomToolCall struct {
 
 func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.StreamWriter, model sigma.Model, grammarTools map[string]string, supportsFinishReason bool) (sigma.AssistantMessage, error) {
 	parser := completionStreamParser{
-		writer:           writer,
-		model:            model,
-		toolCalls:        make(map[string]*streamblocks.ToolCall),
-		providerIDKeys:   make(map[string]struct{}),
-		toolCallOrdinals: make(map[string]int),
-		customToolCalls:  make(map[*streamblocks.ToolCall]*completionCustomToolCall),
-		grammarTools:     grammarTools,
+		writer:          writer,
+		model:           model,
+		toolCalls:       make(map[string]*streamblocks.ToolCall),
+		providerIDKeys:  make(map[string]struct{}),
+		customToolCalls: make(map[*streamblocks.ToolCall]*completionCustomToolCall),
+		grammarTools:    grammarTools,
 		final: sigma.AssistantMessage{
 			Model:    model.ID,
 			Provider: model.Provider,
@@ -390,19 +389,11 @@ func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, d
 	state := p.toolCalls[key]
 	if state == nil {
 		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
-		p.toolCallOrdinals[key] = len(p.toolCalls)
 		p.toolCalls[key] = state
 	}
 	p.lastToolCallKey = key
 	if state.ID() == "" && delta.ID == "" && delta.Function.Name != "" {
-		// Synthetic ids must be unique across the whole stream: prefer the
-		// provider index and fall back to the tool call's creation ordinal,
-		// never the delta's position within its own chunk.
-		fallback := p.toolCallOrdinals[key]
-		if delta.Index != nil {
-			fallback = *delta.Index
-		}
-		state.SetID(fmt.Sprintf("call_%d", fallback))
+		state.SetID("call_" + rand.Text())
 	}
 	p.setToolCallIdentity(key, state, delta.ID, delta.Function.Name)
 	state.AppendArguments(delta.Function.Arguments)
@@ -438,7 +429,6 @@ func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key str
 	argumentsDelta := ""
 	if state == nil {
 		state = &streamblocks.ToolCall{ContentIndex: p.nextContentIndex()}
-		p.toolCallOrdinals[key] = len(p.toolCalls)
 		p.toolCalls[key] = state
 		p.customToolCalls[state] = &completionCustomToolCall{}
 		propertyJSON, err := json.Marshal(property)
@@ -450,11 +440,7 @@ func (p *completionStreamParser) emitCustomToolCall(ctx context.Context, key str
 	}
 	p.lastToolCallKey = key
 	if state.ID() == "" && delta.ID == "" && delta.Custom.Name != "" {
-		fallback := p.toolCallOrdinals[key]
-		if delta.Index != nil {
-			fallback = *delta.Index
-		}
-		state.SetID(fmt.Sprintf("call_%d", fallback))
+		state.SetID("call_" + rand.Text())
 	}
 	p.setToolCallIdentity(key, state, delta.ID, name)
 	input, err := grammarToolInputDelta(delta.Custom.Input)

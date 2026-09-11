@@ -90,7 +90,27 @@ See [Cancellation](cancellation.md).
 OpenAI image generation, streaming, edits, and variations apply auth-derived
 base URLs, endpoints, headers, and provider options before building each request.
 Explicit request configuration overrides these defaults, with case-insensitive
-header matching. Embedding requests follow the same auth-resolution contract.
+header matching. Google Gemini/Imagen and OpenRouter image requests also resolve
+rich auth once before building each HTTP attempt, including retries. Google and
+OpenAI embedding requests follow the same auth-resolution contract.
+
+## Google and Vertex Gemini Results
+
+Gemini image results preserve raw candidate reasons in
+`ProviderMetadata["finishReasons"]`, in candidate order, and prompt feedback in
+`ProviderMetadata["promptFeedback"]`. Returned text and images retain their order,
+including partial output. Safety stops map to `content-filter`, token limits to
+`max-tokens`, and unrecognized explicit reasons to `unknown`. For multiple
+candidates, the aggregate reason uses this priority: `error`, `content-filter`,
+`max-tokens`, `unknown`, then `end-turn`.
+
+Safety and token-limit outcomes remain inspectable results without a Go error or
+automatic retry. Explicit error reasons return a typed `ProviderError` alongside
+the result. Meaningful prompt blocking without candidates produces `content-filter`.
+An envelope with neither output nor terminal evidence returns a malformed-response
+provider error. Output without a finish reason remains compatible and ends with
+`end-turn`. These rules apply to direct Google and Vertex Gemini image routes;
+Imagen keeps its separate response protocol.
 
 ## OpenRouter Images
 

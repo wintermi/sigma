@@ -71,10 +71,15 @@ persisted JSON. See [Security](security.md) for redaction behavior.
 
 Resolvers implementing `AuthResolutionResolver` can return an `AuthResolution`
 containing credentials and request defaults. Codex SSE and WebSocket requests,
-OpenAI images, and embeddings apply those defaults before constructing their
-endpoint, payload, and headers. Credentials resolve once per request or
+OpenAI images and embeddings, Google text/images/embeddings, and OpenRouter
+images apply those defaults before constructing their endpoint, payload, and
+headers. Credentials resolve once per request or
 connection attempt; retries and SSE fallback have their own attempt lifecycle.
 Explicit Codex token providers retain precedence over the general resolver.
+Google and OpenRouter image HTTP retries start from the original caller options,
+so refreshed auth-derived endpoints and headers replace the previous attempt's
+defaults. Google text and embeddings follow the same retry behavior. HTTP-client
+selection remains unchanged; callers still own embedding-cache namespace isolation.
 
 Explicit caller configuration overrides auth-derived defaults. A caller-supplied
 `base_url` or `baseURL` blocks auth defaults under either spelling, including

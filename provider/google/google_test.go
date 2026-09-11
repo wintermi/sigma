@@ -1352,14 +1352,14 @@ func TestFunctionCallArgumentsGenerateSyntheticIDsWhenMissingOrDuplicate(t *test
 	if got, want := len(final.Content), 3; got != want {
 		t.Fatalf("tool calls = %d, want %d", got, want)
 	}
-	if got, want := final.Content[0].ToolCallID, "google_tool_call_1"; got != want {
-		t.Fatalf("first tool call id = %q, want %q", got, want)
+	if got := final.Content[0].ToolCallID; !strings.HasPrefix(got, "google_tool_call_") {
+		t.Fatalf("missing synthetic tool call id: %q", got)
 	}
 	if got, want := final.Content[1].ToolCallID, "call_existing"; got != want {
 		t.Fatalf("second tool call id = %q, want %q", got, want)
 	}
-	if got, want := final.Content[2].ToolCallID, "google_tool_call_2"; got != want {
-		t.Fatalf("third tool call id = %q, want %q", got, want)
+	if got := final.Content[2].ToolCallID; !strings.HasPrefix(got, "google_tool_call_") || got == final.Content[0].ToolCallID {
+		t.Fatalf("missing distinct synthetic tool call id: %q", got)
 	}
 }
 
