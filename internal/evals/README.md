@@ -85,11 +85,33 @@ Call `Runner.Close` from `TestMain` after `m.Run` so all cleanups have completed
 Use one `evals.Run` call per Go test when final test status must be attributed
 to an individual run.
 
+Every `evals.Case` requires a stable, nonblank `ID`. Give baseline and candidate
+runs of the same scenario the same ID, even when their Go subtest names differ.
+Use distinct IDs for distinct scenarios that happen to share input. Pairing uses
+the evaluation set, source file, case ID, input identity, and repetition; full
+Go test names remain diagnostic labels.
+
+An optional `Case.Validate` callback receives the context and `JudgmentInput`.
+It runs after successful harness execution and JSON validation, before judges.
+Return an error for operational invariants such as missing required telemetry:
+the run then fails, records the error and output, skips judges, and is excluded
+from paired metrics. Use judges for correctness and thresholds for score-based
+test failures. Validator and judge inputs are read-only by convention.
+
 `evals.NewHarnessTable` emits baseline and candidate rows in repetition order.
 Inputs implementing `EvalGroupID() string` use that stable identity for pairing;
 other inputs use a hash of deterministic JSON. Judges return finite numeric
 scores. A score of at least `1` is a pass. A nil judge threshold records results
 without failing the test, which is the normal mode for comparative suites.
+
+Aggregate input, output, and total token counts are `*int`: nil means unavailable
+or incomplete; a pointer to zero is a measured zero. Estimated cost is optional
+independently of tokens. Sigma harnesses publish aggregates only when every
+model turn, including tool continuations, supplied the measurement. Once a turn
+is missing, later measurements cannot make that aggregate complete. Partial
+per-turn usage remains in transcripts. Generic comparisons can score an answer
+while omitting unavailable efficiency metrics; the smoke suite requires complete,
+positive total tokens and treats missing usage as an operational failure.
 
 ## Artifacts
 
@@ -101,3 +123,27 @@ other attachments are isolated under a hash of the run ID.
 Artifacts include complete prompts, responses, tool traces, caller attachments,
 and usage data. They may contain sensitive content. Review them before sharing,
 and never commit them.
+
+New `runs.jsonl` records use `schemaVersion: 2` and include `caseId`, `evalSet`,
+immutable JSON snapshots of `input` and `output`, and judgments with their
+configured `name`, score, and reason. Token and cost fields use JSON null for
+unavailable measurements. Unserializable inputs fail before dispatch;
+unserializable results fail the run while retaining other valid evidence.
+Comparison reports also use schema version 2 and include case IDs in diagnostics.
+Iteration metadata retains schema version 1. Existing artifacts are not migrated
+or rewritten; an explicitly reused directory can contain records of both versions.
+
+Sigma transcripts start with a configuration record after the system-prompt
+transform succeeds. It records model/provider/API identity, the transformed
+system prompt, tool definitions, and the effective maximum tool rounds. Each
+completion also captures allowlisted controls at
+`merged-options-before-request-adjustments`: merged client/model/call sampling
+and output limits, reasoning, tool choice, structured output, transport/cache,
+and timeout/retry settings. Durations are recorded in nanoseconds. Option
+functions execute normally once per request; capture does not invoke them again.
+
+These control snapshots precede automatic request adjustments, provider-neutral
+mappings, provider extensions, and authentication defaults. They are not final
+wire payloads. Credentials, headers, clients, resolvers, callbacks, metadata,
+and arbitrary provider-option maps are excluded from control capture. Prompts,
+tools, caller inputs, and outputs remain complete private evaluation content.

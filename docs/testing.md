@@ -91,7 +91,7 @@ supplied access token or API key. See `cmd/sigma-evals-runner/README.md` for the
 complete environment names and examples.
 
 Each invocation sequentially checks factual recall, arithmetic, exact
-formatting, JSON extraction, and multi-turn recall. Every case has a local
+formatting, JSON extraction, multi-turn recall, and a local tool-call round trip. Every case has a local
 deterministic judge and its own run artifact, and independent failures do not
 prevent later cases from running.
 
@@ -117,6 +117,20 @@ paired pass-rate report but does not alone fail a comparative invocation.
 Configuration, model execution, judging, telemetry validation, timeout, and
 artifact failures remain fatal. Full responses and transcripts remain in the
 private artifact directory.
+
+Each internal evaluation case requires a stable `Case.ID`, shared by its
+baseline and candidates independently of Go subtest names. `Case.Validate`
+checks operational invariants before judging. Token totals must be complete
+across all smoke model turns; generic comparisons leave missing efficiency
+measurements unavailable without discarding otherwise valid correctness scores.
+
+Evaluation artifacts use schema v2, preserving case identity, input and judged
+output snapshots, named judgments, operational errors, and explicit null telemetry.
+Sigma transcripts record the transformed system prompt, tools, and allowlisted
+controls before provider request adjustments. They do not record credentials or
+arbitrary provider-option maps, and do not claim final wire-payload reproduction.
+Old artifacts are left untouched. See the
+[internal evaluation guide](../internal/evals/README.md) for capture boundaries.
 
 Evaluation artifacts are stored under an ignored `.eval/` invocation directory
 unless `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` selects an exact path. They

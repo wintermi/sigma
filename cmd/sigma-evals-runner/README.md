@@ -72,7 +72,11 @@ mise run eval -- -provider openai -model gpt-5.6-sol -run 'arithmetic|json-extra
 Candidate correctness is observational: a low score is included in comparison
 statistics without failing the process. Setup, execution, judge, telemetry,
 timeout, and artifact failures still return a non-zero status. A single-model
-run retains hard correctness thresholds. The supported suite requires a model
+run retains hard correctness thresholds. Telemetry validation runs before judging,
+so invalid runs have unavailable scores and are excluded from eligible pairs.
+Every model turn must supply token usage; a positive subtotal from only some
+turns is insufficient. Missing token counts and cost print as `unavailable`;
+missing pricing alone does not fail a run. The supported suite requires a model
 that advertises tool support; incompatible selections fail before dispatch.
 
 Native Vertex requires `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT`,
@@ -114,3 +118,12 @@ directory; otherwise each invocation creates a private directory beneath
 Artifacts contain complete prompts, responses, model traces, and usage data.
 They may contain sensitive content and must not be committed or shared without
 review.
+
+Run records use evaluation schema v2: stable case IDs, immutable input/output
+snapshots, named judgments, explicit null telemetry, and operational error reasons.
+Transcripts include the transformed system prompt, tools, model identity, tool
+round limit, and per-completion allowlisted controls. Controls are captured after
+client/model/call option application, before request adjustments and provider
+mapping; they are not final wire payloads. Credentials and arbitrary provider
+options are not captured. Existing artifacts remain unchanged. See the
+[framework guide](../../internal/evals/README.md) for the schema and capture limits.

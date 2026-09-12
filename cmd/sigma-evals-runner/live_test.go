@@ -58,13 +58,14 @@ func TestProviderSmoke(t *testing.T) {
 		t.Run(smoke.name, func(t *testing.T) {
 			threshold := 1.0
 			execution := evals.Run(t.Context(), liveRunner, t, evals.Case[evals.SigmaInput, string]{
+				ID:             smoke.name,
 				EvalSet:        "Sigma text smoke",
 				Input:          smoke.input,
 				Harness:        suite.harness(smoke.harnessKind),
+				Validate:       validateSmokeExecution(suite.model),
 				Judges:         []evals.Judge[evals.SigmaInput, string]{smoke.judge},
 				JudgeThreshold: &threshold,
 			})
-			validateSmokeExecution(t, suite.model, execution)
 			t.Log(formatSmokeResult("baseline", suite.name(), smoke.name, 1, execution, nil))
 		})
 	}

@@ -130,6 +130,7 @@ func comparisonObservation(
 ) Observation {
 	return Observation{
 		EvalSet:          "prompt quality",
+		CaseID:           group,
 		GroupKey:         group,
 		TestName:         "answers",
 		File:             "internal/evals/example_eval_test.go",

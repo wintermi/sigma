@@ -31,6 +31,7 @@ const (
 
 // Observation is one comparative harness result.
 type Observation struct {
+	CaseID           string
 	EvalSet          string
 	GroupKey         string
 	TestName         string
@@ -79,6 +80,7 @@ type HarnessPairComparison struct {
 
 // ComparisonDiagnostic explains an incomplete paired observation.
 type ComparisonDiagnostic struct {
+	CaseID     string `json:"caseId"`
 	EvalSet    string `json:"evalSet"`
 	GroupKey   string `json:"groupKey"`
 	TestName   string `json:"testName"`
@@ -107,6 +109,7 @@ type harnessDescriptor struct {
 }
 
 type observationGroup struct {
+	caseID     string
 	evalSet    string
 	groupKey   string
 	testName   string
@@ -145,11 +148,12 @@ func SummarizeComparisons(observations []Observation) ComparisonReport {
 				data.candidatesByName[candidate] = harnessDescriptor{name: candidate, index: index}
 			}
 		}
-		groupID := strings.Join([]string{observation.File, observation.TestName, observation.GroupKey}, "\x00")
+		groupID := strings.Join([]string{observation.File, observation.CaseID, observation.GroupKey, strconv.Itoa(observation.Repetition)}, "\x00")
 		group := data.groupsByKey[groupID]
 		if group == nil {
 			group = &observationGroup{
 				evalSet:    observation.EvalSet,
+				caseID:     observation.CaseID,
 				groupKey:   observation.GroupKey,
 				testName:   observation.TestName,
 				file:       observation.File,
@@ -157,6 +161,9 @@ func SummarizeComparisons(observations []Observation) ComparisonReport {
 				byHarness:  make(map[string][]Observation),
 			}
 			data.groupsByKey[groupID] = group
+		}
+		if observation.TestName < group.testName {
+			group.testName = observation.TestName
 		}
 		group.byHarness[observation.Harness] = append(group.byHarness[observation.Harness], observation)
 	}
@@ -166,7 +173,7 @@ func SummarizeComparisons(observations []Observation) ComparisonReport {
 		evalSetNames = append(evalSetNames, name)
 	}
 	sort.Strings(evalSetNames)
-	report := ComparisonReport{SchemaVersion: 1}
+	report := ComparisonReport{SchemaVersion: 2}
 	for _, evalSet := range evalSetNames {
 		data := dataBySet[evalSet]
 		candidates := orderedCandidates(data)
@@ -188,6 +195,9 @@ func SummarizeComparisons(observations []Observation) ComparisonReport {
 		}
 		if left.File != right.File {
 			return left.File < right.File
+		}
+		if left.CaseID != right.CaseID {
+			return left.CaseID < right.CaseID
 		}
 		if left.TestName != right.TestName {
 			return left.TestName < right.TestName
@@ -226,6 +236,9 @@ func orderedObservationGroups(data *evalSetData) []*observationGroup {
 	sort.Slice(groups, func(i, j int) bool {
 		if groups[i].file != groups[j].file {
 			return groups[i].file < groups[j].file
+		}
+		if groups[i].caseID != groups[j].caseID {
+			return groups[i].caseID < groups[j].caseID
 		}
 		if groups[i].testName != groups[j].testName {
 			return groups[i].testName < groups[j].testName
@@ -378,10 +391,17 @@ func comparisonDiagnostics(
 			if reason == "" {
 				continue
 			}
+			testName := group.testName
+			for i, observation := range observations {
+				if i == 0 || observation.TestName < testName {
+					testName = observation.TestName
+				}
+			}
 			diagnostics = append(diagnostics, ComparisonDiagnostic{
+				CaseID:     group.caseID,
 				EvalSet:    group.evalSet,
 				GroupKey:   group.groupKey,
-				TestName:   group.testName,
+				TestName:   testName,
 				File:       group.file,
 				Repetition: group.repetition,
 				Harness:    harness.name,

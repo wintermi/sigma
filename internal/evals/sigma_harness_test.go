@@ -57,7 +57,7 @@ func TestSigmaHarnessRunsConversationAndAggregatesTelemetry(t *testing.T) {
 	if result.Output["response"] != "second" || result.Output["messages"] != 4 {
 		t.Fatalf("output = %#v", result.Output)
 	}
-	if result.Usage.InputTokens != 12 || result.Usage.OutputTokens != 5 || result.Usage.TotalTokens != 17 {
+	if (result.Usage.InputTokens == nil || *result.Usage.InputTokens != 12) || (result.Usage.OutputTokens == nil || *result.Usage.OutputTokens != 5) || (result.Usage.TotalTokens == nil || *result.Usage.TotalTokens != 17) {
 		t.Fatalf("usage = %#v", result.Usage)
 	}
 	if result.Usage.EstimatedCostUSD == nil || *result.Usage.EstimatedCostUSD <= 0 {
@@ -159,7 +159,7 @@ func TestSigmaHarnessExecutesToolCallsAndAggregatesTelemetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
-	if result.Output != "recovered" || result.Usage.TotalTokens != 17 || result.Usage.ToolCalls != 2 {
+	if result.Output != "recovered" || (result.Usage.TotalTokens == nil || *result.Usage.TotalTokens != 17) || result.Usage.ToolCalls != 2 {
 		t.Fatalf("result = %#v", result)
 	}
 	if strings.Join(executed, ",") != "call-1,call-2" {

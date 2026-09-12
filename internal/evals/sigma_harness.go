@@ -86,10 +86,57 @@ type sigmaHarness[O any] struct {
 }
 
 type sigmaTranscriptRecord struct {
-	Type      string                  `json:"type"`
-	Message   *sigma.Message          `json:"message,omitempty"`
-	Assistant *sigma.AssistantMessage `json:"assistant,omitempty"`
-	Usage     *Usage                  `json:"usage,omitempty"`
+	Type          string                  `json:"type"`
+	Configuration json.RawMessage         `json:"configuration,omitempty"`
+	Controls      json.RawMessage         `json:"controls,omitempty"`
+	Stage         string                  `json:"stage,omitempty"`
+	Message       *sigma.Message          `json:"message,omitempty"`
+	Assistant     *sigma.AssistantMessage `json:"assistant,omitempty"`
+	Usage         *Usage                  `json:"usage,omitempty"`
+}
+
+// sigmaRunConfiguration contains only caller-owned evaluation configuration.
+type sigmaRunConfiguration struct {
+	Provider      sigma.ProviderID `json:"provider"`
+	Model         sigma.ModelID    `json:"model"`
+	API           sigma.API        `json:"api"`
+	SystemPrompt  string           `json:"systemPrompt"`
+	Tools         []sigma.Tool     `json:"tools"`
+	MaxToolRounds int              `json:"maxToolRounds"`
+}
+
+// sigmaRunControls deliberately excludes credentials and arbitrary options.
+// It captures merged client/model/call controls before automatic adjustments,
+// provider-neutral mappings, provider extensions, and authentication defaults.
+type sigmaRunControls struct {
+	Temperature                  *float64                `json:"temperature,omitempty"`
+	MaxTokens                    *int                    `json:"maxTokens,omitempty"`
+	AutomaticMaxTokensForContext *bool                   `json:"automaticMaxTokensForContext,omitempty"`
+	ReasoningLevel               sigma.ThinkingLevel     `json:"reasoningLevel,omitempty"`
+	ThinkingBudgetTokens         *int                    `json:"thinkingBudgetTokens,omitempty"`
+	ToolChoice                   sigma.ToolChoice        `json:"toolChoice,omitempty"`
+	StructuredOutput             *sigma.StructuredOutput `json:"structuredOutput,omitempty"`
+	TopLogprobs                  int                     `json:"topLogprobs,omitempty"`
+	Transport                    sigma.Transport         `json:"transport,omitempty"`
+	CacheRetention               sigma.CacheRetention    `json:"cacheRetention,omitempty"`
+	Timeout                      *time.Duration          `json:"timeoutNanoseconds,omitempty"`
+	MaxRetries                   *int                    `json:"maxRetries,omitempty"`
+	MaxRetryDelay                *time.Duration          `json:"maxRetryDelayNanoseconds,omitempty"`
+}
+
+func snapshotSigmaControls(options sigma.Options) (json.RawMessage, error) {
+	encoded, err := json.Marshal(sigmaRunControls{
+		Temperature: options.Temperature, MaxTokens: options.MaxTokens,
+		AutomaticMaxTokensForContext: options.AutomaticMaxTokensForContext,
+		ReasoningLevel:               options.ReasoningLevel, ThinkingBudgetTokens: options.ThinkingBudgetTokens,
+		ToolChoice: options.ToolChoice, StructuredOutput: options.StructuredOutput,
+		TopLogprobs: options.TopLogprobs, Transport: options.Transport, CacheRetention: options.CacheRetention,
+		Timeout: options.Timeout, MaxRetries: options.MaxRetries, MaxRetryDelay: options.MaxRetryDelay,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("evals: snapshot Sigma controls: %w", err)
+	}
+	return encoded, nil
 }
 
 // NewSigmaTextHarness constructs a harness whose output is final assistant text.
@@ -178,6 +225,14 @@ func (h *sigmaHarness[O]) Run(
 			return result, fmt.Errorf("evals: transform Sigma system prompt: %w", err)
 		}
 	}
+	configuration, err := json.Marshal(sigmaRunConfiguration{
+		Provider: h.model.Provider, Model: h.model.ID, API: h.model.API,
+		SystemPrompt: request.SystemPrompt, Tools: request.Tools, MaxToolRounds: h.maxRounds,
+	})
+	if err != nil {
+		return result, fmt.Errorf("evals: snapshot Sigma configuration: %w", err)
+	}
+	transcript = append(transcript, sigmaTranscriptRecord{Type: "configuration", Configuration: configuration})
 	for i := range request.Messages {
 		message := request.Messages[i]
 		transcript = append(transcript, sigmaTranscriptRecord{Type: "message", Message: &message})
@@ -186,6 +241,7 @@ func (h *sigmaHarness[O]) Run(
 
 	result.Usage.Provider = string(h.model.Provider)
 	result.Usage.Model = string(h.model.ID)
+	accounting := sigmaUsageAccumulator{tokensComplete: true, costComplete: true}
 	var response string
 	var final sigma.AssistantMessage
 	for _, prompt := range input.Prompts {
@@ -202,8 +258,20 @@ func (h *sigmaHarness[O]) Run(
 
 		toolRounds := 0
 		for {
-			final, err = h.client.Complete(ctx, h.model, request, h.options...)
-			accumulateSigmaUsage(&result.Usage, h.model, final)
+			var captureErr error
+			options := append([]sigma.Option(nil), h.options...)
+			options = append(options, func(options *sigma.Options) {
+				var controls json.RawMessage
+				controls, captureErr = snapshotSigmaControls(*options)
+				if captureErr == nil {
+					transcript = append(transcript, sigmaTranscriptRecord{
+						Type: "controls", Stage: "merged-options-before-request-adjustments", Controls: controls,
+					})
+				}
+			})
+			final, err = h.client.Complete(ctx, h.model, request, options...)
+			err = errors.Join(err, captureErr)
+			accounting.accumulate(&result.Usage, h.model, final)
 			assistant := cloneAssistant(final)
 			transcript = append(transcript, sigmaTranscriptRecord{Type: "assistant", Assistant: &assistant})
 			result.Events = append(result.Events, transcriptEventsForAssistant(final)...)
@@ -384,11 +452,25 @@ func sigmaToolCalls(message sigma.AssistantMessage) ([]sigma.ToolCall, error) {
 	return calls, nil
 }
 
-func accumulateSigmaUsage(usage *Usage, model sigma.Model, final sigma.AssistantMessage) {
+type sigmaUsageAccumulator struct {
+	tokensComplete bool
+	costComplete   bool
+}
+
+func (a *sigmaUsageAccumulator) accumulate(usage *Usage, model sigma.Model, final sigma.AssistantMessage) {
+	if final.Usage == nil {
+		a.tokensComplete = false
+		usage.InputTokens, usage.OutputTokens, usage.TotalTokens = nil, nil, nil
+	}
 	if final.Usage != nil {
-		usage.InputTokens += final.Usage.InputTokens
-		usage.OutputTokens += final.Usage.OutputTokens
-		usage.TotalTokens += final.Usage.Total()
+		if a.tokensComplete {
+			if usage.TotalTokens == nil {
+				usage.InputTokens, usage.OutputTokens, usage.TotalTokens = new(int), new(int), new(int)
+			}
+			*usage.InputTokens += final.Usage.InputTokens
+			*usage.OutputTokens += final.Usage.OutputTokens
+			*usage.TotalTokens += final.Usage.Total()
+		}
 		if usage.Metadata == nil {
 			usage.Metadata = make(map[string]any)
 		}
@@ -401,7 +483,7 @@ func accumulateSigmaUsage(usage *Usage, model sigma.Model, final sigma.Assistant
 		}
 	}
 	if !modelHasUSDPrice(model) {
-		return
+		a.costComplete = false
 	}
 	cost := final.Cost
 	if cost == nil && final.Usage != nil {
@@ -409,6 +491,10 @@ func accumulateSigmaUsage(usage *Usage, model sigma.Model, final sigma.Assistant
 		cost = &calculated
 	}
 	if cost == nil || (cost.Currency != "" && !strings.EqualFold(cost.Currency, "USD")) {
+		a.costComplete = false
+	}
+	if !a.costComplete {
+		usage.EstimatedCostUSD = nil
 		return
 	}
 	if usage.EstimatedCostUSD == nil {

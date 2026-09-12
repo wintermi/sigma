@@ -1127,6 +1127,12 @@ should still come through the catalog refresh workflow.
 
 ## Agent runtime and orchestration
 
+- [x] Harden internal evaluation evidence with explicit case identities,
+      operational validation before scoring, complete optional telemetry, and
+      v2 artifacts containing immutable inputs/outputs and evaluated configuration.
+      Preserve existing artifacts and keep provider credentials out of control
+      snapshots. Synchronize auth regression-test completion before counter reads.
+
 - [x] Add a repository-internal Go evaluation framework with generic harnesses
       and judges, a sequential Sigma text harness, paired comparison reports,
       private run artifacts, and an opt-in live smoke runner for explicitly

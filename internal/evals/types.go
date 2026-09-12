@@ -53,15 +53,16 @@ type TranscriptEvent struct {
 	Error      string         `json:"error,omitempty"`
 }
 
-// Usage records comparable telemetry for one harness run.
+// Usage records comparable telemetry for one harness run. Nil token or cost
+// values indicate unavailable or incomplete measurements; zero is measured.
 type Usage struct {
 	Provider         string         `json:"provider,omitempty"`
 	Model            string         `json:"model,omitempty"`
-	InputTokens      int            `json:"inputTokens,omitempty"`
-	OutputTokens     int            `json:"outputTokens,omitempty"`
-	TotalTokens      int            `json:"totalTokens,omitempty"`
+	InputTokens      *int           `json:"inputTokens"`
+	OutputTokens     *int           `json:"outputTokens"`
+	TotalTokens      *int           `json:"totalTokens"`
 	ToolCalls        int            `json:"toolCalls,omitempty"`
-	EstimatedCostUSD *float64       `json:"estimatedCostUsd,omitempty"`
+	EstimatedCostUSD *float64       `json:"estimatedCostUsd"`
 	Metadata         map[string]any `json:"metadata,omitempty"`
 }
 
@@ -100,12 +101,18 @@ type Judge[I, O any] struct {
 
 // JudgeResult is one judge's numeric score and optional explanation.
 type JudgeResult struct {
+	// Name is assigned by the runner from the judge configuration.
+	Name   string  `json:"name,omitempty"`
 	Score  float64 `json:"score"`
 	Reason string  `json:"reason,omitempty"`
 }
 
 // Case configures one harness execution.
 type Case[I, O any] struct {
+	// ID is the stable scenario identity, independent of Go subtest names.
+	ID string
+	// Validate checks operational invariants before judges run.
+	Validate       func(context.Context, JudgmentInput[I, O]) error
 	EvalSet        string
 	Input          I
 	Harness        Harness[I, O]

@@ -168,6 +168,15 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Internal evaluation comparisons now pair real Go subtests by explicit case ID
+  and validate operational telemetry before judging. Missing per-turn usage stays
+  unavailable instead of appearing as zero or a complete subtotal. Evaluation
+  artifact schema v2 records immutable inputs and judged outputs, named judgments,
+  effective prompts/tools, and allowlisted controls before provider adjustments;
+  existing artifacts are unchanged and public Sigma APIs are unaffected.
+- Auth cancellation and timeout regression tests now await resolver completion
+  before reading counters, removing an intermittent race-detector failure.
+
 - Google Vertex file-read surface probes now supply an explicit filename and
   request only the tool call, removing ambiguity about the required path and
   avoiding a request to answer before a tool result is available.

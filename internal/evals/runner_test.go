@@ -86,7 +86,7 @@ func TestRunnerRecordsArtifactsJudgesAndComparisons(t *testing.T) {
 				}
 				return RunResult[string]{
 					Output:  name,
-					Usage:   Usage{TotalTokens: tokens},
+					Usage:   Usage{TotalTokens: intPointer(tokens)},
 					Timings: Timings{Total: time.Duration(tokens) * time.Millisecond},
 				}, nil
 			},
@@ -105,6 +105,7 @@ func TestRunnerRecordsArtifactsJudgesAndComparisons(t *testing.T) {
 		row := row
 		fake := &fakeTest{name: "TestRunnerComparison"}
 		execution := Run(context.Background(), runner, fake, Case[identifiedInput, string]{
+			ID:      "case",
 			EvalSet: "runner comparison",
 			Input:   identifiedInput{ID: "input", Value: "source"},
 			Harness: row.Harness,
@@ -193,6 +194,7 @@ func TestRunnerThresholdFailureRetainsScoredObservation(t *testing.T) {
 	threshold := 1.0
 	fake := &fakeTest{name: "TestThreshold"}
 	Run(context.Background(), runner, fake, Case[identifiedInput, string]{
+		ID:             "case",
 		EvalSet:        "threshold",
 		Input:          identifiedInput{ID: "input"},
 		Harness:        rows[0].Harness,
@@ -292,6 +294,7 @@ func TestRunnerJoinsHarnessAndPersistenceFailures(t *testing.T) {
 	fake := &fakeTest{name: "TestJoinedFailure"}
 	harnessErr := errors.New("harness failed")
 	execution := Run(context.Background(), runner, fake, Case[string, string]{
+		ID:      "case",
 		EvalSet: "joined failures",
 		Input:   "input",
 		Harness: HarnessFunc[string, string]{
@@ -371,6 +374,7 @@ func TestRunnerRejectsNonJSONOutputAndNonFiniteJudgeScore(t *testing.T) {
 			}
 			fake := &fakeTest{name: "TestInvalid"}
 			execution := Run(context.Background(), runner, fake, Case[string, any]{
+				ID:             "case",
 				EvalSet:        "invalid",
 				Input:          "input",
 				Harness:        tt.harness,
@@ -411,3 +415,5 @@ func assertPrivateMode(t *testing.T, path string, want os.FileMode) {
 		t.Fatalf("%s mode = %#o, want %#o", path, got, want)
 	}
 }
+
+func intPointer(value int) *int { return &value }

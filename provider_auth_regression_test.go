@@ -51,9 +51,13 @@ func TestScopedRequestAuthResolution(t *testing.T) {
 				defer cancel()
 				failure := errors.New("auth unavailable")
 				resolutions, attempts := 0, 0
+				resolverDone := make(chan struct{})
 				auth := &regressionAuth{}
 				auth.resolve = func(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.AuthResolution, error) {
 					resolutions++
+					if mode == "cancellation" || mode == "timeout" {
+						defer close(resolverDone)
+					}
 					if model.Provider != providerID {
 						t.Errorf("wrong auth model: %#v", model)
 					}
@@ -267,6 +271,13 @@ func TestScopedRequestAuthResolution(t *testing.T) {
 						provider = openrouter.NewImagesProvider()
 					}
 					_, err = provider.Generate(ctx, sigma.ImageModel{ID: id, Provider: providerID, API: provider.API()}, sigma.ImageRequest{Prompt: "test"}, opts)
+				}
+				if mode == "cancellation" || mode == "timeout" {
+					select {
+					case <-resolverDone:
+					case <-time.After(5 * time.Second):
+						t.Fatal("auth resolver did not finish after cancellation")
+					}
 				}
 				wantCalls := 1
 				switch mode {

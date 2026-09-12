@@ -50,6 +50,10 @@ type Runner struct {
 
 type pendingRun[O any] struct {
 	runID        string
+	caseID       string
+	evalSet      string
+	input        json.RawMessage
+	output       json.RawMessage
 	testName     string
 	file         string
 	harness      string
@@ -63,6 +67,10 @@ type pendingRun[O any] struct {
 type runRecord struct {
 	SchemaVersion int                 `json:"schemaVersion"`
 	RunID         string              `json:"runId"`
+	CaseID        string              `json:"caseId"`
+	EvalSet       string              `json:"evalSet"`
+	Input         json.RawMessage     `json:"input,omitempty"`
+	Output        json.RawMessage     `json:"output,omitempty"`
 	Test          runTestRecord       `json:"test"`
 	Harness       string              `json:"harness"`
 	Usage         Usage               `json:"usage"`
@@ -149,6 +157,8 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 	file := callerFile(runner.moduleRoot)
 	pending := &pendingRun[O]{
 		runID:    runID,
+		caseID:   strings.TrimSpace(eval.ID),
+		evalSet:  strings.TrimSpace(eval.EvalSet),
 		testName: test.Name(),
 		file:     file,
 		context:  newRunContext(runID),
@@ -166,14 +176,39 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 		return execution
 	}
 	pending.harness = strings.TrimSpace(eval.Harness.HarnessName())
+	pending.input, err = json.Marshal(eval.Input)
+	if err != nil {
+		pending.runErr = fmt.Errorf("evals: input must be JSON-serializable: %w", err)
+		execution.Err = pending.runErr
+		failTest(test, pending.runErr)
+		return execution
+	}
 	startedAt := time.Now()
 	result, runErr := eval.Harness.Run(ctx, eval.Input, pending.context)
 	if result.Timings.Total <= 0 {
 		result.Timings.Total = time.Since(startedAt)
 	}
 	pending.result = result
-	if _, err := json.Marshal(result); err != nil {
-		runErr = errors.Join(runErr, fmt.Errorf("evals: harness result must be JSON-serializable: %w", err))
+	pending.output, err = json.Marshal(result.Output)
+	if err != nil {
+		runErr = errors.Join(runErr, fmt.Errorf("evals: output must be JSON-serializable: %w", err))
+	}
+	// Snapshot telemetry separately so invalid output cannot discard valid usage.
+	usageJSON, usageErr := json.Marshal(result.Usage)
+	pending.result.Usage = Usage{}
+	if usageErr == nil {
+		usageErr = json.Unmarshal(usageJSON, &pending.result.Usage)
+	}
+	if usageErr != nil {
+		runErr = errors.Join(runErr, fmt.Errorf("evals: snapshot usage: %w", usageErr))
+	}
+	if _, err := json.Marshal(result.Events); err != nil {
+		runErr = errors.Join(runErr, fmt.Errorf("evals: harness events must be JSON-serializable: %w", err))
+	}
+	if runErr == nil && eval.Validate != nil {
+		if err := eval.Validate(ctx, JudgmentInput[I, O]{Input: eval.Input, Result: result}); err != nil {
+			runErr = fmt.Errorf("evals: validate run: %w", err)
+		}
 	}
 	if runErr == nil {
 		for _, judge := range eval.Judges {
@@ -186,6 +221,7 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 				runErr = errors.Join(runErr, err)
 				continue
 			}
+			judgment.Name = judge.Name
 			pending.judgments = append(pending.judgments, judgment)
 		}
 	}
@@ -218,6 +254,9 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 }
 
 func validateCase[I, O any](eval Case[I, O]) error {
+	if strings.TrimSpace(eval.ID) == "" {
+		return errors.New("evals: case id must not be empty")
+	}
 	if strings.TrimSpace(eval.EvalSet) == "" {
 		return errors.New("evals: eval set must not be empty")
 	}
@@ -259,6 +298,10 @@ func (r *Runner) finishRun(test Test, pending interface {
 
 type finishRunData struct {
 	runID        string
+	caseID       string
+	evalSet      string
+	input        json.RawMessage
+	output       json.RawMessage
 	testName     string
 	file         string
 	harness      string
@@ -273,6 +316,10 @@ type finishRunData struct {
 func (p *pendingRun[O]) finishData() finishRunData {
 	return finishRunData{
 		runID:        p.runID,
+		caseID:       p.caseID,
+		evalSet:      p.evalSet,
+		input:        p.input,
+		output:       p.output,
 		testName:     p.testName,
 		file:         p.file,
 		harness:      p.harness,
@@ -299,8 +346,12 @@ func (r *Runner) finish(test Test, pending finishRunData) error {
 		errorsList = append(errorsList, artifactErr.Error())
 	}
 	record := runRecord{
-		SchemaVersion: 1,
+		SchemaVersion: 2,
 		RunID:         pending.runID,
+		CaseID:        pending.caseID,
+		EvalSet:       pending.evalSet,
+		Input:         pending.input,
+		Output:        pending.output,
 		Test:          runTestRecord{File: pending.file, Name: pending.testName, Status: status},
 		Harness:       pending.harness,
 		Usage:         pending.usage,
@@ -334,11 +385,16 @@ func observationFromRun(iteration Iteration, pending finishRunData, test Test, p
 	case test.Failed():
 		outcome = OutcomeErrored
 	}
-	totalTokens := float64(pending.usage.TotalTokens)
+	var totalTokens *float64
+	if pending.usage.TotalTokens != nil {
+		value := float64(*pending.usage.TotalTokens)
+		totalTokens = &value
+	}
 	totalMS := float64(pending.timings.Total) / float64(time.Millisecond)
 	return Observation{
 		EvalSet:          iteration.EvalSet,
 		GroupKey:         iteration.GroupKey,
+		CaseID:           pending.caseID,
 		TestName:         pending.testName,
 		File:             pending.file,
 		Harness:          iteration.Harness,
@@ -347,7 +403,7 @@ func observationFromRun(iteration Iteration, pending finishRunData, test Test, p
 		Repetition:       iteration.Repetition,
 		Outcome:          outcome,
 		Score:            cloneFloat64(pending.averageScore),
-		TotalTokens:      &totalTokens,
+		TotalTokens:      totalTokens,
 		TotalMS:          &totalMS,
 		EstimatedCostUSD: cloneFloat64(pending.usage.EstimatedCostUSD),
 	}

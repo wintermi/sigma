@@ -493,9 +493,9 @@ func TestFormatSmokeResultReportsOutcomeAndTelemetry(t *testing.T) {
 		Result: evals.RunResult[string]{
 			Output: "Paris",
 			Usage: evals.Usage{
-				InputTokens:      10,
-				OutputTokens:     2,
-				TotalTokens:      12,
+				InputTokens:      intPointer(10),
+				OutputTokens:     intPointer(2),
+				TotalTokens:      intPointer(12),
 				EstimatedCostUSD: &cost,
 			},
 			Timings: evals.Timings{Total: 1500 * time.Millisecond},
@@ -602,7 +602,7 @@ func TestExecuteSmokeRunsSelectsCaseHarness(t *testing.T) {
 		Func: func(context.Context, evals.SigmaInput, *evals.RunContext) (evals.RunResult[string], error) {
 			return evals.RunResult[string]{
 				Output: "tool-output",
-				Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: 1},
+				Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: intPointer(1)},
 			}, nil
 		},
 	}
@@ -726,8 +726,8 @@ func TestExecuteSmokeRunsUsesIndependentCaseTimeouts(t *testing.T) {
 					Usage: evals.Usage{
 						Provider:    "candidate",
 						Model:       "model",
-						InputTokens: 4,
-						TotalTokens: 5,
+						InputTokens: intPointer(4),
+						TotalTokens: intPointer(5),
 					},
 				}
 				if input.Prompts[0] != "timeout" {
@@ -804,7 +804,7 @@ func TestExecuteSmokeRunsZeroCaseTimeoutUsesParentContext(t *testing.T) {
 				}
 				return evals.RunResult[string]{
 					Output: "expected",
-					Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: 1},
+					Usage:  evals.Usage{Provider: "baseline", Model: "model", TotalTokens: intPointer(1)},
 				}, nil
 			},
 		},
@@ -838,8 +838,8 @@ func fakeSmokeSuite(name, output string, runErr error) smokeSuite {
 				Usage: evals.Usage{
 					Provider:    provider,
 					Model:       model,
-					InputTokens: 4,
-					TotalTokens: 5,
+					InputTokens: intPointer(4),
+					TotalTokens: intPointer(5),
 				},
 				Timings: evals.Timings{Total: time.Millisecond},
 			}, runErr
@@ -856,5 +856,40 @@ func mapEnvironment(values map[string]string) evals.EnvironmentLookup {
 	return func(name string) (string, bool) {
 		value, ok := values[name]
 		return value, ok
+	}
+}
+
+func intPointer(value int) *int { return &value }
+
+func TestExecuteSmokeRunsRejectsInvalidTelemetryBeforeScoring(t *testing.T) {
+	t.Parallel()
+	for _, tokens := range []*int{nil, intPointer(0)} {
+		t.Run(formatTokenCount(tokens), func(t *testing.T) {
+			t.Parallel()
+			runner, err := evals.NewRunner(evals.RunnerConfig{ArtifactDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			baseline := fakeSmokeSuite("baseline/model", "expected", nil)
+			candidate := fakeSmokeSuite("candidate/model", "expected", nil)
+			candidate.textHarness = evals.HarnessFunc[evals.SigmaInput, string]{Name: candidate.name(), Func: func(context.Context, evals.SigmaInput, *evals.RunContext) (evals.RunResult[string], error) {
+				return evals.RunResult[string]{Output: "expected", Usage: evals.Usage{Provider: "candidate", Model: "model", TotalTokens: tokens}}, nil
+			}}
+			var stdout, stderr bytes.Buffer
+			summary, err := executeSmokeRuns(context.Background(), runner, &stdout, &stderr,
+				[]smokeCase{newSmokeCase("telemetry", evals.Prompt("prompt"), exactJudge("expected"))}, baseline, []smokeSuite{candidate}, 1, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			report := evals.SummarizeComparisons(runner.Observations())
+			if !summary.Failed || summary.Correct != 1 || summary.OperationalFailures != 1 ||
+				report.EvalSets[0].Comparisons[0].Correctness.EligiblePairs != 0 || len(report.Diagnostics) != 1 ||
+				report.Diagnostics[0].Reason != "errored-observation" || !strings.Contains(stdout.String(), "score=unavailable") {
+				t.Fatalf("summary=%+v report=%+v stdout=%s stderr=%s", summary, report, stdout.String(), stderr.String())
+			}
+			if tokens == nil && !strings.Contains(stdout.String(), "tokens=unavailable") {
+				t.Fatal("missing usage displayed as zero")
+			}
+		})
 	}
 }

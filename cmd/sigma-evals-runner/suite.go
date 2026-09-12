@@ -72,10 +72,6 @@ func (s smokeRunSummary) String() string {
 	)
 }
 
-type smokeTest interface {
-	Errorf(string, ...any)
-}
-
 type extractedRecord struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
@@ -279,7 +275,8 @@ func smokeCases() []smokeCase {
 			"json-extraction",
 			evals.Prompt(
 				"Extract the name and count from this record: name is Ada and count is 7. "+
-					"Respond with only a JSON object containing string field name and integer field count.",
+					"Respond with only a raw JSON object containing string field name and integer field count. "+
+					"Do not include Markdown, code fences, explanations, or additional fields.",
 			),
 			jsonExtractionJudge(),
 		),
@@ -390,26 +387,24 @@ func executeSmokeRuns(
 				runContext, cancel = context.WithTimeout(ctx, caseTimeout)
 			}
 			execution := evals.Run(runContext, runner, test, evals.Case[evals.SigmaInput, string]{
+				ID:             smoke.name,
 				EvalSet:        "Sigma text smoke",
 				Input:          smoke.input,
 				Harness:        row.Harness,
+				Validate:       validateSmokeExecution(suite.model),
 				Judges:         []evals.Judge[evals.SigmaInput, string]{smoke.judge},
 				JudgeThreshold: threshold,
 			})
 			if cancel != nil {
 				cancel()
 			}
-			afterRun := len(test.errors)
-			validateSmokeExecution(test, suite.model, execution)
-			validationErrors := append([]string(nil), test.errors[afterRun:]...)
 			beforeCleanup := len(test.errors)
 			test.finish()
 			cleanupErrors := append([]string(nil), test.errors[beforeCleanup:]...)
 
-			operationalMessages := append([]string(nil), validationErrors...)
-			operationalMessages = append(operationalMessages, cleanupErrors...)
+			operationalMessages := cleanupErrors
 			operationalFailure := execution.Err != nil || len(operationalMessages) > 0
-			correct := execution.AverageScore != nil && *execution.AverageScore >= 1
+			correct := !operationalFailure && execution.AverageScore != nil && *execution.AverageScore >= 1
 			summary.Runs++
 			if correct {
 				summary.Correct++
@@ -577,26 +572,19 @@ func toolRoundTripJudge() evals.Judge[evals.SigmaInput, string] {
 	}
 }
 
-func validateSmokeExecution(
-	test smokeTest,
-	model sigma.Model,
-	execution evals.Execution[string],
-) {
-	if execution.Err != nil {
-		return
-	}
-	if execution.Result.Usage.Provider != string(model.Provider) ||
-		execution.Result.Usage.Model != string(model.ID) {
-		test.Errorf(
-			"usage model identity = %s/%s, want %s/%s",
-			execution.Result.Usage.Provider,
-			execution.Result.Usage.Model,
-			model.Provider,
-			model.ID,
-		)
-	}
-	if execution.Result.Usage.TotalTokens <= 0 {
-		test.Errorf("total token usage = %d, want positive", execution.Result.Usage.TotalTokens)
+func validateSmokeExecution(model sigma.Model) func(context.Context, evals.JudgmentInput[evals.SigmaInput, string]) error {
+	return func(_ context.Context, input evals.JudgmentInput[evals.SigmaInput, string]) error {
+		usage := input.Result.Usage
+		var validationErr error
+		if usage.Provider != string(model.Provider) || usage.Model != string(model.ID) {
+			validationErr = fmt.Errorf("usage model identity = %s/%s, want %s/%s", usage.Provider, usage.Model, model.Provider, model.ID)
+		}
+		if usage.TotalTokens == nil {
+			validationErr = errors.Join(validationErr, errors.New("total token usage is unavailable or incomplete"))
+		} else if *usage.TotalTokens <= 0 {
+			validationErr = errors.Join(validationErr, fmt.Errorf("total token usage = %d, want positive", *usage.TotalTokens))
+		}
+		return validationErr
 	}
 }
 
@@ -627,15 +615,17 @@ func formatSmokeResult(
 	}
 	parts = append(parts,
 		fmt.Sprintf(
-			"tokens=%d(in=%d,out=%d)",
-			execution.Result.Usage.TotalTokens,
-			execution.Result.Usage.InputTokens,
-			execution.Result.Usage.OutputTokens,
+			"tokens=%s(in=%s,out=%s)",
+			formatTokenCount(execution.Result.Usage.TotalTokens),
+			formatTokenCount(execution.Result.Usage.InputTokens),
+			formatTokenCount(execution.Result.Usage.OutputTokens),
 		),
 		"latency="+execution.Result.Timings.Total.Round(time.Millisecond).String(),
 	)
 	if execution.Result.Usage.EstimatedCostUSD != nil {
 		parts = append(parts, fmt.Sprintf("cost=$%.6f", *execution.Result.Usage.EstimatedCostUSD))
+	} else {
+		parts = append(parts, "cost=unavailable")
 	}
 	parts = append(parts, fmt.Sprintf("output=%q", boundedResultText(execution.Result.Output)))
 	for _, judgment := range execution.Judgments {
@@ -661,4 +651,11 @@ func boundedResultText(value string) string {
 		return value
 	}
 	return string(runes[:maxRunes]) + "…"
+}
+
+func formatTokenCount(value *int) string {
+	if value == nil {
+		return "unavailable"
+	}
+	return fmt.Sprintf("%d", *value)
 }

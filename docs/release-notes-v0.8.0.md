@@ -7,6 +7,16 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Internal evaluations now pair Go subtests by stable case ID and validate
+operational requirements before judging. Missing measurements from any model
+turn keep the corresponding token or cost aggregate unavailable rather than
+reporting misleading subtotals. Artifact schema v2 records immutable inputs and judged outputs,
+named judgments, evaluated prompts/tools, and allowlisted controls before
+provider request adjustments. Old artifacts are not migrated, iteration
+metadata remains v1, and public Sigma APIs are unchanged. Auth timeout tests
+now synchronize resolver completion before inspecting counters, eliminating
+an intermittent race-detector failure.
+
 Tool arguments now retain exact JSON numbers through persistence and replay on
 Anthropic, Google, and Bedrock, including shared Vertex routes. Anthropic hosted
 search, fetch, and code-execution results survive in ordered block metadata and
