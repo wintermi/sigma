@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Give Google Vertex file-read probes an explicit path and a tool-call-only prompt.
 - [x] Preserve exact numeric arguments through Anthropic, Google, and Bedrock replay.
 - [x] Persist ordered Anthropic hosted-tool results with exact replay provenance.
 - [x] Sanitize failed tool exchanges before ID repair and deferred-tool planning.

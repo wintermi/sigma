@@ -168,6 +168,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Google Vertex file-read surface probes now supply an explicit filename and
+  request only the tool call, removing ambiguity about the required path and
+  avoiding a request to answer before a tool result is available.
+
 - Anthropic, Google, and Bedrock replay preserve exact tool-argument numbers,
   including large integers, decimals, and exponent spellings after persistence.
 - Anthropic hosted search, fetch, and code-execution results now persist with

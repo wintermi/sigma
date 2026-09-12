@@ -26,6 +26,11 @@ non-retryable provider errors and emit `error` events, with partial content,
 usage, and raw finish reasons retained. Callers that previously expected a nil
 error for these stop reasons must handle the returned failure.
 
+Google Vertex file-read probes now explicitly request only a `read_file` call
+for `README.md`, without asking for the file contents. This removes missing
+argument and response-sequencing ambiguity from both automatic and forced tool
+cases; provider-generated malformed calls still surface as failures.
+
 Failed xAI JSON-object probes now compare an explicit formatting instruction,
 a matching JSON schema, and plain-text mode using the same user prompt, plus
 three JSON-object variants with string, number, and alternate boolean values.

@@ -2428,7 +2428,7 @@ func googleToolCase(name string, description string, choice string) probeCase {
 		Name:        name,
 		Description: description,
 		Request: sigma.Request{
-			Messages: []sigma.Message{sigma.UserText("Use the available tool and answer with the result.")},
+			Messages: []sigma.Message{sigma.UserText("Call read_file with path set to README.md. Return only the tool call; wait for the tool result before answering.")},
 			Tools: []sigma.Tool{{
 				Name:        "read_file",
 				Description: "Read a file",

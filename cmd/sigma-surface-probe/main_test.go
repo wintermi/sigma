@@ -985,6 +985,51 @@ func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 	}
 }
 
+func TestGoogleVertexToolProbeSuppliesFilePath(t *testing.T) {
+	t.Parallel()
+
+	for _, choice := range []string{"auto", "any"} {
+		t.Run(choice, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var payload struct {
+					Contents   json.RawMessage `json:"contents"`
+					ToolConfig struct {
+						FunctionCallingConfig struct {
+							Mode string `json:"mode"`
+						} `json:"functionCallingConfig"`
+					} `json:"toolConfig"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+					t.Errorf("decode request: %v", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				if !bytes.Contains(payload.Contents, []byte("README.md")) {
+					t.Errorf("tool probe must supply the required file path in the prompt: %s", payload.Contents)
+				}
+				if got, want := payload.ToolConfig.FunctionCallingConfig.Mode, strings.ToUpper(choice); got != want {
+					t.Errorf("tool mode = %q, want %q", got, want)
+				}
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, `data: {"candidates":[{"content":{"role":"model","parts":[{"functionCall":{"name":"read_file","args":{"path":"README.md"}}}]},"finishReason":"STOP"}]}`+"\n\n")
+			}))
+			t.Cleanup(server.Close)
+
+			route := routes["google-vertex"]
+			route.BaseURL = server.URL + "/v1"
+			model := route.Model(route, "gemini-3.1-pro-preview-customtools")
+			testCase := findProbeCase(t, googleVertexProbeCases(route, model), "tool_"+choice+"_file_read")
+			result := runCase(context.Background(), route, probeClient(route, model), model, testCase,
+				routeCredential{accessToken: "test-token", projectID: "test-project", location: "global"}, testCase.Name)
+			if result.Outcome != "ok" || result.Error != "" {
+				t.Fatalf("probe result = %+v, want success", result)
+			}
+		})
+	}
+}
+
 func TestGoogleVertexAnthropicProbeRequestRoutingAndAuthentication(t *testing.T) {
 	tests := []struct {
 		name              string
