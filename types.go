@@ -532,7 +532,12 @@ type ContentBlock struct {
 // package copying blocks picks up the change.
 func (b ContentBlock) Clone() ContentBlock {
 	b.ToolArguments = cloneHandoffAny(b.ToolArguments)
+	hostedReplay, hasHostedReplay := b.ProviderMetadata["anthropic_hosted_replay"]
 	b.ProviderMetadata = cloneHandoffStringAnyMap(b.ProviderMetadata)
+	if hasHostedReplay {
+		// Hosted results replay opaque JSON; an empty object must remain {}.
+		b.ProviderMetadata["anthropic_hosted_replay"] = cloneJSONValue(hostedReplay, cloneProviderOptions)
+	}
 	b.ExtraFields = cloneHandoffStringAnyMap(b.ExtraFields)
 	return b
 }

@@ -53,7 +53,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		messages = append(messages, assistantMessage(final))
+		messages = append(messages, assistantMessage(final, sigmatest.TextModel().API))
 		if final.StopReason != sigma.StopReasonToolCalls {
 			fmt.Println(text(final))
 			return
@@ -121,13 +121,15 @@ func runTool(name string, args map[string]any) (string, error) {
 	return string(data), nil
 }
 
-func assistantMessage(final sigma.AssistantMessage) sigma.Message {
+func assistantMessage(final sigma.AssistantMessage, api sigma.API) sigma.Message {
 	return sigma.Message{
-		Role:       sigma.RoleAssistant,
-		Content:    final.Content,
-		Provider:   final.Provider,
-		Model:      final.Model,
-		StopReason: final.StopReason,
+		Role:                  sigma.RoleAssistant,
+		Content:               final.Content,
+		Provider:              final.Provider,
+		API:                   api,
+		Model:                 final.Model,
+		StopReason:            final.StopReason,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
 	}
 }
 

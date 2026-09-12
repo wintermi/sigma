@@ -1212,6 +1212,7 @@ func TestCompleteFunctionCallPreservesExplicitNonSuccessFinishReason(t *testing.
 	}{
 		{finishReason: "MAX_TOKENS", want: sigma.StopReasonMaxTokens},
 		{finishReason: "MALFORMED_FUNCTION_CALL", want: sigma.StopReasonError},
+		{finishReason: "UNEXPECTED_TOOL_CALL", want: sigma.StopReasonError},
 		{finishReason: "FUTURE_REASON", want: sigma.StopReasonUnknown},
 	}
 	for _, tt := range tests {
@@ -1230,7 +1231,7 @@ func TestCompleteFunctionCallPreservesExplicitNonSuccessFinishReason(t *testing.
 
 			stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("weather")}})
 			events := collectEvents(t, stream)
-			if err := stream.Err(); err != nil {
+			if err := stream.Err(); (err != nil) != (tt.want == sigma.StopReasonError) {
 				t.Fatalf("stream error = %v", err)
 			}
 			final, ok := stream.Final()
@@ -1240,7 +1241,11 @@ func TestCompleteFunctionCallPreservesExplicitNonSuccessFinishReason(t *testing.
 			assertGoogleToolStopFinal(t, final, tt.finishReason, tt.want)
 
 			terminal := events[len(events)-1]
-			if terminal.Kind != sigma.EventKindDone || terminal.StopReason != tt.want {
+			wantKind := sigma.EventKindDone
+			if tt.want == sigma.StopReasonError {
+				wantKind = sigma.EventKindError
+			}
+			if terminal.Kind != wantKind || terminal.StopReason != tt.want {
 				t.Fatalf("terminal event = %#v, want done with stop reason %q", terminal, tt.want)
 			}
 			if terminal.FinalMessage == nil {
@@ -1463,8 +1468,8 @@ func TestMalformedFunctionCallFinishReasonMapsToErrorWithoutToolCalls(t *testing
 	client := googleTestClient(t, providerID, model, server.URL)
 
 	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
+	if !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("Complete error = %v, want ErrProviderResponse", err)
 	}
 	if got, want := final.StopReason, sigma.StopReasonError; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)

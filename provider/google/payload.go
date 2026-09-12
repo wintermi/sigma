@@ -809,13 +809,13 @@ func jsonValue(value any) (any, error) {
 		return nil, nil
 	case json.RawMessage:
 		var out any
-		if err := json.Unmarshal(v, &out); err != nil {
+		if err := jsonutil.Decode(v, &out); err != nil {
 			return nil, err
 		}
 		return out, nil
 	case []byte:
 		var out any
-		if err := json.Unmarshal(v, &out); err != nil {
+		if err := jsonutil.Decode(v, &out); err != nil {
 			return nil, err
 		}
 		return out, nil
@@ -825,7 +825,7 @@ func jsonValue(value any) (any, error) {
 			return nil, err
 		}
 		var out any
-		if err := json.Unmarshal(data, &out); err != nil {
+		if err := jsonutil.Decode(data, &out); err != nil {
 			return nil, err
 		}
 		return out, nil

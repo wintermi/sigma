@@ -70,6 +70,23 @@ and document-library tools. OpenAI Chat Completions and Bedrock Converse return
 a `*sigma.Error` with the `sigma.ErrorUnsupported` code if a provider-defined
 tool is supplied.
 
+Anthropic captures hosted web-search, web-fetch, and code-execution result blocks
+in `ContentBlock.ProviderMetadata["anthropic_hosted_replay"]`. This includes bash
+and text-editor execution variants, encrypted content, errors, empty results,
+and unknown fields within these supported blocks. Save final content intact and
+record the source provider, API, and model on the containing assistant message.
+Replay places results immediately after their original anchor, even if a blank
+text anchor is omitted, and preserves server-call IDs and passthrough fields.
+Mismatched or missing provenance omits hosted calls and results; malformed
+compatible associations fail locally with `ErrorInvalidRequest`. Results already
+discarded by older versions cannot be recovered.
+
+Failed or aborted assistant calls are removed during request preparation along
+with their tool results and deferred-tool markers. Nonblank visible text survives
+on non-Responses routes; Responses omits the entire failed turn. Successful
+unanswered calls still receive synthetic results. These rules also apply to
+requests prepared by the handoff helpers and do not alter stored history.
+
 ## Tool Loop
 
 ```text

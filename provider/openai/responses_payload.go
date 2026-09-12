@@ -44,7 +44,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if err := validateReasoningLevel(model, opts, completionsCompat{}); err != nil {
 		return nil, err
 	}
-	cleaned := transform.DropUnansweredToolCalls(filterFailedResponsesTurns(req))
+	cleaned := transform.DropUnansweredToolCalls(transform.PrepareReplay(model, filterFailedResponsesTurns(req)))
 	deferredToolsMode := responsesDeferredToolsModeForModel(model)
 	deferredTools := transform.PlanDeferredTools(cleaned, deferredToolsMode != responsesDeferredToolsNone, nil)
 	grammarToolInputProperties, err := responsesGrammarToolInputProperties(model, cleaned, opts)

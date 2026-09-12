@@ -41,6 +41,7 @@ const (
 )
 
 func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (map[string]any, error) {
+	req = transform.PrepareReplay(model, req)
 	if err := validateCapabilities(model, req, opts); err != nil {
 		return nil, err
 	}

@@ -168,6 +168,21 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Anthropic, Google, and Bedrock replay preserve exact tool-argument numbers,
+  including large integers, decimals, and exponent spellings after persistence.
+- Anthropic hosted search, fetch, and code-execution results now persist with
+  ordered, provenance-checked replay metadata. Previously discarded results
+  cannot be recovered from old histories.
+- Failed and aborted assistant turns retain only nonblank visible text during
+  non-Responses request preparation; associated calls, results, reasoning, and
+  deferred-tool markers are removed. Responses continues omitting whole failed
+  turns. Stored history and returned partial finals are unchanged.
+- Google and Vertex text prompt blocking now completes as content filtering.
+  Malformed or unexpected tool-call finish reasons now emit errors and return
+  non-retryable provider failures while preserving partial output and usage.
+- Anthropic omits blank text and empty messages after text cleaning, retains
+  signed thinking and empty tool results, and rejects all-empty requests locally.
+
 - Google and OpenAI Chat Completions now use opaque random synthetic tool-call
   IDs that remain distinct across turns and concurrent streams, including custom
   tools and shared Vertex text parsing. Existing invalid histories are not migrated.

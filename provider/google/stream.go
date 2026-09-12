@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"strings"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/jsonutil"
@@ -119,7 +121,12 @@ func parseGenerativeStream(ctx context.Context, r io.Reader, writer sigma.Stream
 	if !parser.finished {
 		return parser.finalize(ctx), fmt.Errorf("google generative ai: stream ended before finish reason")
 	}
-	return parser.finalize(ctx), nil
+	final := parser.finalize(ctx)
+	if parser.stopReason == sigma.StopReasonError {
+		body, _ := json.Marshal(map[string]any{"error": map[string]any{"code": parser.rawStopReason, "message": "Google rejected the generated tool call: " + parser.rawStopReason}})
+		return final, sigma.NewProviderError(model.Provider, model.API, model.ID, http.StatusOK, parser.responseID, 0, body, sigma.ErrProviderResponse)
+	}
+	return final, nil
 }
 
 func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
@@ -132,6 +139,12 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	}
 	p.captureResponse(response)
 	if len(response.Candidates) == 0 {
+		reason, _ := response.PromptFeedback["blockReason"].(string)
+		reason = strings.TrimSpace(reason)
+		if reason != "" && reason != "BLOCK_REASON_UNSPECIFIED" {
+			p.finished = true
+			p.stopReason = sigma.StopReasonContentFilter
+		}
 		return p.emitStart(ctx)
 	}
 	if err := p.emitStart(ctx); err != nil {

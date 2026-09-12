@@ -105,6 +105,7 @@ func Transform(input Input) (sigma.Request, error) {
 		return sigma.Request{}, err
 	}
 
+	input.Request = PrepareReplay(input.TargetModel, input.Request)
 	policy := input.Policy.withDefaults()
 	output := sigma.Request{
 		SystemPrompt: input.Request.SystemPrompt,
@@ -263,7 +264,8 @@ func transformMessage(message sigma.Message, ctx messageContext) (sigma.Message,
 		if err := validateImageSupport(block, ctx); err != nil {
 			return sigma.Message{}, err
 		}
-		if transformed.Role == sigma.RoleAssistant && block.Type == sigma.ContentBlockThinking && shouldConvertThinking(message, ctx) {
+		_, hostedAnchor := block.ProviderMetadata["anthropic_hosted_replay"]
+		if transformed.Role == sigma.RoleAssistant && block.Type == sigma.ContentBlockThinking && !hostedAnchor && shouldConvertThinking(message, ctx) {
 			if strings.TrimSpace(block.ThinkingText) == "" || block.Redacted {
 				continue
 			}
@@ -271,7 +273,7 @@ func transformMessage(message sigma.Message, ctx messageContext) (sigma.Message,
 			continue
 		}
 		cloned := block.Clone()
-		if cloned.Type == sigma.ContentBlockToolCall && ctx.compat.NormalizeToolCallID != nil {
+		if cloned.Type == sigma.ContentBlockToolCall && isClientToolCall(cloned) && ctx.compat.NormalizeToolCallID != nil {
 			cloned.ToolCallID = ctx.compat.NormalizeToolCallID(cloned.ToolCallID)
 		}
 		content = append(content, cloned)

@@ -455,7 +455,7 @@ For OpenAI-compatible custom endpoints, compatibility is model metadata:
 model := sigma.Model{
 	ID:              "llama3.2",
 	Provider:        sigma.ProviderCustom,
-	API:             sigma.APIOpenAICompletions,
+	API:                   sigma.APIOpenAICompletions,
 	Name:            "llama3.2",
 	SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
 	SupportsTools:   true,
@@ -560,14 +560,15 @@ but `AssistantMessage` and `Message` are distinct types. Persist the conversatio
 as messages, and convert assistant results before appending them.
 
 ```go
-func assistantMessage(final sigma.AssistantMessage) sigma.Message {
+func assistantMessage(final sigma.AssistantMessage, api sigma.API) sigma.Message {
 	return sigma.Message{
-		Role:       sigma.RoleAssistant,
-		Content:    final.Content,
-		Provider:   final.Provider,
-		API:        "",
-		Model:      final.Model,
-		StopReason: final.StopReason,
+		Role:                  sigma.RoleAssistant,
+		Content:               final.Content,
+		Provider:              final.Provider,
+		API:                   api,
+		Model:                 final.Model,
+		StopReason:            final.StopReason,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
 	}
 }
 
@@ -581,7 +582,7 @@ final, err := client.Complete(ctx, model, req)
 if err != nil {
 	return err
 }
-req.Messages = append(req.Messages, assistantMessage(final))
+req.Messages = append(req.Messages, assistantMessage(final, model.API))
 
 data, err := json.MarshalIndent(req, "", "  ")
 if err != nil {

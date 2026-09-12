@@ -2802,7 +2802,7 @@ func TestHostedToolUseReplaysAsServerToolUse(t *testing.T) {
 	toolCall.ProviderMetadata = map[string]any{"type": "server_tool_use"}
 
 	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
-		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{toolCall}},
+		{Role: sigma.RoleAssistant, Provider: model.Provider, API: model.API, Model: model.ID, Content: []sigma.ContentBlock{toolCall}},
 		sigma.UserText("continue"),
 	}})
 	if err != nil {

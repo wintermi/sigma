@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/providertext"
 	"github.com/wintermi/sigma/internal/toolschema"
 	"github.com/wintermi/sigma/internal/transform"
@@ -180,10 +181,16 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 		if err != nil {
 			return nil, err
 		}
+		if converted == nil {
+			continue
+		}
 		if effort, ok := replayedMidConversationEffort(model, message, compat); ok {
 			messages = append(messages, anthropicEffortMessage(effort))
 		}
 		messages = append(messages, converted)
+	}
+	if len(messages) == 0 {
+		return nil, invalidRequestErrorf("request has no serializable messages")
 	}
 	addCacheControlToLastUserMessage(messages, retention, compat)
 	if activeEffort != "" {
@@ -246,11 +253,17 @@ func anthropicMessage(model sigma.Model, message sigma.Message, compat messagesC
 		if err != nil {
 			return nil, err
 		}
+		if len(content) == 0 {
+			return nil, nil
+		}
 		return map[string]any{"role": "user", "content": content}, nil
 	case sigma.RoleAssistant:
-		content, err := anthropicAssistantContent(message.Content, compat)
+		content, err := anthropicReplayContent(message, compat)
 		if err != nil {
 			return nil, err
+		}
+		if len(content) == 0 {
+			return nil, nil
 		}
 		return map[string]any{"role": "assistant", "content": content}, nil
 	case sigma.RoleTool:
@@ -281,13 +294,13 @@ func anthropicToolResultBlock(model sigma.Model, message sigma.Message) (map[str
 }
 
 func anthropicInputContent(model sigma.Model, blocks []sigma.ContentBlock, toolResult bool) ([]map[string]any, error) {
-	if len(blocks) == 0 {
-		return []map[string]any{{"type": "text", "text": ""}}, nil
-	}
 	content := make([]map[string]any, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
+			if strings.TrimSpace(providertext.Clean(block.Text)) == "" {
+				continue
+			}
 			content = append(content, map[string]any{
 				"type": "text",
 				"text": providertext.Clean(block.Text),
@@ -329,6 +342,9 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompa
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
+			if strings.TrimSpace(providertext.Clean(block.Text)) == "" {
+				continue
+			}
 			content = append(content, map[string]any{
 				"type": "text",
 				"text": providertext.Clean(block.Text),
@@ -347,6 +363,9 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompa
 			}
 			signature := strings.TrimSpace(block.Signature)
 			if signature == "" && !compat.emptyThinkingSignature {
+				if strings.TrimSpace(providertext.Clean(block.ThinkingText)) == "" {
+					continue
+				}
 				content = append(content, map[string]any{
 					"type": "text",
 					"text": providertext.Clean(block.ThinkingText),
@@ -370,8 +389,8 @@ func anthropicAssistantContent(blocks []sigma.ContentBlock, compat messagesCompa
 				input = map[string]any{}
 			}
 			blockType := "tool_use"
-			if providerMetadataString(block.ProviderMetadata, "type") == "server_tool_use" {
-				blockType = "server_tool_use"
+			if providerMetadataString(block.ProviderMetadata, "type") == serverToolUseType {
+				blockType = serverToolUseType
 			}
 			name := block.ToolName
 			if compat.claudeCodeIdentity && blockType == "tool_use" {
@@ -839,13 +858,13 @@ func jsonValue(value any) (any, error) {
 		return nil, nil
 	case json.RawMessage:
 		var out any
-		if err := json.Unmarshal(v, &out); err != nil {
+		if err := jsonutil.Decode(v, &out); err != nil {
 			return nil, err
 		}
 		return out, nil
 	case []byte:
 		var out any
-		if err := json.Unmarshal(v, &out); err != nil {
+		if err := jsonutil.Decode(v, &out); err != nil {
 			return nil, err
 		}
 		return out, nil
@@ -855,7 +874,7 @@ func jsonValue(value any) (any, error) {
 			return nil, err
 		}
 		var out any
-		if err := json.Unmarshal(data, &out); err != nil {
+		if err := jsonutil.Decode(data, &out); err != nil {
 			return nil, err
 		}
 		return out, nil

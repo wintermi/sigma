@@ -7,6 +7,25 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool arguments now retain exact JSON numbers through persistence and replay on
+Anthropic, Google, and Bedrock, including shared Vertex routes. Anthropic hosted
+search, fetch, and code-execution results survive in ordered block metadata and
+replay only with matching provider/API/model provenance. Old histories remain
+readable, but results discarded by earlier versions cannot be reconstructed.
+
+Request preparation removes tool exchanges and opaque reasoning from failed or
+aborted assistant turns while retaining nonblank visible text. Responses keeps
+its existing whole-turn omission policy. Stored history and partial finals are
+unchanged, and handoff preserves the information needed to apply this policy
+at dispatch. Anthropic also omits blank text and empty messages, preserves valid
+signed thinking and empty tool results, and rejects all-empty requests locally.
+
+Google and Vertex text prompt blocking now terminates as content filtering.
+`MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL` now return typed,
+non-retryable provider errors and emit `error` events, with partial content,
+usage, and raw finish reasons retained. Callers that previously expected a nil
+error for these stop reasons must handle the returned failure.
+
 Failed xAI JSON-object probes now compare an explicit formatting instruction,
 a matching JSON schema, and plain-text mode using the same user prompt, plus
 three JSON-object variants with string, number, and alternate boolean values.

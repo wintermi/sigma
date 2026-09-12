@@ -142,11 +142,23 @@ stream failures. Sigma does not automatically retry after streamed output.
 Cancellation is controlled by `context.Context`; see [Errors](errors.md) and
 [Cancellation](cancellation.md).
 
+Google and Vertex text streams blocked at the prompt level finish with `done`
+and `StopReasonContentFilter`, retaining prompt feedback and usage. Candidate
+finish reasons `MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL` finish with
+`error` and `StopReasonError`; `Complete` and `CompleteText` return a
+`ProviderError` wrapping `ErrProviderResponse`. These failures are non-retryable
+and retain partial output, usage, and the raw finish reason. A stream with no
+prompt-block or candidate-terminal evidence still reports premature EOF.
+
+Anthropic hosted-result metadata is available on final content blocks. Incremental
+event kinds are unchanged; persist final content to preserve the complete replay
+sequence. Anthropic filters blank text when preparing subsequent requests.
+
 ## Persistence
 
 If you want to save a completed assistant turn, append an assistant `Message`
-containing `final.Content`, `final.Provider`, `final.Model`, and
-`final.StopReason` to your conversation history. Persist the next request with
+containing `final.Content`, `final.Provider`, `model.API`, `final.Model`,
+`final.ProviderThinkingLevel`, `final.Usage`, and `final.StopReason` to your conversation history. Persist the next request with
 `sigma.MarshalRequest`; see [Request persistence](persistence.md).
 
 ## Alternatives and interrupted results
@@ -164,7 +176,8 @@ remains the caller's responsibility.
 
 Empty assistant text blocks carrying a signature can be persisted. Persistence
 retains opaque signatures; each provider validates signature format and exact
-provider/API/model provenance before replay. Unsigned empty text remains invalid.
+provider/API/model provenance before replay. Empty Anthropic text anchors carrying
+hosted-result metadata are also persistable; other unsigned empty text remains invalid.
 
 Direct OpenAI deferred submit, fetch, and cancel operations apply `Options.Timeout`
 through authentication, HTTP retries, and body decoding. Each HTTP attempt

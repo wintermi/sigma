@@ -42,6 +42,7 @@ type streamMessage struct {
 }
 
 type streamContent struct {
+	Raw       map[string]any   `json:"-"`
 	Type      string           `json:"type"`
 	Text      string           `json:"text"`
 	ID        string           `json:"id"`
@@ -97,6 +98,7 @@ type streamParser struct {
 	requestTools   []sigma.Tool
 	final          sigma.AssistantMessage
 	started        bool
+	hostedResults  map[int][]map[string]any
 	nextBlock      int
 	text           map[int]*streamblocks.Text
 	thinking       map[int]*streamblocks.Thinking
@@ -157,7 +159,9 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	}
 	switch parsed.Type {
 	case "message_start":
-		p.captureMessage(parsed.Message)
+		if err := p.captureMessage(parsed.Message); err != nil {
+			return err
+		}
 		p.messageStarted = true
 		return p.emitStart(ctx)
 	case "content_block_start":
@@ -205,7 +209,7 @@ func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
 	}
 }
 
-func (p *streamParser) captureMessage(message streamMessage) {
+func (p *streamParser) captureMessage(message streamMessage) error {
 	if message.ID != "" {
 		p.responseID = message.ID
 	}
@@ -220,8 +224,15 @@ func (p *streamParser) captureMessage(message streamMessage) {
 		p.mergeUsage(message.Usage)
 	}
 	for index, content := range message.Content {
-		p.captureContent(index, content)
+		if supportedHostedResult(content.Type) {
+			if err := p.captureHostedResult(content); err != nil {
+				return err
+			}
+		} else {
+			p.captureContent(index, content)
+		}
 	}
+	return nil
 }
 
 func (p *streamParser) handleContentBlockStop(ctx context.Context, index int) error {
@@ -263,6 +274,9 @@ func (p *streamParser) handleContentBlockStop(ctx context.Context, index int) er
 }
 
 func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, content streamContent) error {
+	if supportedHostedResult(content.Type) {
+		return p.captureHostedResult(content)
+	}
 	switch content.Type {
 	case "text": //nolint:goconst
 		state := p.textState(index)
@@ -280,7 +294,7 @@ func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, c
 		p.captureContent(index, content)
 		_ = p.thinkingState(index)
 		return nil
-	case "tool_use", "server_tool_use":
+	case "tool_use", serverToolUseType:
 		p.captureContent(index, content)
 		return p.emitToolCall(ctx, index, "")
 	default:
@@ -312,16 +326,19 @@ func (p *streamParser) captureContent(index int, content streamContent) {
 		if content.Data != "" {
 			state.ProviderSignature = content.Data
 		}
-	case "tool_use", "server_tool_use":
+	case "tool_use", serverToolUseType:
 		state := p.toolCallState(index)
 		state.SetID(content.ID)
 		name := content.Name
-		if p.compat.claudeCodeIdentity {
+		if p.compat.claudeCodeIdentity && content.Type == "tool_use" {
 			name = restoreCallerToolName(name, p.requestTools)
 		}
 		state.SetName(name)
-		if content.Type == "server_tool_use" {
-			state.ProviderMetadata = withProviderMetadata(state.ProviderMetadata, "type", "server_tool_use")
+		if content.Type == serverToolUseType {
+			state.ProviderMetadata = withProviderMetadata(state.ProviderMetadata, "type", serverToolUseType)
+			replay := hostedReplayMetadata(p.model)
+			replay[serverToolUseType] = content.Raw
+			state.ProviderMetadata = withProviderMetadata(state.ProviderMetadata, hostedReplayKey, replay)
 		}
 		if content.Input != nil {
 			data, err := json.Marshal(content.Input)
@@ -459,6 +476,16 @@ func (p *streamParser) finalize(ctx context.Context) sigma.AssistantMessage {
 		block.ProviderSignature = call.ProviderSignature
 		block.ProviderMetadata = copyAnyMap(call.ProviderMetadata)
 		contentByIndex[state.ContentIndex] = block
+	}
+	for index, results := range p.hostedResults {
+		block := contentByIndex[index]
+		replay := hostedReplayMetadata(p.model)
+		if value, ok := block.ProviderMetadata[hostedReplayKey].(map[string]any); ok {
+			replay = copyAnyMap(value)
+		}
+		replay["results_after"] = results
+		block.ProviderMetadata = withProviderMetadata(block.ProviderMetadata, hostedReplayKey, replay)
+		contentByIndex[index] = block
 	}
 	p.emitEndEvents(ctx)
 

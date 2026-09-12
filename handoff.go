@@ -243,7 +243,7 @@ func transformHandoffMessage(message Message, ctx handoffMessageContext) (Messag
 			continue
 		}
 		cloned := block.Clone()
-		if cloned.Type == ContentBlockToolCall && ctx.compat.normalizeToolCallID != nil {
+		if cloned.Type == ContentBlockToolCall && isHandoffClientToolCall(cloned) && ctx.compat.normalizeToolCallID != nil {
 			cloned.ToolCallID = ctx.compat.normalizeToolCallID(cloned.ToolCallID)
 		}
 		content = append(content, cloned)
@@ -266,6 +266,11 @@ func transformHandoffMessage(message Message, ctx handoffMessageContext) (Messag
 }
 
 func shouldConvertHandoffThinking(message Message, ctx handoffMessageContext) bool {
+	// Keep interrupted reasoning distinguishable until provider request preparation
+	// removes it. Converting it to text here would make it appear user-visible.
+	if message.StopReason == StopReasonError || message.StopReason == StopReasonAborted {
+		return false
+	}
 	if !ctx.target.SupportsReasoning() {
 		return true
 	}

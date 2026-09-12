@@ -49,11 +49,14 @@ decide whether the partial response is useful conversation history:
 ```go
 if errors.Is(err, sigma.ErrAborted) && len(final.Content) > 0 {
 	history = append(history, sigma.Message{
-		Role:       sigma.RoleAssistant,
-		Provider:   final.Provider,
-		Model:      final.Model,
-		StopReason: sigma.StopReasonAborted,
-		Content:    final.Content,
+		Role:                  sigma.RoleAssistant,
+		Provider:              final.Provider,
+		API:                   model.API,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
+		Usage:                 final.Usage,
+		Model:                 final.Model,
+		StopReason:            sigma.StopReasonAborted,
+		Content:               final.Content,
 	})
 }
 ```
@@ -62,6 +65,14 @@ Append an aborted assistant message when the partial content was visible to the
 user or is needed for a later "continue" request. Drop it when the abort happened
 before meaningful content was shown, or when the next request should ignore the
 interrupted attempt.
+
+On the next request, built-in non-Responses adapters retain only nonblank visible
+text from `error` or `aborted` assistant turns. They remove reasoning, signatures,
+block metadata, provider thinking effort, tool calls, and associated tool-result
+messages (including deferred-tool markers). Responses drops those turns entirely.
+Successful unanswered calls still receive synthetic results. Preparation does
+not mutate your saved history or the returned partial final; the same policy
+applies after using the handoff helpers.
 
 Continuation after abort is a new provider call with the saved conversation
 history. Sigma does not guarantee that a provider can resume the same server-side

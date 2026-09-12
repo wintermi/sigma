@@ -694,10 +694,10 @@ func TestTransformKeepsAbortedAssistantPartialContent(t *testing.T) {
 	if got, want := message.StopReason, sigma.StopReasonAborted; got != want {
 		t.Fatalf("stop reason = %q, want %q", got, want)
 	}
-	if got, want := message.Content[0].Text, "<thinking>\npartial plan\n</thinking>"; got != want {
-		t.Fatalf("partial thinking text = %q, want %q", got, want)
+	if len(message.Content) != 1 {
+		t.Fatalf("content = %#v, want visible text only", message.Content)
 	}
-	if got, want := message.Content[1].Text, "Partial answer"; got != want {
+	if got, want := message.Content[0].Text, "Partial answer"; got != want {
 		t.Fatalf("partial assistant text = %q, want %q", got, want)
 	}
 }

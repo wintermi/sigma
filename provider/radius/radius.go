@@ -24,6 +24,7 @@ import (
 	"github.com/wintermi/sigma/internal/jsonutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
+	"github.com/wintermi/sigma/internal/transform"
 )
 
 const (
@@ -576,6 +577,7 @@ type radiusTool struct {
 }
 
 func requestPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (radiusPayload, error) {
+	req = transform.PrepareReplay(model, req)
 	messages := make([]radiusMessage, 0, len(req.Messages))
 	for _, message := range req.Messages {
 		converted, err := messagePayload(message)

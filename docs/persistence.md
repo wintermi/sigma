@@ -39,14 +39,29 @@ Open-ended JSON maps are intentionally preserved. `ProviderMetadata`,
 sigma does not interpret but that may be required to continue a conversation.
 Opaque provider signatures on thinking, tool-call, and assistant text blocks are
 also preserved. Empty assistant text is valid only when `Signature` or
-`ProviderSignature` is non-empty; unsigned empty text remains invalid. Persistence
-does not interpret signatures. Provider replay validates their format and exact
+`ProviderSignature` is non-empty, or it anchors Anthropic hosted-result metadata.
+Other unsigned empty text remains invalid. Persistence does not interpret
+signatures. Provider replay validates their format and exact
 provider/API/model provenance before sending them.
 
 Provider-authored numbers in tool arguments are `json.Number`, including values
 retained from partial or canceled streams. Persistence preserves their exact JSON
 numeric spelling. See [numeric tool arguments](tools.md#numeric-arguments) for
 migration and explicit conversion guidance.
+
+Anthropic hosted-tool results use an `anthropic_hosted_replay` entry inside a
+preceding block's `ProviderMetadata`. Preserve the entire content block and its
+metadata, including ordered `results_after` entries and source provider/API/model.
+Compatible replay validates these associations locally; incompatible or missing
+provenance omits hosted calls and results. Old histories remain readable, but
+results discarded before this metadata was captured cannot be reconstructed.
+
+Persistence retains failed and aborted messages as saved. At provider dispatch,
+non-Responses adapters keep only their nonblank visible text and remove their
+reasoning, tool calls, associated results, and deferred-tool markers. Responses
+omits the whole failed turn. Neither path changes the stored request. Anthropic
+also omits blank text after cleaning, including foreign signature-only blocks;
+valid signed thinking and empty tool results remain serializable.
 
 ## Appending assistant turns
 
@@ -61,13 +76,14 @@ the final assistant response back into a `Message`:
 
 ```go
 history = append(history, sigma.Message{
-	Role:       sigma.RoleAssistant,
-	Content:    final.Content,
-	Provider:   final.Provider,
-	API:        model.API,
-	Model:      final.Model,
-	StopReason: final.StopReason,
-	Usage:      final.Usage,
+	Role:                  sigma.RoleAssistant,
+	Content:               final.Content,
+	Provider:              final.Provider,
+	API:                   model.API,
+	Model:                 final.Model,
+	StopReason:            final.StopReason,
+	ProviderThinkingLevel: final.ProviderThinkingLevel,
+	Usage:                 final.Usage,
 })
 ```
 

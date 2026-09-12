@@ -8,6 +8,13 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve exact numeric arguments through Anthropic, Google, and Bedrock replay.
+- [x] Persist ordered Anthropic hosted-tool results with exact replay provenance.
+- [x] Sanitize failed tool exchanges before ID repair and deferred-tool planning.
+- [x] Recognize Google and Vertex prompt blocking as terminal content filtering.
+- [x] Return typed errors for malformed and unexpected Google tool-call terminals.
+- [x] Filter blank Anthropic text before message and cache-marker placement.
+
 - [x] Generate opaque synthetic tool-call IDs across turns and concurrent streams.
 - [x] Apply rich auth per attempt to Google text/images/embeddings and OpenRouter images.
 - [x] Redact structured inline OpenAI and OpenRouter image errors.

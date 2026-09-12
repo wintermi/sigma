@@ -127,7 +127,7 @@ func validateContentBlock(role Role, block ContentBlock, messageIndex int, conte
 	}
 	switch block.Type {
 	case ContentBlockText:
-		if block.Text == "" && (role != RoleAssistant || block.Signature == "" && block.ProviderSignature == "") {
+		if block.Text == "" && (role != RoleAssistant || block.Signature == "" && block.ProviderSignature == "" && block.ProviderMetadata["anthropic_hosted_replay"] == nil) {
 			return invalidRequestError("message %d content %d: text block is empty", messageIndex, contentIndex)
 		}
 	case ContentBlockThinking:
