@@ -347,6 +347,7 @@ func messageIndicatesPrematureProviderStreamTermination(message string) bool {
 		strings.Contains(message, "stream ended before terminal response event") ||
 		strings.Contains(message, "stream ended before message_stop") ||
 		strings.Contains(message, "anthropic messages: stream ended without a stop reason") ||
+		strings.Contains(message, "bedrock converse stream: stream ended without a stop reason") ||
 		strings.Contains(message, "stream ended before finish reason") ||
 		strings.Contains(message, "stream ended before conversation.response.done")
 }

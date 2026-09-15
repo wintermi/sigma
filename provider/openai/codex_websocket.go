@@ -22,8 +22,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1008,29 +1010,76 @@ func codexShouldProxy(target *url.URL) bool {
 }
 
 func codexNoProxyMatch(host, port, token string) bool {
-	if token == "" {
-		return false
+	token = strings.ToLower(strings.TrimSpace(token))
+	if token == "*" {
+		return true
 	}
 	tokenHost, tokenPort := codexSplitNoProxyToken(token)
-	if tokenPort != "" && tokenPort != port {
+	if tokenHost == "" || tokenPort != "" && tokenPort != port {
 		return false
 	}
-	tokenHost = strings.TrimPrefix(tokenHost, "*")
-	if strings.HasPrefix(tokenHost, ".") {
-		return host == strings.TrimPrefix(tokenHost, ".") || strings.HasSuffix(host, tokenHost)
+	if address, err := netip.ParseAddr(tokenHost); err == nil {
+		target, err := netip.ParseAddr(host)
+		return err == nil && target == address
 	}
-	return host == tokenHost
+	if _, err := netip.ParseAddr(host); err == nil {
+		return false
+	}
+	if strings.HasPrefix(tokenHost, "*.") {
+		tokenHost = strings.TrimPrefix(tokenHost, "*.")
+	} else {
+		tokenHost = strings.TrimPrefix(tokenHost, ".")
+	}
+	if !codexNoProxyDomain(tokenHost) {
+		return false
+	}
+	host = strings.ToLower(host)
+	return host == tokenHost || strings.HasSuffix(host, "."+tokenHost)
 }
 
 func codexSplitNoProxyToken(token string) (string, string) {
-	token = strings.ToLower(token)
-	if strings.Count(token, ":") == 1 {
-		host, port, ok := strings.Cut(token, ":")
-		if ok && port != "" {
-			return host, port
+	if address, err := netip.ParseAddr(token); err == nil {
+		return address.String(), ""
+	}
+	if strings.HasPrefix(token, "[") && strings.HasSuffix(token, "]") {
+		if address, err := netip.ParseAddr(token[1 : len(token)-1]); err == nil && address.Is6() {
+			return address.String(), ""
+		}
+		return "", ""
+	}
+	if !strings.ContainsAny(token, ":[]") {
+		return token, ""
+	}
+	host, port, err := net.SplitHostPort(token)
+	if err != nil {
+		return "", ""
+	}
+	if strings.HasPrefix(token, "[") {
+		if address, err := netip.ParseAddr(host); err != nil || !address.Is6() {
+			return "", ""
 		}
 	}
-	return token, ""
+	number, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || number == 0 {
+		return "", ""
+	}
+	return host, port
+}
+
+func codexNoProxyDomain(domain string) bool {
+	for _, label := range strings.Split(domain, ".") {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, char := range label {
+			switch {
+			case char >= 'a' && char <= 'z', char >= '0' && char <= '9', char == '-':
+			default:
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func codexProxyEnv(keys ...string) string {

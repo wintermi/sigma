@@ -165,7 +165,14 @@ Release scope values:
   model-policy enablement, and account-aware model discovery. Discovery returns
   an advisory filter over the curated catalog; it does not run during login or
   refresh, persist availability, or mutate registry and generated model state.
-- Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than the AWS SDK. The built-in environment credential path is intentionally limited to `AWS_BEARER_TOKEN_BEDROCK` or static AWS keys; profiles, SSO, web identity, IMDS, and shared-config loading require caller-supplied credentials through Sigma auth resolvers. Typed Bedrock request controls, custom non-reserved headers, retry behavior, and response debug hooks have deterministic fixture coverage.
+- Bedrock uses stdlib HTTP, SigV4 signing, and EventStream parsing rather than
+  the AWS SDK. Its [documented default credential chain](providers.md#amazon-bedrock-converse-stream)
+  includes request/static environment credentials, shared profiles/configuration,
+  ECS, web identity, and IMDS. Use `CredentialSourceAuthResolver` with an explicit
+  resolver to avoid built-in file and metadata-service discovery. AWS SDK
+  integration and SSO remain unsupported. Typed request controls, custom
+  non-reserved headers, retry behavior, and response debug hooks have
+  deterministic fixture coverage.
 - The Anthropic-compatible routing in the Anthropic row title covers Kimi,
   Kimi Coding, Fireworks, and Xiaomi compat branches. Each branch has
   deterministic compatibility coverage in `provider/anthropic`; Kimi, Kimi

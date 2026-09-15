@@ -70,6 +70,13 @@ for event := range stream.Events() {
 Terminal events carry `FinalMessage`. `Stream.Final` returns the same final
 assistant message when the provider recorded one.
 
+Incremental `ToolCall` and `PartialToolCall` payloads contain independent copies
+of JSON-compatible arguments and metadata, including nested containers and exact
+JSON numbers. Mutating these event values does not change later events, provider
+state, or successful/aborted final arguments. Empty argument objects remain
+objects. Opaque Go objects remain caller-owned; terminal `FinalMessage` and
+`Stream.Final` continue to refer to the same recorded result.
+
 Every non-terminal event carries `PartialMessage`. Its stop reason defaults to
 `StopReasonPending` while generation remains in progress; the initial `start`
 event carries an empty pending snapshot before any content blocks arrive. A
@@ -138,6 +145,12 @@ Anthropic Messages requires `message_start`, `message_stop`, and a nonempty
 provider stop reason for successful completion, including empty output.
 Incomplete streams preserve partial content and usage and classify as transient
 stream failures. Sigma does not automatically retry after streamed output.
+
+Bedrock Converse likewise requires `message_stop` and a nonempty recognized
+stop reason. A missing reason is checked after trailing metadata is consumed,
+preserving received usage and partial output in the error result. Missing
+completion evidence is transient with retry advice, without automatic replay;
+transport errors and cancellation retain precedence.
 
 Cancellation is controlled by `context.Context`; see [Errors](errors.md) and
 [Cancellation](cancellation.md).

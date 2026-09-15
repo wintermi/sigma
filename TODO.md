@@ -8,6 +8,11 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve client-default tool choices through request-option merging.
+- [x] Isolate incremental tool arguments and metadata from provider state and finals.
+- [x] Account for Bedrock one-hour cache writes and reject missing completion reasons.
+- [x] Reconcile provider credential, image-adapter, and debug-hook documentation.
+
 - [x] Give Google Vertex file-read probes an explicit path and a tool-call-only prompt.
 - [x] Preserve exact numeric arguments through Anthropic, Google, and Bedrock replay.
 - [x] Persist ordered Anthropic hosted-tool results with exact replay provenance.
@@ -280,7 +285,7 @@ integrations remain future work until they have the same local evidence bar.
 - [x] Add proxy-aware Codex WebSocket dialing for standard HTTP(S) proxy
       environment variables and `NO_PROXY` exclusions while preserving SSE
       fallback.
-- [ ] Harden Codex WebSocket `NO_PROXY` matching for ordinary parent-domain
+- [x] Harden Codex WebSocket `NO_PROXY` matching for ordinary parent-domain
       suffixes, wildcard and root-domain forms, port-qualified hosts, and IPv6
       literals.
 - [x] Add Codex WebSocket-specific connect timeout and session-cache debug

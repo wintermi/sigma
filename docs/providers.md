@@ -234,6 +234,13 @@ Concrete disk, keychain, or encrypted credential storage remains caller-owned.
 Codex image input should use HTTPS image URLs; ChatGPT Codex rejects base64
 image payloads.
 
+Codex WebSocket proxy exclusions accept bare parent domains, leading-dot and
+`*.` forms for roots and descendants, and `*` anywhere in a `NO_PROXY` list.
+Matching respects DNS-label boundaries and optional ports; IPv4 and IPv6
+literals match exact addresses, including bracketed IPv6 with a port. Invalid
+entries and CIDR ranges do not match. Proxy-variable precedence and SSE fallback
+are unchanged.
+
 ### GitHub Copilot
 
 ```go
@@ -597,6 +604,12 @@ request metadata, additional model request fields, and response field paths.
 Request headers from `sigma.WithHeader` and `sigma.WithHeaders` are applied
 before SigV4 signing; `authorization`, `host`, and `x-amz-*` headers remain
 owned by the adapter.
+
+Bedrock usage retains the one-hour cache-write subset from `cacheDetails` in
+`Usage.LongCacheWriteInputTokens`, so long-retention writes use the existing
+long-duration cost formula. Total cache writes and raw usage remain available;
+missing duration details do not infer a one-hour subset. Custom Converse clients
+can populate `ConverseUsage.LongCacheWriteInputTokens` directly.
 
 ### OpenRouter Chat Completions
 

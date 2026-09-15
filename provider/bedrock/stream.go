@@ -59,7 +59,9 @@ type ConverseUsage struct {
 	TotalTokens           int
 	CacheReadInputTokens  int
 	CacheWriteInputTokens int
-	Raw                   map[string]any
+	// LongCacheWriteInputTokens is the one-hour subset of CacheWriteInputTokens.
+	LongCacheWriteInputTokens int
+	Raw                       map[string]any
 }
 
 type converseStreamParser struct {
@@ -107,6 +109,9 @@ func parseConverseStream(ctx context.Context, stream ConverseStream, writer sigm
 				}
 				if !parser.messageStopped {
 					return parser.finalize(ctx), fmt.Errorf("bedrock converse stream: stream ended before message_stop")
+				}
+				if parser.rawStopReason == "" {
+					return parser.finalize(ctx), fmt.Errorf("bedrock converse stream: stream ended without a stop reason")
 				}
 				return parser.finalize(ctx), nil
 			}
@@ -470,11 +475,12 @@ func (p *converseStreamParser) sortedToolCalls() []*streamblocks.ToolCall {
 
 func (u ConverseUsage) sigmaUsage() sigma.Usage {
 	return sigma.Usage{
-		InputTokens:           u.InputTokens,
-		OutputTokens:          u.OutputTokens,
-		TotalTokens:           u.TotalTokens,
-		CacheReadInputTokens:  u.CacheReadInputTokens,
-		CacheWriteInputTokens: u.CacheWriteInputTokens,
+		InputTokens:               u.InputTokens,
+		OutputTokens:              u.OutputTokens,
+		TotalTokens:               u.TotalTokens,
+		CacheReadInputTokens:      u.CacheReadInputTokens,
+		CacheWriteInputTokens:     u.CacheWriteInputTokens,
+		LongCacheWriteInputTokens: u.LongCacheWriteInputTokens,
 	}
 }
 

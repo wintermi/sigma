@@ -372,6 +372,9 @@ func mergeOptions(base Options, override Options) Options {
 	if override.ThinkingBudgetTokens != nil {
 		merged.ThinkingBudgetTokens = cloneIntPtr(override.ThinkingBudgetTokens)
 	}
+	if override.ToolChoice != "" {
+		merged.ToolChoice = override.ToolChoice
+	}
 	if override.StructuredOutput != nil {
 		merged.StructuredOutput = cloneStructuredOutput(override.StructuredOutput)
 	}

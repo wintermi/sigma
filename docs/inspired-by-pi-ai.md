@@ -49,7 +49,7 @@ examples.
 | `apiKey`, environment lookup | `sigma.WithAPIKey`, `sigma.WithAuthResolver`, `sigma.EnvironmentAuthResolver` | Request API keys override client/default credential resolution. |
 | `signal` | `context.Context` | Use `context.WithCancel`, `context.WithTimeout`, or `context.WithDeadline`. |
 | `stopReason` strings | `sigma.StopReason...` constants | Go names differ: for example `StopReasonEndTurn`, `StopReasonMaxTokens`, `StopReasonToolCalls`, `StopReasonError`, `StopReasonAborted`. |
-| `onPayload`, `onResponse` | No root API-name equivalent | Use provider tests, custom `http.Client`, provider-specific diagnostics, or adapter changes when payload inspection is needed. |
+| `onPayload`, `onResponse` | `WithTextPayloadDebugHook`, `WithTextResponseDebugHook`, and image/embedding counterparts | Hooks expose redacted copies for inspection; callback names and semantics are not an exact TypeScript port. See [Security](security.md). |
 
 ## Provider Coverage
 
@@ -60,7 +60,8 @@ out of the box. Sigma's Go design is intentionally explicit:
   OpenAI Responses, Azure OpenAI Responses, OpenAI Codex Responses, Anthropic
   Messages, Google Generative AI, Google Vertex, Mistral Conversations, and
   Amazon Bedrock Converse Stream.
-- Image generation currently has OpenRouter and OpenAI Images adapters.
+- Image generation has OpenRouter, OpenAI Images, Google Gemini API, and Google
+  Vertex Imagen adapters. See [Images](images.md) for supported operations.
 - Provider IDs such as DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot,
   Fireworks, OpenCode Zen, OpenCode Go, Kimi, MiniMax, Xiaomi, and `custom`
   exist for compatible models, but generated default model coverage and fixture
@@ -634,9 +635,9 @@ parity:
   metadata plus explicitly registered dynamic sources and refresh operations.
 - Agent-managed cross-provider handoff execution. Sigma adapts requests and
   reports capability losses, while applications own execution and retries.
-- Debug callbacks like `onPayload` and `onResponse` as public root options.
-  Provider packages may expose deterministic tests and diagnostics, but the root
-  package does not promise callback-name parity.
+- Exact callback-name or mutation semantics for `onPayload` and `onResponse`.
+  Sigma provides public text, image, and embedding debug hooks that receive
+  redacted copies; mutating a debug value does not change a provider request.
 
 ## Follow-up Notes
 

@@ -42,6 +42,8 @@ const (
 )
 
 // PartialToolCall describes an in-progress tool-call update.
+// Stream delivery copies JSON-compatible metadata containers so consumer
+// mutations cannot change provider state or later events.
 type PartialToolCall struct {
 	ID                string         `json:"id,omitempty"`
 	Name              string         `json:"name,omitempty"`
@@ -55,6 +57,9 @@ type PartialToolCall struct {
 // Content block events may be interleaved. Consumers must route text,
 // thinking, and tool-call updates by ContentIndex instead of assuming events
 // arrive as a single sequential output buffer.
+// Incremental ToolCall and PartialToolCall payloads own their JSON-compatible
+// arguments and metadata independently of provider state and terminal content.
+// Opaque Go objects remain caller-owned.
 //
 // Typical consumers switch on Kind:
 //

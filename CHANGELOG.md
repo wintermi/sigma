@@ -168,6 +168,20 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Client-default provider-neutral tool choices now survive request-option
+  merging, including disabled tools, while request and provider-specific
+  overrides retain precedence.
+- Incremental tool events now isolate nested arguments and metadata from
+  provider state and final results. Exact JSON numbers and empty argument
+  objects survive copying, including aborted finals.
+- Bedrock one-hour cache writes now retain their duration breakdown for cost
+  estimates. Missing completion reasons return transient stream errors with
+  partial output and usage instead of reporting successful completion.
+- Codex WebSocket proxy exclusions now match parent domains, wildcard lists,
+  explicit ports, and IPv6 literals while rejecting malformed entries.
+- Provider and comparison guides now describe the existing Bedrock credential
+  chain, Google image adapters, and redacted debug hooks accurately.
+
 - Internal evaluation comparisons now pair real Go subtests by explicit case ID
   and validate operational telemetry before judging. Missing per-turn usage stays
   unavailable instead of appearing as zero or a complete subtotal. Evaluation

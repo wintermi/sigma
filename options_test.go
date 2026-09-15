@@ -109,6 +109,36 @@ func TestOptionsMergePrecedence(t *testing.T) {
 	}
 }
 
+func TestDefaultToolChoiceInheritance(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name          string
+		defaultChoice sigma.ToolChoice
+		requestChoice sigma.ToolChoice
+		want          sigma.ToolChoice
+	}{
+		{name: "omitted"},
+		{name: "default none", defaultChoice: sigma.ToolChoiceNone, want: sigma.ToolChoiceNone},
+		{name: "default auto", defaultChoice: sigma.ToolChoiceAuto, want: sigma.ToolChoiceAuto},
+		{name: "request override", defaultChoice: sigma.ToolChoiceNone, requestChoice: sigma.ToolChoiceAuto, want: sigma.ToolChoiceAuto},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client, provider, model := newOptionsTestClient(t, sigma.WithDefaultOptions(sigma.WithToolChoice(tt.defaultChoice)))
+			var opts []sigma.Option
+			if tt.requestChoice != "" {
+				opts = append(opts, sigma.WithToolChoice(tt.requestChoice))
+			}
+			if _, err := client.Complete(context.Background(), model, sigma.Request{}, opts...); err != nil {
+				t.Fatal(err)
+			}
+			if provider.opts.ToolChoice != tt.want {
+				t.Fatalf("tool choice = %q, want %q", provider.opts.ToolChoice, tt.want)
+			}
+		})
+	}
+}
+
 func TestProviderNeutralControlsMergeAndMapToOpenAIOptions(t *testing.T) {
 	t.Parallel()
 

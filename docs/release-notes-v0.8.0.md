@@ -7,6 +7,15 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Client-default tool choices now reach provider requests, and incremental tool
+events isolate nested arguments and metadata from provider state and final
+results. Exact numbers and empty argument objects survive these copies,
+including aborted finals. Bedrock now accounts for one-hour cache writes and
+rejects missing completion reasons while retaining partial output and trailing
+usage. Codex WebSocket proxy exclusions now handle parent domains, wildcard
+lists, ports, and IPv6 literals. Documentation also reconciles the existing
+credential chain, image adapters, and redacted debug hooks.
+
 Internal evaluations now pair Go subtests by stable case ID and validate
 operational requirements before judging. Missing measurements from any model
 turn keep the corresponding token or cost aggregate unavailable rather than
@@ -490,6 +499,22 @@ available explicitly. The embedding guide covers OpenAI-compatible, Gemini,
 Vertex, and Bedrock adapters without changing release classifications.
 
 ## Compatibility
+
+- `bedrock.ConverseUsage` adds `LongCacheWriteInputTokens`, the one-hour subset
+  of total cache writes. Callers using unkeyed literals must update them; keyed
+  literals can omit the field. Root usage/persistence schemas and catalog rates
+  are unchanged, but one-hour cache cost estimates now apply the correct rate.
+- Client-default `ToolChoiceNone` now suppresses model tool selection unless
+  overridden. Incremental tool-event mutations no longer affect later events
+  or terminal arguments; terminal `FinalMessage` and `Stream.Final` retain
+  their existing shared-result contract.
+- Bedrock completion without a supplied stop reason now returns an error,
+  classified as transient with retry advice. Received output and usage are
+  retained; no automatic replay after streamed output is introduced.
+- Codex WebSocket connections bypass configured proxies for matching parent
+  domains and exact IPv4/IPv6 exclusions, respecting optional ports. Leading-dot
+  and `*.` forms continue matching roots as well as descendants. `*` also works
+  inside exclusion lists; malformed entries and CIDR remain nonmatching.
 
 - Explicit `base_url` or `baseURL` request configuration blocks auth-derived
   defaults under either spelling. Provider constructor and model-metadata header

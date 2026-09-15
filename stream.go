@@ -140,6 +140,20 @@ func (w *streamWriter) Emit(ctx context.Context, event Event) error {
 		partial.StopReason = StopReasonPending
 		event.PartialMessage = &partial
 	}
+	// Parsers and the accumulator retain their own values. Only the outgoing
+	// tool payloads are copied, so consumer mutations cannot change later events
+	// or the terminal result, and parsers can keep their decoded argument cache.
+	if event.PartialToolCall != nil {
+		partial := *event.PartialToolCall
+		partial.ProviderMetadata, _ = cloneJSONValue(partial.ProviderMetadata, cloneProviderOptions).(map[string]any)
+		event.PartialToolCall = &partial
+	}
+	if event.ToolCall != nil {
+		call := *event.ToolCall
+		call.Arguments = cloneJSONValue(call.Arguments, cloneProviderOptions)
+		call.ProviderMetadata, _ = cloneJSONValue(call.ProviderMetadata, cloneProviderOptions).(map[string]any)
+		event.ToolCall = &call
+	}
 	if err := mapStreamStateError(w.producer.Emit(ctx, event)); err != nil {
 		return err
 	}
@@ -407,7 +421,7 @@ func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 
 func (b *partialBlock) toolArguments(decode bool) any {
 	if b.hasArg {
-		return cloneHandoffAny(b.argument)
+		return cloneJSONValue(b.argument, cloneProviderOptions)
 	}
 	if b.arguments == "" {
 		return map[string]any{}

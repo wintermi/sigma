@@ -871,13 +871,22 @@ func usageFromPayload(payload map[string]any) *ConverseUsage {
 	if len(usage) == 0 {
 		return nil
 	}
+	longCacheWriteTokens := 0
+	if details, ok := usage["cacheDetails"].([]any); ok {
+		for _, value := range details {
+			if detail, ok := value.(map[string]any); ok && stringValue(detail, "ttl") == "ONE_HOUR" {
+				longCacheWriteTokens += intValue(detail, "inputTokens")
+			}
+		}
+	}
 	return &ConverseUsage{
-		InputTokens:           intValue(usage, "inputTokens"),
-		OutputTokens:          intValue(usage, "outputTokens"),
-		TotalTokens:           intValue(usage, "totalTokens"),
-		CacheReadInputTokens:  intValue(usage, "cacheReadInputTokens"),
-		CacheWriteInputTokens: intValue(usage, "cacheWriteInputTokens"),
-		Raw:                   usage,
+		InputTokens:               intValue(usage, "inputTokens"),
+		OutputTokens:              intValue(usage, "outputTokens"),
+		TotalTokens:               intValue(usage, "totalTokens"),
+		CacheReadInputTokens:      intValue(usage, "cacheReadInputTokens"),
+		CacheWriteInputTokens:     intValue(usage, "cacheWriteInputTokens"),
+		LongCacheWriteInputTokens: longCacheWriteTokens,
+		Raw:                       usage,
 	}
 }
 
