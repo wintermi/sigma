@@ -133,9 +133,12 @@ Release scope values:
   tool load. Shared incomplete terminals have fixture-tested max-output and
   content-filter normalization, reject missing or unknown reasons while
   preserving partial diagnostics, and expose advisory bounded max-token
-  recovery without automatic replay. Hosted-tool execution,
-  namespace-definition authoring, agent-driven compaction, and background
-  Responses remain deferred.
+  recovery without automatic replay. Direct OpenAI Responses also supports
+  explicit background submission, single-fetch retrieval, and cancellation.
+  Azure and Codex background support, automatic polling, resumable background
+  streams, webhooks, hosted-tool execution, namespace-definition authoring,
+  agent-driven compaction, and provider-neutral agent orchestration remain
+  deferred.
 - Vercel AI Gateway uses the shared Anthropic Messages adapter through a thin
   provider wrapper. Its first-class coverage is limited to direct route
   registration, request shape, generated metadata reuse, provider errors, and

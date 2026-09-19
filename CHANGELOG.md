@@ -168,6 +168,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Internal evaluation comparisons now exclude independently failed or skipped
+  tests while retaining threshold-only scores, and preserve submitted runs that
+  fail before harness dispatch in totals and diagnostics. Threshold failures
+  are reported during cleanup without counting as CLI operational failures.
+  Numeric tool arguments retain exact JSON values for judges. The provider
+  parity guide now reflects existing direct OpenAI background response support.
 - Client-default provider-neutral tool choices now survive request-option
   merging, including disabled tools, while request and provider-specific
   overrides retain precedence.

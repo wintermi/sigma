@@ -398,9 +398,9 @@ func executeSmokeRuns(
 			if cancel != nil {
 				cancel()
 			}
-			beforeCleanup := len(test.errors)
+			beforeCleanup := len(test.operationalErrors)
 			test.finish()
-			cleanupErrors := append([]string(nil), test.errors[beforeCleanup:]...)
+			cleanupErrors := append([]string(nil), test.operationalErrors[beforeCleanup:]...)
 
 			operationalMessages := cleanupErrors
 			operationalFailure := execution.Err != nil || len(operationalMessages) > 0

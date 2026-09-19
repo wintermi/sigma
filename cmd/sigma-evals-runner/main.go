@@ -55,10 +55,11 @@ func (s *candidateSelections) Set(value string) error {
 }
 
 type commandTest struct {
-	name     string
-	failed   bool
-	errors   []string
-	cleanups []func()
+	name              string
+	failed            bool
+	errors            []string
+	operationalErrors []string
+	cleanups          []func()
 }
 
 func (t *commandTest) Cleanup(cleanup func()) {
@@ -67,7 +68,14 @@ func (t *commandTest) Cleanup(cleanup func()) {
 
 func (t *commandTest) Errorf(format string, args ...any) {
 	t.failed = true
-	t.errors = append(t.errors, fmt.Sprintf(format, args...))
+	message := fmt.Sprintf(format, args...)
+	t.errors = append(t.errors, message)
+	if len(args) == 1 {
+		if _, ok := args[0].(*evals.ThresholdError); ok {
+			return
+		}
+	}
+	t.operationalErrors = append(t.operationalErrors, message)
 }
 
 func (t *commandTest) Failed() bool {

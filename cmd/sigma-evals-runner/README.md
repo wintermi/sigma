@@ -79,6 +79,15 @@ turns is insufficient. Missing token counts and cost print as `unavailable`;
 missing pricing alone does not fail a run. The supported suite requires a model
 that advertises tool support; incompatible selections fail before dispatch.
 
+Correctness threshold failures are reported during evaluation cleanup and
+remain separate from operational failures in the command summary. Independently
+failed or skipped Go-test evaluations retain their scores as evidence but are
+excluded from paired metrics. Submitted table runs that fail validation before
+dispatch remain visible in comparison totals and diagnostics; never-submitted
+rows are outside this accounting. Numeric tool-event arguments reach judges as
+exact `json.Number` values. See the framework guide for Go cleanup-order
+requirements and diagnostic input identities.
+
 Native Vertex requires `GOOGLE_CLOUD_PROJECT` or `GCLOUD_PROJECT`,
 `GOOGLE_CLOUD_LOCATION` or `GOOGLE_CLOUD_REGION`, and one of
 `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`:

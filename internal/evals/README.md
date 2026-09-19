@@ -83,7 +83,17 @@ and complete replayable conversation.
 `evals.Run` integrates with `testing.T` and records the run during `t.Cleanup`.
 Call `Runner.Close` from `TestMain` after `m.Run` so all cleanups have completed.
 Use one `evals.Run` call per Go test when final test status must be attributed
-to an individual run.
+to an individual run. Status is captured when the evaluation cleanup executes.
+Go cleanups run in reverse registration order: register invariant-checking
+cleanups after `evals.Run` so they execute before evaluation recording. Failures
+in cleanups that execute later cannot be attributed retroactively.
+
+Threshold misses report a typed `ThresholdError` during cleanup, so
+`test.Failed()` does not reflect a threshold miss immediately after `Run`.
+Threshold-only failures retain eligible scores. Independent test failures and
+skips exclude runs from paired metrics while retaining their judgments as
+evidence; skipped tests do not receive deferred threshold failures. Operational
+and persistence failures take precedence over skips.
 
 Every `evals.Case` requires a stable, nonblank `ID`. Give baseline and candidate
 runs of the same scenario the same ID, even when their Go subtest names differ.
@@ -91,12 +101,23 @@ Use distinct IDs for distinct scenarios that happen to share input. Pairing uses
 the evaluation set, source file, case ID, input identity, and repetition; full
 Go test names remain diagnostic labels.
 
+Submitted table runs retain comparison identity before case validation and
+input serialization. Invalid submissions therefore remain in comparison totals
+and diagnostics without dispatching the harness. When input identity cannot be
+derived, an errored run uses a separate diagnostic key based on case ID and
+repetition, or the test name when the case ID is missing. Diagnostic keys never
+match valid input keys. Rows never submitted to `evals.Run` are not registered
+as an expected cohort.
+
 An optional `Case.Validate` callback receives the context and `JudgmentInput`.
 It runs after successful harness execution and JSON validation, before judges.
 Return an error for operational invariants such as missing required telemetry:
 the run then fails, records the error and output, skips judges, and is excluded
 from paired metrics. Use judges for correctness and thresholds for score-based
 test failures. Validator and judge inputs are read-only by convention.
+Normalized tool-event arguments preserve numeric values as `json.Number`,
+including nested values, so judges can inspect exact integers, decimals, and
+exponent forms without floating-point rounding.
 
 `evals.NewHarnessTable` emits baseline and candidate rows in repetition order.
 Inputs implementing `EvalGroupID() string` use that stable identity for pairing;

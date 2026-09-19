@@ -174,7 +174,7 @@ func TestRunnerInvalidInputAndCaseIDPreventDispatch(t *testing.T) {
 func TestObservationDistinguishesMissingAndMeasuredZeroTokens(t *testing.T) {
 	t.Parallel()
 	for _, tokens := range []*int{nil, intPointer(0), intPointer(10)} {
-		observation := observationFromRun(Iteration{}, finishRunData{usage: Usage{TotalTokens: tokens}}, &fakeTest{}, nil)
+		observation := observationFromRun(Iteration{}, finishRunData{usage: Usage{TotalTokens: tokens}}, false, false, nil)
 		if tokens == nil {
 			if observation.TotalTokens != nil {
 				t.Fatal("missing tokens became zero")

@@ -60,6 +60,7 @@ type pendingRun[O any] struct {
 	result       RunResult[O]
 	judgments    []JudgeResult
 	averageScore *float64
+	thresholdErr *ThresholdError
 	runErr       error
 	context      *RunContext
 }
@@ -169,13 +170,23 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 		}
 	})
 
-	if err := validateCase(eval); err != nil {
+	var preparationErr error
+	if eval.Harness != nil {
+		pending.harness = strings.TrimSpace(eval.Harness.HarnessName())
+		if planner, ok := eval.Harness.(iterationPlanner); ok {
+			diagnosticID := pending.caseID
+			if diagnosticID == "" {
+				diagnosticID = pending.testName
+			}
+			preparationErr = prepareIteration(pending.context, planner.iterationPlan(), eval.Input, diagnosticID)
+		}
+	}
+	if err := errors.Join(validateCase(eval), preparationErr); err != nil {
 		pending.runErr = err
 		execution.Err = err
 		failTest(test, err)
 		return execution
 	}
-	pending.harness = strings.TrimSpace(eval.Harness.HarnessName())
 	pending.input, err = json.Marshal(eval.Input)
 	if err != nil {
 		pending.runErr = fmt.Errorf("evals: input must be JSON-serializable: %w", err)
@@ -233,11 +244,7 @@ func Run[I, O any](ctx context.Context, runner *Runner, test Test, eval Case[I, 
 		average := total / float64(len(pending.judgments))
 		pending.averageScore = &average
 		if eval.JudgeThreshold != nil && average < *eval.JudgeThreshold {
-			test.Errorf(
-				"eval average score %.4f is below threshold %.4f",
-				average,
-				*eval.JudgeThreshold,
-			)
+			pending.thresholdErr = &ThresholdError{Score: average, Threshold: *eval.JudgeThreshold}
 		}
 	}
 	pending.runErr = runErr
@@ -309,6 +316,7 @@ type finishRunData struct {
 	timings      Timings
 	judgments    []JudgeResult
 	averageScore *float64
+	thresholdErr *ThresholdError
 	runErr       error
 	context      *RunContext
 }
@@ -327,19 +335,27 @@ func (p *pendingRun[O]) finishData() finishRunData {
 		timings:      p.result.Timings,
 		judgments:    append([]JudgeResult(nil), p.judgments...),
 		averageScore: cloneFloat64(p.averageScore),
+		thresholdErr: p.thresholdErr,
 		runErr:       p.runErr,
 		context:      p.context,
 	}
 }
 
 func (r *Runner) finish(test Test, pending finishRunData) error {
+	failed, skipped := test.Failed(), test.Skipped()
+	if failed && pending.runErr == nil {
+		pending.runErr = errors.New("evals: Go test failed independently of the score threshold")
+	}
+	if pending.thresholdErr != nil && !skipped {
+		test.Errorf("%v", pending.thresholdErr)
+	}
 	metadata, attachments := pending.context.snapshot()
 	references, artifactErr := persistAttachments(r.artifactDirectory, pending.runID, attachments)
 	status := "passed"
-	if test.Skipped() {
-		status = "skipped"
-	} else if test.Failed() || artifactErr != nil {
+	if test.Failed() || pending.runErr != nil || artifactErr != nil {
 		status = "failed"
+	} else if skipped {
+		status = "skipped"
 	}
 	errorsList := errorStrings(pending.runErr)
 	if artifactErr != nil {
@@ -365,7 +381,7 @@ func (r *Runner) finish(test Test, pending finishRunData) error {
 	appendErr := r.appendRunRecord(record)
 	persistErr := errors.Join(artifactErr, appendErr)
 	if iteration, ok := parseIteration(metadata[iterationMetadataKey]); ok {
-		r.addObservation(observationFromRun(iteration, pending, test, persistErr))
+		r.addObservation(observationFromRun(iteration, pending, failed, skipped, persistErr))
 	}
 	if persistErr != nil {
 		return errors.Join(pending.runErr, persistErr)
@@ -373,17 +389,15 @@ func (r *Runner) finish(test Test, pending finishRunData) error {
 	return nil
 }
 
-func observationFromRun(iteration Iteration, pending finishRunData, test Test, persistErr error) Observation {
+func observationFromRun(iteration Iteration, pending finishRunData, failed, skipped bool, persistErr error) Observation {
 	outcome := OutcomeUnscored
 	switch {
-	case pending.runErr != nil || persistErr != nil:
+	case pending.runErr != nil || persistErr != nil || failed:
 		outcome = OutcomeErrored
+	case skipped:
+		outcome = OutcomeSkipped
 	case pending.averageScore != nil:
 		outcome = OutcomeScored
-	case test.Skipped():
-		outcome = OutcomeSkipped
-	case test.Failed():
-		outcome = OutcomeErrored
 	}
 	var totalTokens *float64
 	if pending.usage.TotalTokens != nil {

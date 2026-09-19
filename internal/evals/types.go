@@ -128,6 +128,18 @@ type Execution[O any] struct {
 	Err          error
 }
 
+// ThresholdError reports a correctness threshold miss during test cleanup.
+// It is a scored result, not an operational execution or recording failure.
+type ThresholdError struct {
+	Score     float64
+	Threshold float64
+}
+
+// Error describes the measured score and required threshold.
+func (e *ThresholdError) Error() string {
+	return fmt.Sprintf("eval average score %.4f is below threshold %.4f", e.Score, e.Threshold)
+}
+
 // AttachmentCategory selects the private artifact subdirectory.
 type AttachmentCategory string
 
@@ -151,9 +163,11 @@ type attachment struct {
 type RunContext struct {
 	runID string
 
-	mu          sync.Mutex
-	metadata    map[string]any
-	attachments []attachment
+	mu                sync.Mutex
+	metadata          map[string]any
+	attachments       []attachment
+	iterationPrepared bool
+	iterationErr      error
 }
 
 func newRunContext(runID string) *RunContext {

@@ -45,6 +45,37 @@ type iterationHarness[I, O any] struct {
 	plan  Iteration
 }
 
+type iterationPlanner interface {
+	iterationPlan() Iteration
+}
+
+func (h iterationHarness[I, O]) iterationPlan() Iteration {
+	plan := h.plan
+	plan.Candidates = append([]string(nil), plan.Candidates...)
+	return plan
+}
+
+// prepareIteration retains submitted identities even when input cannot be hashed.
+// The three-element diagnostic key cannot collide with normal two-element keys.
+func prepareIteration(run *RunContext, plan Iteration, input any, diagnosticID string) error {
+	run.mu.Lock()
+	defer run.mu.Unlock()
+	if run.iterationPrepared {
+		return run.iterationErr
+	}
+	run.iterationPrepared = true
+	plan.GroupKey, run.iterationErr = DeriveGroupKey(input, plan.Repetition)
+	if run.iterationErr != nil {
+		key, err := json.Marshal([]any{"invalid-input", diagnosticID, plan.Repetition})
+		if err != nil {
+			return fmt.Errorf("evals: encode diagnostic group key: %w", err)
+		}
+		plan.GroupKey = string(key)
+	}
+	run.metadata[iterationMetadataKey] = plan
+	return run.iterationErr
+}
+
 func (h iterationHarness[I, O]) HarnessName() string {
 	return h.inner.HarnessName()
 }
@@ -54,13 +85,10 @@ func (h iterationHarness[I, O]) Run(
 	input I,
 	run *RunContext,
 ) (RunResult[O], error) {
-	groupKey, err := DeriveGroupKey(input, h.plan.Repetition)
-	if err != nil {
-		return RunResult[O]{}, err
+	if run == nil {
+		return RunResult[O]{}, errors.New("evals: run context is required")
 	}
-	iteration := h.plan
-	iteration.GroupKey = groupKey
-	if err := run.SetMetadata(iterationMetadataKey, iteration); err != nil {
+	if err := prepareIteration(run, h.iterationPlan(), input, run.RunID()); err != nil {
 		return RunResult[O]{}, err
 	}
 	result, err := h.inner.Run(ctx, input, run)

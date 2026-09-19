@@ -205,10 +205,13 @@ func TestRunnerThresholdFailureRetainsScoredObservation(t *testing.T) {
 			}},
 		},
 	})
-	if !fake.Failed() {
-		t.Fatal("threshold miss did not fail the test")
+	if fake.Failed() {
+		t.Fatal("threshold miss failed the test before cleanup")
 	}
 	fake.runCleanups()
+	if !fake.Failed() {
+		t.Fatal("threshold miss did not fail the test during cleanup")
+	}
 	observations := runner.Observations()
 	if len(observations) != 1 || observations[0].Outcome != OutcomeScored ||
 		observations[0].Score == nil || *observations[0].Score != 0.5 {

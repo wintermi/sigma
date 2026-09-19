@@ -26,6 +26,16 @@ metadata remains v1, and public Sigma APIs are unchanged. Auth timeout tests
 now synchronize resolver completion before inspecting counters, eliminating
 an intermittent race-detector failure.
 
+Evaluation comparisons now exclude independently failed or skipped tests while
+retaining threshold-only scores. Threshold failures are reported during cleanup
+and remain separate from CLI operational failures. Submitted table runs that
+fail before dispatch retain their comparison identities and diagnostics;
+never-submitted runs remain outside this accounting. Numeric tool-event arguments
+reach judges as exact `json.Number` values. Artifact and iteration schema
+versions remain unchanged. The provider parity guide also now documents the
+existing direct OpenAI background submit, single-fetch, and cancel lifecycle
+while retaining the deferred boundaries for other routes and orchestration.
+
 Tool arguments now retain exact JSON numbers through persistence and replay on
 Anthropic, Google, and Bedrock, including shared Vertex routes. Anthropic hosted
 search, fetch, and code-execution results survive in ordered block metadata and

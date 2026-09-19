@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
 )
 
 // SigmaInput is one prompt sequence evaluated against a Sigma text model.
@@ -581,7 +582,7 @@ func normalizeArguments(arguments any) map[string]any {
 		return nil
 	}
 	var normalized map[string]any
-	if err := json.Unmarshal(encoded, &normalized); err != nil {
+	if err := jsonutil.Decode(encoded, &normalized); err != nil {
 		return nil
 	}
 	return normalized

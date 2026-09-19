@@ -634,6 +634,27 @@ func TestExecuteSmokeRunsSelectsCaseHarness(t *testing.T) {
 	}
 }
 
+func TestExecuteSmokeRunsThresholdIsNotOperationalFailure(t *testing.T) {
+	t.Parallel()
+	runner, err := evals.NewRunner(evals.RunnerConfig{ArtifactDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	summary, err := executeSmokeRuns(t.Context(), runner, &stdout, &stderr,
+		[]smokeCase{newSmokeCase("single", evals.Prompt("prompt"), exactJudge("expected"))},
+		fakeSmokeSuite("baseline/model", "wrong", nil), nil, 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !summary.Failed || summary.OperationalFailures != 0 || summary.Correct != 0 || summary.Runs != 1 {
+		t.Fatalf("summary=%+v", summary)
+	}
+	if !strings.Contains(stdout.String(), "FAIL role=baseline") || strings.Contains(stdout.String(), "error=") || !strings.Contains(stderr.String(), "eval average score") {
+		t.Fatalf("stdout=%s stderr=%s", stdout.String(), stderr.String())
+	}
+}
+
 func TestExecuteSmokeRunsSingleModelFailsHardAndReportsCleanupErrorsBeforeResult(t *testing.T) {
 	t.Parallel()
 

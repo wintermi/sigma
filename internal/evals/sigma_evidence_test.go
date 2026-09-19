@@ -9,12 +9,106 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/sigmatest"
 )
+
+func TestSigmaHarnessJudgesExactNumericToolArguments(t *testing.T) {
+	t.Parallel()
+	arguments := map[string]any{
+		"integer": json.Number("9007199254740993"),
+		"nested": []any{map[string]any{
+			"decimal":  json.Number("0.123456789012345678901"),
+			"exponent": json.Number("1.234567890123456789e+42"),
+		}},
+	}
+	want, err := json.Marshal(arguments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := sigmatest.TextModel()
+	provider := sigmatest.NewFauxProvider(
+		sigmatest.Script{Final: sigma.AssistantMessage{StopReason: sigma.StopReasonToolCalls, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call", "lookup", arguments)}}},
+		sigmatest.Script{Final: sigma.AssistantMessage{Content: []sigma.ContentBlock{sigma.Text("done")}}},
+	)
+	harness, err := NewSigmaTextHarness(SigmaHarnessConfig{
+		Client: sigmaHarnessTestClient(t, provider, model), Model: model,
+		ToolExecutor: func(_ context.Context, call sigma.ToolCall) (SigmaToolOutput, error) {
+			got, marshalErr := json.Marshal(call.Arguments)
+			if marshalErr != nil || string(got) != string(want) {
+				t.Fatalf("executor arguments=%s error=%v", got, marshalErr)
+			}
+			return SigmaToolOutput{Text: "found"}, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := NewRunner(RunnerConfig{ArtifactDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake := &fakeTest{name: "numeric"}
+	judged := false
+	execution := Run(t.Context(), runner, fake, Case[SigmaInput, string]{
+		ID: "numeric", EvalSet: "numeric", Input: Prompt("lookup"), Harness: harness,
+		Judges: []Judge[SigmaInput, string]{{Name: "exact arguments", Score: func(_ context.Context, input JudgmentInput[SigmaInput, string]) (JudgeResult, error) {
+			for _, event := range input.Result.Events {
+				if event.Type != "tool_call" {
+					continue
+				}
+				judged = true
+				got, marshalErr := json.Marshal(event.Arguments)
+				if marshalErr != nil || string(got) != string(want) {
+					t.Fatalf("judge arguments=%s error=%v", got, marshalErr)
+				}
+				if _, ok := event.Arguments["integer"].(json.Number); !ok {
+					t.Fatalf("integer type=%T", event.Arguments["integer"])
+				}
+			}
+			return JudgeResult{Score: 1}, nil
+		}}},
+	})
+	fake.runCleanups()
+	if execution.Err != nil || !judged || fake.Failed() {
+		t.Fatalf("execution=%+v judged=%v errors=%v", execution, judged, fake.errors)
+	}
+	record := readJSONLines(t, filepath.Join(runner.ArtifactDir(), "runs.jsonl"))[0]
+	artifact := record["artifacts"].([]any)[0].(map[string]any)
+	transcript, err := os.ReadFile(filepath.Join(runner.ArtifactDir(), artifact["path"].(string)))
+	if err != nil || !strings.Contains(string(transcript), string(want)) {
+		t.Fatalf("transcript lost exact arguments: %s error=%v", transcript, err)
+	}
+	requests := provider.Requests()
+	replay, err := json.Marshal(requests[1].Request.Messages[1].Content[0].ToolArguments)
+	if err != nil || string(replay) != string(want) {
+		t.Fatalf("replay=%s error=%v", replay, err)
+	}
+	// Changing a normalized copy must not modify nested caller-owned arguments.
+	normalized := normalizeArguments(arguments)
+	normalized["nested"].([]any)[0].(map[string]any)["decimal"] = json.Number("0")
+	unchanged, err := json.Marshal(arguments)
+	if err != nil || string(unchanged) != string(want) {
+		t.Fatalf("caller arguments=%s error=%v", unchanged, err)
+	}
+}
+
+func TestNormalizeArgumentsRetainsObjectBoundary(t *testing.T) {
+	t.Parallel()
+	for _, input := range []any{nil, "text", []any{1}, make(chan int)} {
+		if got := normalizeArguments(input); got != nil {
+			t.Fatalf("input=%v normalized=%v", input, got)
+		}
+	}
+	if got := normalizeArguments(map[string]any{}); got == nil || len(got) != 0 {
+		t.Fatalf("empty object=%v", got)
+	}
+}
 
 func TestSigmaHarnessMissingTurnUsageStaysUnavailable(t *testing.T) {
 	t.Parallel()

@@ -1137,6 +1137,11 @@ should still come through the catalog refresh workflow.
       v2 artifacts containing immutable inputs/outputs and evaluated configuration.
       Preserve existing artifacts and keep provider credentials out of control
       snapshots. Synchronize auth regression-test completion before counter reads.
+      Exclude independent test failures and skips while preserving threshold-only
+      scores, retain submitted pre-dispatch failures in comparison accounting,
+      and preserve exact numeric tool arguments for judges. Threshold failures
+      are reported at cleanup; never-submitted cohort planning remains outside
+      this accounting.
 
 - [x] Add a repository-internal Go evaluation framework with generic harnesses
       and judges, a sequential Sigma text harness, paired comparison reports,
