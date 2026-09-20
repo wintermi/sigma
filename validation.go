@@ -126,7 +126,8 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 	}
 
 	if options.CoercePrimitives {
-		coerced, err := coerceValue(schema, args, "$", call.Name)
+		context := validationContext{root: schema, active: make(map[string]struct{}), coercing: make(map[string]struct{})}
+		coerced, err := context.coerceValue(schema, args, "$", call.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -141,18 +142,39 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 	return args, nil
 }
 
-func coerceValue(schema map[string]any, value any, path string, toolName string) (any, error) {
-	if coerced, changed, err := coerceAllOf(schema, value, path, toolName); err != nil {
+func (context *validationContext) coerceValue(schema map[string]any, value any, path string, toolName string) (any, error) {
+	if reference, exists := schema["$ref"]; exists {
+		ref, ok := reference.(string)
+		if !ok {
+			return nil, toolValidationError(toolName, path, "local JSON Pointer reference", reference, "schema is malformed", nil)
+		}
+		target, err := context.resolveReference(ref)
+		if err != nil {
+			return nil, toolValidationError(toolName, path, "resolvable local JSON Pointer reference", ref, "schema is malformed", err)
+		}
+		key := ref + "\x00" + path
+		if _, active := context.coercing[key]; active {
+			return nil, toolValidationError(toolName, path, "non-cyclic local JSON Pointer reference", ref, "schema is malformed", nil)
+		}
+		context.coercing[key] = struct{}{}
+		value, err = context.coerceValue(target, value, path, toolName)
+		delete(context.coercing, key)
+		if err != nil {
+			return nil, err
+		}
+		schema = schemaWithoutReference(schema)
+	}
+	if coerced, changed, err := context.coerceAllOf(schema, value, path, toolName); err != nil {
 		return nil, err
 	} else if changed {
 		value = coerced
 	}
-	if coerced, changed, err := coerceAnyOf(schema, value, path, toolName); err != nil {
+	if coerced, changed, err := context.coerceAnyOf(schema, value, path, toolName); err != nil {
 		return nil, err
 	} else if changed {
 		value = coerced
 	}
-	if coerced, changed, err := coerceOneOf(schema, value, path, toolName); err != nil {
+	if coerced, changed, err := context.coerceOneOf(schema, value, path, toolName); err != nil {
 		return nil, err
 	} else if changed {
 		value = coerced
@@ -166,7 +188,7 @@ func coerceValue(schema map[string]any, value any, path string, toolName string)
 		types = inferredTypes(schema)
 	}
 	if len(types) > 1 && valueMatchesAnyType(value, types) {
-		return coerceNestedValue(schema, value, types, path, toolName)
+		return context.coerceNestedValue(schema, value, types, path, toolName)
 	}
 	if len(types) > 0 && !valueMatchesAnyType(value, types) {
 		for _, typ := range types {
@@ -177,10 +199,10 @@ func coerceValue(schema map[string]any, value any, path string, toolName string)
 			}
 		}
 	}
-	return coerceNestedValue(schema, value, types, path, toolName)
+	return context.coerceNestedValue(schema, value, types, path, toolName)
 }
 
-func coerceAllOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+func (context *validationContext) coerceAllOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
 	branches, ok, err := schemaBranches(schema, "allOf")
 	if err != nil {
 		return nil, false, toolValidationError(toolName, path, "allOf schema array", schema["allOf"], "schema is malformed", err)
@@ -191,7 +213,7 @@ func coerceAllOf(schema map[string]any, value any, path string, toolName string)
 	coerced := value
 	changed := false
 	for _, branch := range branches {
-		next, err := coerceValue(branch, coerced, path, toolName)
+		next, err := context.coerceValue(branch, coerced, path, toolName)
 		if err != nil {
 			return nil, false, err
 		}
@@ -203,7 +225,7 @@ func coerceAllOf(schema map[string]any, value any, path string, toolName string)
 	return coerced, changed, nil
 }
 
-func coerceAnyOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+func (context *validationContext) coerceAnyOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
 	branches, ok, err := schemaBranches(schema, "anyOf")
 	if err != nil {
 		return nil, false, toolValidationError(toolName, path, "anyOf schema array", schema["anyOf"], "schema is malformed", err)
@@ -211,18 +233,18 @@ func coerceAnyOf(schema map[string]any, value any, path string, toolName string)
 	if !ok {
 		return value, false, nil
 	}
-	if err := validateAnyOf(schema, value, path, toolName); err == nil {
+	if err := context.validateAnyOf(schema, value, path, toolName); err == nil {
 		return value, false, nil
 	} else if isMalformedSchemaError(err) {
 		return nil, false, err
 	}
 	for _, branch := range branches {
-		candidate := cloneAnyValue(value)
-		coerced, err := coerceValue(branch, candidate, path, toolName)
+		candidate := cloneJSONValue(value, cloneContent)
+		coerced, err := context.coerceValue(branch, candidate, path, toolName)
 		if err != nil {
 			return nil, false, err
 		}
-		if err := validateValue(branch, coerced, path, toolName); err == nil {
+		if err := context.validateValue(branch, coerced, path, toolName); err == nil {
 			return coerced, !reflect.DeepEqual(coerced, value), nil
 		} else if isMalformedSchemaError(err) {
 			return nil, false, err
@@ -231,7 +253,7 @@ func coerceAnyOf(schema map[string]any, value any, path string, toolName string)
 	return value, false, nil
 }
 
-func coerceOneOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
+func (context *validationContext) coerceOneOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
 	branches, ok, err := schemaBranches(schema, "oneOf")
 	if err != nil {
 		return nil, false, toolValidationError(toolName, path, "oneOf schema array", schema["oneOf"], "schema is malformed", err)
@@ -239,18 +261,18 @@ func coerceOneOf(schema map[string]any, value any, path string, toolName string)
 	if !ok {
 		return value, false, nil
 	}
-	if err := validateOneOf(schema, value, path, toolName); err == nil {
+	if err := context.validateOneOf(schema, value, path, toolName); err == nil {
 		return value, false, nil
 	} else if isMalformedSchemaError(err) {
 		return nil, false, err
 	}
 	for _, branch := range branches {
-		candidate := cloneAnyValue(value)
-		coerced, err := coerceValue(branch, candidate, path, toolName)
+		candidate := cloneJSONValue(value, cloneContent)
+		coerced, err := context.coerceValue(branch, candidate, path, toolName)
 		if err != nil {
 			return nil, false, err
 		}
-		if err := validateValue(branch, coerced, path, toolName); err == nil {
+		if err := context.validateValue(branch, coerced, path, toolName); err == nil {
 			return coerced, !reflect.DeepEqual(coerced, value), nil
 		} else if isMalformedSchemaError(err) {
 			return nil, false, err
@@ -259,7 +281,7 @@ func coerceOneOf(schema map[string]any, value any, path string, toolName string)
 	return value, false, nil
 }
 
-func coerceNestedValue(schema map[string]any, value any, types []string, path string, toolName string) (any, error) {
+func (context *validationContext) coerceNestedValue(schema map[string]any, value any, types []string, path string, toolName string) (any, error) {
 	for _, typ := range types {
 		switch typ {
 		case "object":
@@ -267,7 +289,7 @@ func coerceNestedValue(schema map[string]any, value any, types []string, path st
 			if !ok {
 				continue
 			}
-			if err := coerceObject(schema, object, path, toolName); err != nil {
+			if err := context.coerceObject(schema, object, path, toolName); err != nil {
 				return nil, err
 			}
 		case "array":
@@ -275,7 +297,7 @@ func coerceNestedValue(schema map[string]any, value any, types []string, path st
 			if !ok {
 				continue
 			}
-			if err := coerceArray(schema, array, path, toolName); err != nil {
+			if err := context.coerceArray(schema, array, path, toolName); err != nil {
 				return nil, err
 			}
 		}
@@ -283,7 +305,7 @@ func coerceNestedValue(schema map[string]any, value any, types []string, path st
 	return value, nil
 }
 
-func coerceObject(schema map[string]any, object map[string]any, path string, toolName string) error {
+func (context *validationContext) coerceObject(schema map[string]any, object map[string]any, path string, toolName string) error {
 	properties, err := schemaProperties(schema)
 	if err != nil {
 		return toolValidationError(toolName, path, "properties object", schema["properties"], "schema is malformed", err)
@@ -293,7 +315,7 @@ func coerceObject(schema map[string]any, object map[string]any, path string, too
 		if !ok {
 			continue
 		}
-		coerced, err := coerceValue(propertySchema, value, joinPath(path, name), toolName)
+		coerced, err := context.coerceValue(propertySchema, value, joinPath(path, name), toolName)
 		if err != nil {
 			return err
 		}
@@ -312,7 +334,7 @@ func coerceObject(schema map[string]any, object map[string]any, path string, too
 		if _, ok := properties[name]; ok {
 			continue
 		}
-		coerced, err := coerceValue(additionalSchema, object[name], joinPath(path, name), toolName)
+		coerced, err := context.coerceValue(additionalSchema, object[name], joinPath(path, name), toolName)
 		if err != nil {
 			return err
 		}
@@ -321,7 +343,7 @@ func coerceObject(schema map[string]any, object map[string]any, path string, too
 	return nil
 }
 
-func coerceArray(schema map[string]any, array []any, path string, toolName string) error {
+func (context *validationContext) coerceArray(schema map[string]any, array []any, path string, toolName string) error {
 	raw, ok := schema["items"]
 	if !ok {
 		return nil
@@ -331,7 +353,7 @@ func coerceArray(schema map[string]any, array []any, path string, toolName strin
 		return nil
 	}
 	for i, item := range array {
-		coerced, err := coerceValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName)
+		coerced, err := context.coerceValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName)
 		if err != nil {
 			return err
 		}
@@ -535,15 +557,13 @@ func decodeJSONValue(input any) (any, error) {
 type validationContext struct {
 	root   map[string]any
 	active map[string]struct{}
+	// Branch validation during coercion must not share the coercion cycle guard.
+	coercing map[string]struct{}
 }
 
 func validateValueWithRoot(schema map[string]any, value any, path string, toolName string) error {
 	context := validationContext{root: schema, active: make(map[string]struct{})}
 	return context.validateValue(schema, value, path, toolName)
-}
-
-func validateValue(schema map[string]any, value any, path string, toolName string) error {
-	return validateValueWithRoot(schema, value, path, toolName)
 }
 
 func (context *validationContext) validateValue(schema map[string]any, value any, path string, toolName string) error {
@@ -574,34 +594,27 @@ func (context *validationContext) validateValue(schema map[string]any, value any
 		return err
 	}
 
-	for _, typ := range types {
-		switch typ {
-		case "object":
-			if object, ok := value.(map[string]any); ok {
-				if err := context.validateObject(schema, object, path, toolName); err != nil {
-					return err
-				}
-			}
-		case "array":
-			if array, ok := value.([]any); ok {
-				if err := context.validateArray(schema, array, path, toolName); err != nil {
-					return err
-				}
-			}
-		case "string":
-			if text, ok := value.(string); ok {
-				if err := validateString(schema, text, path, toolName); err != nil {
-					return err
-				}
-			}
-		case "number", "integer":
-			if isJSONNumber(value) {
-				if err := validateNumber(schema, value, path, toolName); err != nil {
-					return err
-				}
+	switch typed := value.(type) {
+	case map[string]any:
+		if err := context.validateObject(schema, typed, path, toolName); err != nil {
+			return err
+		}
+	case []any:
+		if err := context.validateArray(schema, typed, path, toolName); err != nil {
+			return err
+		}
+	case string:
+		if err := validateString(schema, typed, path, toolName); err != nil {
+			return err
+		}
+	default:
+		if isJSONNumber(value) {
+			if err := validateNumber(schema, value, path, toolName); err != nil {
+				return err
 			}
 		}
 	}
+
 	return context.validateComposedSchemas(schema, value, path, toolName)
 }
 
@@ -666,11 +679,6 @@ func (context *validationContext) validateAllOf(schema map[string]any, value any
 	return nil
 }
 
-func validateAnyOf(schema map[string]any, value any, path string, toolName string) error {
-	context := validationContext{root: schema, active: make(map[string]struct{})}
-	return context.validateAnyOf(schema, value, path, toolName)
-}
-
 func (context *validationContext) validateAnyOf(schema map[string]any, value any, path string, toolName string) error {
 	branches, ok, err := schemaBranches(schema, "anyOf")
 	if err != nil {
@@ -694,11 +702,6 @@ func (context *validationContext) validateAnyOf(schema map[string]any, value any
 		return nil
 	}
 	return toolValidationError(toolName, path, "at least one matching schema", value, "anyOf violation", nil)
-}
-
-func validateOneOf(schema map[string]any, value any, path string, toolName string) error {
-	context := validationContext{root: schema, active: make(map[string]struct{})}
-	return context.validateOneOf(schema, value, path, toolName)
 }
 
 func (context *validationContext) validateOneOf(schema map[string]any, value any, path string, toolName string) error {

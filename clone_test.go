@@ -125,3 +125,29 @@ func TestRegressionRegistryMetadataIsolation(t *testing.T) {
 		t.Fatal("read-copy mutation changed registry metadata")
 	}
 }
+
+func TestContentClonePreservesJSONObjects(t *testing.T) {
+	t.Parallel()
+	for _, args := range []map[string]any{nil, {}, {"options": map[string]any{}, "array": []any{map[string]any{}, map[string]any(nil)}}} {
+		block := ToolCallBlock("call", "run", args)
+		cloned := block.Clone()
+		before, _ := json.Marshal(args)
+		after, _ := json.Marshal(cloned.ToolArguments)
+		if string(before) != string(after) {
+			t.Fatalf("clone changed JSON: %s -> %s", before, after)
+		}
+		if object, ok := cloned.ToolArguments.(map[string]any); ok && object != nil {
+			object["changed"] = true
+			if nested, ok := object["options"].(map[string]any); ok {
+				nested["changed"] = true
+			}
+			if array, ok := object["array"].([]any); ok {
+				array[0].(map[string]any)["changed"] = true
+			}
+			unchanged, _ := json.Marshal(args)
+			if string(before) != string(unchanged) {
+				t.Fatal("clone mutated caller arguments")
+			}
+		}
+	}
+}

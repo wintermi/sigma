@@ -106,6 +106,9 @@ func Transform(input Input) (sigma.Request, error) {
 	}
 
 	input.Request = PrepareReplay(input.TargetModel, input.Request)
+	if input.Compatibility.DropUnansweredToolCalls {
+		input.Request.Messages = dropUnansweredToolCalls(input.Request.Messages)
+	}
 	policy := input.Policy.withDefaults()
 	output := sigma.Request{
 		SystemPrompt: input.Request.SystemPrompt,
@@ -129,9 +132,6 @@ func Transform(input Input) (sigma.Request, error) {
 		recordToolCalls(toolNamesByID, transformed)
 	}
 
-	if input.Compatibility.DropUnansweredToolCalls {
-		output.Messages = dropUnansweredToolCalls(output.Messages)
-	}
 	if input.Compatibility.AssistantAfterToolResultRepair {
 		output.Messages = insertAssistantAfterToolResults(output.Messages, input.Compatibility.AssistantAfterToolResultMessage)
 	}
@@ -159,6 +159,7 @@ func synthesizeUnansweredToolResults(messages []sigma.Message) []sigma.Message {
 	}
 	repaired := make([]sigma.Message, 0, len(messages))
 	var pending []sigma.ContentBlock
+	var held []sigma.Message
 	answered := make(map[string]struct{})
 	insertMissing := func() {
 		for _, call := range pending {
@@ -167,6 +168,8 @@ func synthesizeUnansweredToolResults(messages []sigma.Message) []sigma.Message {
 			}
 			repaired = append(repaired, syntheticToolResult(call))
 		}
+		repaired = append(repaired, held...)
+		held = nil
 		pending = nil
 		answered = make(map[string]struct{})
 	}
@@ -176,7 +179,13 @@ func synthesizeUnansweredToolResults(messages []sigma.Message) []sigma.Message {
 			insertMissing()
 			repaired = append(repaired, message)
 			pending = assistantToolCalls(message)
-		case sigma.RoleUser, sigma.RoleDeveloper:
+		case sigma.RoleDeveloper:
+			if len(pending) > 0 {
+				held = append(held, message)
+			} else {
+				repaired = append(repaired, message)
+			}
+		case sigma.RoleUser:
 			insertMissing()
 			repaired = append(repaired, message)
 		case sigma.RoleTool:

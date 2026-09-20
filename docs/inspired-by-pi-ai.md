@@ -286,8 +286,11 @@ messages = append(messages, sigma.ToolResult(call.ID, result))
 JSON Schema keywords such as `type`, `properties`, `required`, `enum`, `items`,
 `additionalProperties`, numeric bounds, string length bounds, and composed
 schemas using `anyOf`, `oneOf`, and `allOf`, plus string `pattern` constraints
-and `not`. It does not evaluate every TypeBox or JSON Schema feature;
-unsupported keywords such as `$ref`, formats, and conditionals are not enforced.
+and `not`. It also resolves local JSON Pointer `$ref` values (including recursive
+schemas), evaluates `if`/`then`/`else`, and validates supported string formats.
+External references are rejected locally and unknown formats remain annotations.
+See [tool validation](tools.md#tool-loop) for the canonical supported vocabulary
+and validation behavior; not every TypeBox or JSON Schema feature is supported.
 
 ## Image Input
 

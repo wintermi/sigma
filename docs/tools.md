@@ -87,6 +87,21 @@ on non-Responses routes; Responses omits the entire failed turn. Successful
 unanswered calls still receive synthetic results. These rules also apply to
 requests prepared by the handoff helpers and do not alter stored history.
 
+Developer instructions between tool calls and results do not end the exchange.
+Repair holds those instructions until the next user/assistant boundary or the
+end of history, matches actual results, and synthesizes only missing results.
+It then emits the held instructions in their original order, converts unsupported
+developer roles, and inserts any required assistant bridge. Handoff reports keep
+original source indices and final output indices for inserted messages.
+
+Content copies and replay preserve empty argument objects, including objects
+nested in arrays. Explicit `null` values remain `null`; histories already changed
+by earlier versions are not migrated. Chat Completions preserves safe nonempty
+tool-call IDs up to 40 characters and maps other IDs consistently across function
+calls, custom calls, and results using a readable prefix and a hash of the complete
+source ID. These transformed wire IDs may differ from earlier releases; stored
+history is unchanged.
+
 ## Tool Loop
 
 ```text
@@ -130,6 +145,15 @@ It strictly evaluates `date`, `time`, `date-time`, `email`, `uri`, `uuid`,
 `hostname`, `ipv4`, and `ipv6` formats; unknown formats remain annotations.
 External, file, and network references are rejected locally. Other unsupported
 JSON Schema keywords remain outside Sigma's validation contract.
+
+Supported constraints apply to the value's type even when a schema branch does
+not repeat `type`. This includes numeric bounds and string length, pattern, and
+format constraints in `$ref` siblings and composed schemas. Previously accepted
+out-of-range arguments may therefore fail validation. Exact numeric comparisons
+remain lossless. Opt-in primitive coercion resolves local references against the
+original schema root, including nested unions and recursive structures, preserves
+already-valid union values, and validates the result against the complete schema.
+Coercion does not mutate caller-owned schemas or arguments.
 
 ## Strict Tool Schemas
 

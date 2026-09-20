@@ -6,6 +6,7 @@
 package openai
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -274,6 +275,7 @@ func chatResponseFormat(value any, compat completionsCompat) any {
 }
 
 func chatMessages(model sigma.Model, req sigma.Request, retention sigma.CacheRetention, compat completionsCompat, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+	req.Messages = mapChatToolCallIDs(req.Messages)
 	messages := make([]map[string]any, 0, len(req.Messages)+1)
 	if req.SystemPrompt != "" {
 		message := map[string]any{
@@ -417,7 +419,7 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		}
 		converted := map[string]any{
 			"role":         "tool",
-			"tool_call_id": chatToolCallID(message.ToolCallID),
+			"tool_call_id": message.ToolCallID,
 			"content":      content,
 		}
 		if compat.requiresToolResultName {
@@ -614,7 +616,7 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, gra
 					return "", "", nil, nil, err
 				}
 				toolCalls = append(toolCalls, map[string]any{
-					"id":                      chatToolCallID(block.ToolCallID),
+					"id":                      block.ToolCallID,
 					providerToolOptionTypeKey: "custom",
 					"custom": map[string]any{
 						"name":  block.ToolName,
@@ -628,7 +630,7 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, gra
 				return "", "", nil, nil, err
 			}
 			toolCalls = append(toolCalls, map[string]any{
-				"id":                      chatToolCallID(block.ToolCallID),
+				"id":                      block.ToolCallID,
 				providerToolOptionTypeKey: "function",
 				"function": map[string]any{
 					"name":      block.ToolName,
@@ -670,28 +672,74 @@ func sameOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) b
 	return message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 }
 
-func chatToolCallID(raw string) string {
-	callID, _, _ := strings.Cut(raw, "|")
-	var out strings.Builder
-	for _, r := range callID {
-		switch {
-		case r >= 'a' && r <= 'z':
-			out.WriteRune(r)
-		case r >= 'A' && r <= 'Z':
-			out.WriteRune(r)
-		case r >= '0' && r <= '9':
-			out.WriteRune(r)
-		case r == '_' || r == '-':
-			out.WriteRune(r)
-		default:
-			out.WriteByte('_')
+// mapChatToolCallIDs reserves existing safe IDs before allocating wire IDs.
+// Hash the entire source ID, including Responses item IDs, to retain identity.
+func mapChatToolCallIDs(messages []sigma.Message) []sigma.Message {
+	mapped := map[string]string{"": ""}
+	used := make(map[string]bool)
+	safe := func(id string) bool {
+		if id == "" || len(id) > 40 {
+			return false
+		}
+		for _, r := range id {
+			switch {
+			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	reserve := func(id string) {
+		if safe(id) {
+			mapped[id] = id
+			used[id] = true
 		}
 	}
-	id := strings.Trim(out.String(), "_-")
-	if len(id) > 40 {
-		id = id[:40]
+	for _, message := range messages {
+		reserve(message.ToolCallID)
+		for _, block := range message.Content {
+			reserve(block.ToolCallID)
+		}
 	}
-	return id
+	normalize := func(id string) string {
+		if result, exists := mapped[id]; exists {
+			return result
+		}
+		var prefix strings.Builder
+		for _, r := range id {
+			if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
+				prefix.WriteRune(r)
+			} else {
+				prefix.WriteByte('_')
+			}
+			if prefix.Len() == 23 {
+				break
+			}
+		}
+		digest := sha256.Sum256([]byte(id))
+		hash := fmt.Sprintf("_%x", digest[:8])
+		base := prefix.String()
+		candidate := base + hash
+		// There are at most len(used) occupied candidates, so this bound suffices.
+		for attempt := 1; used[candidate] && attempt <= len(used); attempt++ {
+			suffix := fmt.Sprintf("_%d", attempt)
+			candidate = base[:min(len(base), 40-len(hash)-len(suffix))] + hash + suffix
+		}
+		used[candidate] = true
+		mapped[id] = candidate
+		return candidate
+	}
+	result := make([]sigma.Message, len(messages))
+	for index, message := range messages {
+		result[index] = message
+		result[index].ToolCallID = normalize(message.ToolCallID)
+		result[index].Content = append([]sigma.ContentBlock(nil), message.Content...)
+		for blockIndex := range result[index].Content {
+			result[index].Content[blockIndex].ToolCallID = normalize(message.Content[blockIndex].ToolCallID)
+		}
+	}
+	return result
 }
 
 func appendContent(builder *strings.Builder, text string) {

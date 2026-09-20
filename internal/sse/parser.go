@@ -145,14 +145,12 @@ func dispatchFrame(ctx context.Context, builder *eventBuilder, handle Handler) (
 }
 
 type eventBuilder struct {
-	event    string
-	id       string
-	data     []string
-	lines    []Line
-	hasEvent bool
-	hasID    bool
-	hasData  bool
-	size     int
+	event   string
+	id      string
+	data    []string
+	lines   []Line
+	hasData bool
+	size    int
 }
 
 func (b *eventBuilder) add(number int, raw []byte, maxEventBytes int) error {
@@ -193,17 +191,15 @@ func (b *eventBuilder) add(number int, raw []byte, maxEventBytes int) error {
 		b.hasData = true
 	case "event":
 		b.event = value
-		b.hasEvent = true
 	case "id":
 		b.id = value
-		b.hasID = true
 	}
 
 	return nil
 }
 
 func (b *eventBuilder) eventFrame() (Event, bool) {
-	if !b.hasEvent && !b.hasID && !b.hasData {
+	if !b.hasData {
 		return Event{}, false
 	}
 

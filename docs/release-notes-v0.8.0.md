@@ -7,6 +7,26 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool replay now preserves empty argument objects throughout content cloning and
+handoff, including objects nested in arrays. Previously persisted explicit nulls
+remain unchanged; no history migration is attempted. Chat Completions uses one
+deterministic mapping for function calls, custom calls, and results, preserving
+safe IDs while distinguishing composite IDs and long or punctuated IDs. Transformed
+wire IDs may change. Developer instructions no longer prematurely close tool
+exchanges: repair matches actual results, synthesizes only missing results, then
+emits held instructions before role conversion and compatibility bridge insertion.
+Handoff reports retain original source indices and final inserted-message indices.
+
+Tool validation now applies supported constraints without a repeated type in
+reference siblings and composed schemas. Previously accepted out-of-range
+arguments may fail validation. Opt-in coercion resolves nested and recursive local
+references against the original root while preserving valid union values and
+caller-owned inputs. The comparison guide now reflects supported references,
+formats, and conditionals. Shared SSE parsing ignores data-free control frames;
+explicit empty data and malformed JSON retain their existing error behavior.
+Public APIs, dependencies, persistence formats, catalog data, and provider
+capabilities are unchanged by these corrections.
+
 Client-default tool choices now reach provider requests, and incremental tool
 events isolate nested arguments and metadata from provider state and final
 results. Exact numbers and empty argument objects survive these copies,

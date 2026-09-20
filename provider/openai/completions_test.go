@@ -7,8 +7,10 @@ package openai_test
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1338,11 +1340,12 @@ func TestChatCompletionsNormalizesReplayToolIDsAndCarriesToolResultImages(t *tes
 				t.Fatalf("tool_calls = %#v, want one call", assistant["tool_calls"])
 			}
 			toolCall := toolCalls[0].(map[string]any)
-			if got, want := toolCall["id"], "call_with_bad"; got != want {
-				t.Fatalf("assistant tool id = %v, want %q", got, want)
+			wireID, ok := toolCall["id"].(string)
+			if !ok || len(wireID) > 40 || !strings.HasPrefix(wireID, "call_with_bad_") {
+				t.Fatalf("assistant tool id = %v, want safe readable wire ID", toolCall["id"])
 			}
 			toolResult := payload.Messages[2]
-			if got, want := toolResult["tool_call_id"], "call_with_bad"; got != want {
+			if got, want := toolResult["tool_call_id"], wireID; got != want {
 				t.Fatalf("tool result id = %v, want %q", got, want)
 			}
 			if !tt.wantSidecar {
@@ -2111,12 +2114,12 @@ func TestChatCompletionsGrammarToolsReplayCustomCalls(t *testing.T) {
 			{
 				Role: sigma.RoleAssistant,
 				Content: []sigma.ContentBlock{
-					sigma.ToolCallBlock("call_parse", "parse", map[string]any{"command": "go test"}),
-					sigma.ToolCallBlock("call_read", "read", map[string]any{"path": "README.md"}),
+					sigma.ToolCallBlock("call_shared|custom", "parse", map[string]any{"command": "go test"}),
+					sigma.ToolCallBlock("call_shared|function", "read", map[string]any{"path": "README.md"}),
 				},
 			},
-			{Role: sigma.RoleTool, ToolCallID: "call_parse", ToolName: "parse", Content: []sigma.ContentBlock{sigma.Text("ok")}},
-			{Role: sigma.RoleTool, ToolCallID: "call_read", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("contents")}},
+			{Role: sigma.RoleTool, ToolCallID: "call_shared|custom", ToolName: "parse", Content: []sigma.ContentBlock{sigma.Text("ok")}},
+			{Role: sigma.RoleTool, ToolCallID: "call_shared|function", ToolName: "read", Content: []sigma.ContentBlock{sigma.Text("contents")}},
 			sigma.UserText("continue"),
 		},
 	}
@@ -2158,6 +2161,18 @@ func TestChatCompletionsGrammarToolsReplayCustomCalls(t *testing.T) {
 	function := toolCalls[1].(map[string]any)
 	if got, want := function["type"], "function"; got != want {
 		t.Fatalf("function replay type = %v, want %q", got, want)
+	}
+	if custom["id"] == function["id"] {
+		t.Fatal("custom and function identities collapsed")
+	}
+	resultIndex := 0
+	for _, message := range payload.Messages {
+		if message["role"] == "tool" {
+			if message["tool_call_id"] != toolCalls[resultIndex].(map[string]any)["id"] {
+				t.Fatal("custom/function result ID mismatch")
+			}
+			resultIndex++
+		}
 	}
 	if got, want := toolResults, 2; got != want {
 		t.Fatalf("tool result count = %d, want %d", got, want)
@@ -4270,4 +4285,164 @@ func assertResponsesReasoningText(t *testing.T, item map[string]any, want string
 func assertResponsesToolOutputText(t *testing.T, item map[string]any, want string) {
 	t.Helper()
 	assertPayloadText(t, item["output"], want)
+}
+
+type replayTransport func(*http.Request) (*http.Response, error)
+
+func (f replayTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func captureReplay(t *testing.T, messages []sigma.Message, prefix string) (map[string]any, error) {
+	t.Helper()
+	var payload map[string]any
+	httpClient := &http.Client{Transport: replayTransport(func(r *http.Request) (*http.Response, error) {
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			return nil, err
+		}
+		body := prefix + "data: {\"choices\":[{\"index\":0,\"delta\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n"
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+	})}
+	r := sigma.NewRegistry()
+	if err := openai.Register(r, sigma.ProviderOpenAI); err != nil {
+		t.Fatal(err)
+	}
+	m := sigma.Model{Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAICompletions, ID: "replay-test", SupportsTools: true}
+	if err := r.RegisterModel(m); err != nil {
+		t.Fatal(err)
+	}
+	c := sigma.NewClient(sigma.WithRegistry(r), sigma.WithHTTPClient(httpClient))
+	result, err := c.Complete(context.Background(), m, sigma.Request{Messages: messages}, sigma.WithAPIKey("test-key"))
+	if err == nil && (len(result.Content) != 1 || result.Content[0].Text != "ok") {
+		t.Fatalf("completion = %#v", result)
+	}
+	return payload, err
+}
+
+func TestRegressionDistinctCompositeToolIDs(t *testing.T) {
+	t.Parallel()
+	payload, err := captureReplay(t, []sigma.Message{
+		sigma.UserText("read both"),
+		{Role: sigma.RoleAssistant, Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAIResponses, Model: "source", Content: []sigma.ContentBlock{
+			sigma.ToolCallBlock("call_shared|item_a", "read", map[string]any{"path": "a"}),
+			sigma.ToolCallBlock("call_shared|item_b", "read", map[string]any{"path": "b"}),
+		}},
+		sigma.ToolResult("call_shared|item_a", "result a"), sigma.ToolResult("call_shared|item_b", "result b"),
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := payload["messages"].([]any)[1].(map[string]any)["tool_calls"].([]any)
+	a, b := calls[0].(map[string]any)["id"], calls[1].(map[string]any)["id"]
+	if a == b {
+		t.Fatalf("distinct source calls collapsed to the same wire ID: %q and %q", a, b)
+	}
+}
+
+func TestRegressionDeveloperMessageDoesNotInventToolResult(t *testing.T) {
+	t.Parallel()
+	payload, err := captureReplay(t, []sigma.Message{
+		sigma.UserText("read"),
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "read", map[string]any{})}},
+		{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("Use the supplied result")}},
+		sigma.ToolResult("call_1", "real result"),
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, raw := range payload["messages"].([]any) {
+		if raw.(map[string]any)["role"] == "tool" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("one actual tool result became %d wire tool results: %v", count, payload["messages"])
+	}
+}
+
+func TestRegressionSSEControlFrameDoesNotAbortGeneration(t *testing.T) {
+	t.Parallel()
+	_, err := captureReplay(t, []sigma.Message{sigma.UserText("hello")}, "id: cursor_1\n\nevent: ping\n\ndata: {\"choices\":[]}\n\n: keepalive\n\nid: cursor_2\n\n")
+	if err != nil {
+		t.Fatalf("data-free SSE control frame aborted otherwise valid completion: %v", err)
+	}
+}
+
+func TestRegressionReplayPreservesEmptyArgumentObjects(t *testing.T) {
+	t.Parallel()
+	for _, args := range []map[string]any{{}, {"options": map[string]any{}, "array": []any{map[string]any{}}}} {
+		payload, err := captureReplay(t, []sigma.Message{
+			sigma.UserText("run"),
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "run", args)}},
+			sigma.ToolResult("call_1", "done"),
+		}, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		call := payload["messages"].([]any)[1].(map[string]any)["tool_calls"].([]any)[0].(map[string]any)
+		got := call["function"].(map[string]any)["arguments"]
+		want, _ := json.Marshal(args)
+		if got != string(want) {
+			t.Errorf("argument replay changed JSON value: got %s, want %s", got, want)
+		}
+	}
+}
+
+func TestChatReplayIDsPreserveIdentity(t *testing.T) {
+	t.Parallel()
+	raw := "call.shared"
+	digest := sha256.Sum256([]byte(raw))
+	reserved := fmt.Sprintf("call_shared_%x", digest[:8])
+	ids := []string{"call_shared|item_a", "call_shared|item_b", strings.Repeat("x", 60) + "a", strings.Repeat("x", 60) + "b", raw, "call/shared", reserved, reserved + "_1", reserved + "_2", "safe_ID-1", strings.Repeat("s", 40), "_-"}
+	messages := []sigma.Message{{Role: sigma.RoleAssistant}}
+	for _, id := range ids {
+		messages[0].Content = append(messages[0].Content, sigma.ToolCallBlock(id, "read", map[string]any{}))
+	}
+	for _, id := range ids {
+		messages = append(messages, sigma.ToolResult(id, "ok"))
+	}
+	first, err := captureReplay(t, messages, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := captureReplay(t, messages, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first, second) {
+		t.Fatal("repeated serialization changed IDs")
+	}
+	wire := first["messages"].([]any)
+	calls := wire[0].(map[string]any)["tool_calls"].([]any)
+	used := make(map[string]bool)
+	for i, call := range calls {
+		id := call.(map[string]any)["id"].(string)
+		if used[id] || len(id) > 40 || id == "" {
+			t.Fatalf("invalid or duplicate ID %q", id)
+		}
+		used[id] = true
+		if i < 6 {
+			hash := sha256.Sum256([]byte(ids[i]))
+			if !strings.Contains(id, fmt.Sprintf("_%x", hash[:8])) {
+				t.Fatalf("wire ID lacks full-source hash: %q", id)
+			}
+		}
+		if i >= 6 && id != ids[i] {
+			t.Fatalf("safe ID changed: %q -> %q", ids[i], id)
+		}
+		if wire[i+1].(map[string]any)["tool_call_id"] != id {
+			t.Fatal("result ID does not match call")
+		}
+		if messages[0].Content[i].ToolCallID != ids[i] {
+			t.Fatal("input ID mutated")
+		}
+	}
+}
+
+func TestChatReplayRejectsMalformedDataAfterControlFrames(t *testing.T) {
+	t.Parallel()
+	for _, prefix := range []string{"event: ping\n\nid: cursor\n\ndata: {bad json}\n\n", "id: cursor\n\ndata:\n\n"} {
+		if _, err := captureReplay(t, []sigma.Message{sigma.UserText("hi")}, prefix); err == nil {
+			t.Fatal("malformed JSON-bearing event accepted")
+		}
+	}
 }

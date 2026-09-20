@@ -701,3 +701,43 @@ func TestTransformKeepsAbortedAssistantPartialContent(t *testing.T) {
 		t.Fatalf("partial assistant text = %q, want %q", got, want)
 	}
 }
+
+func TestTransformRepairsInstructionsBeforeRoleConversion(t *testing.T) {
+	t.Parallel()
+	for _, partial := range []bool{false, true} {
+		t.Run(map[bool]string{false: "complete", true: "partial"}[partial], func(t *testing.T) {
+			t.Parallel()
+			request := sigma.Request{Messages: []sigma.Message{
+				{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("a", "read", map[string]any{}), sigma.ToolCallBlock("b", "read", map[string]any{})}},
+				{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("first")}},
+				sigma.ToolResult("a", "actual"),
+				{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("second")}},
+			}}
+			if !partial {
+				request.Messages = append(request.Messages, sigma.ToolResult("b", "actual"))
+			}
+			input := Input{TargetModel: sigma.Model{Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAICompletions, ID: "test"}, Request: request, Compatibility: Compatibility{DropUnansweredToolCalls: true, ConvertDeveloperRole: true, AssistantAfterToolResultRepair: true}}
+			got, err := Transform(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Messages) != 6 || got.Messages[1].ToolCallID != "a" || got.Messages[1].IsError || got.Messages[2].ToolCallID != "b" || got.Messages[2].IsError != partial {
+				t.Fatalf("bad repair: %#v", got.Messages)
+			}
+			if got.Messages[3].Role != sigma.RoleAssistant || got.Messages[4].Role != sigma.RoleUser || got.Messages[4].Content[0].Text != "first" || got.Messages[5].Content[0].Text != "second" {
+				t.Fatalf("bad instructions: %#v", got.Messages)
+			}
+			input.Request = got
+			again, err := Transform(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, again) {
+				t.Fatal("repeated transformation changed history")
+			}
+			if request.Messages[1].Role != sigma.RoleDeveloper {
+				t.Fatal("input mutated")
+			}
+		})
+	}
+}

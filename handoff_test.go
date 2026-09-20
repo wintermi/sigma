@@ -522,8 +522,90 @@ func TestTransformRequestForModelKeepsOutputIndexesStableAcrossRepairPasses(t *t
 		t.Fatalf("message 3 text = %q, want repair bridge", got)
 	}
 
-	// The bridge was recorded at output index 2 before the drop pass inserted
-	// the synthetic tool result there; the report must track the shift.
+	// Reports point to the final positions after missing results and bridges.
 	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeToolResultSynthesized, 2, 2)
 	assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 2, 3)
+}
+
+func TestHandoffInstructionsWaitForToolResults(t *testing.T) {
+	t.Parallel()
+	for _, convert := range []bool{false, true} {
+		for _, partial := range []bool{false, true} {
+			for _, boundary := range []string{"end", "user", "assistant"} {
+				name := boundary
+				if convert {
+					name += "/convert"
+				}
+				if partial {
+					name += "/partial"
+				}
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
+					target := sigma.Model{ID: "compat", Provider: sigma.ProviderCustom, API: sigma.APIOpenAICompletions, OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{RequiresAssistantAfterToolResult: sigma.OpenAICompatSupported}}
+					if convert {
+						target.OpenAICompletionsCompat.SupportsDeveloperRole = sigma.OpenAICompatUnsupported
+					}
+					args := map[string]any{"empty": map[string]any{}, "items": []any{map[string]any{}}}
+					req := sigma.Request{Messages: []sigma.Message{
+						{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("a", "read", args), sigma.ToolCallBlock("b", "read", map[string]any{})}},
+						{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("first")}},
+						sigma.ToolResult("a", "actual a"),
+						{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("second")}},
+					}}
+					if !partial {
+						req.Messages = append(req.Messages, sigma.ToolResult("b", "actual b"))
+					}
+					boundaryIndex := len(req.Messages)
+					if boundary == "user" {
+						req.Messages = append(req.Messages, sigma.UserText("next"))
+					}
+					if boundary == "assistant" {
+						req.Messages = append(req.Messages, sigma.Message{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.Text("next")}})
+					}
+					result, err := sigma.TransformRequestForModel(target, req)
+					if err != nil {
+						t.Fatal(err)
+					}
+					messages := result.Request.Messages
+					if messages[1].ToolCallID != "a" || messages[1].IsError || messages[2].ToolCallID != "b" || messages[2].IsError != partial {
+						t.Fatalf("incorrect tool repair: %#v", messages)
+					}
+					if messages[3].Role != sigma.RoleAssistant || messages[4].Content[0].Text != "first" || messages[5].Content[0].Text != "second" {
+						t.Fatalf("instruction order: %#v", messages)
+					}
+					wantRole := sigma.RoleDeveloper
+					if convert {
+						wantRole = sigma.RoleUser
+					}
+					if messages[4].Role != wantRole || messages[5].Role != wantRole {
+						t.Fatal("instruction role conversion failed")
+					}
+					if partial {
+						assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeToolResultSynthesized, boundaryIndex, 2)
+					} else if result.Report.SynthesizedToolResults != 0 {
+						t.Fatal("invented result")
+					}
+					assertHandoffOutputChange(t, result.Report, sigma.HandoffChangeRepairMessageInserted, 1, 3)
+					if convert {
+						assertHandoffChange(t, result.Report, sigma.HandoffChangeDeveloperRoleConverted, 1, -1)
+						assertHandoffChange(t, result.Report, sigma.HandoffChangeDeveloperRoleConverted, 3, -1)
+					}
+					if !reflect.DeepEqual(messages[0].Content[0].ToolArguments, args) {
+						t.Fatal("handoff changed empty objects")
+					}
+					again, err := sigma.TransformRequestForModel(target, result.Request)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(again.Request, result.Request) || again.Report.SynthesizedToolResults != 0 || again.Report.InsertedRepairMessages != 0 {
+						t.Fatal("handoff not stable on repetition")
+					}
+					messages[0].Content[0].ToolArguments.(map[string]any)["empty"].(map[string]any)["changed"] = true
+					if len(args["empty"].(map[string]any)) != 0 {
+						t.Fatal("handoff mutated input")
+					}
+				})
+			}
+		}
+	}
 }

@@ -111,40 +111,33 @@ func TransformRequestForModel(target Model, req Request, opts ...HandoffOption) 
 		SystemPrompt: req.SystemPrompt,
 		Tools:        cloneHandoffTools(req.Tools),
 	}
-	sourceIndexes := make([]int, 0, len(req.Messages))
+	sourceIndexes := make([]int, len(req.Messages))
+	for index := range sourceIndexes {
+		sourceIndexes[index] = index
+	}
+	messages := req.Messages
+	if compat.dropUnansweredToolCalls {
+		messages, sourceIndexes = dropUnansweredHandoffToolCalls(messages, sourceIndexes, len(req.Messages), &report)
+	}
 
 	toolNamesByID := make(map[string]string)
-	for index, message := range req.Messages {
+	for index, message := range messages {
 		transformed, err := transformHandoffMessage(message, handoffMessageContext{
 			target:       target,
 			compat:       compat,
 			config:       config,
 			toolNames:    toolNamesByID,
-			messageIndex: index,
+			messageIndex: sourceIndexes[index],
 			report:       &report,
 		})
 		if err != nil {
 			return HandoffResult{}, err
 		}
 
-		if compat.assistantAfterToolResultRepair &&
-			len(output.Messages) > 0 &&
-			output.Messages[len(output.Messages)-1].Role == RoleTool &&
-			(transformed.Role == RoleUser || transformed.Role == RoleDeveloper) {
-			outputIndex := len(output.Messages)
-			output.Messages = append(output.Messages, handoffRepairMessage())
-			sourceIndexes = append(sourceIndexes, index)
-			report.recordOutput(HandoffChangeRepairMessageInserted, index, outputIndex, nil, "inserted assistant bridge before user message")
-		}
-
 		output.Messages = append(output.Messages, transformed)
-		sourceIndexes = append(sourceIndexes, index)
 		recordHandoffToolCalls(toolNamesByID, transformed)
 	}
 
-	if compat.dropUnansweredToolCalls {
-		output.Messages, sourceIndexes = dropUnansweredHandoffToolCalls(output.Messages, sourceIndexes, len(req.Messages), &report)
-	}
 	if compat.assistantAfterToolResultRepair {
 		output.Messages = insertHandoffRepairMessages(output.Messages, sourceIndexes, &report)
 	}
@@ -314,6 +307,7 @@ func dropUnansweredHandoffToolCalls(messages []Message, sourceIndexes []int, end
 	repaired := make([]Message, 0, len(messages))
 	repairedSourceIndexes := make([]int, 0, len(messages))
 	var pending []ContentBlock
+	var held []int
 	answered := make(map[string]struct{})
 	insertMissing := func(sourceIndex int) {
 		for _, call := range pending {
@@ -325,6 +319,12 @@ func dropUnansweredHandoffToolCalls(messages []Message, sourceIndexes []int, end
 			repairedSourceIndexes = append(repairedSourceIndexes, sourceIndex)
 			report.recordOutput(HandoffChangeToolResultSynthesized, sourceIndex, outputIndex, nil, "synthesized missing tool result")
 		}
+		for _, index := range held {
+			indexMap[index] = len(repaired)
+			repaired = append(repaired, messages[index])
+			repairedSourceIndexes = append(repairedSourceIndexes, handoffSourceIndex(sourceIndexes, index, endSourceIndex))
+		}
+		held = nil
 		pending = nil
 		answered = make(map[string]struct{})
 	}
@@ -334,7 +334,12 @@ func dropUnansweredHandoffToolCalls(messages []Message, sourceIndexes []int, end
 		case RoleAssistant:
 			insertMissing(sourceIndex)
 			pending = handoffAssistantToolCalls(message)
-		case RoleUser, RoleDeveloper:
+		case RoleDeveloper:
+			if len(pending) > 0 {
+				held = append(held, index)
+				continue
+			}
+		case RoleUser:
 			insertMissing(sourceIndex)
 		case RoleTool:
 			if hasPendingHandoffToolCall(pending, message.ToolCallID) {

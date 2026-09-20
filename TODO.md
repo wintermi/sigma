@@ -8,6 +8,14 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve empty tool-argument objects through content cloning, handoff, and replay.
+- [x] Enforce constraints in untyped schema branches and reference siblings.
+- [x] Retain the original schema root and separate recursion guards during coercion.
+- [x] Preserve distinct Chat Completions tool identities with deterministic wire IDs.
+- [x] Match tool results across developer instructions before conversion and bridges.
+- [x] Ignore data-free SSE frames without hiding malformed data-bearing events.
+- [x] Reconcile comparison documentation with supported tool-validation behavior.
+
 - [x] Preserve client-default tool choices through request-option merging.
 - [x] Isolate incremental tool arguments and metadata from provider state and finals.
 - [x] Account for Bedrock one-hour cache writes and reject missing completion reasons.

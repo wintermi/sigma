@@ -168,6 +168,23 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Content cloning and provider replay preserve empty tool-argument objects,
+  including nested objects and objects in arrays, without changing explicit nulls.
+- Tool validation enforces supported constraints without a repeated type,
+  including reference siblings and composed branches. Opt-in coercion retains
+  the original root through local references and recursive structures. Previously
+  accepted out-of-range arguments may now fail validation.
+- Chat Completions keeps distinct tool-call identities through one request-local
+  mapping shared by function calls, custom calls, and results. Transformed wire
+  IDs may change; safe IDs and stored history remain unchanged.
+- Tool repair matches results across developer instructions, emits missing
+  results before held instructions, and applies role conversion and compatibility
+  bridges afterward. Public handoff reports retain source and final output indices.
+- Shared SSE parsing ignores frames without data while preserving explicit empty
+  data events and errors for malformed JSON-bearing events.
+- The comparison guide now reflects supported local references, string formats,
+  and conditionals and links to the canonical tool-validation documentation.
+
 - Internal evaluation comparisons now exclude independently failed or skipped
   tests while retaining threshold-only scores, and preserve submitted runs that
   fail before harness dispatch in totals and diagnostics. Threshold failures

@@ -1357,3 +1357,114 @@ func composedToolSchema() sigma.Schema {
 		"required": []any{"selector", "code", "filters", "labels"},
 	}
 }
+
+func TestRegressionSchemaConstraintWithoutRepeatedType(t *testing.T) {
+	t.Parallel()
+	for _, property := range []sigma.Schema{
+		{"$ref": "#/$defs/amount", "maximum": 10},
+		{"allOf": []any{map[string]any{"type": "number"}, map[string]any{"maximum": 10}}},
+	} {
+		schema := sigma.Schema{"type": "object", "$defs": map[string]any{"amount": map[string]any{"type": "number"}}, "properties": map[string]any{"amount": property}}
+		_, err := sigma.ValidateToolCall([]sigma.Tool{{Name: "spend", InputSchema: schema}}, sigma.ToolCall{Name: "spend", Arguments: map[string]any{"amount": 100}})
+		if err == nil {
+			t.Errorf("amount 100 passed a maximum of 10 with schema %v", property)
+		}
+	}
+}
+
+func TestRegressionCoercionPreservesValidRootReferences(t *testing.T) {
+	t.Parallel()
+	schema := sigma.Schema{"type": "object", "$defs": map[string]any{"amount": map[string]any{"type": "number"}}, "properties": map[string]any{
+		"amount": map[string]any{"anyOf": []any{map[string]any{"$ref": "#/$defs/amount"}, map[string]any{"type": "null"}}},
+	}}
+	tools := []sigma.Tool{{Name: "spend", InputSchema: schema}}
+	call := sigma.ToolCall{Name: "spend", Arguments: map[string]any{"amount": 10}}
+	if _, err := sigma.ValidateToolCall(tools, call); err != nil {
+		t.Fatalf("strict baseline: %v", err)
+	}
+	if _, err := sigma.ValidateToolCallWithOptions(tools, call, sigma.ToolValidationOptions{CoercePrimitives: true}); err != nil {
+		t.Fatalf("coercion rejects already-valid args: %v", err)
+	}
+}
+
+func TestValidateConstraintsFollowValueType(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name           string
+		property       map[string]any
+		valid, invalid any
+	}{
+		{"ref bound", map[string]any{"$ref": "#/$defs/number", "maximum": 10}, 10, 11},
+		{"composed bound", map[string]any{"allOf": []any{map[string]any{"type": "number"}, map[string]any{"minimum": 10}}}, 10, 9},
+		{"untyped length", map[string]any{"minLength": 2, "maxLength": 3}, "abc", "a"},
+		{"untyped pattern", map[string]any{"pattern": "^[a-z]+$"}, "abc", "123"},
+		{"composed string", map[string]any{"allOf": []any{map[string]any{"type": "string"}, map[string]any{"maxLength": 3, "pattern": "^[a-z]+$"}}}, "abc", "abcd"},
+		{"exact number", map[string]any{"maximum": json.Number("9007199254740993")}, json.Number("9007199254740993"), json.Number("9007199254740994")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			tools := []sigma.Tool{{Name: "check", InputSchema: sigma.Schema{"type": "object", "$defs": map[string]any{"number": map[string]any{"type": "number"}}, "properties": map[string]any{"value": tc.property}}}}
+			if _, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": tc.valid}}); err != nil {
+				t.Fatalf("boundary rejected: %v", err)
+			}
+			if _, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "check", Arguments: map[string]any{"value": tc.invalid}}); err == nil {
+				t.Fatal("constraint was ignored")
+			}
+		})
+	}
+}
+
+func TestCoercionKeepsRootAcrossReferences(t *testing.T) {
+	t.Parallel()
+	for _, keyword := range []string{"anyOf", "oneOf", "allOf"} {
+		t.Run(keyword, func(t *testing.T) {
+			t.Parallel()
+			branches := []any{map[string]any{"$ref": "#/$defs/number"}}
+			if keyword != "allOf" {
+				branches = append(branches, map[string]any{"type": "null"})
+			}
+			schema := sigma.Schema{"type": "object", "$defs": map[string]any{"number": map[string]any{"type": "integer"}}, "properties": map[string]any{"nested": map[string]any{"type": "array", "items": map[string]any{keyword: branches}}}}
+			schemaBefore, _ := json.Marshal(schema)
+			for _, value := range []any{10, "10"} {
+				args := map[string]any{"nested": []any{value}}
+				before, _ := json.Marshal(args)
+				result, err := sigma.ValidateToolCallWithOptions([]sigma.Tool{{Name: "check", InputSchema: schema}}, sigma.ToolCall{Name: "check", Arguments: args}, sigma.ToolValidationOptions{CoercePrimitives: true})
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, _ := json.Marshal(result)
+				if string(got) != `{"nested":[10]}` {
+					t.Fatalf("coercion = %s", got)
+				}
+				after, _ := json.Marshal(args)
+				schemaAfter, _ := json.Marshal(schema)
+				if string(before) != string(after) || string(schemaBefore) != string(schemaAfter) {
+					t.Fatal("coercion mutated caller inputs")
+				}
+			}
+		})
+	}
+}
+
+func TestCoercionRecursiveReferencesAndCycles(t *testing.T) {
+	t.Parallel()
+	node := map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"$ref": "#/$defs/number"}, "child": map[string]any{"anyOf": []any{map[string]any{"$ref": "#/$defs/node"}, map[string]any{"type": "null"}}}}}
+	schema := sigma.Schema{"$ref": "#/$defs/node", "$defs": map[string]any{"node": node, "number": map[string]any{"type": "integer"}}}
+	args := map[string]any{"value": "1", "child": map[string]any{"value": "2", "child": nil}}
+	result, err := sigma.ValidateToolCallWithOptions([]sigma.Tool{{Name: "tree", InputSchema: schema}}, sigma.ToolCall{Name: "tree", Arguments: args}, sigma.ToolValidationOptions{CoercePrimitives: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := json.Marshal(result)
+	if string(got) != `{"child":{"child":null,"value":2},"value":1}` {
+		t.Fatalf("recursive coercion = %s", got)
+	}
+	for _, cycle := range []sigma.Schema{{"$ref": "#"}, {"$ref": "#/$defs/a", "$defs": map[string]any{"a": map[string]any{"anyOf": []any{map[string]any{"$ref": "#/$defs/a"}}}}}} {
+		_, err := sigma.ValidateToolCallWithOptions([]sigma.Tool{{Name: "tree", InputSchema: cycle}}, sigma.ToolCall{Name: "tree", Arguments: map[string]any{}}, sigma.ToolValidationOptions{CoercePrimitives: true})
+		var validationErr *sigma.ToolValidationError
+		if !errors.As(err, &validationErr) || validationErr.Reason != "schema is malformed" {
+			t.Fatalf("cycle error = %v", err)
+		}
+	}
+}

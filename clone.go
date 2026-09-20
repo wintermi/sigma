@@ -24,7 +24,7 @@ const (
 func cloneJSONValue(value any, mode cloneMode) any {
 	switch v := value.(type) {
 	case map[string]any:
-		if v == nil || len(v) == 0 && mode != cloneProviderOptions {
+		if v == nil || len(v) == 0 && mode == cloneMetadata {
 			return map[string]any(nil)
 		}
 		result := make(map[string]any, len(v))

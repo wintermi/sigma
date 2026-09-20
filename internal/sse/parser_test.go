@@ -237,7 +237,7 @@ func TestCloseOnContextDoneUnblocksReader(t *testing.T) {
 func TestParseReturnsReaderCancellationError(t *testing.T) {
 	t.Parallel()
 
-	err := sse.Parse(context.Background(), cancelReader{}, func(sse.Event) error {
+	err := sse.Parse(context.Background(), io.MultiReader(strings.NewReader("id: cursor\n\nevent: ping\n\n"), cancelReader{}), func(sse.Event) error {
 		t.Fatal("handler should not be called")
 		return nil
 	})
@@ -337,5 +337,22 @@ func TestParseDispatchesCRTerminatedEventWhileStreamIdle(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("CR-terminated event was not dispatched while the stream idled")
+	}
+}
+
+func TestParseIgnoresFramesWithoutData(t *testing.T) {
+	t.Parallel()
+	input := "id: before\n\nevent: ping\n\n: comment\n\ndata: first\n\nid: middle\n\nevent: ping\n\ndata:\n\ndata: second\ndata: line\n\nid: end\n\n"
+	events, err := collect(input, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("dispatched %d events: %#v", len(events), events)
+	}
+	for i, want := range []string{"first", "", "second\nline"} {
+		if events[i].Data != want {
+			t.Fatalf("event %d = %q", i, events[i].Data)
+		}
 	}
 }
