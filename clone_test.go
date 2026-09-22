@@ -85,7 +85,7 @@ func TestClonePreservesWireShapesAndOpaqueValues(t *testing.T) {
 	}
 	options := map[string]any{"empty": map[string]any{}, "nil": map[string]any(nil), "strings": []string{}, "array": []any{}}
 	cloned := cloneHandoffProviderDefinedOptions(options)
-	if !reflect.DeepEqual(options["empty"], cloned["empty"]) || !reflect.ValueOf(cloned["nil"]).IsNil() || !reflect.ValueOf(cloned["strings"]).IsNil() || reflect.ValueOf(cloned["array"]).IsNil() {
+	if !reflect.DeepEqual(options["empty"], cloned["empty"]) || !reflect.ValueOf(cloned["nil"]).IsNil() || reflect.ValueOf(cloned["strings"]).IsNil() || reflect.ValueOf(cloned["array"]).IsNil() {
 		t.Fatal("provider option wire shape changed")
 	}
 	if !reflect.ValueOf(cloneAnyValue(map[string]any{})).IsNil() {
@@ -147,6 +147,55 @@ func TestContentClonePreservesJSONObjects(t *testing.T) {
 			unchanged, _ := json.Marshal(args)
 			if string(before) != string(unchanged) {
 				t.Fatal("clone mutated caller arguments")
+			}
+		}
+	}
+}
+
+func TestClonePreservesListValuesAcrossBoundaries(t *testing.T) {
+	t.Parallel()
+	type stringsList []string
+	for _, value := range []any{
+		[]any(nil),
+		[]any{},
+		[]any{json.Number("9007199254740993"), []string{}},
+		[]string(nil),
+		[]string{},
+		[]string{"original"},
+		stringsList(nil),
+		stringsList{},
+		stringsList{"original"},
+		[]any{[]any(nil), map[string]any{"items": []string{}}},
+	} {
+		original := map[string]any{"items": value}
+		copies := map[string]map[string]any{
+			"content":          ToolCallBlock("id", "tool", original).Clone().ToolArguments.(map[string]any),
+			"provider_options": cloneHandoffProviderDefinedOptions(original),
+			"metadata":         cloneOptions(Options{Metadata: original}).Metadata,
+			"credentials":      cloneStoredCredential(StoredCredential{Metadata: original}).Metadata,
+		}
+		before, err := json.Marshal(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for boundary, copied := range copies {
+			after, err := json.Marshal(copied)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != string(after) || !reflect.DeepEqual(original, copied) {
+				t.Fatalf("%s changed %T: %s -> %s", boundary, value, before, after)
+			}
+			items := reflect.ValueOf(copied["items"])
+			if items.Len() > 0 {
+				items.Index(0).Set(reflect.Zero(items.Type().Elem()))
+				unchanged, err := json.Marshal(original)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(before) != string(unchanged) {
+					t.Fatalf("%s copy aliases original", boundary)
+				}
 			}
 		}
 	}

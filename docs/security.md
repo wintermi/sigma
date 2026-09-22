@@ -48,6 +48,10 @@ and related error paths are intended to be safe for logs. Treat all raw
 `Request`, `Options`, and provider transport objects as sensitive application
 data.
 
+Codex WebSocket handshake and proxy errors redact recognized credential shapes.
+Session statistics retain a redacted error preview limited to 2,048 bytes plus a
+truncation marker, including when a failed WebSocket request falls back to SSE.
+
 ## Persistence
 
 `MarshalRequest` serializes only the public `Request` shape. It does not store

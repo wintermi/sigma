@@ -94,8 +94,11 @@ It then emits the held instructions in their original order, converts unsupporte
 developer roles, and inserts any required assistant bridge. Handoff reports keep
 original source indices and final output indices for inserted messages.
 
-Content copies and replay preserve empty argument objects, including objects
-nested in arrays. Explicit `null` values remain `null`; histories already changed
+Content copies and replay preserve empty argument objects and lists, including
+nested containers. Nil Go slices retain `null`, while non-nil empty slices retain
+`[]`; this also applies to ordinary lists in provider options, metadata, and
+credentials. Existing byte-slice and raw-JSON conventions are unchanged.
+Explicit `null` values remain `null`; histories already changed
 by earlier versions are not migrated. Chat Completions preserves safe nonempty
 tool-call IDs up to 40 characters and maps other IDs consistently across function
 calls, custom calls, and results using a readable prefix and a hash of the complete
@@ -150,9 +153,13 @@ Supported constraints apply to the value's type even when a schema branch does
 not repeat `type`. This includes numeric bounds and string length, pattern, and
 format constraints in `$ref` siblings and composed schemas. Previously accepted
 out-of-range arguments may therefore fail validation. Exact numeric comparisons
-remain lossless. Opt-in primitive coercion resolves local references against the
-original schema root, including nested unions and recursive structures, preserves
-already-valid union values, and validates the result against the complete schema.
+remain lossless, including numbers nested in objects and arrays compared by
+`const`, `enum`, and composed constraints such as `not`. Equivalent spellings
+such as `1`, `1.0`, and `1e0` compare equally; object key membership and array
+order remain significant. Opt-in primitive coercion resolves local references
+against the original schema root, including nested unions and recursive
+structures, preserves already-valid union values, and validates the result
+against the complete schema.
 Coercion does not mutate caller-owned schemas or arguments.
 
 ## Strict Tool Schemas

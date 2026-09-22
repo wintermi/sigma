@@ -4367,9 +4367,9 @@ func TestRegressionSSEControlFrameDoesNotAbortGeneration(t *testing.T) {
 	}
 }
 
-func TestRegressionReplayPreservesEmptyArgumentObjects(t *testing.T) {
+func TestRegressionReplayPreservesArgumentContainers(t *testing.T) {
 	t.Parallel()
-	for _, args := range []map[string]any{{}, {"options": map[string]any{}, "array": []any{map[string]any{}}}} {
+	for _, args := range []map[string]any{{}, {"options": map[string]any{}, "array": []any{map[string]any{}}}, {"empty": []string{}, "null": []any(nil), "nested": []any{[]string{}}}} {
 		payload, err := captureReplay(t, []sigma.Message{
 			sigma.UserText("run"),
 			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "run", args)}},

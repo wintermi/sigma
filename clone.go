@@ -10,7 +10,7 @@ import (
 	"reflect"
 )
 
-// cloneMode retains each existing copy boundary's nil/empty wire conventions.
+// cloneMode retains each copy boundary's map and byte-slice wire conventions.
 type cloneMode uint8
 
 const (
@@ -39,13 +39,19 @@ func cloneJSONValue(value any, mode cloneMode) any {
 		}
 		return result
 	case []any:
+		if v == nil {
+			return []any(nil)
+		}
 		result := make([]any, len(v))
 		for i, item := range v {
 			result[i] = cloneJSONValue(item, mode)
 		}
 		return result
 	case []string:
-		return append([]string(nil), v...)
+		if v == nil {
+			return []string(nil)
+		}
+		return append(make([]string, 0, len(v)), v...)
 	case []byte:
 		if mode == cloneMetadata {
 			return append(v[:0:0], v...)

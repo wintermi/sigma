@@ -7,6 +7,23 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Shared copies now preserve nil lists as `null` and non-nil empty lists as `[]`
+across tool content, provider options, metadata, and credentials. This corrects
+serialization that previously depended on the Go slice type; existing byte and
+raw-JSON conventions remain unchanged. Tool validation compares nested numbers
+mathematically, so `1`, `1.0`, and `1e0` are equivalent within object and array
+`const`/`enum` constraints, including exclusions through `not`.
+
+Codex WebSocket handshake, proxy, and retained session errors redact recognized
+credential material and bound diagnostic previews, including when SSE fallback
+succeeds. OpenAI tool-schema conversion, WebSocket requests, and continuation
+caches preserve exact schema numbers, and changes to large integer constraints
+invalidate continuation reuse. OpenAI embedding successes now require exactly
+one explicit, unique, in-range index per input. Malformed responses return typed provider errors with
+the original HTTP status and attempt metadata, without partial vectors; valid
+out-of-order responses still return in input order. These corrections add no
+public APIs, dependencies, catalog changes, or history migrations.
+
 Tool replay now preserves empty argument objects throughout content cloning and
 handoff, including objects nested in arrays. Previously persisted explicit nulls
 remain unchanged; no history migration is attempted. Chat Completions uses one

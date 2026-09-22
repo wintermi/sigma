@@ -96,6 +96,9 @@ Codex cached WebSocket connections require matching provider, effective URL,
 and final handshake headers for reuse. Changing routing, credentials, or account
 headers starts a fresh connection and continuation state. Busy connections remain
 owned by their active request, with overlaps using separate connections.
+OpenAI tool-schema conversion preserves exact JSON numbers. Codex WebSocket
+requests and continuation copies retain those values, including integers beyond
+the exact range of `float64`; changing a schema invalidates continuation reuse.
 
 `InMemoryCredentialStore` serializes modifications and deletions per provider.
 Cancellation or a deadline interrupts a wait for ownership without running the

@@ -8,6 +8,11 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Redact and bound Codex WebSocket handshake, proxy, and session diagnostics.
+- [x] Preserve nil and empty lists across shared content, options, metadata, and credential copies.
+- [x] Compare nested schema numbers exactly in const, enum, and composed constraints.
+- [x] Preserve exact request numbers through Codex WebSocket transport and continuation caching.
+- [x] Reject malformed OpenAI embedding successes while retaining typed errors and attempt metadata.
 - [x] Preserve empty tool-argument objects through content cloning, handoff, and replay.
 - [x] Enforce constraints in untyped schema branches and reference siblings.
 - [x] Retain the original schema root and separate recursion guards during coercion.

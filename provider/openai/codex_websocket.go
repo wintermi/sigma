@@ -31,6 +31,8 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/jsonutil"
+	"github.com/wintermi/sigma/internal/redact"
 	"github.com/wintermi/sigma/internal/sse"
 )
 
@@ -566,7 +568,7 @@ func recordCodexWebSocketFailure(sessionID string, err error) {
 	codexWebSocketSessions.Lock()
 	stats := getCodexWebSocketStatsLocked(sessionID)
 	stats.WebSocketFailures++
-	stats.LastWebSocketError = err.Error()
+	stats.LastWebSocketError = redact.Preview(err.Error(), 2048)
 	stats.WebSocketFallbackActive = codexWebSocketSessions.fallbackState[sessionID]
 	scheduleCodexWebSocketSessionStateExpiryLocked(sessionID)
 	codexWebSocketSessions.Unlock()
@@ -948,7 +950,7 @@ func dialCodexWebSocketProxy(ctx context.Context, proxyURL *url.URL, targetHost 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = conn.Close()
-		return nil, fmt.Errorf("openai codex responses: websocket proxy connect status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("openai codex responses: websocket proxy connect status %d: %s", resp.StatusCode, redact.Preview(strings.TrimSpace(string(body)), 2048))
 	}
 	return conn, nil
 }
@@ -1162,7 +1164,7 @@ func (c *codexWebSocketConnection) handshake(ctx context.Context, parsed *url.UR
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("openai codex responses: websocket handshake status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return fmt.Errorf("openai codex responses: websocket handshake status %d: %s", resp.StatusCode, redact.Preview(strings.TrimSpace(string(body)), 2048))
 	}
 	if !strings.EqualFold(resp.Header.Get("Upgrade"), "websocket") {
 		return fmt.Errorf("openai codex responses: websocket handshake missing upgrade")
@@ -1374,17 +1376,40 @@ func webSocketAccept(key string) string {
 
 func decodeCodexWebSocketBody(body []byte) (map[string]any, error) {
 	var out map[string]any
-	if err := json.Unmarshal(body, &out); err != nil {
+	if err := jsonutil.Decode(body, &out); err != nil {
 		return nil, fmt.Errorf("openai codex responses: decode websocket request: %w", err)
 	}
 	return out, nil
 }
 
 func cloneJSONMap(value map[string]any) map[string]any {
-	data, _ := json.Marshal(value)
-	var out map[string]any
-	_ = json.Unmarshal(data, &out)
+	if value == nil {
+		return nil
+	}
+	out := make(map[string]any, len(value))
+	for key, item := range value {
+		out[key] = cloneJSONValue(item)
+	}
 	return out
+}
+
+// cloneJSONValue copies decoded JSON containers without converting exact numbers.
+func cloneJSONValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		return cloneJSONMap(value)
+	case []any:
+		if value == nil {
+			return []any(nil)
+		}
+		out := make([]any, len(value))
+		for i, item := range value {
+			out[i] = cloneJSONValue(item)
+		}
+		return out
+	default:
+		return value
+	}
 }
 
 func anySlice(value any) ([]any, bool) {

@@ -1339,6 +1339,31 @@ func jsonEqual(left any, right any) bool {
 	if leftIsNumber || rightIsNumber {
 		return leftIsNumber && rightIsNumber && leftNumber.compare(rightNumber) == 0
 	}
+	switch left := left.(type) {
+	case map[string]any:
+		right, ok := right.(map[string]any)
+		if !ok || len(left) != len(right) {
+			return false
+		}
+		for key, value := range left {
+			other, exists := right[key]
+			if !exists || !jsonEqual(value, other) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		right, ok := right.([]any)
+		if !ok || len(left) != len(right) {
+			return false
+		}
+		for i, value := range left {
+			if !jsonEqual(value, right[i]) {
+				return false
+			}
+		}
+		return true
+	}
 	return reflect.DeepEqual(left, right)
 }
 

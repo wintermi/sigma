@@ -545,7 +545,7 @@ func TestHandoffInstructionsWaitForToolResults(t *testing.T) {
 					if convert {
 						target.OpenAICompletionsCompat.SupportsDeveloperRole = sigma.OpenAICompatUnsupported
 					}
-					args := map[string]any{"empty": map[string]any{}, "items": []any{map[string]any{}}}
+					args := map[string]any{"empty": map[string]any{}, "items": []any{map[string]any{}}, "empty_list": []string{}, "null_list": []any(nil)}
 					req := sigma.Request{Messages: []sigma.Message{
 						{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("a", "read", args), sigma.ToolCallBlock("b", "read", map[string]any{})}},
 						{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("first")}},

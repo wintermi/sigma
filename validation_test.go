@@ -1468,3 +1468,42 @@ func TestCoercionRecursiveReferencesAndCycles(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateToolCallNestedNumericEquality(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, constraint, value string
+		valid                   bool
+	}{
+		{"scalar", `{"const":1}`, `1.0`, true},
+		{"object_const", `{"const":{"n":1}}`, `{"n":1.0}`, true},
+		{"array_enum", `{"enum":[[1]]}`, `[1e0]`, true},
+		{"nested_not", `{"not":{"const":{"n":1}}}`, `{"n":1.0}`, false},
+		{"composition", `{"allOf":[{"const":{"a":[1,0]}},{"enum":[{"a":[1e0,-0]}]}]}`, `{"a":[1.0,0e2]}`, true},
+		{"large_distinct", `{"const":{"n":9007199254740993}}`, `{"n":9007199254740992}`, false},
+		{"large_equivalent", `{"const":{"n":9007199254740993}}`, `{"n":9007199254740993.0}`, true},
+		{"missing_key", `{"const":{"n":null}}`, `{}`, false},
+		{"different_key", `{"const":{"n":null}}`, `{"m":null}`, false},
+		{"object_order", `{"const":{"a":1,"b":2}}`, `{"b":2e0,"a":1.0}`, true},
+		{"array_order", `{"const":[1,2]}`, `[2,1]`, false},
+		{"array_length", `{"const":[1]}`, `[1,2]`, false},
+		{"container_type", `{"const":{"n":1}}`, `[1]`, false},
+		{"string_is_not_number", `{"const":{"n":1}}`, `{"n":"1"}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			schema := json.RawMessage(`{"type":"object","properties":{"x":` + tc.constraint + `}}`)
+			args := json.RawMessage(`{"x":` + tc.value + `}`)
+			beforeSchema, beforeArgs := string(schema), string(args)
+			for _, coerce := range []bool{false, true} {
+				_, err := sigma.ValidateToolCallWithOptions([]sigma.Tool{{Name: "tool", InputSchema: schema}}, sigma.ToolCall{Name: "tool", Arguments: args}, sigma.ToolValidationOptions{CoercePrimitives: coerce})
+				if (err == nil) != tc.valid {
+					t.Fatalf("coerce=%v: valid=%v want=%v: %v", coerce, err == nil, tc.valid, err)
+				}
+				if string(schema) != beforeSchema || string(args) != beforeArgs {
+					t.Fatal("validation mutated caller input")
+				}
+			}
+		})
+	}
+}

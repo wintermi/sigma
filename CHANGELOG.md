@@ -168,6 +168,18 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Codex WebSocket handshake, proxy, and session diagnostics redact recognized
+  credentials and bound retained error previews, including after SSE fallback.
+- Shared content, option, metadata, and credential copies preserve nil lists as
+  `null` and non-nil empty lists as `[]`, while retaining deep isolation.
+- Tool validation compares numbers exactly inside objects and arrays for
+  `const`, `enum`, and composed constraints, including `not`.
+- OpenAI tool-schema conversion and Codex WebSocket requests and continuation
+  caches preserve exact schema numbers without rounding large integers or
+  incorrectly reusing changed schemas.
+- OpenAI embedding responses require one explicitly indexed result per input.
+  Malformed successful responses return typed provider errors with attempt
+  metadata and no partial vectors; valid reordered results remain supported.
 - Content cloning and provider replay preserve empty tool-argument objects,
   including nested objects and objects in arrays, without changing explicit nulls.
 - Tool validation enforces supported constraints without a repeated type,

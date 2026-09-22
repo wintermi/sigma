@@ -93,9 +93,12 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, embeddingsProviderError(resp, model, body, nil)
 	}
-	embeddings, err := decodeEmbeddingsResponse(body, model)
+	embeddings, err := decodeEmbeddingsResponse(body, model, len(req.Inputs))
+	if err != nil {
+		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, embeddingsProviderError(resp, model, body, err)
+	}
 	embeddings.Attempts = embeddingAttempts
-	return embeddings, err
+	return embeddings, nil
 }
 
 func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
@@ -249,7 +252,7 @@ type embeddingsResponse struct {
 }
 
 type embeddingData struct {
-	Index     int       `json:"index"`
+	Index     *int      `json:"index"`
 	Embedding []float32 `json:"embedding"`
 }
 
@@ -258,13 +261,30 @@ type embeddingsUsage struct {
 	TotalTokens  int `json:"total_tokens"`
 }
 
-func decodeEmbeddingsResponse(body []byte, model sigma.EmbeddingModel) (sigma.Embeddings, error) {
+func decodeEmbeddingsResponse(body []byte, model sigma.EmbeddingModel, expectedCount int) (sigma.Embeddings, error) {
 	var decoded embeddingsResponse
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return sigma.Embeddings{}, fmt.Errorf("openai embeddings: decode response: %w", err)
 	}
+	if len(decoded.Data) != expectedCount {
+		return sigma.Embeddings{}, fmt.Errorf("openai embeddings: response count %d does not match input count %d", len(decoded.Data), expectedCount)
+	}
+	seen := make([]bool, expectedCount)
+	for _, item := range decoded.Data {
+		if item.Index == nil {
+			return sigma.Embeddings{}, errors.New("openai embeddings: response index is missing or null")
+		}
+		index := *item.Index
+		if index < 0 || index >= expectedCount {
+			return sigma.Embeddings{}, fmt.Errorf("openai embeddings: response index %d is outside input range", index)
+		}
+		if seen[index] {
+			return sigma.Embeddings{}, fmt.Errorf("openai embeddings: duplicate response index %d", index)
+		}
+		seen[index] = true
+	}
 	sort.SliceStable(decoded.Data, func(i, j int) bool {
-		return decoded.Data[i].Index < decoded.Data[j].Index
+		return *decoded.Data[i].Index < *decoded.Data[j].Index
 	})
 	out := sigma.Embeddings{
 		Model:    model.ID,
@@ -276,7 +296,7 @@ func decodeEmbeddingsResponse(body []byte, model sigma.EmbeddingModel) (sigma.Em
 	}
 	for _, item := range decoded.Data {
 		out.Vectors = append(out.Vectors, sigma.Embedding{
-			Index:  item.Index,
+			Index:  *item.Index,
 			Vector: append([]float32(nil), item.Embedding...),
 		})
 	}

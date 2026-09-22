@@ -2477,3 +2477,86 @@ func TestCodexResponsesWebSocketHandshakeIdentity(t *testing.T) {
 		req.Messages = append(req.Messages, sigma.Message{Role: sigma.RoleAssistant, Content: final.Content, Provider: final.Provider, Model: final.Model, StopReason: final.StopReason}, sigma.UserText(fmt.Sprintf("next %d", index)))
 	}
 }
+
+func TestCodexResponsesWebSocketFallbackRedactsDiagnostics(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = io.WriteString(w, `{"access_token":"synthetic-secret"}`)
+			return
+		}
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+	provider := sigma.ProviderID("codex-redacted-fallback")
+	model := codexResponsesTestModel(provider)
+	client := codexResponsesTestClient(t, provider, model, server.URL, codexTokenProvider("synthetic-token"))
+	completeCodexWebSocket(t, client, model, t.Name(), "hello")
+	stats, ok := openai.CodexResponsesWebSocketStats(t.Name())
+	if !ok || stats.SSEFallbacks != 1 || stats.WebSocketFailures != 1 || !strings.Contains(stats.LastWebSocketError, "401") || strings.Contains(stats.LastWebSocketError, "synthetic-secret") {
+		t.Fatalf("unsafe or missing fallback diagnostic: %+v", stats)
+	}
+}
+
+func TestCodexResponsesTransportPreservesExactSchemaNumbers(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	requests := make(chan map[string]json.RawMessage, 3)
+	wsServer := newCodexWebSocketTestServer(t, func(_ *http.Request, ws *codexWebSocketTestConn) {
+		for i := range 2 {
+			data, err := ws.readJSONText()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			var body map[string]json.RawMessage
+			if err := json.Unmarshal([]byte(data), &body); err != nil {
+				t.Error(err)
+				return
+			}
+			requests <- body
+			id := fmt.Sprintf("exact_%d", i)
+			writeCodexWebSocketTextResponse(t, ws, id, "msg_"+id, "text_"+id, "done")
+		}
+	})
+	t.Cleanup(wsServer.Close)
+	sseServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]json.RawMessage
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+			return
+		}
+		requests <- body
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(sseServer.Close)
+	provider := sigma.ProviderID("codex-exact-schema")
+	model := codexResponsesTestModel(provider)
+	request := sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}, Tools: []sigma.Tool{{Name: "tool", InputSchema: json.RawMessage(`{"type":"object","properties":{"id":{"type":"integer","const":9007199254740993,"enum":[9007199254740993],"minimum":9007199254740993,"maximum":9007199254740995}}}`)}}}
+	sseClient := codexResponsesTestClient(t, provider, model, sseServer.URL, codexTokenProvider("synthetic-token"))
+	if _, err := sseClient.Complete(context.Background(), model, request, sigma.WithTransport(sigma.TransportSSE)); err != nil {
+		t.Fatal(err)
+	}
+	sseBody := <-requests
+	wsClient := codexResponsesTestClient(t, provider, model, wsServer.URL, codexTokenProvider("synthetic-token"))
+	first, err := wsClient.Complete(context.Background(), model, request, sigma.WithTransport(sigma.TransportWebSocket), sigma.WithSessionID(t.Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstBody := <-requests
+	request.Messages = append(request.Messages, sigma.Message{Role: sigma.RoleAssistant, Content: first.Content, Provider: first.Provider, Model: first.Model, StopReason: first.StopReason}, sigma.UserText("second"))
+	if _, err := wsClient.Complete(context.Background(), model, request, sigma.WithTransport(sigma.TransportWebSocket), sigma.WithSessionID(t.Name())); err != nil {
+		t.Fatal(err)
+	}
+	secondBody := <-requests
+	if string(secondBody["previous_response_id"]) != `"exact_0"` {
+		t.Fatalf("missing continuation: %s", secondBody["previous_response_id"])
+	}
+	for _, body := range []map[string]json.RawMessage{sseBody, firstBody, secondBody} {
+		if string(body["tools"]) != string(sseBody["tools"]) || strings.Count(string(body["tools"]), "9007199254740993") != 3 || !strings.Contains(string(body["tools"]), "9007199254740995") {
+			t.Fatalf("transport changed schema: %s", body["tools"])
+		}
+	}
+}

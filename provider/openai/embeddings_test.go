@@ -282,3 +282,54 @@ func openAIEmbeddingModel() sigma.EmbeddingModel {
 		},
 	}
 }
+
+func TestGenerateEmbeddingsRejectsMalformedSuccess(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, body, reason string }{
+		{"missing_data", `{}`, "count"},
+		{"null_data", `{"data":null}`, "count"},
+		{"empty_data", `{"data":[]}`, "count"},
+		{"too_few", `{"data":[{"index":0,"embedding":[1]}]}`, "count"},
+		{"too_many", `{"data":[{"index":0},{"index":1},{"index":2}]}`, "count"},
+		{"missing_index", `{"data":[{"embedding":[1]},{"index":1,"embedding":[2]}]}`, "missing or null"},
+		{"null_index", `{"data":[{"index":null},{"index":1}]}`, "missing or null"},
+		{"duplicate", `{"data":[{"index":0,"embedding":[1]},{"index":0,"embedding":[2]}]}`, "duplicate"},
+		{"negative", `{"data":[{"index":-1},{"index":1}]}`, "outside input range"},
+		{"out_of_range", `{"data":[{"index":0},{"index":7}]}`, "outside input range"},
+		{"audit_out_of_range", `{"data":[{"index":7,"embedding":[1]}]}`, "count"},
+		{"invalid_json", `{"data":`, "decode response"},
+		{"fractional_index", `{"data":[{"index":0.5},{"index":1}]}`, "decode response"},
+		{"secret_body", `{"access_token":"synthetic-secret","data":[]}`, "count"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			httpClient := &http.Client{Transport: replayTransport(func(req *http.Request) (*http.Response, error) {
+				calls++
+				return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"X-Request-Id": {"malformed-response"}}, Body: io.NopCloser(strings.NewReader(tc.body)), Request: req}, nil
+			})}
+			client := openAIEmbeddingsTestClient(t, "http://embedding.invalid", openai.WithHTTPClient(httpClient))
+			response, err := client.Embed(context.Background(), openAIEmbeddingModel(), sigma.EmbeddingRequest{Inputs: []string{"a", "b"}})
+			var providerErr *sigma.ProviderError
+			if !errors.As(err, &providerErr) || !errors.Is(err, sigma.ErrProviderResponse) {
+				t.Fatalf("expected typed provider response error, got %v", err)
+			}
+			if providerErr.StatusCode != http.StatusOK || providerErr.RequestID != "malformed-response" || providerErr.Provider != sigma.ProviderOpenAI || providerErr.Model != openAIEmbeddingModel().ID || providerErr.API != sigma.API(sigma.EmbeddingAPIOpenAIEmbeddings) {
+				t.Fatalf("lost response context: %+v", providerErr)
+			}
+			if providerErr.Err == nil || !strings.Contains(providerErr.Err.Error(), tc.reason) {
+				t.Fatalf("missing validation cause: %v", providerErr)
+			}
+			if len(response.Vectors) != 0 || response.Model != openAIEmbeddingModel().ID || response.Provider != sigma.ProviderOpenAI {
+				t.Fatalf("invalid failure result: %+v", response)
+			}
+			if calls != 1 || len(response.Attempts) != 1 {
+				t.Fatalf("unexpected attempts: calls=%d attempts=%+v", calls, response.Attempts)
+			}
+			assertEmbeddingAttempt(t, response.Attempts[0], sigma.ProviderOpenAI, openAIEmbeddingModel().ID, 0, http.StatusOK, "malformed-response")
+			if strings.Contains(err.Error(), "synthetic-secret") || strings.Contains(providerErr.BodyPreview, "synthetic-secret") {
+				t.Fatal("malformed response leaked credentials")
+			}
+		})
+	}
+}

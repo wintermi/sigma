@@ -119,6 +119,12 @@ not provider-specific response payload fields.
 vectors include the provider-reported index so callers can match vectors back to
 their inputs.
 
+The OpenAI adapter requires exactly one result per input with an explicit,
+non-null, unique index in the input range. Valid out-of-order responses are sorted
+into input order. Missing results or invalid indexes produce a `ProviderError`
+even for HTTP 200, preserving request and attempt metadata while returning no
+partial vectors. Its body preview is bounded and redacted.
+
 Provider usage maps prompt tokens to `Usage.InputTokens`. When model pricing is
 available, Sigma calculates `Cost.InputCost` and `Cost.TotalCost` from input
 tokens and `EmbeddingModel.InputCostPerMillion`.
