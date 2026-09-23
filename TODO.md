@@ -835,6 +835,20 @@ upstream.
 - [x] Add focused Hugging Face Router metadata after settling provider ID,
       credential env var, compatibility metadata, and first-class provider-row
       requirements.
+- [x] Complete the September 23 UTC registry review with 50 text additions,
+      18 text revisions, two image additions, Gemini Embedding 2, and removal of
+      167 text entries, three OpenRouter image previews, and direct Text
+      Embedding 004. Apply exact provider/ID inventory removals, preserving
+      supported routes and provider-specific estimates;
+- [ ] Review Responses translation of `ThinkingLevelOff`: existing adapters omit
+      reasoning instead of explicitly sending native `none` for models that
+      support it. Keep this adapter behavior separate from catalog metadata.
+- [ ] Recheck upcoming direct OpenAI retirements on October 23 and December 1,
+      2026, Google image retirement notices, Google Flash introductory pricing
+      before January 1, 2027, and the GPT-5.6 Sol promotional pricing period.
+- [ ] Review the remaining regional, hosted, and image candidates identified in
+      the September registry report with exact route, currency, capability,
+      size/format, and availability evidence before importing them.
 - [ ] Expand broad Hugging Face Router metadata only through the catalog refresh
       workflow, with deterministic diffs and reviewable routing/cost changes.
 - [ ] Expand broad Vercel AI Gateway and OpenRouter text catalogs only after

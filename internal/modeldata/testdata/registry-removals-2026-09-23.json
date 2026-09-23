@@ -1,0 +1,863 @@
+{
+  "textModels": [
+    {
+      "provider": "amazon-bedrock",
+      "id": "deepseek.r1-v1:0",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "google.gemma-3-27b-it",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "google.gemma-3-4b-it",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "amazon-bedrock",
+      "id": "us.deepseek.r1-v1:0",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-5-haiku-20241022",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-5-haiku-latest",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-5-sonnet-20240620",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-5-sonnet-20241022",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-7-sonnet-20250219",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-haiku-20240307",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-opus-20240229",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-3-sonnet-20240229",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-0",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-1",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-1-20250805",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-opus-4-20250514",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-0",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-20250514",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.1-chat-latest",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.1-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.1-codex-max",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.1-codex-mini",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3-deep-research",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o4-mini-deep-research",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cerebras",
+      "id": "gemma-4-31b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cerebras",
+      "id": "llama3.1-8b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cerebras",
+      "id": "zai-glm-4.7",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3-5-haiku",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3-haiku",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3-opus",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3-sonnet",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3.5-haiku",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-3.5-sonnet",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-haiku-4-5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4-1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4-5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4-6",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4-7",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-opus-4-8",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-4",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-4-5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "claude-sonnet-4-6",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/moonshotai/kimi-k2.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-4-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.1-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.2",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.2-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "gpt-5.3-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o3-pro",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "deepseek",
+      "id": "deepseek-v4-flash",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "deepseek",
+      "id": "deepseek-v4-flash-vision-exp",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/routers/kimi-k2p6-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/deepseek-v4-flash",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/glm-5p1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/gpt-oss-20b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/routers/glm-5p1-fast",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/routers/kimi-k2p6-fast",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/routers/kimi-k2p6-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/routers/kimi-k2p7-code-fast",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "claude-opus-4.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "claude-opus-4.6",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "claude-sonnet-4",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "claude-sonnet-4.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gemini-2.5-pro",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gemini-3-flash-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gemini-3.1-pro-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gpt-4.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "raptor-mini",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gpt-5.2",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gpt-5.2-codex",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.0-flash",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-2.0-flash-lite",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3-pro-preview",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.1-flash-lite-preview",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "groq",
+      "id": "deepseek-r1-distill-llama-70b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "gemma2-9b-it",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "groq/compound",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "groq/compound-mini",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "llama3-70b-8192",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "llama3-8b-8192",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "meta-llama/llama-4-maverick-17b-128e-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "mistral-saba-24b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "moonshotai/kimi-k2-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "moonshotai/kimi-k2-instruct-0905",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "qwen-qwq-32b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "groq",
+      "id": "qwen/qwen3-32b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "kimi-coding",
+      "id": "kimi-k2-thinking",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-0711-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-0905-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-thinking",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-thinking-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2-turbo-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai-cn",
+      "id": "kimi-k2.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-0711-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-0905-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-thinking",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-thinking-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2-turbo-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "moonshotai",
+      "id": "kimi-k2.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.1-70b-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.1-8b-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.3-70b-instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "minimaxai/minimax-m3",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "mistralai/mistral-large-3-675b-instruct-2512",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "mistralai/mistral-small-4-119b-2603",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3-nano-30b-a3b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nvidia-nemotron-nano-9b-v2",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "openai/gpt-oss-120b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "qwen/qwen3.5-122b-a10b",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "stepfun-ai/step-3.5-flash",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "stepfun-ai/step-3.7-flash",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "z-ai/glm-5.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "nvidia",
+      "id": "z-ai/glm-5.2",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.4",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "openai-codex",
+      "id": "gpt-5.4-mini",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-chat-latest",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5-codex",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-chat-latest",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex-max",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.1-codex-mini",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-chat-latest",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.2-codex",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-chat-latest",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "o3-deep-research",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini-deep-research",
+      "reason": "provider-shutdown"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "omen-alpha",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "opencode",
+      "id": "mimo-v2.5-free",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V3",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V3-1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "essentialai/Rnj-1-Instruct",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "MiniMaxAI/MiniMax-M2.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "moonshotai/Kimi-K2.5",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3-Coder-Next-FP8",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "Qwen/Qwen3.5-397B-A17B",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "together",
+      "id": "zai-org/GLM-5.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "google/gemini-3-pro-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "vercel-ai-gateway",
+      "id": "xai/grok-4.20-reasoning",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-3",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-3-fast",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-4.20-0309-non-reasoning",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-4.20-0309-reasoning",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-build-0.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xai",
+      "id": "grok-code-fast-1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xiaomi-token-plan-cn",
+      "id": "mimo-v2.5-pro-ultraspeed",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xiaomi-token-plan-ams",
+      "id": "mimo-v2.5-pro-ultraspeed",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "xiaomi-token-plan-sgp",
+      "id": "mimo-v2.5-pro-ultraspeed",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-4.5-air",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-4.7",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.2",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5.2-highspeed",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai-coding-cn",
+      "id": "glm-5v-turbo",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-4.5-air",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5.1",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5v-turbo",
+      "reason": "reference-inventory-removal"
+    }
+  ],
+  "imageModels": [
+    {
+      "provider": "openrouter",
+      "id": "sourceful/riverflow-v2-fast-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "openrouter",
+      "id": "sourceful/riverflow-v2-max-preview",
+      "reason": "reference-inventory-removal"
+    },
+    {
+      "provider": "openrouter",
+      "id": "sourceful/riverflow-v2-standard-preview",
+      "reason": "reference-inventory-removal"
+    }
+  ],
+  "embeddingModels": [
+    {
+      "provider": "google",
+      "id": "text-embedding-004",
+      "reason": "provider-shutdown"
+    }
+  ]
+}

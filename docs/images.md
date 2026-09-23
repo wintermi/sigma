@@ -1,5 +1,13 @@
 # Images
 
+The direct OpenAI catalog includes GPT Image 1.5 and 2 through the existing
+Images API. Their stored sizes are the conservative 1024-square and 1536-by-1024
+portrait/landscape choices. Quality prices describe 1024-square image output,
+excluding input charges; GPT Image 2's additional dynamic sizes are not modeled
+by this catalog. GPT Image 1.5 has an announced December 1, 2026 retirement.
+Three OpenRouter Riverflow preview entries absent from the comparison inventory
+are also removed from default discovery; select a retained ID explicitly.
+
 Sigma has two image paths:
 
 - Image input for text models, using `sigma.ImageBase64` or `sigma.ImageURL`

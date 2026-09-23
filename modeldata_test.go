@@ -37,36 +37,6 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	assertMetadataString(t, openAI.ProviderMetadata, "baseURL", "https://api.openai.com/v1")
 	assertMetadataStrings(t, openAI.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENAI_API_KEY"})
 
-	fireworks, ok := registry.Model(ProviderFireworks, "accounts/fireworks/routers/kimi-k2p6-turbo")
-	if !ok {
-		t.Fatal("fresh registry missing generated Fireworks Fire Pass model")
-	}
-	if fireworks.API != APIOpenAICompletions {
-		t.Fatalf("Fireworks model API = %q, want %q", fireworks.API, APIOpenAICompletions)
-	}
-	if !fireworks.SupportsTools || !fireworks.SupportsImages() {
-		t.Fatalf("Fireworks model capabilities were not generated: %+v", fireworks)
-	}
-	if !fireworks.SupportsReasoning() || !fireworks.SupportsThinkingLevel(ThinkingLevelMedium) {
-		t.Fatalf("Fireworks reasoning metadata was not generated: %+v", fireworks)
-	}
-	if fireworks.OpenAICompletionsCompat == nil ||
-		fireworks.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningFireworks {
-		t.Fatalf("Fireworks reasoning compat = %#v, want fireworks format", fireworks.OpenAICompletionsCompat)
-	}
-	if fireworks.InputCostPerMillion != 2 || fireworks.OutputCostPerMillion != 8 ||
-		fireworks.CacheReadInputCostPerMillion != 0.3 {
-		t.Fatalf("Fireworks Fire Pass costs = %v/%v/%v, want 2/8/0.3",
-			fireworks.InputCostPerMillion, fireworks.OutputCostPerMillion, fireworks.CacheReadInputCostPerMillion)
-	}
-	if got, ok := fireworks.ProviderMetadata["firepass"].(bool); !ok || !got {
-		t.Fatalf("Fireworks firepass metadata = %#v, want true", fireworks.ProviderMetadata["firepass"])
-	}
-	assertMetadataString(t, fireworks.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
-	assertMetadataString(t, fireworks.ProviderMetadata, "disabledThinkingFormat", "object-disabled")
-	assertMetadataStrings(t, fireworks.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"FIREWORKS_API_KEY"})
-	assertMetadataStrings(t, fireworks.ProviderMetadata, "imageInputSources", []string{"url"})
-
 	fireworksKimiCode, ok := registry.Model(ProviderFireworks, "accounts/fireworks/models/kimi-k2p7-code")
 	if !ok {
 		t.Fatal("fresh registry missing generated Fireworks Kimi K2.7 Code model")
@@ -194,21 +164,14 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		maxOutputTokens  int
 		thinkingLevelMap map[ThinkingLevel]string
 	}{
-		{id: "accounts/fireworks/models/deepseek-v4-flash", family: "deepseek", inputCost: 0.14, outputCost: 0.28, cacheReadCost: 0.028},
 		{id: "accounts/fireworks/models/deepseek-v4-pro", family: "deepseek", inputCost: 1.74, outputCost: 3.48, cacheReadCost: 0.145},
-		{id: "accounts/fireworks/models/glm-5p1", family: "glm", inputCost: 1.4, outputCost: 4.4, cacheReadCost: 0.26},
 		{id: "accounts/fireworks/models/gpt-oss-120b", family: "gpt-oss", inputCost: 0.15, outputCost: 0.6, cacheReadCost: 0.015},
-		{id: "accounts/fireworks/models/gpt-oss-20b", family: "gpt-oss", inputCost: 0.07, outputCost: 0.3, cacheReadCost: 0.035},
 		{id: "accounts/fireworks/models/kimi-k2p6", family: "kimi", wantImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.16},
 		{id: "accounts/fireworks/models/kimi-k2p7-code", family: "kimi", wantImages: true, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19},
 		{id: "accounts/fireworks/models/minimax-m2p7", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
 		{id: "accounts/fireworks/models/minimax-m3", family: "minimax", inputCost: 0.3, outputCost: 1.2, cacheReadCost: 0.06},
 		{id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4", family: "nemotron", inputCost: 0.6, outputCost: 2.4, cacheReadCost: 0.12, contextWindow: 262144, maxOutputTokens: 32768, thinkingLevelMap: map[ThinkingLevel]string{ThinkingLevelLow: "none", ThinkingLevelMedium: "medium", ThinkingLevelHigh: "high"}},
 		{id: "accounts/fireworks/models/qwen3p7-plus", family: "qwen", wantImages: true, inputCost: 0.4, outputCost: 1.6, cacheReadCost: 0.08},
-		{id: "accounts/fireworks/routers/glm-5p1-fast", family: "glm", wantRouter: true, inputCost: 2.8, outputCost: 8.8, cacheReadCost: 0.52},
-		{id: "accounts/fireworks/routers/kimi-k2p6-fast", family: "kimi", wantImages: true, wantRouter: true, inputCost: 2, outputCost: 8, cacheReadCost: 0.3},
-		{id: "accounts/fireworks/routers/kimi-k2p6-turbo", family: "kimi", wantImages: true, wantRouter: true, inputCost: 2, outputCost: 8, cacheReadCost: 0.3},
-		{id: "accounts/fireworks/routers/kimi-k2p7-code-fast", family: "kimi", wantImages: true, wantRouter: true, inputCost: 1.9, outputCost: 8, cacheReadCost: 0.38},
 	}
 	for _, id := range fireworksAnthropicRows {
 		fireworksAnthropic, ok := registry.Model(ProviderFireworksAnthropic, id.id)
@@ -261,7 +224,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		}
 	}
 
-	anthropic, ok := registry.Model(ProviderAnthropic, "claude-3-5-sonnet-20241022")
+	anthropic, ok := registry.Model(ProviderAnthropic, "claude-sonnet-4-5-20250929")
 	if !ok {
 		t.Fatal("fresh registry missing generated Anthropic text model")
 	}
@@ -423,9 +386,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		cacheReadCost  float64
 		cacheWriteCost float64
 	}{
-		{id: "gpt-5.6-luna", inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25},
-		{id: "gpt-5.6-sol", inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25},
-		{id: "gpt-5.6-terra", inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125},
+		{id: "gpt-5.6-luna", inputCost: 0.2, outputCost: 1.2, cacheReadCost: 0.02, cacheWriteCost: 0.25},
+		{id: "gpt-5.6-sol", inputCost: 4, outputCost: 20, cacheReadCost: 0.4, cacheWriteCost: 5},
+		{id: "gpt-5.6-terra", inputCost: 2, outputCost: 12, cacheReadCost: 0.2, cacheWriteCost: 2.5},
 	} {
 		model, ok := registry.Model(ProviderOpenAI, tt.id)
 		if !ok {
@@ -486,9 +449,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-luna", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-sol", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-terra", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 0.2, outputCost: 1.2, cacheReadCost: 0.02, cacheWriteCost: 0.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 4, outputCost: 20, cacheReadCost: 0.4, cacheWriteCost: 5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 2, outputCost: 12, cacheReadCost: 0.2, cacheWriteCost: 2.5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 	} {
 		model, ok := registry.Model(tt.provider, tt.id)
 		if !ok {
@@ -596,8 +559,6 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		cacheWriteCost  float64
 		modelFamily     string
 	}{
-		{id: "google.gemma-3-27b-it", supportsImages: true, contextWindow: 202752, maxOutputTokens: 8192, inputCost: 0.12, outputCost: 0.2, modelFamily: "gemma"},
-		{id: "google.gemma-3-4b-it", supportsImages: true, contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.04, outputCost: 0.08, modelFamily: "gemma"},
 		{id: "meta.llama3-1-70b-instruct-v1:0", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.72, outputCost: 0.72, modelFamily: "llama"},
 		{id: "meta.llama3-1-8b-instruct-v1:0", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.22, outputCost: 0.22, modelFamily: "llama"},
 		{id: "meta.llama3-3-70b-instruct-v1:0", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.72, outputCost: 0.72, modelFamily: "llama"},
@@ -792,11 +753,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		},
 		{
 			id:              "deepseek/deepseek-v4-pro",
-			contextWindow:   1_048_576,
+			contextWindow:   1024000,
 			maxOutputTokens: 384_000,
-			inputCost:       0.435,
-			outputCost:      0.87,
-			cacheReadCost:   0.003625,
+			inputCost:       0.95526,
+			outputCost:      1.91052,
+			cacheReadCost:   0.079605,
 			thinkingLevels: map[ThinkingLevel]string{
 				ThinkingLevelOff:   "none",
 				ThinkingLevelHigh:  "high",
@@ -849,12 +810,12 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{
 			id:              "openai/gpt-5.6-luna",
 			supportsImages:  true,
-			contextWindow:   1_050_000,
+			contextWindow:   1050000,
 			maxOutputTokens: 128_000,
-			inputCost:       1,
-			outputCost:      6,
-			cacheReadCost:   0.1,
-			cacheWriteCost:  1.25,
+			inputCost:       0.2,
+			outputCost:      1.2,
+			cacheReadCost:   0.02,
+			cacheWriteCost:  0.25,
 			thinkingLevels: map[ThinkingLevel]string{
 				ThinkingLevelOff:     "none",
 				ThinkingLevelLow:     "low",
@@ -869,12 +830,12 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{
 			id:              "openai/gpt-5.6-sol",
 			supportsImages:  true,
-			contextWindow:   1_050_000,
+			contextWindow:   1050000,
 			maxOutputTokens: 128_000,
-			inputCost:       5,
-			outputCost:      30,
-			cacheReadCost:   0.5,
-			cacheWriteCost:  6.25,
+			inputCost:       2,
+			outputCost:      10,
+			cacheReadCost:   0.2,
+			cacheWriteCost:  2.5,
 			thinkingLevels: map[ThinkingLevel]string{
 				ThinkingLevelOff:     "none",
 				ThinkingLevelLow:     "low",
@@ -889,12 +850,12 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{
 			id:              "openai/gpt-5.6-terra",
 			supportsImages:  true,
-			contextWindow:   1_050_000,
+			contextWindow:   1050000,
 			maxOutputTokens: 128_000,
-			inputCost:       2.5,
-			outputCost:      15,
-			cacheReadCost:   0.25,
-			cacheWriteCost:  3.125,
+			inputCost:       2,
+			outputCost:      12,
+			cacheReadCost:   0.2,
+			cacheWriteCost:  2.5,
 			thinkingLevels: map[ThinkingLevel]string{
 				ThinkingLevelOff:     "none",
 				ThinkingLevelLow:     "low",
@@ -957,7 +918,19 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 
 	openCodeIDs := map[ModelID]struct{}{
-		"big-pickle": {}, "claude-fable-5": {}, "claude-fable-5-1": {}, "claude-haiku-4-5": {},
+		"claude-opus-5-5":              {},
+		"deepseek-v4-flash-vision-exp": {},
+		"deepseek-v4.1-flash":          {},
+		"glm-5.3":                      {},
+		"glm-5.3-flash":                {},
+		"gpt-6-astra":                  {},
+		"gpt-6-luna":                   {},
+		"gpt-6-sol":                    {},
+		"grok-4.7":                     {},
+		"mimo-v2.6-flash-free":         {},
+		"muse-spark-1.3":               {},
+		"qwen3.8-flash":                {},
+		"big-pickle":                   {}, "claude-fable-5": {}, "claude-fable-5-1": {}, "claude-haiku-4-5": {},
 		"claude-opus-4-5": {}, "claude-opus-4-6": {}, "claude-opus-4-7": {}, "claude-opus-4-8": {},
 		"claude-opus-5": {}, "claude-sonnet-4": {}, "claude-sonnet-4-5": {}, "claude-sonnet-4-6": {},
 		"claude-sonnet-5": {}, "deepseek-v4-flash": {}, "deepseek-v4-pro": {}, "gemini-3-flash": {},
@@ -968,18 +941,22 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		"gpt-5.3-codex": {}, "gpt-5.4": {}, "gpt-5.4-mini": {}, "gpt-5.4-nano": {}, "gpt-5.4-pro": {},
 		"gpt-5.5": {}, "gpt-5.5-pro": {}, "gpt-5.6-luna": {}, "gpt-5.6-sol": {}, "gpt-5.6-terra": {},
 		"grok-4.5": {}, "grok-4.6": {}, "grok-build-0.1": {}, "kimi-k2.5": {}, "kimi-k2.6": {},
-		"kimi-k2.7-code": {}, "kimi-k3": {}, "ling-3.0-flash-fin-free": {}, "mimo-v2.5-free": {},
+		"kimi-k2.7-code": {}, "kimi-k3": {}, "ling-3.0-flash-fin-free": {},
 		"minimax-m2.5": {}, "minimax-m2.7": {}, "minimax-m3": {}, "muse-spark-1.2": {},
 		"muse-spark-1.2-contributor-free": {}, "muse-spark-1.3-contributor-free": {},
 		"nemotron-3-ultra-free": {}, "nemotron-3.5-lightning-free": {}, "qwen3.5-plus": {}, "qwen3.6-plus": {},
 	}
 	openCodeGoIDs := map[ModelID]struct{}{
-		"deepseek-v4-flash": {}, "deepseek-v4-flash-vision-exp": {}, "deepseek-v4-pro": {},
+		"deepseek-v4.1-flash": {},
+		"grok-4.7":            {},
+		"mimo-v2.6-flash":     {},
+		"mimo-v2.6-pro":       {},
+		"deepseek-v4-flash":   {}, "deepseek-v4-flash-vision-exp": {}, "deepseek-v4-pro": {},
 		"glm-5.1": {}, "glm-5.2": {}, "glm-5.3": {}, "glm-5.3-flash": {}, "gpt-5.6-luna": {},
 		"grok-4.6": {}, "hy3": {}, "hy4-preview": {}, "kimi-k2.6": {}, "kimi-k2.7-code": {},
 		"kimi-k3": {}, "longcat-2.0": {}, "mimo-v2.5": {}, "mimo-v2.5-pro": {}, "minimax-m2.7": {},
 		"minimax-m3": {}, "muse-spark-1.2-contributor": {}, "muse-spark-1.3-contributor": {},
-		"omen-alpha": {}, "qwen3.6-plus": {}, "qwen3.7-max": {}, "qwen3.7-plus": {},
+		"qwen3.6-plus": {}, "qwen3.7-max": {}, "qwen3.7-plus": {},
 		"qwen3.8-flash": {}, "qwen3.8-max": {},
 	}
 	gotOpenCodeIDs := make(map[ModelID]struct{}, len(openCodeIDs))
@@ -1316,7 +1293,6 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 	}{
 		{id: "openai.gpt-oss-120b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.15, outputCost: 0.6},
 		{id: "openai.gpt-oss-20b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.07, outputCost: 0.3},
-		{id: "us.deepseek.r1-v1:0", modelFamily: "deepseek", supportsThinking: true, contextWindow: 128000, maxOutputTokens: 32768, inputCost: 1.35, outputCost: 5.4},
 		{id: "us.meta.llama4-maverick-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 16384, inputCost: 0.24, outputCost: 0.97},
 		{id: "us.meta.llama4-scout-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 3500000, maxOutputTokens: 16384, inputCost: 0.17, outputCost: 0.66},
 	}
@@ -1355,14 +1331,13 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenAI, id: "gpt-5.4-pro", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 60, OutputCostPerMillion: 270}},
 		{provider: ProviderOpenAI, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
 		{provider: ProviderOpenAI, id: "gpt-5.5-pro", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 60, OutputCostPerMillion: 270}},
-		{provider: ProviderOpenAI, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 2, OutputCostPerMillion: 9, CacheReadInputCostPerMillion: 0.2, CacheWriteInputCostPerMillion: 2.5}},
-		{provider: ProviderOpenAI, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1, CacheWriteInputCostPerMillion: 12.5}},
-		{provider: ProviderOpenAI, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5, CacheWriteInputCostPerMillion: 6.25}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.4", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
+		{provider: ProviderOpenAI, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.4, OutputCostPerMillion: 1.8, CacheReadInputCostPerMillion: 0.04, CacheWriteInputCostPerMillion: 0.5}},
+		{provider: ProviderOpenAI, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8, OutputCostPerMillion: 30, CacheReadInputCostPerMillion: 0.8, CacheWriteInputCostPerMillion: 10}},
+		{provider: ProviderOpenAI, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 2, OutputCostPerMillion: 9, CacheReadInputCostPerMillion: 0.2, CacheWriteInputCostPerMillion: 2.5}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1, CacheWriteInputCostPerMillion: 12.5}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5, CacheWriteInputCostPerMillion: 6.25}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.4, OutputCostPerMillion: 1.8, CacheReadInputCostPerMillion: 0.04, CacheWriteInputCostPerMillion: 0.5}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8, OutputCostPerMillion: 30, CacheReadInputCostPerMillion: 0.8, CacheWriteInputCostPerMillion: 10}},
+		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
 		{provider: ProviderXAI, id: "grok-4.6", want: ModelCostTier{InputTokensAbove: 200_000, InputCostPerMillion: 4, OutputCostPerMillion: 12, CacheReadInputCostPerMillion: 1}},
 	}
 	for _, tt := range tests {
@@ -1460,68 +1435,6 @@ func assertGeneratedNVIDIAEmbeddingMetadata(t *testing.T, registry *Registry) {
 func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Registry) {
 	t.Helper()
 
-	deepSeek, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-flash")
-	if !ok {
-		t.Fatal("fresh registry missing generated DeepSeek model")
-	}
-	if deepSeek.OpenAICompletionsCompat == nil ||
-		deepSeek.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		deepSeek.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-		t.Fatalf("DeepSeek compat = %#v, want deepseek reasoning content replay", deepSeek.OpenAICompletionsCompat)
-	}
-	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
-		t.Fatalf("DeepSeek xhigh level = %q, %v; want max, true", got, ok)
-	}
-	if got, ok := deepSeek.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
-		t.Fatalf("DeepSeek low level = %q, %v; want low, true", got, ok)
-	}
-	if deepSeek.InputCostPerMillion != 0.44 || deepSeek.OutputCostPerMillion != 1.32 ||
-		deepSeek.CacheReadInputCostPerMillion != 0.014 || deepSeek.CostCurrency != "USD" {
-		t.Fatalf("DeepSeek V4 Flash peak costs = %f/%f/%f %s, want 0.44/1.32/0.014 USD",
-			deepSeek.InputCostPerMillion,
-			deepSeek.OutputCostPerMillion,
-			deepSeek.CacheReadInputCostPerMillion,
-			deepSeek.CostCurrency)
-	}
-
-	deepSeekVision, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-flash-vision-exp")
-	if !ok {
-		t.Fatal("fresh registry missing generated DeepSeek V4 Flash Vision Exp model")
-	}
-	if deepSeekVision.API != APIOpenAICompletions || !deepSeekVision.SupportsInput(ContentBlockText) ||
-		!deepSeekVision.SupportsImages() || !deepSeekVision.SupportsTools || !deepSeekVision.SupportsReasoning() {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp capabilities = %+v, want text/image Chat Completions with tools and reasoning", deepSeekVision)
-	}
-	if deepSeekVision.ContextWindow != 1000000 || deepSeekVision.MaxOutputTokens != 384000 {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp limits = %d/%d, want 1000000/384000",
-			deepSeekVision.ContextWindow, deepSeekVision.MaxOutputTokens)
-	}
-	if deepSeekVision.OpenAICompletionsCompat == nil ||
-		deepSeekVision.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-		deepSeekVision.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != OpenAICompatSupported {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp compat = %#v, want deepseek reasoning content replay", deepSeekVision.OpenAICompletionsCompat)
-	}
-	if got, ok := deepSeekVision.ProviderThinkingLevel(ThinkingLevelLow); !ok || got != "low" {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp low level = %q, %v; want low, true", got, ok)
-	}
-	if got, ok := deepSeekVision.ProviderThinkingLevel(ThinkingLevelXHigh); !ok || got != "max" {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp xhigh level = %q, %v; want max, true", got, ok)
-	}
-	if deepSeekVision.InputCostPerMillion != 0.44 || deepSeekVision.OutputCostPerMillion != 1.32 ||
-		deepSeekVision.CacheReadInputCostPerMillion != 0.014 || deepSeekVision.CostCurrency != "USD" {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp peak costs = %f/%f/%f %s, want 0.44/1.32/0.014 USD",
-			deepSeekVision.InputCostPerMillion,
-			deepSeekVision.OutputCostPerMillion,
-			deepSeekVision.CacheReadInputCostPerMillion,
-			deepSeekVision.CostCurrency)
-	}
-	if deepSeekVision.DefaultTransport != TransportSSE {
-		t.Fatalf("DeepSeek V4 Flash Vision Exp transport = %q, want %q", deepSeekVision.DefaultTransport, TransportSSE)
-	}
-	assertMetadataString(t, deepSeekVision.ProviderMetadata, "baseURL", "https://api.deepseek.com")
-	assertMetadataString(t, deepSeekVision.ProviderMetadata, "modelFamily", "deepseek")
-	assertMetadataStrings(t, deepSeekVision.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"DEEPSEEK_API_KEY"})
-
 	deepSeekPro, ok := registry.Model(ProviderDeepSeek, "deepseek-v4-pro")
 	if !ok {
 		t.Fatal("fresh registry missing generated DeepSeek V4 Pro model")
@@ -1567,17 +1480,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 				tt.output,
 				tt.cacheRead)
 		}
-	}
-
-	together, ok := registry.Model(ProviderTogether, "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8")
-	if !ok {
-		t.Fatal("fresh registry missing generated Together model")
-	}
-	if together.OpenAICompletionsCompat == nil ||
-		together.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-		together.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
-		together.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
-		t.Fatalf("Together compat = %#v, want conservative OpenAI-compatible overrides", together.OpenAICompletionsCompat)
 	}
 
 	basetenModels := map[ModelID]struct {
@@ -1683,15 +1585,19 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 				modelCount++
 			}
 		}
-		if modelCount != 3 {
-			t.Fatalf("%s model count = %d, want 3", tt.provider, modelCount)
+		wantIDs := []ModelID{"mimo-v2.5", "mimo-v2.5-pro"}
+		if tt.provider == ProviderXiaomi {
+			wantIDs = append(wantIDs, "mimo-v2.5-pro-ultraspeed")
+		}
+		if modelCount != len(wantIDs) {
+			t.Fatalf("%s model count = %d, want %d", tt.provider, modelCount, len(wantIDs))
 		}
 		for _, modelID := range []ModelID{"mimo-v2-flash", "mimo-v2-omni", "mimo-v2-pro"} {
 			if _, ok := registry.Model(tt.provider, modelID); ok {
 				t.Fatalf("%s retained retired %s", tt.provider, modelID)
 			}
 		}
-		for _, modelID := range []ModelID{"mimo-v2.5", "mimo-v2.5-pro", "mimo-v2.5-pro-ultraspeed"} {
+		for _, modelID := range wantIDs {
 			if _, ok := registry.Model(tt.provider, modelID); !ok {
 				t.Fatalf("fresh registry missing generated %s %s", tt.provider, modelID)
 			}
@@ -1873,19 +1779,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		t.Fatal("Qwen Token Plan Individual retained retired qwen3.8-max-preview model")
 	}
 
-	for _, provider := range []ProviderID{ProviderMoonshotAI, ProviderMoonshotAICN} {
-		moonshot, ok := registry.Model(provider, "kimi-k2-thinking")
-		if !ok {
-			t.Fatalf("fresh registry missing generated %s kimi-k2-thinking model", provider)
-		}
-		if moonshot.OpenAICompletionsCompat == nil ||
-			moonshot.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningDeepSeek ||
-			moonshot.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
-			moonshot.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported {
-			t.Fatalf("%s compat = %#v, want deepseek thinking format without reasoning effort", provider, moonshot.OpenAICompletionsCompat)
-		}
-	}
-
 	for _, tt := range []struct {
 		provider ProviderID
 		id       ModelID
@@ -1958,13 +1851,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 
 	for _, id := range []ModelID{
-		"grok-3",
-		"grok-3-fast",
-		"grok-4.20-0309-non-reasoning",
-		"grok-4.20-0309-reasoning",
 		"grok-4.3",
-		"grok-build-0.1",
-		"grok-code-fast-1",
 	} {
 		model, ok := registry.Model(ProviderXAI, id)
 		if !ok {
@@ -2050,69 +1937,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataString(t, grok46.ProviderMetadata, "modelFamily", "grok")
 	assertMetadataStrings(t, grok46.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"XAI_API_KEY"})
 
-	for _, tt := range []struct {
-		provider       ProviderID
-		id             ModelID
-		baseURL        string
-		envVar         string
-		modelFamily    string
-		contextWindow  int
-		maxOutput      int
-		inputCost      float64
-		outputCost     float64
-		cacheReadCost  float64
-		supportsImages bool
-	}{
-		{provider: ProviderCerebras, id: "gemma-4-31b", baseURL: "https://api.cerebras.ai/v1", envVar: "CEREBRAS_API_KEY", modelFamily: "gemma", contextWindow: 131072, maxOutput: 40960, inputCost: 0.99, outputCost: 1.49, supportsImages: true},
-		{provider: ProviderNVIDIA, id: "minimaxai/minimax-m3", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "minimax", contextWindow: 1000000, maxOutput: 16384, supportsImages: true},
-		{provider: ProviderNVIDIA, id: "z-ai/glm-5.2", baseURL: "https://integrate.api.nvidia.com/v1", envVar: "NVIDIA_API_KEY", modelFamily: "glm", contextWindow: 1000000, maxOutput: 131072},
-	} {
-		model, ok := registry.Model(tt.provider, tt.id)
-		if !ok {
-			t.Fatalf("fresh registry missing generated %s model %s", tt.provider, tt.id)
-		}
-		if model.API != APIOpenAICompletions || !model.SupportsTools || !model.SupportsReasoning() || model.SupportsImages() != tt.supportsImages {
-			t.Fatalf("%s %s capabilities = %+v", tt.provider, tt.id, model)
-		}
-		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutput {
-			t.Fatalf("%s %s limits = %d/%d, want %d/%d", tt.provider, tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutput)
-		}
-		if model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost || model.CacheReadInputCostPerMillion != tt.cacheReadCost {
-			t.Fatalf("%s %s costs = %f/%f/%f, want %f/%f/%f", tt.provider, tt.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, tt.inputCost, tt.outputCost, tt.cacheReadCost)
-		}
-		assertMetadataString(t, model.ProviderMetadata, "baseURL", tt.baseURL)
-		assertMetadataString(t, model.ProviderMetadata, "modelFamily", tt.modelFamily)
-		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{tt.envVar})
-		switch tt.provider {
-		case ProviderCerebras:
-			if model.OpenAICompletionsCompat != nil {
-				t.Fatalf("Cerebras %s compat = %#v, want provider defaults", tt.id, model.OpenAICompletionsCompat)
-			}
-		case ProviderXAI:
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
-				model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatSupported ||
-				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxCompletionTokens {
-				t.Fatalf("xAI %s compat = %#v, want xAI OpenAI-compatible overrides", tt.id, model.OpenAICompletionsCompat)
-			}
-		case ProviderNVIDIA:
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsStreamingUsage != OpenAICompatSupported ||
-				model.OpenAICompletionsCompat.SupportsStrictTools != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
-				t.Fatalf("NVIDIA %s compat = %#v, want NIM OpenAI-compatible overrides", tt.id, model.OpenAICompletionsCompat)
-			}
-			headers, ok := model.ProviderMetadata["headers"].(map[string]string)
-			if !ok || headers["NVCF-POLL-SECONDS"] != "3600" {
-				t.Fatalf("NVIDIA %s headers = %#v, want NVCF-POLL-SECONDS", tt.id, model.ProviderMetadata["headers"])
-			}
-		}
-	}
-
 	nvidiaSuper, ok := registry.Model(ProviderNVIDIA, "nvidia/nemotron-3-super-120b-a12b")
 	if !ok {
 		t.Fatal("fresh registry missing generated NVIDIA Nemotron Super model")
@@ -2138,14 +1962,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			nvidiaUltra.CacheReadInputCostPerMillion)
 	}
 
-	nvidiaGPTOSS, ok := registry.Model(ProviderNVIDIA, "openai/gpt-oss-120b")
-	if !ok {
-		t.Fatal("fresh registry missing generated NVIDIA GPT-OSS 120B model")
-	}
-	if !nvidiaGPTOSS.SupportsTools || !nvidiaGPTOSS.SupportsReasoning() || nvidiaGPTOSS.ContextWindow != 128000 || nvidiaGPTOSS.MaxOutputTokens != 8192 {
-		t.Fatalf("NVIDIA GPT-OSS 120B metadata = %+v, want tools, reasoning, and reviewed limits", nvidiaGPTOSS)
-	}
-
 	for _, tt := range []struct {
 		provider ProviderID
 		id       ModelID
@@ -2154,18 +1970,12 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}{
 		{provider: ProviderAntLing, id: "Ring-2.6-1T", baseURL: "https://api.ant-ling.com/v1", envVars: []string{"ANT_LING_API_KEY"}},
 		{provider: ProviderCloudflareWorkersAI, id: "@cf/meta/llama-4-scout-17b-16e-instruct", baseURL: "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1", envVars: []string{"CLOUDFLARE_API_KEY"}},
-		{provider: ProviderCerebras, id: "llama3.1-8b", baseURL: "https://api.cerebras.ai/v1", envVars: []string{"CEREBRAS_API_KEY"}},
 		{provider: ProviderGroq, id: "llama-3.3-70b-versatile", baseURL: "https://api.groq.com/openai/v1", envVars: []string{"GROQ_API_KEY"}},
 		{provider: ProviderHuggingFace, id: "Qwen/Qwen3-Coder-480B-A35B-Instruct", baseURL: "https://router.huggingface.co/v1", envVars: []string{"HF_TOKEN"}},
-		{provider: ProviderMoonshotAI, id: "kimi-k2-thinking", baseURL: "https://api.moonshot.ai/v1", envVars: []string{"MOONSHOT_API_KEY"}},
 		{provider: ProviderNVIDIA, id: "openai/gpt-oss-20b", baseURL: "https://integrate.api.nvidia.com/v1", envVars: []string{"NVIDIA_API_KEY"}},
-		{provider: ProviderXAI, id: "grok-3", baseURL: "https://api.x.ai/v1", envVars: []string{"XAI_API_KEY"}},
-		{provider: ProviderGitHubCopilot, id: "gpt-5.2-codex", baseURL: "https://api.individual.githubcopilot.com", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-4.6", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-sonnet-5", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
 		{provider: ProviderGitHubCopilot, id: "claude-opus-5", baseURL: "https://api.individual.githubcopilot.com/v1", envVars: []string{"COPILOT_GITHUB_TOKEN"}},
-		{provider: ProviderZAI, id: "glm-5.1", baseURL: "https://api.z.ai/api/coding/paas/v4", envVars: []string{"ZAI_API_KEY"}},
-		{provider: ProviderZAICodingCN, id: "glm-5.2", baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVars: []string{"ZAI_CODING_CN_API_KEY"}},
 	} {
 		model, ok := registry.Model(tt.provider, tt.id)
 		if !ok {
@@ -2203,15 +2013,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		t.Fatalf("Ant Ling xhigh level = %q, %v; want xhigh, true", got, ok)
 	}
 
-	zai, ok := registry.Model(ProviderZAI, "glm-5.1")
-	if !ok {
-		t.Fatal("fresh registry missing generated Z.ai model")
-	}
-	if zai.OpenAICompletionsCompat == nil ||
-		zai.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningZAI ||
-		zai.OpenAICompletionsCompat.SupportsToolStream != OpenAICompatSupported {
-		t.Fatalf("Z.ai compat = %#v, want zai reasoning and tool_stream", zai.OpenAICompletionsCompat)
-	}
 	zaiModels := []struct {
 		id            ModelID
 		name          string
@@ -2251,8 +2052,11 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			offSupported: true,
 		},
 		{
-			id:   "glm-5.3",
-			name: "GLM-5.3",
+			id:            "glm-5.3",
+			name:          "GLM-5.3",
+			inputCost:     1.4,
+			outputCost:    4.4,
+			cacheReadCost: 0.26,
 			thinking: map[ThinkingLevel]string{
 				ThinkingLevelMinimal: "low",
 				ThinkingLevelLow:     "low",
@@ -2272,6 +2076,9 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		{id: ProviderZAICodingCN, baseURL: "https://open.bigmodel.cn/api/coding/paas/v4", envVar: "ZAI_CODING_CN_API_KEY"},
 	} {
 		for _, want := range zaiModels {
+			if provider.id == ProviderZAICodingCN && want.id != "glm-5.3" {
+				continue
+			}
 			model, ok := registry.Model(provider.id, want.id)
 			if !ok {
 				t.Fatalf("fresh registry missing generated %s model %s", provider.id, want.id)
@@ -2312,27 +2119,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataString(t, zaiVision.ProviderMetadata, "baseURL", "https://open.bigmodel.cn/api/coding/paas/v4")
 	assertMetadataStrings(t, zaiVision.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"ZAI_CODING_CN_API_KEY"})
 
-	for _, provider := range []ProviderID{ProviderZAI, ProviderZAICodingCN} {
-		for _, want := range []struct {
-			id        ModelID
-			input     float64
-			output    float64
-			cacheRead float64
-		}{
-			{id: "glm-5.1", input: 1.4, output: 4.4, cacheRead: 0.26},
-			{id: "glm-5v-turbo", input: 1.2, output: 4, cacheRead: 0.24},
-		} {
-			model, ok := registry.Model(provider, want.id)
-			if !ok {
-				t.Fatalf("fresh registry missing generated %s model %s", provider, want.id)
-			}
-			if model.InputCostPerMillion != want.input || model.OutputCostPerMillion != want.output ||
-				model.CacheReadInputCostPerMillion != want.cacheRead || model.CacheWriteInputCostPerMillion != 0 || model.CostCurrency != "USD" {
-				t.Fatalf("%s/%s costs = %f/%f/%f/%f %s, want %f/%f/%f/0 USD", provider, want.id, model.InputCostPerMillion, model.OutputCostPerMillion, model.CacheReadInputCostPerMillion, model.CacheWriteInputCostPerMillion, model.CostCurrency, want.input, want.output, want.cacheRead)
-			}
-		}
-	}
-
 	cloudflare, ok := registry.Model(ProviderCloudflareAIGateway, "gpt-5.4")
 	if !ok {
 		t.Fatal("fresh registry missing generated Cloudflare AI Gateway model")
@@ -2342,16 +2128,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	}
 	assertMetadataString(t, cloudflare.ProviderMetadata, "baseURL", "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai")
 	assertMetadataStrings(t, cloudflare.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"CLOUDFLARE_API_KEY"})
-
-	cloudflareAnthropic, ok := registry.Model(ProviderCloudflareAIGateway, "claude-sonnet-4-6")
-	if !ok {
-		t.Fatal("fresh registry missing generated Cloudflare AI Gateway Anthropic model")
-	}
-	if cloudflareAnthropic.API != APIAnthropicMessages || !cloudflareAnthropic.SupportsTools || !cloudflareAnthropic.SupportsImages() || !cloudflareAnthropic.SupportsReasoning() {
-		t.Fatalf("Cloudflare AI Gateway Anthropic model capabilities = %+v, want Messages tools, images, and reasoning", cloudflareAnthropic)
-	}
-	assertMetadataString(t, cloudflareAnthropic.ProviderMetadata, "baseURL", "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic/v1")
-	assertMetadataStrings(t, cloudflareAnthropic.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"CLOUDFLARE_API_KEY"})
 
 	for _, tt := range []struct {
 		id              ModelID
@@ -2520,16 +2296,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataString(t, azure.ProviderMetadata, "baseURL", "https://{resource}.openai.azure.com")
 	assertMetadataStrings(t, azure.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AZURE_OPENAI_API_KEY"})
 
-	codex, ok := registry.Model(ProviderOpenAICodex, "gpt-5.4")
-	if !ok {
-		t.Fatal("fresh registry missing generated OpenAI Codex model")
-	}
-	if codex.API != APIOpenAICodexResponses || codex.OpenAICodexResponses == nil ||
-		codex.OpenAICodexResponses.Model != "gpt-5.4" || !codex.OpenAICodexResponses.SupportsToolSearch {
-		t.Fatalf("OpenAI Codex metadata = %+v, want Codex Responses model mapping", codex)
-	}
-	assertMetadataStrings(t, codex.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENAI_CODEX_OAUTH_TOKEN"})
-
 	for _, id := range []ModelID{
 		"gpt-5.4", "gpt-5.4-mini", "gpt-5.4-pro", "gpt-5.5",
 		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
@@ -2545,7 +2311,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 	}
 	for _, id := range []ModelID{
-		"gpt-5.4", "gpt-5.4-mini", "gpt-5.5",
+		"gpt-5.5",
 		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
 	} {
 		responses, ok := registry.Model(ProviderOpenAICodex, id)
@@ -2658,7 +2424,6 @@ func assertGeneratedAnthropicCompatibleProviderMetadata(t *testing.T, registry *
 		{id: "k3", wantImages: true, contextWindow: 1048576, maxOutputTokens: 131072, inputCost: 3, outputCost: 15, cacheReadCost: 0.3, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}, unsupportedThinkingLevels: []ThinkingLevel{ThinkingLevelOff, ThinkingLevelMinimal, ThinkingLevelMedium, ThinkingLevelXHigh}, supportsEmptyThinkSignature: true},
 		{id: "kimi-for-coding", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, supportsEmptyThinkSignature: true},
 		{id: "kimi-for-coding-highspeed", wantImages: true, contextWindow: 262144, maxOutputTokens: 32768, inputCost: 1.9, outputCost: 8, cacheReadCost: 0.38},
-		{id: "kimi-k2-thinking", contextWindow: 262144, maxOutputTokens: 32768, inputCost: 0.6, outputCost: 2.5, cacheReadCost: 0.15},
 	} {
 		kimiCoding, ok := registry.Model(ProviderKimiCoding, tt.id)
 		if !ok {
@@ -2843,7 +2608,7 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025, supportsReasoning: true},
 		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15, supportsReasoning: true},
 		{id: "gemini-3.5-flash-lite", inputCost: 0.3, outputCost: 2.5, cacheRead: 0.03, supportsReasoning: true},
-		{id: "gemini-3.6-flash", inputCost: 1.5, outputCost: 7.5, cacheRead: 0.15, supportsReasoning: true},
+		{id: "gemini-3.6-flash", inputCost: 0.75, outputCost: 3.75, cacheRead: 0.075, supportsReasoning: true},
 		{id: "gemini-flash-latest", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
 		{id: "gemini-flash-lite-latest", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
 	} {

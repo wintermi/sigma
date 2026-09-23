@@ -201,9 +201,9 @@ func TestRegistersCatalogModels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			model, ok := sigma.DefaultRegistry().Model(tt.provider, "glm-5.1")
+			model, ok := sigma.DefaultRegistry().Model(tt.provider, "glm-5.3")
 			if !ok {
-				t.Fatalf("default registry missing %s glm-5.1", tt.provider)
+				t.Fatalf("default registry missing %s glm-5.3", tt.provider)
 			}
 			registry := sigma.NewRegistry()
 			if err := tt.register(registry); err != nil {

@@ -1,5 +1,13 @@
 # Embeddings
 
+The direct Google catalog now includes `gemini-embedding-2` for text input, with
+3,072 default dimensions, a documented 128–3,072 range, and an 8,192-token input
+limit. This metadata does not add dimension enforcement or normalize vectors.
+The retired direct `text-embedding-004` entry is removed; its independent Vertex
+entry remains. Choose the new model explicitly and rebuild affected vector stores
+as needed: embeddings from different models are not interchangeable. Existing
+cached vectors are not repaired or migrated.
+
 Sigma exposes vector embeddings as a separate provider surface from text
 generation and image generation.
 

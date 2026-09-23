@@ -53,7 +53,7 @@ func TestRegisterAcceptsCatalogModels(t *testing.T) {
 
 	for _, modelID := range []sigma.ModelID{
 		"anthropic/claude-opus-4.8",
-		"google/gemini-3-pro-preview",
+		"zai/glm-5.1",
 		"openai/gpt-5.4",
 	} {
 		modelID := modelID

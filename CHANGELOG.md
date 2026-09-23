@@ -12,6 +12,13 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- The September registry review adds 50 text models, GPT Image 1.5 and 2, and
+  Gemini Embedding 2 through existing adapters. It refreshes 18 text entries,
+  including provider-specific prices and long-context tiers, and removes 167
+  text entries, three OpenRouter image previews, and direct Gemini Text Embedding
+  004. Default discovery excludes IDs removed from the comparison inventory
+  as well as confirmed direct-provider shutdowns.
+
 - GPT-6 Astra is now available in the direct OpenAI and OpenAI Codex catalogs
   through their existing Responses routes, with text/image input, function
   tools, low through maximum reasoning, and message-anchored deferred tools.
@@ -36,11 +43,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
   streamed tools, and its required `max_tokens` field, while models without
   matching price evidence retain zero-cost estimates and default requests
   remain unchanged.
-- Direct DeepSeek now includes the experimental DeepSeek V4 Flash Vision model
-  through the existing OpenAI-compatible Chat Completions route, with text and
-  image input, tools, low through maximum reasoning, million-token limits, and
-  conservative peak-rate cost estimates. Existing direct V4 Flash and V4 Pro
-  estimates now use the same documented peak-rate basis.
+- Direct DeepSeek V4 Pro estimates use documented peak rates. The September
+  registry review removes direct V4 Flash and V4 Flash Vision Exp discovery;
+  custom vision metadata remains supported by the Chat Completions adapter.
 - Direct Anthropic Claude Fable 5 requests can now opt into
   catalog-declared server-side refusal fallbacks through
   `AnthropicOptions.EnableRefusalFallbacks`. Defaults remain unchanged, while

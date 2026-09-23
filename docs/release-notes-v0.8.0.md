@@ -7,6 +7,20 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The September model registry review adds 50 text models across existing routes,
+GPT Image 1.5 and 2, and text input for Gemini Embedding 2. It updates 18 existing
+text rows and removes 167 text entries, three OpenRouter image previews, and
+direct Gemini `text-embedding-004`. The resulting offline catalog has 548 text,
+56 image, and 8 embedding models. Removals include IDs absent from the comparison
+inventory across matching providers and confirmed direct-provider shutdowns.
+Removed IDs no longer resolve through default discovery; applications must
+explicitly choose replacements. Histories and stored embeddings are unchanged.
+
+Pricing remains provider-specific and estimated. New entries preserve existing
+route, authentication, context-default, and transport policies. Google Flash
+introductory pricing and upcoming model retirements require follow-up before
+their published deadlines.
+
 Synchronous provider errors now redact recognized credentials in their displayed
 messages while retaining the original causes for `errors.Is` and `errors.As`.
 Responses results preserve all output-text and refusal parts in content-index
@@ -199,14 +213,10 @@ Fireworks GLM 5.2 routes now use session affinity for automatic
 prompt caching without unsupported long-cache retention. Anthropic-routed
 OpenRouter agent loops now advance their final conversation cache breakpoint
 through the latest non-empty tool result.
-Direct DeepSeek V4 Flash plus its OpenCode Zen and Go routes now
-support low reasoning effort while retaining their existing high and
-maximum-effort mappings.
-Direct DeepSeek also adds the experimental V4 Flash Vision model through the
-existing OpenAI-compatible Chat Completions route, with text and image input,
-tools, low through maximum reasoning, a million-token context, and a 384K
-output limit. Direct V4 Flash, V4 Flash Vision, and V4 Pro cost estimates now
-use documented peak rates as a conservative static basis.
+OpenCode Zen and Go DeepSeek V4 Flash routes support low reasoning effort while
+retaining their high and maximum-effort mappings. The September registry
+review removes direct V4 Flash and its experimental vision variant from default
+discovery. Direct V4 Pro retains documented peak-rate cost estimates.
 Direct xAI now includes Grok 4.6 through OpenAI Responses with text and image
 input, function tools, 500k-token context and output limits, tiered
 long-context pricing, and reasoning controls through `xhigh`.
@@ -489,16 +499,13 @@ selection remains available through existing provider-specific controls.
   OpenAI-compatible Chat Completions adapter. The focused built-in catalog
   covers vision-capable GLM 5.2 and Kimi K2.6 with `BASETEN_API_KEY` discovery,
   reviewed inputs, limits, and token pricing.
-- Direct DeepSeek metadata now includes the experimental
-  `deepseek-v4-flash-vision-exp` model through OpenAI-compatible Chat
-  Completions. It accepts text and image input, function tools, and low, high,
-  or maximum reasoning within a 1,000,000-token context and 384,000-token
-  output limit. V4 Flash and V4 Flash Vision use peak estimates of $0.44 input,
-  $1.32 output, and $0.014 cached input per million tokens; V4 Pro uses $1.32,
-  $3.96, and $0.044 respectively.
-- Xiaomi's direct API-billing and regional Token Plan catalogs provide the
-  `mimo-v2.5`, `mimo-v2.5-pro`, and `mimo-v2.5-pro-ultraspeed` model lineup
-  through the existing OpenAI-compatible Chat Completions routes.
+- Direct DeepSeek retains V4 Pro with peak estimates of $1.32 input, $3.96
+  output, and $0.044 cached input per million tokens. The September review
+  removes direct V4 Flash and V4 Flash Vision Exp from default discovery.
+  Caller-defined vision metadata still uses the existing Chat Completions adapter.
+- Xiaomi's direct catalog provides `mimo-v2.5`, `mimo-v2.5-pro`, and
+  `mimo-v2.5-pro-ultraspeed`. The regional Token Plan catalogs retain the first
+  two IDs through their existing OpenAI-compatible Chat Completions routes.
 - Direct xAI metadata now includes Grok 4.6 through the existing OpenAI
   Responses registration path. It accepts text and image input, function
   tools, and low, medium, high, or `xhigh` reasoning within a 500k-token
@@ -714,12 +721,9 @@ Vertex, and Bedrock adapters without changing release classifications.
   minimal remain unsupported. Long cache retention is omitted while cache keys
   and session affinity remain available. Grok 4.5 and the existing legacy Chat
   Completions routes are unchanged.
-- DeepSeek V4 Flash Vision remains an experimental direct Chat Completions
-  model. This addition does not register DeepSeek Responses or
-  Anthropic-compatible routes, add Files API image references, or introduce a
-  live probe. Static cost estimates intentionally use documented peak rates;
-  actual off-peak charges may be lower, and automatic price-window selection
-  remains deferred. Routed DeepSeek model metadata is unchanged.
+- Direct DeepSeek discovery removals leave caller-defined Chat Completions
+  metadata supported. No Responses or Anthropic-compatible route, Files API
+  image reference, live probe, or automatic price-window selection is added.
 - OpenAI-compatible Chat Completions usage now falls back to top-level
   `cached_tokens` when nested cache details and `prompt_cache_hit_tokens` do not
   report a cache read. Cache reads remain included in provider prompt totals,

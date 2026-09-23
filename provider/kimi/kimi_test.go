@@ -44,7 +44,7 @@ func providerCases() []providerCase {
 		{
 			name:     "kimi coding",
 			provider: sigma.ProviderKimiCoding,
-			modelIDs: []sigma.ModelID{"k3", "kimi-for-coding", "kimi-for-coding-highspeed", "kimi-k2-thinking"},
+			modelIDs: []sigma.ModelID{"k3", "kimi-for-coding", "kimi-for-coding-highspeed"},
 			register: kimi.RegisterCoding,
 		},
 	}

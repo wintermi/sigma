@@ -17,7 +17,7 @@ import (
 	"github.com/wintermi/sigma/provider/fireworks"
 )
 
-const firepassModelID = sigma.ModelID("accounts/fireworks/routers/kimi-k2p6-turbo")
+const fireworksModelID = sigma.ModelID("accounts/fireworks/models/kimi-k2p7-code")
 
 func main() {
 	os.Exit(run())
@@ -25,14 +25,14 @@ func main() {
 
 func run() int {
 	if os.Getenv("FIREWORKS_API_KEY") == "" {
-		fmt.Fprintln(os.Stderr, "set FIREWORKS_API_KEY to run the live Fireworks Firepass demo")
+		fmt.Fprintln(os.Stderr, "set FIREWORKS_API_KEY to run the live Fireworks demo")
 		return 2
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	client, model, err := firepassDemoClient()
+	client, model, err := fireworksDemoClient()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "setup failed: %v\n", err)
 		return 1
@@ -102,14 +102,14 @@ func run() int {
 	return 0
 }
 
-func firepassDemoClient() (*sigma.Client, sigma.Model, error) {
+func fireworksDemoClient() (*sigma.Client, sigma.Model, error) {
 	registry := sigma.DefaultRegistry()
 	if err := fireworks.Register(registry); err != nil {
 		return nil, sigma.Model{}, fmt.Errorf("register Fireworks provider: %w", err)
 	}
-	model, ok := registry.Model(sigma.ProviderFireworks, firepassModelID)
+	model, ok := registry.Model(sigma.ProviderFireworks, fireworksModelID)
 	if !ok {
-		return nil, sigma.Model{}, fmt.Errorf("firepass model %q was not registered", firepassModelID)
+		return nil, sigma.Model{}, fmt.Errorf("fireworks model %q was not registered", fireworksModelID)
 	}
 	if model.Provider != sigma.ProviderFireworks {
 		return nil, sigma.Model{}, fmt.Errorf("model provider = %q, want %q", model.Provider, sigma.ProviderFireworks)

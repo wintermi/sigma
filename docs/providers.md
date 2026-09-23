@@ -370,7 +370,7 @@ The Kimi wrappers use Sigma's shared Anthropic-compatible Messages adapter with
 the Kimi endpoint base URL and Kimi CLI request header defaults. Built-in
 metadata is available under `ProviderKimi` for the canonical `kimi-for-coding`
 route. `ProviderKimiCoding` carries the expanded coding model family with
-`k3`, `kimi-for-coding`, `kimi-for-coding-highspeed`, and `kimi-k2-thinking`,
+`k3`, `kimi-for-coding`, and `kimi-for-coding-highspeed`,
 including adaptive thinking, session-affinity, tool-use, and image-input
 metadata where supported by the model. K3 supports `low`, `high`, and `max`
 adaptive-thinking efforts.
@@ -407,10 +407,9 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 Environment: `FIREWORKS_API_KEY`.
 
-The built-in Fireworks text model route is the Fire Pass router
-`accounts/fireworks/routers/kimi-k2p6-turbo`, named
-`Kimi K2.6 Turbo (Firepass)`. The same OpenAI-compatible path also includes
-`accounts/fireworks/models/kimi-k2p7-code`. The adapter uses Fireworks'
+The built-in Fireworks text routes include
+`accounts/fireworks/models/kimi-k2p7-code`, `accounts/fireworks/models/kimi-k3`,
+and `accounts/fireworks/routers/glm-5p2-fast`. The adapter uses Fireworks'
 OpenAI-compatible Chat Completions endpoint and supports streaming text, usage,
 thinking, and function tools in the shared `openai-completions` path.
 `sigma.WithReasoningLevel` maps to Fireworks `reasoning_effort`;

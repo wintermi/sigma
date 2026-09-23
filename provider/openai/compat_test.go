@@ -1626,9 +1626,18 @@ func TestOpenAICompletionsCompatMapsOpenCodeReasoning(t *testing.T) {
 func TestOpenAICompletionsCompatMapsDirectDeepSeekVisionRequest(t *testing.T) {
 	t.Parallel()
 
-	model, ok := sigma.DefaultRegistry().Model(sigma.ProviderDeepSeek, "deepseek-v4-flash-vision-exp")
-	if !ok {
-		t.Fatal("generated registry missing direct DeepSeek V4 Flash Vision Exp")
+	// Custom metadata keeps image payload coverage independent of catalog retirement.
+	model := sigma.Model{
+		ID:               "custom-deepseek-vision",
+		Provider:         sigma.ProviderDeepSeek,
+		API:              sigma.APIOpenAICompletions,
+		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
+		SupportsThinking: true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{sigma.ThinkingLevelLow: "low"},
+		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
+			ReasoningFormat: sigma.OpenAICompletionsReasoningDeepSeek,
+			RequiresReasoningContentOnAssistantMessages: sigma.OpenAICompatSupported,
+		},
 	}
 	payload, err := chatCompletionsPayload(
 		model,

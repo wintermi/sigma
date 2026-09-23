@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -306,7 +307,6 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 				mu.Lock()
 				defer mu.Unlock()
 				refreshes++
-				time.Sleep(time.Millisecond)
 				return sigma.StoredCredential{
 					Type:         sigma.CredentialTypeOAuthToken,
 					Value:        "new-token",
@@ -321,7 +321,20 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RegisterProviderAuth returned error: %v", err)
 	}
-	resolver := sigma.StoredCredentialAuthResolver{Store: store, Registry: registry, Now: func() time.Time { return now }}
+	// Both callers must inspect the old credential before either can refresh.
+	// A short-lived refreshed token still must be reused by an overlapping waiter.
+	observed, release := make(chan struct{}, 2), make(chan struct{})
+	var releaseOnce sync.Once
+	releaseReads := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(releaseReads)
+	var reads atomic.Int32
+	resolver := sigma.StoredCredentialAuthResolver{Store: store, Registry: registry, Now: func() time.Time {
+		if reads.Add(1) <= 2 {
+			observed <- struct{}{}
+			<-release
+		}
+		return now
+	}}
 	model := sigma.Model{Provider: sigma.ProviderAnthropic, ID: "claude-test"}
 	options := sigma.Options{OAuthMinimumValidity: &minimumValidity}
 
@@ -339,6 +352,14 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 			values <- credential.Value
 		}()
 	}
+	for range 2 {
+		select {
+		case <-observed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("callers did not both inspect the original credential")
+		}
+	}
+	releaseReads()
 	wg.Wait()
 	close(values)
 
