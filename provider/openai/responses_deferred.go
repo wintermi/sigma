@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -25,7 +26,8 @@ const (
 var _ sigma.DeferredTextProvider = (*ResponsesProvider)(nil)
 
 // SubmitDeferred starts a direct OpenAI Responses background request.
-func (p *ResponsesProvider) SubmitDeferred(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (sigma.DeferredResponse, error) {
+func (p *ResponsesProvider) SubmitDeferred(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (_ sigma.DeferredResponse, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	if err := validateDirectOpenAIDeferredModel(model); err != nil {
 		return sigma.DeferredResponse{}, err
 	}
@@ -66,7 +68,8 @@ func (p *ResponsesProvider) SubmitDeferred(ctx context.Context, model sigma.Mode
 }
 
 // FetchDeferred retrieves one direct OpenAI Responses lifecycle observation.
-func (p *ResponsesProvider) FetchDeferred(ctx context.Context, model sigma.Model, handle sigma.DeferredResponseHandle, opts sigma.Options) (sigma.DeferredResponse, error) {
+func (p *ResponsesProvider) FetchDeferred(ctx context.Context, model sigma.Model, handle sigma.DeferredResponseHandle, opts sigma.Options) (_ sigma.DeferredResponse, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	if err := validateDirectOpenAIDeferredModel(model); err != nil {
 		return sigma.DeferredResponse{}, err
 	}
@@ -95,7 +98,8 @@ func (p *ResponsesProvider) FetchDeferred(ctx context.Context, model sigma.Model
 }
 
 // CancelDeferred cancels one direct OpenAI Responses background request.
-func (p *ResponsesProvider) CancelDeferred(ctx context.Context, model sigma.Model, handle sigma.DeferredResponseHandle, opts sigma.Options) (sigma.DeferredResponse, error) {
+func (p *ResponsesProvider) CancelDeferred(ctx context.Context, model sigma.Model, handle sigma.DeferredResponseHandle, opts sigma.Options) (_ sigma.DeferredResponse, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	if err := validateDirectOpenAIDeferredModel(model); err != nil {
 		return sigma.DeferredResponse{}, err
 	}

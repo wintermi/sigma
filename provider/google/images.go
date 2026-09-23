@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -68,7 +69,8 @@ func (p *ImagesProvider) API() sigma.ImageAPI {
 }
 
 // Generate sends req to Google's Imagen predict or Gemini generateContent image API.
-func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
+func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (_ sigma.AssistantImages, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 

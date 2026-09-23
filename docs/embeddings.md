@@ -125,6 +125,14 @@ into input order. Missing results or invalid indexes produce a `ProviderError`
 even for HTTP 200, preserving request and attempt metadata while returning no
 partial vectors. Its body preview is bounded and redacted.
 
+OpenAI-compatible, Gemini, Vertex, and Bedrock Titan, Nova, and Cohere responses
+must supply nonempty arrays of numeric elements that convert to finite float32
+values. Missing or null vectors, null or nonnumeric elements, and float32
+overflow are malformed success responses. Zero-valued vectors remain valid.
+Failures retain HTTP status, request ID, model identity, and attempt metadata;
+`EmbedBatch` does not cache their vectors. Requested/model dimension checks and
+cache keys are unchanged, and previously cached values are not repaired.
+
 Provider usage maps prompt tokens to `Usage.InputTokens`. When model pricing is
 available, Sigma calculates `Cost.InputCost` and `Cost.TotalCost` from input
 tokens and `EmbeddingModel.InputCostPerMillion`.

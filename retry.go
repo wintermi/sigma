@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -84,7 +86,8 @@ func DoHTTPWithRetryAttempts(
 	newRequest func(context.Context) (*http.Request, error),
 	providerError func(*http.Response) *ProviderError,
 	hooks ...HTTPResponseHook,
-) (*http.Response, []HTTPAttempt, error) {
+) (_ *http.Response, _ []HTTPAttempt, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	if ctx == nil {
 		ctx = context.Background()
 	}

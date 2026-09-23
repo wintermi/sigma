@@ -7,6 +7,27 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Synchronous provider errors now redact recognized credentials in their displayed
+messages while retaining the original causes for `errors.Is` and `errors.As`.
+Responses results preserve all output-text and refusal parts in content-index
+order, including final-only and deferred responses, with one public text block
+per output item. Terminal snapshots no longer replace the message with its last
+part or duplicate accumulated text.
+
+All built-in embedding decoders reject absent, null, empty, non-array, or
+malformed vectors and numbers that overflow float32. Valid zero-valued vectors
+remain supported. Malformed HTTP successes return typed provider errors with
+status, request ID, model identity, and attempts, without partial vectors or
+cache writes. Existing dimension policies and cache identities are unchanged.
+
+OAuth callers canceled while waiting for another caller's refresh now return
+promptly. Credential inspection, rotation, and persistence callbacks remain
+serialized. Strict tool validation preserves valid explicit nulls, including
+unconstrained optional properties, and removes optional null placeholders only
+when the original schema rejects null. Combined type, enum, const, and supported
+union constraints determine strict-schema nullability; malformed-schema errors
+remain errors. These changes require no persistence migration.
+
 Shared copies now preserve nil lists as `null` and non-nil empty lists as `[]`
 across tool content, provider options, metadata, and credentials. This corrects
 serialization that previously depended on the Go slice type; existing byte and

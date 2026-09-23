@@ -15,10 +15,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/contextlock"
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
@@ -83,7 +83,7 @@ type XAIOAuthTokenProvider struct {
 	refreshBefore time.Duration
 	onRefresh     func(context.Context, XAIOAuthCredentials) error
 
-	mu          sync.Mutex
+	mu          contextlock.Mutex
 	credentials XAIOAuthCredentials
 }
 
@@ -217,7 +217,9 @@ func (p *XAIOAuthTokenProvider) Resolve(ctx context.Context, model sigma.Model, 
 
 // Token implements sigma.OAuthTokenProvider.
 func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
-	p.mu.Lock()
+	if err := p.mu.Lock(ctx); err != nil {
+		return sigma.Credential{}, fmt.Errorf("xai oauth: wait for credentials: %w", err)
+	}
 	defer p.mu.Unlock()
 
 	if p.credentials.AccessToken == "" {

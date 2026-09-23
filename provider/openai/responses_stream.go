@@ -29,6 +29,7 @@ type responsesEvent struct {
 	SummaryIndex int                  `json:"summary_index"`
 	Delta        string               `json:"delta"`
 	Text         string               `json:"text"`
+	Refusal      string               `json:"refusal"`
 	Input        string               `json:"input"`
 	Arguments    string               `json:"arguments"`
 	B64JSON      string               `json:"b64_json"`
@@ -157,10 +158,32 @@ type responsesCustomToolCall struct {
 
 type responsesTextState struct {
 	streamblocks.Text
+	parts     map[int]*strings.Builder
+	lastPart  int
 	itemID    string
 	partID    string
 	signature string
 	phase     string
+}
+
+// assemble retains one public block while ordering independent wire parts.
+func (s *responsesTextState) assemble() string {
+	indexes := make([]int, 0, len(s.parts))
+	for index := range s.parts {
+		indexes = append(indexes, index)
+	}
+	sort.Ints(indexes)
+	var text strings.Builder
+	for _, index := range indexes {
+		text.WriteString(s.parts[index].String())
+	}
+	if len(indexes) > 0 {
+		s.lastPart = indexes[len(indexes)-1]
+	} else {
+		s.lastPart = -1
+	}
+	s.Set(text.String())
+	return s.String()
 }
 
 type responsesThinkingState struct {
@@ -321,18 +344,21 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		if err := p.emitStart(ctx); err != nil {
 			return false, err
 		}
-		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
+		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ContentIndex, parsed.ItemID, "", parsed.Delta)
 	case "response.refusal.delta":
 		if err := p.emitStart(ctx); err != nil {
 			return false, err
 		}
-		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ItemID, "", parsed.Delta)
+		return false, p.emitText(ctx, parsed.OutputIndex, parsed.ContentIndex, parsed.ItemID, "", parsed.Delta)
 	case "response.output_text.done":
-		p.finishText(parsed.OutputIndex, parsed.ItemID, parsed.Text)
+		p.finishText(parsed.OutputIndex, parsed.ContentIndex, parsed.ItemID, parsed.Text)
 		return false, nil
-	case "response.content_part.added":
+	case "response.refusal.done":
+		p.finishText(parsed.OutputIndex, parsed.ContentIndex, parsed.ItemID, parsed.Refusal)
+		return false, nil
+	case "response.content_part.added", "response.content_part.done":
 		if parsed.Part.Type == "output_text" || parsed.Part.Type == "refusal" {
-			p.finishText(parsed.OutputIndex, parsed.ItemID, firstNonEmpty(parsed.Part.Text, parsed.Part.Refusal))
+			p.finishText(parsed.OutputIndex, parsed.ContentIndex, parsed.ItemID, firstNonEmpty(parsed.Part.Text, parsed.Part.Refusal))
 		}
 		return false, nil
 	case "response.reasoning_summary_text.delta":
@@ -478,16 +504,22 @@ func (p *responsesStreamParser) captureOutputItem(outputIndex int, item response
 				state.phase = item.Phase
 			}
 		}
-		for _, part := range item.Content {
-			if part.Type != "output_text" && part.Type != "refusal" {
-				continue
+		if item.Content != nil {
+			parts := make(map[int]*strings.Builder)
+			for index, part := range item.Content {
+				if part.Type != "output_text" && part.Type != "refusal" {
+					continue
+				}
+				state := p.textState(outputIndex)
+				state.itemID = firstNonEmpty(state.itemID, item.ID)
+				state.partID = firstNonEmpty(state.partID, part.ID)
+				state.signature = firstNonEmpty(state.signature, part.Signature)
+				parts[index] = &strings.Builder{}
+				_, _ = parts[index].WriteString(providerText(firstNonEmpty(part.Text, part.Refusal)))
 			}
-			state := p.textState(outputIndex)
-			state.itemID = firstNonEmpty(state.itemID, item.ID)
-			state.partID = firstNonEmpty(state.partID, part.ID)
-			state.signature = firstNonEmpty(state.signature, part.Signature)
-			if text := firstNonEmpty(part.Text, part.Refusal); text != "" {
-				state.Set(providerText(text))
+			if state := p.text[outputIndex]; state != nil {
+				state.parts = parts
+				state.assemble()
 			}
 		}
 	case "reasoning":
@@ -688,7 +720,7 @@ func (p *responsesStreamParser) emitStart(ctx context.Context) error {
 	return p.writer.Emit(ctx, sigma.Event{Kind: sigma.EventKindStart})
 }
 
-func (p *responsesStreamParser) emitText(ctx context.Context, outputIndex int, itemID string, partID string, delta string) error {
+func (p *responsesStreamParser) emitText(ctx context.Context, outputIndex int, contentIndex int, itemID string, partID string, delta string) error {
 	delta = providerText(delta)
 	state := p.textState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
@@ -705,7 +737,20 @@ func (p *responsesStreamParser) emitText(ctx context.Context, outputIndex int, i
 	if delta == "" {
 		return nil
 	}
-	text := state.Append(delta)
+	part := state.parts[contentIndex]
+	if part == nil {
+		part = &strings.Builder{}
+		state.parts[contentIndex] = part
+	}
+	part.WriteString(delta)
+	// In-order deltas append without copying the accumulated message on each token.
+	var text string
+	if contentIndex >= state.lastPart {
+		state.lastPart = contentIndex
+		text = state.Append(delta)
+	} else {
+		text = state.assemble()
+	}
 	return p.writer.Emit(ctx, sigma.Event{
 		Kind:         sigma.EventKindTextDelta,
 		ContentIndex: intPtr(state.ContentIndex),
@@ -793,12 +838,12 @@ func (p *responsesStreamParser) emitToolCall(ctx context.Context, outputIndex in
 	})
 }
 
-func (p *responsesStreamParser) finishText(outputIndex int, itemID string, text string) {
+func (p *responsesStreamParser) finishText(outputIndex int, contentIndex int, itemID string, text string) {
 	state := p.textState(outputIndex)
 	state.itemID = firstNonEmpty(state.itemID, itemID)
-	if text != "" {
-		state.Set(providerText(text))
-	}
+	state.parts[contentIndex] = &strings.Builder{}
+	_, _ = state.parts[contentIndex].WriteString(providerText(text))
+	state.assemble()
 }
 
 func (p *responsesStreamParser) finishThinking(outputIndex int, itemID string, text string) {
@@ -1015,8 +1060,10 @@ func (p *responsesStreamParser) textState(outputIndex int) *responsesTextState {
 	state := p.text[outputIndex]
 	if state == nil {
 		state = &responsesTextState{
-			Text:  streamblocks.Text{ContentIndex: p.nextContentIndex()},
-			phase: p.messagePhases[outputIndex],
+			parts:    make(map[int]*strings.Builder),
+			lastPart: -1,
+			Text:     streamblocks.Text{ContentIndex: p.nextContentIndex()},
+			phase:    p.messagePhases[outputIndex],
 		}
 		p.text[outputIndex] = state
 	}

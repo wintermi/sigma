@@ -8,6 +8,17 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Redact recognized credentials in synchronous transport, authentication, request,
+  and body-read errors while preserving error chains and HTTP attempt metadata.
+- [x] Preserve every Responses output-text and refusal part in one text block per
+  output item across streaming, terminal, and deferred results.
+- [x] Reject malformed embedding vectors across built-in adapters as typed provider
+  errors, with no partial vectors or batch-cache writes.
+- [x] Make OAuth ownership waits cancelable across Codex, Anthropic, GitHub Copilot,
+  Kimi, xAI, and Radius without duplicating refresh work.
+- [x] Preserve valid optional null tool arguments and omit only non-nullable strict
+  placeholders; derive nullability from combined schema constraints.
+
 - [x] Redact and bound Codex WebSocket handshake, proxy, and session diagnostics.
 - [x] Preserve nil and empty lists across shared content, options, metadata, and credential copies.
 - [x] Compare nested schema numbers exactly in const, enum, and composed constraints.

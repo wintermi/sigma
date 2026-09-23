@@ -17,6 +17,8 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/embeddingwire"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -72,7 +74,8 @@ func (p *EmbeddingsProvider) API() sigma.EmbeddingAPI {
 }
 
 // Embed sends req to Bedrock Runtime InvokeModel.
-func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (sigma.Embeddings, error) {
+func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (_ sigma.Embeddings, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
@@ -135,6 +138,9 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, bedrockEmbeddingsProviderError(resp, model, respBody, sigma.ErrProviderResponse)
 	}
 	embeddings, err := decodeBedrockEmbeddingResponse(modelID, model, req, respBody)
+	if err != nil {
+		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, bedrockEmbeddingsProviderError(resp, model, respBody, err)
+	}
 	embeddings.Attempts = embeddingAttempts
 	return embeddings, err
 }
@@ -316,8 +322,8 @@ func decodeBedrockEmbeddingResponse(modelID string, model sigma.EmbeddingModel, 
 }
 
 type titanEmbeddingResponse struct {
-	Embedding           []float32 `json:"embedding"`
-	InputTextTokenCount int       `json:"inputTextTokenCount"`
+	Embedding           json.RawMessage `json:"embedding"`
+	InputTextTokenCount int             `json:"inputTextTokenCount"`
 }
 
 func decodeTitanEmbeddingResponse(model sigma.EmbeddingModel, body []byte) (sigma.Embeddings, error) {
@@ -325,10 +331,14 @@ func decodeTitanEmbeddingResponse(model sigma.EmbeddingModel, body []byte) (sigm
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return sigma.Embeddings{}, fmt.Errorf("bedrock embeddings: decode Titan response: %w", err)
 	}
+	vector, err := embeddingwire.Decode(decoded.Embedding)
+	if err != nil {
+		return sigma.Embeddings{}, fmt.Errorf("bedrock embeddings: %w", err)
+	}
 	out := sigma.Embeddings{
 		Model:    model.ID,
 		Provider: model.Provider,
-		Vectors:  []sigma.Embedding{{Index: 0, Vector: append([]float32(nil), decoded.Embedding...)}},
+		Vectors:  []sigma.Embedding{{Index: 0, Vector: vector}},
 	}
 	if decoded.InputTextTokenCount > 0 {
 		addEmbeddingUsage(&out, model, decoded.InputTextTokenCount)
@@ -338,7 +348,7 @@ func decodeTitanEmbeddingResponse(model sigma.EmbeddingModel, body []byte) (sigm
 
 type novaEmbeddingResponse struct {
 	Embeddings []struct {
-		Embedding []float32 `json:"embedding"`
+		Embedding json.RawMessage `json:"embedding"`
 	} `json:"embeddings"`
 }
 
@@ -350,10 +360,14 @@ func decodeNovaEmbeddingResponse(model sigma.EmbeddingModel, body []byte) (sigma
 	if len(decoded.Embeddings) == 0 {
 		return sigma.Embeddings{}, fmt.Errorf("bedrock embeddings: Nova returned no embeddings")
 	}
+	vector, err := embeddingwire.Decode(decoded.Embeddings[0].Embedding)
+	if err != nil {
+		return sigma.Embeddings{}, fmt.Errorf("bedrock embeddings: %w", err)
+	}
 	return sigma.Embeddings{
 		Model:    model.ID,
 		Provider: model.Provider,
-		Vectors:  []sigma.Embedding{{Index: 0, Vector: append([]float32(nil), decoded.Embeddings[0].Embedding...)}},
+		Vectors:  []sigma.Embedding{{Index: 0, Vector: vector}},
 	}, nil
 }
 
@@ -393,20 +407,28 @@ func decodeCohereEmbeddingResponse(model sigma.EmbeddingModel, inputCount int, b
 }
 
 func parseCohereEmbeddings(raw json.RawMessage) ([][]float32, error) {
-	var flat [][]float32
-	if err := json.Unmarshal(raw, &flat); err == nil {
-		return flat, nil
+	var vectors []json.RawMessage
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		var nested struct {
+			Float []json.RawMessage `json:"float"`
+		}
+		if err := json.Unmarshal(raw, &nested); err != nil {
+			return nil, errors.New("unrecognised embeddings format")
+		}
+		vectors = nested.Float
 	}
-	var nested struct {
-		Float [][]float32 `json:"float"`
-	}
-	if err := json.Unmarshal(raw, &nested); err != nil {
-		return nil, errors.New("unrecognised embeddings format")
-	}
-	if len(nested.Float) == 0 {
+	if len(vectors) == 0 {
 		return nil, errors.New("no float embeddings in response")
 	}
-	return nested.Float, nil
+	out := make([][]float32, len(vectors))
+	for i, rawVector := range vectors {
+		vector, err := embeddingwire.Decode(rawVector)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = vector
+	}
+	return out, nil
 }
 
 func addEmbeddingUsage(out *sigma.Embeddings, model sigma.EmbeddingModel, tokens int) {

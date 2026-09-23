@@ -188,6 +188,14 @@ wire, and `ValidateToolCall` maps provider-emitted `null` placeholders for
 those properties back to omission. The original schema and arguments are not
 mutated.
 
+Nullability respects the intersection of `type`, `enum`, `const`, and supported
+`anyOf` constraints; an unconstrained property accepts null. Local normalization
+uses validation against the original property schema and propagates malformed
+schema errors. Valid explicit nulls, required properties, reference guards, and
+caller-owned schemas and arguments are preserved. For example, an optional
+`type: ["string", "null"]` property with `enum: ["x"]` treats a provider-emitted
+null as omission, while an optional `{}` property retains it.
+
 Strict derivation is available on strict-capable OpenAI-compatible Chat
 Completions models, Responses routes, Mistral Conversations, and capability-
 gated Anthropic Messages models. Built-in direct Anthropic models advertise

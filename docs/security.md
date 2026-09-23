@@ -52,6 +52,14 @@ Codex WebSocket handshake and proxy errors redact recognized credential shapes.
 Session statistics retain a redacted error preview limited to 2,048 bytes plus a
 truncation marker, including when a failed WebSocket request falls back to SSE.
 
+Synchronous HTTP retry errors and embedding, image, and deferred-response errors
+redact recognized credentials in normal error and formatting output, including
+request construction, authentication, and response-body failures. Safe messages
+retain their original error identity. `errors.Is` and `errors.As` still discover
+original network errors and cancellation; no HTTP response error is invented
+when no response exists. Explicitly unwrapping an error or inspecting its raw
+transport fields can expose credentials and remains the caller's responsibility.
+
 ## Persistence
 
 `MarshalRequest` serializes only the public `Request` shape. It does not store

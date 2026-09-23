@@ -14,10 +14,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/contextlock"
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
@@ -246,7 +246,7 @@ type GitHubCopilotOAuthTokenProvider struct {
 	refreshBefore time.Duration
 	onRefresh     func(context.Context, GitHubCopilotOAuthCredentials) error
 
-	mu          sync.Mutex
+	mu          contextlock.Mutex
 	credentials GitHubCopilotOAuthCredentials
 }
 
@@ -420,7 +420,9 @@ func (p *GitHubCopilotOAuthTokenProvider) Resolve(ctx context.Context, model sig
 
 // Token implements sigma.OAuthTokenProvider.
 func (p *GitHubCopilotOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
-	p.mu.Lock()
+	if err := p.mu.Lock(ctx); err != nil {
+		return sigma.Credential{}, fmt.Errorf("githubcopilot oauth: wait for credentials: %w", err)
+	}
 	defer p.mu.Unlock()
 
 	if p.credentials.AccessToken == "" {

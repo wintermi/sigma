@@ -62,46 +62,6 @@ func MakeStrict(input any) (map[string]any, error) {
 	return root, nil
 }
 
-// NormalizeOptionalNulls removes provider-emitted null placeholders for
-// optional non-nullable properties. Both value and schema must be decoded
-// copies owned by the caller.
-func NormalizeOptionalNulls(value any, schema map[string]any) {
-	if schema == nil {
-		return
-	}
-	if _, referencesAnotherSchema := schema["$ref"]; referencesAnotherSchema {
-		return
-	}
-	if array, ok := value.([]any); ok {
-		itemSchema, _ := schema["items"].(map[string]any)
-		for _, item := range array {
-			NormalizeOptionalNulls(item, itemSchema)
-		}
-		return
-	}
-	object, ok := value.(map[string]any)
-	if !ok {
-		return
-	}
-	properties, _ := schema["properties"].(map[string]any)
-	required := stringSet(schema["required"])
-	for name, rawProperty := range properties {
-		property, ok := rawProperty.(map[string]any)
-		if !ok {
-			continue
-		}
-		propertyValue, exists := object[name]
-		if !exists {
-			continue
-		}
-		if propertyValue == nil && !required[name] && !allowsNull(property) && !containsReference(property) {
-			delete(object, name)
-			continue
-		}
-		NormalizeOptionalNulls(propertyValue, property)
-	}
-}
-
 func decode(input any) (any, error) {
 	var data []byte
 	switch value := input.(type) {
@@ -263,46 +223,50 @@ func requiredSet(raw any, exists bool) (map[string]bool, error) {
 	return result, nil
 }
 
-func stringSet(raw any) map[string]bool {
-	values, _ := raw.([]any)
-	result := make(map[string]bool, len(values))
-	for _, value := range values {
-		if name, ok := value.(string); ok {
-			result[name] = true
-		}
-	}
-	return result
-}
-
 func allowsNull(schema map[string]any) bool {
-	if schema["type"] == "null" {
-		return true
-	}
-	if types, ok := schema["type"].([]any); ok {
-		for _, value := range types {
-			if value == "null" {
-				return true
+	if raw, exists := schema["type"]; exists {
+		accepts := raw == "null"
+		if types, ok := raw.([]any); ok {
+			for _, value := range types {
+				if value == "null" {
+					accepts = true
+				}
 			}
 		}
-	}
-	if value, exists := schema["const"]; exists && value == nil {
-		return true
-	}
-	if values, ok := schema["enum"].([]any); ok {
-		for _, value := range values {
-			if value == nil {
-				return true
-			}
+		if !accepts {
+			return false
 		}
 	}
-	if variants, ok := schema["anyOf"].([]any); ok {
-		for _, raw := range variants {
-			if variant, ok := raw.(map[string]any); ok && allowsNull(variant) {
-				return true
+	if value, exists := schema["const"]; exists && value != nil {
+		return false
+	}
+	if raw, exists := schema["enum"]; exists {
+		accepts := false
+		if values, ok := raw.([]any); ok {
+			for _, value := range values {
+				if value == nil {
+					accepts = true
+				}
 			}
 		}
+		if !accepts {
+			return false
+		}
 	}
-	return false
+	if raw, exists := schema["anyOf"]; exists {
+		accepts := false
+		if variants, ok := raw.([]any); ok {
+			for _, raw := range variants {
+				if variant, ok := raw.(map[string]any); ok && allowsNull(variant) {
+					accepts = true
+				}
+			}
+		}
+		if !accepts {
+			return false
+		}
+	}
+	return true
 }
 
 func isStructured(schema map[string]any) bool {
@@ -326,27 +290,6 @@ func hasStructuredTypeUnion(raw any) bool {
 	for _, value := range values {
 		if value == "object" || value == "array" {
 			return true
-		}
-	}
-	return false
-}
-
-func containsReference(value any) bool {
-	switch typed := value.(type) {
-	case map[string]any:
-		if _, exists := typed["$ref"]; exists {
-			return true
-		}
-		for _, nested := range typed {
-			if containsReference(nested) {
-				return true
-			}
-		}
-	case []any:
-		for _, nested := range typed {
-			if containsReference(nested) {
-				return true
-			}
 		}
 	}
 	return false

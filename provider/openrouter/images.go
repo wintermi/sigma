@@ -99,7 +99,8 @@ func (p *ImagesProvider) API() sigma.ImageAPI {
 }
 
 // Generate sends req to OpenRouter's non-streaming Chat Completions image path.
-func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
+func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (_ sigma.AssistantImages, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 

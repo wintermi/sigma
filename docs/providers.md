@@ -107,6 +107,13 @@ until its callback returns and keeps its existing commit behavior, including
 persisting a successful refresh rotation. Callbacks must honor their own contexts;
 operations for other providers remain independent.
 
+The Codex, Anthropic, GitHub Copilot, Kimi, xAI, and Radius in-memory token
+providers serialize credential inspection, refresh, replacement, and persistence
+callbacks. A context canceled before or during the ownership wait returns
+promptly without starting refresh work or changing credentials. Successful
+waiters reuse refreshed credentials under the existing validity rules; callback
+failure and credential-rotation semantics are unchanged.
+
 ### Request-scoped OAuth lifetime
 
 Long-running streams and tool workflows can require an OAuth credential to

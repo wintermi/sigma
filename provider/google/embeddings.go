@@ -17,6 +17,8 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/embeddingwire"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -61,7 +63,8 @@ func (p *EmbeddingsProvider) API() sigma.EmbeddingAPI {
 }
 
 // Embed sends req to Google's batchEmbedContents endpoint.
-func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (sigma.Embeddings, error) {
+func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (_ sigma.Embeddings, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
@@ -99,6 +102,9 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, googleEmbeddingsProviderError(resp, model, body, nil)
 	}
 	embeddings, err := decodeGoogleEmbeddingsResponse(body, model, len(req.Inputs))
+	if err != nil {
+		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, googleEmbeddingsProviderError(resp, model, body, err)
+	}
 	embeddings.Attempts = embeddingAttempts
 	return embeddings, err
 }
@@ -227,7 +233,7 @@ type googleEmbeddingsResponse struct {
 }
 
 type googleEmbeddingValue struct {
-	Values []float32 `json:"values"`
+	Values json.RawMessage `json:"values"`
 }
 
 func decodeGoogleEmbeddingsResponse(body []byte, model sigma.EmbeddingModel, inputCount int) (sigma.Embeddings, error) {
@@ -244,9 +250,13 @@ func decodeGoogleEmbeddingsResponse(body []byte, model sigma.EmbeddingModel, inp
 		Vectors:  make([]sigma.Embedding, 0, len(decoded.Embeddings)),
 	}
 	for index, item := range decoded.Embeddings {
+		vector, err := embeddingwire.Decode(item.Values)
+		if err != nil {
+			return sigma.Embeddings{}, fmt.Errorf("google embeddings: %w", err)
+		}
 		out.Vectors = append(out.Vectors, sigma.Embedding{
 			Index:  index,
-			Vector: append([]float32(nil), item.Values...),
+			Vector: vector,
 		})
 	}
 	return out, nil

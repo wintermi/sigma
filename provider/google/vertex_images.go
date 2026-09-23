@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 // VertexImagesProvider adapts Vertex AI's Gemini and Imagen image APIs to sigma.
@@ -46,7 +47,8 @@ func (p *VertexImagesProvider) API() sigma.ImageAPI {
 }
 
 // Generate sends req to Vertex AI's Gemini generateContent or Imagen predict endpoint.
-func (p *VertexImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (sigma.AssistantImages, error) {
+func (p *VertexImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (_ sigma.AssistantImages, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 

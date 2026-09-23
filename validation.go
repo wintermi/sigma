@@ -122,7 +122,10 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 		return nil, toolValidationError(call.Name, "$", "JSON object arguments", call.Arguments, "arguments are malformed", err)
 	}
 	if toolschema.Enabled(tool.ProviderMetadata) {
-		toolschema.NormalizeOptionalNulls(args, schema)
+		context := validationContext{root: schema, active: make(map[string]struct{})}
+		if err := context.normalizeOptionalNulls(args, schema, "$", call.Name); err != nil {
+			return nil, err
+		}
 	}
 
 	if options.CoercePrimitives {

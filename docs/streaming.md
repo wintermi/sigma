@@ -35,6 +35,14 @@ _ = ok
 `Stream.Events` is single-consumer. If multiple components need events, have one
 goroutine read the stream and fan out copies in your application.
 
+Responses, Azure Responses, and Codex SSE/WebSocket routes keep one public text
+block per output item. Output-text and refusal parts are assembled in provider
+content-index order without separators. Part-completion events update only their
+part; complete item and terminal snapshots replace the complete assembled text
+once. A terminal event that omits content preserves accumulated text. Final-only
+and deferred Responses decoding follow the same rule. Public content indexes,
+phases, signatures, stop reasons, and usage retain their existing meanings.
+
 ## Event Order
 
 Providers emit provider-neutral events:

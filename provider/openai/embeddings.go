@@ -18,7 +18,9 @@ import (
 	"strings"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/embeddingwire"
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 // EmbeddingsProvider adapts OpenAI's embeddings API to sigma.
@@ -56,7 +58,8 @@ func (p *EmbeddingsProvider) API() sigma.EmbeddingAPI {
 }
 
 // Embed sends req to OpenAI's embeddings endpoint.
-func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (sigma.Embeddings, error) {
+func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (_ sigma.Embeddings, resultErr error) {
+	defer func() { resultErr = redact.Error(resultErr) }()
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
@@ -252,8 +255,8 @@ type embeddingsResponse struct {
 }
 
 type embeddingData struct {
-	Index     *int      `json:"index"`
-	Embedding []float32 `json:"embedding"`
+	Index     *int            `json:"index"`
+	Embedding json.RawMessage `json:"embedding"`
 }
 
 type embeddingsUsage struct {
@@ -295,9 +298,13 @@ func decodeEmbeddingsResponse(body []byte, model sigma.EmbeddingModel, expectedC
 		out.Model = sigma.ModelID(decoded.Model)
 	}
 	for _, item := range decoded.Data {
+		vector, err := embeddingwire.Decode(item.Embedding)
+		if err != nil {
+			return sigma.Embeddings{}, fmt.Errorf("openai embeddings: %w", err)
+		}
 		out.Vectors = append(out.Vectors, sigma.Embedding{
 			Index:  *item.Index,
-			Vector: append([]float32(nil), item.Embedding...),
+			Vector: vector,
 		})
 	}
 	if decoded.Usage.PromptTokens > 0 || decoded.Usage.TotalTokens > 0 {

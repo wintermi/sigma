@@ -21,10 +21,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/contextlock"
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
@@ -106,7 +106,7 @@ type RadiusOAuthTokenProvider struct {
 	refreshBefore time.Duration
 	onRefresh     func(context.Context, RadiusOAuthCredentials) error
 
-	mu          sync.Mutex
+	mu          contextlock.Mutex
 	credentials RadiusOAuthCredentials
 }
 
@@ -275,7 +275,9 @@ func (p *RadiusOAuthTokenProvider) Token(ctx context.Context, model sigma.Model,
 	if p == nil {
 		return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"radius-oauth"}}
 	}
-	p.mu.Lock()
+	if err := p.mu.Lock(ctx); err != nil {
+		return sigma.Credential{}, fmt.Errorf("radius oauth: wait for credentials: %w", err)
+	}
 	defer p.mu.Unlock()
 	if p.credentials.AccessToken == "" {
 		return sigma.Credential{}, &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"radius-oauth"}}

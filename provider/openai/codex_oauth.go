@@ -21,10 +21,10 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/contextlock"
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
 )
@@ -221,7 +221,7 @@ type codexOAuthTokenProvider struct {
 	refreshBefore time.Duration
 	onRefresh     func(context.Context, CodexOAuthCredentials) error
 
-	mu          sync.Mutex
+	mu          contextlock.Mutex
 	credentials CodexOAuthCredentials
 }
 
@@ -385,7 +385,9 @@ func storedStringMetadata(metadata map[string]any, key string) string {
 }
 
 func (p *codexOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Credential, error) {
-	p.mu.Lock()
+	if err := p.mu.Lock(ctx); err != nil {
+		return sigma.Credential{}, fmt.Errorf("openai codex oauth: wait for credentials: %w", err)
+	}
 	defer p.mu.Unlock()
 
 	if p.credentials.AccessToken == "" {
