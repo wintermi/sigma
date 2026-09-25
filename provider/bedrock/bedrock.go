@@ -958,6 +958,8 @@ func signAWSSigV4(req *http.Request, body []byte, accessKey string, secretKey st
 	))
 }
 
+// sigV4CanonicalURI URI-encodes the escaped request path a second time, as
+// SigV4 requires for services other than S3.
 func sigV4CanonicalURI(u *url.URL) string {
 	if u == nil {
 		return "/"
@@ -966,7 +968,21 @@ func sigV4CanonicalURI(u *url.URL) string {
 	if path == "" {
 		return "/"
 	}
-	return path
+	var encoded strings.Builder
+	for i := 0; i < len(path); i++ {
+		c := path[i]
+		if c == '/' || isSigV4Unreserved(c) {
+			encoded.WriteByte(c)
+			continue
+		}
+		_, _ = fmt.Fprintf(&encoded, "%%%02X", c)
+	}
+	return encoded.String()
+}
+
+func isSigV4Unreserved(c byte) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+		(c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~'
 }
 
 func sha256Hex(data []byte) string {

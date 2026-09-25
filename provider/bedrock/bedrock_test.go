@@ -1376,6 +1376,43 @@ func TestRequestAPIKeyUsesBedrockBearerAuthorization(t *testing.T) {
 	}
 }
 
+func TestSigV4CanonicalURIEncodesEscapedPathAgain(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		modelID string
+		want    string
+	}{
+		{
+			name:    "plain",
+			modelID: "amazon.nova-pro",
+			want:    "/model/amazon.nova-pro/converse-stream",
+		},
+		{
+			name:    "versioned",
+			modelID: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+			want:    "/model/anthropic.claude-3-5-sonnet-20240620-v1%3A0/converse-stream",
+		},
+		{
+			name:    "inference profile ARN",
+			modelID: "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/my-profile",
+			want:    "/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123456789012%3Aapplication-inference-profile%252Fmy-profile/converse-stream",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			u, err := url.Parse(bedrockConverseStreamURL(Config{Region: "us-east-1"}, tt.modelID))
+			if err != nil {
+				t.Fatalf("parse URL: %v", err)
+			}
+			if got := sigV4CanonicalURI(u); got != tt.want {
+				t.Fatalf("canonical URI = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHTTPConverseStreamClientSignsInferenceProfileARNWithEscapedPath(t *testing.T) {
 	t.Parallel()
 
@@ -1390,7 +1427,7 @@ func TestHTTPConverseStreamClientSignsInferenceProfileARNWithEscapedPath(t *test
 		if got := r.URL.EscapedPath(); got != wantPath {
 			t.Fatalf("escaped path = %q, want %q", got, wantPath)
 		}
-		assertBedrockSigV4Signature(t, r, body, wantPath, "secret", "us-east-1", "bedrock")
+		assertBedrockSigV4Signature(t, r, body, "/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123456789012%3Aapplication-inference-profile%252Fmy-profile/converse-stream", "secret", "us-east-1", "bedrock")
 		requests <- struct{}{}
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 		_, _ = w.Write(bedrockEventStream(

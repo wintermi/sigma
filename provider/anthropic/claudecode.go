@@ -59,7 +59,10 @@ var claudeCodeToolLookup = func() map[string]string {
 // isAnthropicOAuthCredential reports whether a resolved credential should use
 // Claude Code identity mode: OAuth-typed credentials and Anthropic OAuth
 // access tokens passed as plain API keys both qualify.
-func isAnthropicOAuthCredential(credential sigma.Credential) bool {
+// isAnthropicOAuthCredential reports whether credential is an Anthropic
+// subscription token. Other providers routed through this adapter, such as
+// GitHub Copilot and Kimi Coding, issue their own OAuth tokens.
+func isAnthropicOAuthCredential(provider sigma.ProviderID, credential sigma.Credential) bool {
 	if credential.Value == "" {
 		return false
 	}
@@ -69,7 +72,7 @@ func isAnthropicOAuthCredential(credential sigma.Credential) bool {
 	if credential.Source == anthropicOAuthTokenSource {
 		return true
 	}
-	if credential.Type == sigma.CredentialTypeOAuthToken {
+	if credential.Type == sigma.CredentialTypeOAuthToken && provider == sigma.ProviderAnthropic {
 		return true
 	}
 	return strings.Contains(credential.Value, anthropicOAuthTokenMark)

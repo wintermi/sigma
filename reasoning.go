@@ -32,6 +32,10 @@ func (model Model) SupportsReasoning() bool {
 }
 
 // SupportsThinkingLevel reports whether level can be requested for model.
+// For models that advertise SupportsThinking, ThinkingLevelMap overrides
+// provider values: unmapped levels up to high stay supported, while xhigh and
+// max require an explicit entry. Use UnsupportedThinkingLevels to reject a
+// level. Without SupportsThinking, ThinkingLevelMap lists every supported level.
 func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 	if level == "" {
 		return false
@@ -43,8 +47,10 @@ func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 		return true
 	}
 	if len(model.ThinkingLevelMap) > 0 {
-		_, ok := model.ThinkingLevelMap[level]
-		return ok
+		if _, ok := model.ThinkingLevelMap[level]; ok {
+			return true
+		}
+		return model.SupportsThinking && level != ThinkingLevelXHigh && level != ThinkingLevel("max")
 	}
 	if len(model.ThinkingLevels) > 0 {
 		for _, supported := range model.ThinkingLevels {
@@ -67,7 +73,7 @@ func (model Model) unsupportedThinkingLevel(level ThinkingLevel) bool {
 }
 
 // ProviderThinkingLevel returns the provider-specific value for level.
-// If a model only lists supported levels, the provider value is the level text.
+// Levels without a ThinkingLevelMap entry use the level text.
 func (model Model) ProviderThinkingLevel(level ThinkingLevel) (string, bool) {
 	if !model.SupportsThinkingLevel(level) {
 		return "", false
@@ -75,8 +81,8 @@ func (model Model) ProviderThinkingLevel(level ThinkingLevel) (string, bool) {
 	if level == ThinkingLevelOff {
 		return "", true
 	}
-	if len(model.ThinkingLevelMap) > 0 {
-		return model.ThinkingLevelMap[level], true
+	if value, ok := model.ThinkingLevelMap[level]; ok {
+		return value, true
 	}
 	return string(level), true
 }

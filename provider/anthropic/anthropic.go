@@ -139,7 +139,7 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		_ = writer.Error(ctx, err, final)
 		return
 	}
-	claudeCode := isAnthropicOAuthCredential(credential)
+	claudeCode := isAnthropicOAuthCredential(model.Provider, credential)
 	compat := anthropicMessagesCompat(model, p.baseURLForModel(model, opts), p.compat)
 	providerThinkingLevel := ""
 	if compat.supportsMidConversationEffort && opts.ReasoningLevel != sigma.ThinkingLevelOff {

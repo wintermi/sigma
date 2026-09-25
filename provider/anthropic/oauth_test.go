@@ -396,20 +396,24 @@ func TestIsAnthropicOAuthCredential(t *testing.T) {
 
 	tests := []struct {
 		name       string
+		provider   sigma.ProviderID
 		credential sigma.Credential
 		want       bool
 	}{
-		{name: "empty", credential: sigma.Credential{}, want: false},
-		{name: "api key", credential: sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "sk-ant-api03-key"}, want: false},
-		{name: "oauth typed", credential: sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "token"}, want: true},
-		{name: "oat token as api key", credential: sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "sk-ant-oat01-token"}, want: true},
+		{name: "empty", provider: sigma.ProviderAnthropic, credential: sigma.Credential{}, want: false},
+		{name: "api key", provider: sigma.ProviderAnthropic, credential: sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "sk-ant-api03-key"}, want: false},
+		{name: "oauth typed", provider: sigma.ProviderAnthropic, credential: sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "token"}, want: true},
+		{name: "oat token as api key", provider: sigma.ProviderAnthropic, credential: sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "sk-ant-oat01-token"}, want: true},
+		{name: "copilot oauth", provider: sigma.ProviderGitHubCopilot, credential: sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "copilot-token"}, want: false},
+		{name: "kimi oauth", provider: sigma.ProviderID("kimi-coding"), credential: sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "kimi-token"}, want: false},
+		{name: "oat token on custom provider", provider: sigma.ProviderID("relay"), credential: sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "sk-ant-oat01-token"}, want: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isAnthropicOAuthCredential(tt.credential); got != tt.want {
+			if got := isAnthropicOAuthCredential(tt.provider, tt.credential); got != tt.want {
 				t.Fatalf("isAnthropicOAuthCredential = %v, want %v", got, tt.want)
 			}
 		})

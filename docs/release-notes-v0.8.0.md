@@ -7,6 +7,23 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock requests signed with AWS access keys now double-encode the canonical
+request path as SigV4 requires. Model IDs containing `:`, such as `…-v1:0`,
+and inference-profile ARNs previously produced signatures that AWS rejected.
+Bearer-token requests are unchanged.
+
+On models that advertise thinking support, `ThinkingLevelMap` now overrides
+provider values rather than listing every supported level. Unmapped levels
+through `high` stay supported and are sent as the level text; `xhigh` and `max`
+still require an entry, and `UnsupportedThinkingLevels` rejects a level. This
+restores low through high reasoning on generated GPT-5.x rows. Models without
+`SupportsThinking` keep the previous behavior, where the map lists every
+supported level.
+
+The Claude Code identity is now limited to Anthropic subscription tokens. GitHub
+Copilot and Kimi Coding OAuth credentials on Anthropic Messages routes no longer
+receive the Claude Code system prompt, betas, or client headers.
+
 The September model registry review adds 50 text models across existing routes,
 GPT Image 1.5 and 2, and text input for Gemini Embedding 2. It updates 18 existing
 text rows and removes 167 text entries, three OpenRouter image previews, and

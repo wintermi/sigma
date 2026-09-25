@@ -1374,6 +1374,7 @@ func TestThinkingLevelMustBeSupportedByModelMetadata(t *testing.T) {
 	providerID := sigma.ProviderID("google-thinking-test")
 	model := googleTestModel(providerID)
 	model.ThinkingLevelMap = map[sigma.ThinkingLevel]string{sigma.ThinkingLevelHigh: "HIGH"}
+	model.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelLow}
 	client := googleTestClient(t, providerID, model, "https://example.invalid")
 
 	_, err := client.Complete(

@@ -6626,7 +6626,8 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal"
       ]
     },
     {
@@ -6662,7 +6663,8 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal"
       ]
     },
     {
@@ -13620,7 +13622,10 @@
       },
       "thinkingLevelMap": {
         "off": "none"
-      }
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "gpt-5.2",
@@ -13653,7 +13658,10 @@
       "thinkingLevelMap": {
         "off": "none",
         "xhigh": "xhigh"
-      }
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "gpt-5.2-pro",
@@ -13686,7 +13694,9 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal",
+        "low"
       ]
     },
     {
@@ -13720,7 +13730,10 @@
       "thinkingLevelMap": {
         "off": "none",
         "xhigh": "xhigh"
-      }
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "gpt-5.3-codex-spark",
@@ -13754,7 +13767,8 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal"
       ]
     },
     {
@@ -13797,6 +13811,9 @@
         "off": "none",
         "xhigh": "xhigh"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
@@ -13835,6 +13852,9 @@
         "off": "none",
         "xhigh": "xhigh"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true
@@ -13871,7 +13891,10 @@
       "thinkingLevelMap": {
         "off": "none",
         "xhigh": "xhigh"
-      }
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "gpt-5.4-pro",
@@ -13911,7 +13934,9 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal",
+        "low"
       ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
@@ -14052,6 +14077,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
@@ -14101,6 +14129,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
@@ -14150,6 +14181,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
@@ -19077,6 +19111,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "cost": {
         "inputPerMillion": 2,
         "outputPerMillion": 10,
@@ -19275,7 +19312,8 @@
         "xhigh": "xhigh"
       },
       "unsupportedThinkingLevels": [
-        "off"
+        "off",
+        "minimal"
       ],
       "cost": {
         "inputPerMillion": 1.75,
@@ -19321,6 +19359,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "cost": {
         "inputPerMillion": 0.2,
         "outputPerMillion": 1.2,
@@ -19366,6 +19407,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "cost": {
         "inputPerMillion": 2,
         "outputPerMillion": 10,
@@ -19411,6 +19455,9 @@
         "xhigh": "xhigh",
         "max": "max"
       },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ],
       "cost": {
         "inputPerMillion": 2,
         "outputPerMillion": 12,

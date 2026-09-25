@@ -7,12 +7,47 @@ package openai_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/wintermi/sigma"
 )
+
+func TestGeneratedPartialThinkingMapsAcceptDefaultLevels(t *testing.T) {
+	t.Parallel()
+	for _, id := range []sigma.ModelID{"gpt-5.4", "gpt-5.5"} {
+		t.Run(string(id), func(t *testing.T) {
+			t.Parallel()
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+			model, ok := sigma.DefaultRegistry().Model(sigma.ProviderOpenAI, id)
+			if !ok {
+				t.Fatal("missing model")
+			}
+			model.ProviderMetadata["baseURL"] = server.URL
+			client := responsesTestClient(t, sigma.ProviderOpenAI, model, server.URL)
+			for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh} {
+				if _, err := client.Complete(context.Background(), model, deferredToolsRequest(), sigma.WithReasoningLevel(level)); err != nil {
+					t.Fatalf("%s: %v", level, err)
+				}
+				payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+				if effort := payload["reasoning"].(map[string]any)["effort"]; effort != string(level) {
+					t.Fatalf("%s: reasoning effort = %v", level, effort)
+				}
+			}
+			_, err := client.Complete(context.Background(), model, deferredToolsRequest(), sigma.WithReasoningLevel(sigma.ThinkingLevelMinimal))
+			if !errors.Is(err, sigma.ErrInvalidOptions) {
+				t.Fatalf("minimal error = %v, want ErrInvalidOptions", err)
+			}
+		})
+	}
+}
 
 func TestRegistryRefreshCodexReasoning(t *testing.T) {
 	t.Parallel()

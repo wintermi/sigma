@@ -8,6 +8,10 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Double-encode Bedrock SigV4 canonical paths for `:` model IDs and ARNs.
+- [x] Treat partial thinking-level maps as overrides on reasoning models.
+- [x] Limit the Claude Code identity to Anthropic subscription tokens.
+
 - [x] Redact recognized credentials in synchronous transport, authentication, request,
   and body-read errors while preserving error chains and HTTP attempt metadata.
 - [x] Preserve every Responses output-text and refusal part in one text block per

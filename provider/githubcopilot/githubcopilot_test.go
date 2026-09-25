@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -155,6 +156,50 @@ func TestAnthropicWrapperUsesBearerAuthAndCopilotHeaders(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Initiator", "user")
 	assertHeader(t, request.Headers, "Openai-Intent", "conversation-edits")
 	assertHeader(t, request.Headers, "Copilot-Vision-Request", "true")
+}
+
+func TestAnthropicWrapperOAuthCredentialOmitsClaudeCodeIdentity(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeAnthropicCompleted(w)
+	}))
+	t.Cleanup(server.Close)
+
+	registry := sigma.DefaultRegistry()
+	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5")
+	if !ok {
+		t.Fatal("default registry missing GitHub Copilot Claude Opus 5 model")
+	}
+	if err := githubcopilot.RegisterAnthropic(registry, githubcopilot.WithAnthropicBaseURL(server.URL+"/v1")); err != nil {
+		t.Fatalf("RegisterAnthropic returned error: %v", err)
+	}
+	resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+		return sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "copilot-oauth-token"}, nil
+	})
+
+	client := sigma.NewClient(sigma.WithRegistry(registry), sigma.WithAuthResolver(resolver))
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{SystemPrompt: "Be brief.", Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithProviderOption(sigma.ProviderGitHubCopilot, "baseURL", server.URL+"/v1"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	assertHeader(t, request.Headers, "Authorization", "Bearer copilot-oauth-token")
+	assertHeader(t, request.Headers, "User-Agent", "GitHubCopilotChat/0.35.0")
+	assertHeader(t, request.Headers, "X-App", "")
+	if beta := request.Headers.Get("Anthropic-Beta"); strings.Contains(beta, "claude-code") || strings.Contains(beta, "oauth-") {
+		t.Fatalf("Anthropic-Beta = %q, want no Claude Code betas", beta)
+	}
+	if strings.Contains(string(request.Body), "Claude Code") {
+		t.Fatalf("request body contains Claude Code identity: %s", request.Body)
+	}
 }
 
 func copilotResponsesModel() sigma.Model {

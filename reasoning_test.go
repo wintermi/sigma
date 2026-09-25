@@ -40,6 +40,40 @@ func TestModelThinkingLevelMapControlsSupportedLevels(t *testing.T) {
 	}
 }
 
+func TestModelPartialThinkingLevelMapKeepsDefaultLevels(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{
+		SupportsThinking: true,
+		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
+			sigma.ThinkingLevelOff:   "none",
+			sigma.ThinkingLevelXHigh: "xhigh",
+		},
+		UnsupportedThinkingLevels: []sigma.ThinkingLevel{sigma.ThinkingLevelMinimal},
+	}
+
+	for _, tt := range []struct {
+		level     sigma.ThinkingLevel
+		supported bool
+		value     string
+	}{
+		{level: sigma.ThinkingLevelLow, supported: true, value: "low"},
+		{level: sigma.ThinkingLevelMedium, supported: true, value: "medium"},
+		{level: sigma.ThinkingLevelHigh, supported: true, value: "high"},
+		{level: sigma.ThinkingLevelXHigh, supported: true, value: "xhigh"},
+		{level: sigma.ThinkingLevelMinimal, supported: false},
+		{level: sigma.ThinkingLevel("max"), supported: false},
+	} {
+		if got := model.SupportsThinkingLevel(tt.level); got != tt.supported {
+			t.Fatalf("SupportsThinkingLevel(%q) = %v, want %v", tt.level, got, tt.supported)
+		}
+		value, ok := model.ProviderThinkingLevel(tt.level)
+		if ok != tt.supported || value != tt.value {
+			t.Fatalf("ProviderThinkingLevel(%q) = %q, %v; want %q, %v", tt.level, value, ok, tt.value, tt.supported)
+		}
+	}
+}
+
 func TestModelThinkingLevelsRejectUnsupportedLevels(t *testing.T) {
 	t.Parallel()
 

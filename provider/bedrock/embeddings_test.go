@@ -109,7 +109,7 @@ func TestBedrockEmbeddingRequestSignsInferenceProfileARNWithEscapedPath(t *testi
 	if got := req.URL.EscapedPath(); got != wantPath {
 		t.Fatalf("escaped path = %q, want %q", got, wantPath)
 	}
-	assertBedrockSigV4Signature(t, req, body, wantPath, "secret", "us-east-1", "bedrock")
+	assertBedrockSigV4Signature(t, req, body, "/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123456789012%3Aapplication-inference-profile%252Fmy-profile/invoke", "secret", "us-east-1", "bedrock")
 }
 
 func TestCohereEmbeddingsBatchPayloadAndNestedVectors(t *testing.T) {

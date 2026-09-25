@@ -407,7 +407,7 @@ func TestOpenAICompletionsOpenRouterReasoningMetadata(t *testing.T) {
 		sigma.ThinkingLevelHigh:   "high",
 		sigma.ThinkingLevelXHigh:  "xhigh",
 	}
-	mandatory.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelOff}
+	mandatory.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelOff, sigma.ThinkingLevelMinimal}
 	payload, err = chatCompletionsPayload(
 		mandatory,
 		request,

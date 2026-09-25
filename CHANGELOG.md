@@ -173,6 +173,18 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Sign Bedrock SigV4 requests with a double-encoded canonical path so model
+  IDs containing `:` and inference-profile ARNs no longer fail with
+  `SignatureDoesNotMatch`. Bearer-token requests are unchanged.
+- Treat partial `ThinkingLevelMap` entries on reasoning models as overrides:
+  unmapped levels through `high` remain supported and use the level text, while
+  `xhigh` and `max` still require an entry. Generated GPT-5.x rows accept low
+  through high again, and levels their providers reject are listed in
+  `UnsupportedThinkingLevels`.
+- Apply the Claude Code identity only to Anthropic subscription tokens, so
+  GitHub Copilot and Kimi Coding OAuth credentials on Anthropic Messages routes
+  no longer receive Claude Code system prompts, betas, or client headers.
+
 - Redact recognized credentials in synchronous transport, authentication, request,
   and body-read errors while preserving error chains and HTTP attempt metadata.
 - Preserve every Responses output-text and refusal part in one text block per
