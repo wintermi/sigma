@@ -42,7 +42,16 @@ also preserved. Empty assistant text is valid only when `Signature` or
 `ProviderSignature` is non-empty, or it anchors Anthropic hosted-result metadata.
 Other unsigned empty text remains invalid. Persistence does not interpret
 signatures. Provider replay validates their format and exact
-provider/API/model provenance before sending them.
+provider/API/model provenance before sending them. Responses serializers omit
+signatures and encrypted content when any provenance component is missing or
+mismatched, without erasing them from saved blocks.
+
+Responses request serialization reserves existing native item IDs before
+allocating distinct synthetic IDs for messages, reasoning, and tool calls.
+A deterministic request-local mapping preserves call/result associations when
+wire IDs require normalization, including grammar and deferred tools. Persist
+and match the original history IDs; normalized wire IDs are not a migration of
+the conversation.
 
 Provider-authored numbers in tool arguments are `json.Number`, including values
 retained from partial or canceled streams. Persistence preserves their exact JSON

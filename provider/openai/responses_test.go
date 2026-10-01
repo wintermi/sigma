@@ -57,7 +57,7 @@ func TestResponsesCompleteSendsGoldenPayload(t *testing.T) {
 	final, err := client.Complete(
 		context.Background(),
 		model,
-		responsesRichRequest(),
+		responsesRichRequest(model),
 		sigma.WithTemperature(0.2),
 		sigma.WithMaxTokens(123),
 		sigma.WithSessionID("session-123"),
@@ -3763,7 +3763,7 @@ func assertResponsesFunctionToolChoice(t *testing.T, body []byte) {
 	}
 }
 
-func responsesRichRequest() sigma.Request {
+func responsesRichRequest(model sigma.Model) sigma.Request {
 	thinking := sigma.Thinking("Internal summary.", "think_prev_sig")
 	thinking.ProviderSignature = "enc_prev"
 	thinking.ProviderMetadata = map[string]any{"id": "rs_prev"}
@@ -3786,7 +3786,8 @@ func responsesRichRequest() sigma.Request {
 				sigma.ImageBase64("image/png", "aGk="),
 			),
 			{
-				Role:    sigma.RoleAssistant,
+				Role:     sigma.RoleAssistant,
+				Provider: model.Provider, API: model.API, Model: model.ID,
 				Content: []sigma.ContentBlock{text, thinking, toolCall},
 			},
 			{

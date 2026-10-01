@@ -718,7 +718,7 @@ func codexResponsesAssistantInputItems(model sigma.Model, final sigma.AssistantM
 		API:      model.API,
 		Model:    final.Model,
 	}
-	items, err := responsesAssistantItems(model, message, 0, nil, grammarToolInputProperties)
+	items, err := responsesAssistantItems(model, message, 0, newResponsesIDs([]sigma.Message{message}), nil, grammarToolInputProperties)
 	if err != nil {
 		return nil
 	}

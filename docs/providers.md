@@ -71,15 +71,15 @@ persisted JSON. See [Security](security.md) for redaction behavior.
 
 Resolvers implementing `AuthResolutionResolver` can return an `AuthResolution`
 containing credentials and request defaults. Codex SSE and WebSocket requests,
-OpenAI images and embeddings, Google text/images/embeddings, and OpenRouter
-images apply those defaults before constructing their endpoint, payload, and
-headers. Credentials resolve once per request or
+OpenAI images and embeddings, Google and native Vertex text/images/embeddings,
+Vertex OpenAI/Anthropic MaaS text, and OpenRouter images apply those defaults
+before constructing their endpoint, payload, and headers. Credentials resolve once per request or
 connection attempt; retries and SSE fallback have their own attempt lifecycle.
 Explicit Codex token providers retain precedence over the general resolver.
 Google and OpenRouter image HTTP retries start from the original caller options,
 so refreshed auth-derived endpoints and headers replace the previous attempt's
-defaults. Google text and embeddings follow the same retry behavior. HTTP-client
-selection remains unchanged; callers still own embedding-cache namespace isolation.
+defaults. Google and Vertex text, images, and embeddings, including Vertex MaaS
+text routes, follow the same retry behavior. HTTP-client selection remains unchanged; callers still own embedding-cache namespace isolation.
 
 Explicit caller configuration overrides auth-derived defaults. A caller-supplied
 `base_url` or `baseURL` blocks auth defaults under either spelling, including
@@ -547,6 +547,14 @@ Applications commonly resolve routing from `GOOGLE_CLOUD_PROJECT` and
 `VertexConfig` or provider options. API-key auth can use `GOOGLE_API_KEY` or
 `GOOGLE_CLOUD_API_KEY`; ADC/OAuth auth should be supplied with
 `google.WithVertexTokenProvider`.
+
+Rich auth resolutions can also supply missing routing, headers, and provider
+options. Each attempt resolves before endpoint and payload construction, with
+caller options taking precedence. The requested credential mode selects the
+credential source, and the merged mode validates the selected credential without
+a second resolution. Token mode with a configured token provider bypasses the
+general resolver; automatic mode retains its unavailable/placeholder-key fallback.
+These rules also apply to native image/embedding and OpenAI/Anthropic MaaS routes.
 
 ### Mistral Conversations
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/vertexai"
 )
 
 // VertexImagesProvider adapts Vertex AI's Gemini and Imagen image APIs to sigma.
@@ -89,12 +90,12 @@ func (p *VertexImagesProvider) Generate(ctx context.Context, model sigma.ImageMo
 }
 
 func (p *VertexImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
-	body, err := googleImagesRequestBody(model, req, opts)
+	textModel := imageAuthModel(model, sigma.APIGoogleVertex)
+	opts, credential, config, err := p.base.resolveAuth(ctx, textModel, opts)
 	if err != nil {
 		return nil, err
 	}
-	textModel := imageAuthModel(model, sigma.APIGoogleVertex)
-	config, err := p.base.requestConfig(textModel, opts)
+	body, err := googleImagesRequestBody(model, req, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -116,8 +117,8 @@ func (p *VertexImagesProvider) newRequest(ctx context.Context, model sigma.Image
 	for key, value := range googleModelHeaders(textModel) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.base.addAuthHeader(ctx, httpReq, textModel, opts, config); err != nil {
-		return nil, err
+	if err := vertexai.ApplyCredential(httpReq, textModel, credential); err != nil {
+		return nil, fmt.Errorf("google vertex auth: %w", err)
 	}
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)

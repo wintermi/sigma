@@ -173,6 +173,19 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Responses replay generates distinct item IDs for parallel tool calls and
+  reasoning blocks, and preserves call/result associations when tool IDs require
+  normalization. Native IDs are reserved before synthetic IDs are allocated.
+- Responses text, reasoning, function, and custom-tool signatures replay only
+  with matching nonempty provider/API/model provenance; stored history remains
+  unchanged across OpenAI, Azure, and Codex routes.
+- OpenAI, Gemini, Vertex, and Bedrock embedding adapters accept successful
+  response bodies up to 256 MiB. Larger bodies return explicit typed provider
+  errors with attempt metadata, without retries, partial vectors, or cache writes.
+- Native Vertex text, image, and embedding routes and OpenAI/Anthropic MaaS
+  adapters apply rich auth routing, headers, and provider options before building
+  each attempt, retaining caller precedence and credential-mode behavior.
+
 - Sign Bedrock SigV4 requests with a double-encoded canonical path so model
   IDs containing `:` and inference-profile ARNs no longer fail with
   `SignatureDoesNotMatch`. Bearer-token requests are unchanged.

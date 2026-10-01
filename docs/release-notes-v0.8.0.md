@@ -7,6 +7,26 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses replay now generates distinct item IDs for parallel tool calls and
+reasoning blocks, reserving native IDs before allocating synthetic ones. A shared
+request mapping keeps normalized function/custom calls and results associated,
+including punctuated, long, and compound IDs. Wire IDs can change when repair is
+needed; persisted histories retain their original identities and opaque fields.
+Signatures and encrypted content are sent only for matching nonempty
+provider/API/model provenance across OpenAI, Azure, and Codex Responses routes.
+
+OpenAI, Gemini, Vertex, and Bedrock embeddings accept successful response bodies
+up to 256 MiB instead of silently truncating at 16 MiB. Oversized successes return
+explicit typed provider errors with status, request identity, and attempts;
+they are not retried, partially returned, or cached. Existing batch-splitting and
+vector-validation rules continue to apply.
+
+Native Vertex text, images, and embeddings and OpenAI/Anthropic MaaS routes now
+apply resolved routing, headers, and provider options before constructing each
+HTTP attempt. Caller overrides, credential modes, token-provider precedence,
+cancellation, and final header suppression remain in effect. Retries obtain fresh
+auth defaults. These corrections add no public API or persistence migration.
+
 Bedrock requests signed with AWS access keys now double-encode the canonical
 request path as SigV4 requires. Model IDs containing `:`, such as `…-v1:0`,
 and inference-profile ARNs previously produced signatures that AWS rejected.

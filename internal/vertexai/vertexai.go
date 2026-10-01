@@ -87,81 +87,73 @@ func PublisherModelResource(model sigma.ModelID, config Config) string {
 	}
 }
 
-// AddAuthHeader resolves Vertex credentials and applies the correct request header.
-func AddAuthHeader(ctx context.Context, req *http.Request, model sigma.Model, opts sigma.Options, config Config, tokenProvider sigma.OAuthTokenProvider) error {
-	credential, err := Credential(ctx, model, opts, config, tokenProvider)
-	if err != nil {
+// ApplyCredential applies an already resolved Vertex credential.
+func ApplyCredential(req *http.Request, model sigma.Model, credential sigma.Credential) error {
+	if err := ValidateCredential(model, credential, CredentialAuto); err != nil {
 		return err
 	}
-	if credential.Value == "" {
+	if credential.Type == sigma.CredentialTypeAPIKey {
+		req.Header.Set("X-Goog-Api-Key", credential.Value)
+	} else {
+		req.Header.Set("Authorization", "Bearer "+credential.Value)
+	}
+	return nil
+}
+
+// ResolveAuth preserves rich auth defaults and resolves only once per attempt.
+// An explicit token provider in token mode takes precedence over the resolver.
+func ResolveAuth(ctx context.Context, model sigma.Model, opts sigma.Options, mode CredentialMode, tokenProvider sigma.OAuthTokenProvider) (sigma.Options, sigma.Credential, error) {
+	if mode == CredentialToken && tokenProvider != nil {
+		credential, err := tokenCredential(ctx, model, opts, tokenProvider)
+		return opts, credential, err
+	}
+	resolved, credential, err := sigma.ResolveAuthForRequest(ctx, model, opts)
+	if err != nil {
+		if !errors.Is(err, sigma.ErrCredentialUnavailable) {
+			return opts, sigma.Credential{}, AuthError(model, "google vertex: resolve credential: "+err.Error(), err)
+		}
+		if mode == CredentialAuto && tokenProvider != nil {
+			credential, err = tokenCredential(ctx, model, opts, tokenProvider)
+			return opts, credential, err
+		}
+		return opts, sigma.Credential{}, err
+	}
+	if credential.Type == "" {
+		credential.Type = sigma.CredentialTypeAPIKey
+	}
+	if mode == CredentialAuto && credential.Type == sigma.CredentialTypeAPIKey && APIKeyUnavailable(credential.Value) && tokenProvider != nil {
+		credential, err = tokenCredential(ctx, model, resolved, tokenProvider)
+		return resolved, credential, err
+	}
+	return resolved, credential, ValidateCredential(model, credential, mode)
+}
+
+// ValidateCredential checks the selected credential against the final request mode.
+func ValidateCredential(model sigma.Model, credential sigma.Credential, mode CredentialMode) error {
+	if !ValidateCredentialMode(mode) {
+		return InvalidOptions(model, fmt.Sprintf("google vertex: unsupported credential mode %q", mode), nil)
+	}
+	if credential.Value == "" || credential.Type == sigma.CredentialTypeAPIKey && APIKeyUnavailable(credential.Value) {
 		return CredentialUnavailable(model, credential.Source)
 	}
-	switch credential.Type {
-	case sigma.CredentialTypeAPIKey:
-		req.Header.Set("X-Goog-Api-Key", credential.Value)
-	case sigma.CredentialTypeOAuthToken:
-		req.Header.Set("Authorization", "Bearer "+credential.Value)
-	default:
+	want := sigma.CredentialType("")
+	switch mode {
+	case CredentialAuto:
+	case CredentialAPIKey:
+		want = sigma.CredentialTypeAPIKey
+	case CredentialToken:
+		want = sigma.CredentialTypeOAuthToken
+	}
+	if want != "" && credential.Type != want {
+		return InvalidOptions(model, fmt.Sprintf("google vertex: credential mode %q requires %q credential, got %q", mode, want, credential.Type), nil)
+	}
+	if credential.Type != sigma.CredentialTypeAPIKey && credential.Type != sigma.CredentialTypeOAuthToken {
 		return InvalidOptions(model, fmt.Sprintf("google vertex: unsupported credential type %q", credential.Type), nil)
 	}
 	return nil
 }
 
-// Credential resolves a Vertex credential using Sigma auth and optional token provider fallback.
-func Credential(ctx context.Context, model sigma.Model, opts sigma.Options, config Config, tokenProvider sigma.OAuthTokenProvider) (sigma.Credential, error) {
-	switch config.CredentialMode {
-	case CredentialToken:
-		return tokenCredential(ctx, model, opts, tokenProvider)
-	case CredentialAPIKey:
-		return resolvedCredential(ctx, model, opts, sigma.CredentialTypeAPIKey)
-	default:
-		credential, err := resolvedCredential(ctx, model, opts, "")
-		if err == nil {
-			if credential.Type == sigma.CredentialTypeAPIKey && APIKeyUnavailable(credential.Value) {
-				if tokenProvider != nil {
-					return tokenCredential(ctx, model, opts, tokenProvider)
-				}
-				return sigma.Credential{}, CredentialUnavailable(model, credential.Source)
-			}
-			return credential, nil
-		}
-		if !errors.Is(err, sigma.ErrCredentialUnavailable) {
-			return sigma.Credential{}, err
-		}
-		if tokenProvider == nil {
-			return sigma.Credential{}, err
-		}
-		return tokenCredential(ctx, model, opts, tokenProvider)
-	}
-}
-
-func resolvedCredential(ctx context.Context, model sigma.Model, opts sigma.Options, want sigma.CredentialType) (sigma.Credential, error) {
-	if opts.AuthResolver == nil {
-		return sigma.Credential{}, CredentialUnavailable(model, "auth-resolver")
-	}
-	credential, err := opts.AuthResolver.Resolve(ctx, model, opts)
-	if err != nil {
-		if errors.Is(err, sigma.ErrCredentialUnavailable) {
-			return sigma.Credential{}, err
-		}
-		return sigma.Credential{}, AuthError(model, "google vertex: resolve credential: "+err.Error(), err)
-	}
-	if credential.Type == "" {
-		credential.Type = sigma.CredentialTypeAPIKey
-	}
-	if want == sigma.CredentialTypeAPIKey && APIKeyUnavailable(credential.Value) {
-		return sigma.Credential{}, CredentialUnavailable(model, credential.Source)
-	}
-	if want != "" && credential.Type != want {
-		return sigma.Credential{}, InvalidOptions(model, fmt.Sprintf("google vertex: credential mode %q requires %q credential, got %q", want, want, credential.Type), nil)
-	}
-	return credential, nil
-}
-
 func tokenCredential(ctx context.Context, model sigma.Model, opts sigma.Options, tokenProvider sigma.OAuthTokenProvider) (sigma.Credential, error) {
-	if tokenProvider == nil {
-		return resolvedCredential(ctx, model, opts, sigma.CredentialTypeOAuthToken)
-	}
 	credential, err := tokenProvider.Token(ctx, model, opts)
 	if err != nil {
 		if errors.Is(err, sigma.ErrCredentialUnavailable) {
@@ -172,10 +164,7 @@ func tokenCredential(ctx context.Context, model sigma.Model, opts sigma.Options,
 	if credential.Type == "" {
 		credential.Type = sigma.CredentialTypeOAuthToken
 	}
-	if credential.Type != sigma.CredentialTypeOAuthToken {
-		return sigma.Credential{}, InvalidOptions(model, fmt.Sprintf("google vertex: token provider returned %q credential", credential.Type), nil)
-	}
-	return credential, nil
+	return credential, ValidateCredential(model, credential, CredentialToken)
 }
 
 // CredentialUnavailable returns a typed missing-credential error.

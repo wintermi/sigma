@@ -227,6 +227,11 @@ func (p *VertexProvider) run(ctx context.Context, writer sigma.StreamWriter, mod
 }
 
 func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Request, error) {
+	opts, credential, config, err := p.resolveAuth(ctx, model, opts)
+	if err != nil {
+		return nil, err
+	}
+
 	baseURL := p.baseURLForModel(model, opts)
 	compat := anthropicMessagesCompat(model, baseURL, p.compat)
 	payload, err := messagesPayload(model, req, opts, compat)
@@ -240,10 +245,6 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 		return nil, fmt.Errorf("vertex anthropic messages: encode request: %w", err)
 	}
 
-	config, err := p.requestConfig(model, opts)
-	if err != nil {
-		return nil, err
-	}
 	endpoint, err := p.endpoint(model, opts, config)
 	if err != nil {
 		return nil, err
@@ -266,7 +267,7 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 		}
 		httpReq.Header.Set(key, value)
 	}
-	if err := vertexai.AddAuthHeader(ctx, httpReq, model, opts, config.vertexConfig(), p.tokenProvider); err != nil {
+	if err := vertexai.ApplyCredential(httpReq, model, credential); err != nil {
 		return nil, fmt.Errorf("vertex anthropic auth: %w", err)
 	}
 	for key, value := range opts.Headers {
@@ -433,4 +434,26 @@ func (p *VertexProvider) httpClient(opts sigma.Options) *http.Client {
 		return p.client
 	}
 	return http.DefaultClient
+}
+
+// resolveAuth selects the credential source using caller configuration, then applies
+// auth defaults before validating the final routing and credential mode.
+func (p *VertexProvider) resolveAuth(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Options, sigma.Credential, vertexRequestConfig, error) {
+	config, err := p.requestConfig(model, opts)
+	if err != nil {
+		return opts, sigma.Credential{}, config, err
+	}
+	opts, credential, err := vertexai.ResolveAuth(ctx, model, opts, vertexai.CredentialMode(config.CredentialMode), p.tokenProvider)
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex anthropic auth: %w", err)
+	}
+	config, err = p.requestConfig(model, opts)
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex anthropic auth: %w", err)
+	}
+	err = vertexai.ValidateCredential(model, credential, vertexai.CredentialMode(config.CredentialMode))
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex anthropic auth: %w", err)
+	}
+	return opts, credential, config, nil
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
+	"github.com/wintermi/sigma/internal/vertexai"
 )
 
 const (
@@ -249,6 +250,11 @@ func (p *VertexProvider) do(ctx context.Context, model sigma.Model, req sigma.Re
 }
 
 func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) (*http.Request, error) {
+	opts, credential, config, err := p.resolveAuth(ctx, model, opts)
+	if err != nil {
+		return nil, err
+	}
+
 	payload, err := generativePayload(model, req, opts)
 	if err != nil {
 		return nil, err
@@ -266,10 +272,6 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 		return nil, fmt.Errorf("google vertex: encode request: %w", err)
 	}
 
-	config, err := p.requestConfig(model, opts)
-	if err != nil {
-		return nil, err
-	}
 	endpoint, err := p.endpoint(model, opts, config)
 	if err != nil {
 		return nil, err
@@ -288,8 +290,8 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 	for key, value := range googleModelHeaders(model) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.addAuthHeader(ctx, httpReq, model, opts, config); err != nil {
-		return nil, err
+	if err := vertexai.ApplyCredential(httpReq, model, credential); err != nil {
+		return nil, fmt.Errorf("google vertex auth: %w", err)
 	}
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)
@@ -493,4 +495,26 @@ func vertexInvalidOptions(model sigma.Model, message string, err error) error {
 		Model:    model.ID,
 		Err:      err,
 	}
+}
+
+// resolveAuth selects the credential source using caller configuration, then applies
+// auth defaults before validating the final routing and credential mode.
+func (p *VertexProvider) resolveAuth(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.Options, sigma.Credential, vertexRequestConfig, error) {
+	config, err := p.requestConfig(model, opts)
+	if err != nil {
+		return opts, sigma.Credential{}, config, err
+	}
+	opts, credential, err := vertexai.ResolveAuth(ctx, model, opts, vertexai.CredentialMode(config.CredentialMode), p.tokenProvider)
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex google auth: %w", err)
+	}
+	config, err = p.requestConfig(model, opts)
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex google auth: %w", err)
+	}
+	err = vertexai.ValidateCredential(model, credential, vertexai.CredentialMode(config.CredentialMode))
+	if err != nil {
+		return opts, credential, config, fmt.Errorf("vertex google auth: %w", err)
+	}
+	return opts, credential, config, nil
 }

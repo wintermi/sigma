@@ -126,11 +126,14 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+	respBody, err := embeddingwire.ReadResponse(resp)
 	if err != nil {
 		response := sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return response, contextError(ctx, err)
+		}
+		if errors.Is(err, embeddingwire.ErrResponseTooLarge) {
+			return response, bedrockEmbeddingsProviderError(resp, model, nil, err)
 		}
 		return response, fmt.Errorf("bedrock embeddings: read response: %w", err)
 	}

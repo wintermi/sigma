@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/embeddingwire"
 	"github.com/wintermi/sigma/provider/bedrock"
 	"github.com/wintermi/sigma/provider/google"
 	"github.com/wintermi/sigma/provider/openai"
@@ -95,5 +96,61 @@ func assertMalformedEmbedding(t *testing.T, model sigma.EmbeddingModel, result s
 	}
 	if len(result.Vectors) != 0 || len(result.Attempts) != 2 || result.Attempts[0].StatusCode != 503 || result.Attempts[1].StatusCode != 200 || result.Attempts[1].RequestID != "request" {
 		t.Fatalf("result=%#v", result)
+	}
+}
+
+func TestEmbeddingAdaptersAcceptResponseAboveOldLimit(t *testing.T) {
+	// Keep large response tests sequential to bound peak memory under the race detector.
+	padding := strings.Repeat(" ", 16<<20)
+	for _, tt := range embeddingWireCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := sigma.Options{AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+				return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "synthetic"}, nil
+			})}
+			opts.HTTPClient = &http.Client{Transport: ownershipTransport(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(io.MultiReader(strings.NewReader(padding), strings.NewReader(fmt.Sprintf(tt.shape, "[1,2]")))), Request: req}, nil
+			})}
+			result, err := tt.provider.Embed(context.Background(), tt.model, sigma.EmbeddingQuery("input"), opts)
+			if err != nil || len(result.Vectors) != 1 {
+				t.Fatalf("large valid response rejected: %v", err)
+			}
+		})
+	}
+}
+
+type embeddingLimitReader struct{}
+
+func (embeddingLimitReader) Read([]byte) (int, error) { return 0, embeddingwire.ErrResponseTooLarge }
+
+func TestEmbeddingOversizeErrorKeepsAttemptsAndSkipsCache(t *testing.T) {
+	t.Parallel()
+	for _, tt := range embeddingWireCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			registry := sigma.NewRegistry()
+			if err := registry.RegisterEmbeddingProvider(tt.model.Provider, tt.provider); err != nil {
+				t.Fatal(err)
+			}
+			if err := registry.RegisterEmbeddingModel(tt.model); err != nil {
+				t.Fatal(err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			attempts := 0
+			transport := &http.Client{Transport: ownershipTransport(func(req *http.Request) (*http.Response, error) {
+				attempts++
+				// Inject the reader's sentinel so adapter error contracts do not require a
+				// 256 MiB allocation in every test. The actual boundary is tested in embeddingwire.
+				return &http.Response{StatusCode: 200, Header: http.Header{"X-Request-Id": []string{"request"}, "X-Amzn-Requestid": []string{"request"}}, Body: io.NopCloser(embeddingLimitReader{}), Request: req}, nil
+			})}
+			cache := newTestEmbeddingCache()
+			result, err := client.EmbedBatch(context.Background(), tt.model, sigma.EmbeddingQuery("input"), sigma.EmbeddingBatchConfig{Cache: cache, CacheNamespace: "limit"}, sigma.WithEmbeddingAPIKey("synthetic"), sigma.WithEmbeddingHTTPClient(transport), sigma.WithEmbeddingMaxRetries(2))
+			var providerErr *sigma.ProviderError
+			if !errors.As(err, &providerErr) || !errors.Is(err, embeddingwire.ErrResponseTooLarge) || providerErr.StatusCode != 200 || providerErr.RequestID != "request" {
+				t.Fatalf("lost typed error or metadata: %v", err)
+			}
+			if attempts != 1 || len(result.Embeddings.Attempts) != 1 || len(result.Embeddings.Vectors) != 0 || len(cache.values) != 0 {
+				t.Fatalf("oversize response was retried, partially returned, or cached: %#v", result)
+			}
+		})
 	}
 }

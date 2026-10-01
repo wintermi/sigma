@@ -8,6 +8,12 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Generate distinct Responses item IDs while reserving native IDs.
+- [x] Preserve Responses tool-call identity through normalization and result replay.
+- [x] Restrict Responses signature replay to exact nonempty source provenance.
+- [x] Accept large embedding responses across all four adapters with explicit bounds.
+- [x] Apply complete Vertex auth resolution once per HTTP attempt across native and MaaS routes.
+
 - [x] Double-encode Bedrock SigV4 canonical paths for `:` model IDs and ARNs.
 - [x] Treat partial thinking-level maps as overrides on reasoning models.
 - [x] Limit the Claude Code identity to Anthropic subscription tokens.

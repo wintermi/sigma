@@ -141,6 +141,13 @@ Failures retain HTTP status, request ID, model identity, and attempt metadata;
 `EmbedBatch` does not cache their vectors. Requested/model dimension checks and
 cache keys are unchanged, and previously cached values are not repaired.
 
+OpenAI, Gemini, Vertex, and Bedrock adapters bound successful response bodies at
+256 MiB, allowing large batches that exceed 16 MiB. A body beyond this bound
+returns an explicit, non-retryable `ProviderError` with HTTP and attempt metadata,
+without partial vectors or cache writes. Reduce `MaxBatchInputs` when a batch
+exceeds the response bound; Sigma does not automatically repeat or split that
+successful HTTP request. Error-body reads retain their smaller bounds.
+
 Provider usage maps prompt tokens to `Usage.InputTokens`. When model pricing is
 available, Sigma calculates `Cost.InputCost` and `Cost.TotalCost` from input
 tokens and `EmbeddingModel.InputCostPerMillion`.

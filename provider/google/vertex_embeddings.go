@@ -18,6 +18,7 @@ import (
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/embeddingwire"
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/vertexai"
 )
 
 const (
@@ -88,11 +89,14 @@ func (p *VertexEmbeddingsProvider) Embed(ctx context.Context, model sigma.Embedd
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+	body, err := embeddingwire.ReadResponse(resp)
 	if err != nil {
 		response := sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return response, contextError(ctx, err)
+		}
+		if errors.Is(err, embeddingwire.ErrResponseTooLarge) {
+			return response, vertexEmbeddingsProviderError(resp, model, nil, err)
 		}
 		return response, fmt.Errorf("google vertex embeddings: read response: %w", err)
 	}
@@ -108,17 +112,17 @@ func (p *VertexEmbeddingsProvider) Embed(ctx context.Context, model sigma.Embedd
 }
 
 func (p *VertexEmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
+	textModel := embeddingAuthModel(model, sigma.APIGoogleVertex)
+	opts, credential, config, err := p.base.resolveAuth(ctx, textModel, opts)
+	if err != nil {
+		return nil, err
+	}
 	payload := vertexEmbeddingsPayload(model, req, opts)
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("google vertex embeddings: encode request: %w", err)
 	}
 
-	textModel := embeddingAuthModel(model, sigma.APIGoogleVertex)
-	config, err := p.base.requestConfig(textModel, opts)
-	if err != nil {
-		return nil, err
-	}
 	endpoint, err := p.endpoint(textModel, opts, config)
 	if err != nil {
 		return nil, err
@@ -137,8 +141,8 @@ func (p *VertexEmbeddingsProvider) newRequest(ctx context.Context, model sigma.E
 	for key, value := range googleModelHeaders(textModel) {
 		httpReq.Header.Set(key, value)
 	}
-	if err := p.base.addAuthHeader(ctx, httpReq, textModel, opts, config); err != nil {
-		return nil, err
+	if err := vertexai.ApplyCredential(httpReq, textModel, credential); err != nil {
+		return nil, fmt.Errorf("google vertex auth: %w", err)
 	}
 	for key, value := range opts.Headers {
 		httpReq.Header.Set(key, value)

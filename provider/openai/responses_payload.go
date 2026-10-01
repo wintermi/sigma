@@ -292,9 +292,10 @@ func responsesSupportsMaxOutputTokens(model sigma.Model) bool {
 func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
 	loadedToolNames := make(map[string]struct{})
-	toolNamesByCallID := responsesToolNamesByCallID(req.Messages)
+	ids := newResponsesIDs(req.Messages)
+	toolNamesByCallID := responsesToolNamesByCallID(req.Messages, ids)
 	for index, message := range req.Messages {
-		converted, err := responsesMessage(model, message, index, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
+		converted, err := responsesMessage(model, message, index, ids, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
@@ -303,24 +304,28 @@ func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode resp
 	return items, nil
 }
 
-func responsesToolNamesByCallID(messages []sigma.Message) map[string]string {
+func responsesToolNamesByCallID(messages []sigma.Message, ids *responsesIDs) map[string]string {
 	names := make(map[string]string)
 	for _, message := range messages {
 		if message.Role != sigma.RoleAssistant {
 			continue
 		}
 		for _, block := range message.Content {
-			if block.Type != sigma.ContentBlockToolCall || block.ToolCallID == "" || block.ToolName == "" {
+			if block.Type != sigma.ContentBlockToolCall || block.ToolName == "" {
 				continue
 			}
-			names[block.ToolCallID] = block.ToolName
-			names[responsesCallID(block.ToolCallID)] = block.ToolName
+			raw := firstNonEmpty(block.ToolCallID, providerMetadataString(block.ProviderMetadata, "call_id"))
+			if raw == "" {
+				continue
+			}
+			names[raw] = block.ToolName
+			names[ids.callID(raw)] = block.ToolName
 		}
 	}
 	return names
 }
 
-func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(model, message)
@@ -332,25 +337,25 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 			"content":          content,
 		}}, nil
 	case sigma.RoleAssistant:
-		return responsesAssistantItems(model, message, messageIndex, deferredTools, grammarToolInputProperties)
+		return responsesAssistantItems(model, message, messageIndex, ids, deferredTools, grammarToolInputProperties)
 	case sigma.RoleTool:
 		output, err := responsesToolOutput(model, message)
 		if err != nil {
 			return nil, err
 		}
-		deferredItems, err := responsesDeferredToolItems(message, deferredToolsMode, deferredTools, loadedToolNames, grammarToolInputProperties)
+		deferredItems, err := responsesDeferredToolItems(message, ids, deferredToolsMode, deferredTools, loadedToolNames, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
 		items := make([]map[string]any, 1, 1+len(deferredItems))
-		toolName := firstNonEmpty(message.ToolName, toolNamesByCallID[message.ToolCallID], toolNamesByCallID[responsesCallID(message.ToolCallID)])
+		toolName := firstNonEmpty(message.ToolName, toolNamesByCallID[message.ToolCallID], toolNamesByCallID[ids.callID(message.ToolCallID)])
 		outputType := "function_call_output"
 		if _, ok := grammarToolInputProperties[toolName]; ok {
 			outputType = "custom_tool_call_output"
 		}
 		items[0] = map[string]any{
 			providerToolOptionTypeKey: outputType,
-			"call_id":                 responsesCallID(message.ToolCallID),
+			"call_id":                 ids.callID(message.ToolCallID),
 			"output":                  output,
 		}
 		return append(items, deferredItems...), nil
@@ -409,7 +414,7 @@ func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
 	return file, nil
 }
 
-func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
@@ -425,7 +430,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			providerOptionRole:        "assistant",
 			"content":                 content,
 		}
-		item["id"] = responsesBoundedID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
+		item["id"] = ids.itemID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
 		if messagePhase != "" {
 			item["phase"] = messagePhase
 		}
@@ -437,7 +442,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 	}
 
 	omitToolItemID := sameProviderDifferentModel(model, message)
-	for _, block := range message.Content {
+	replaySignatures := message.Provider != "" && message.API != "" && message.Model != "" &&
+		message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
+	for blockIndex, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			phase := replayableResponsesPhase(model, message, block)
@@ -455,7 +462,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 				providerContentID(block.ProviderMetadata),
 				fmt.Sprintf("text_sigma_%d_%d", messageIndex, contentOrdinal),
 			)
-			if block.Signature != "" {
+			if replaySignatures && block.Signature != "" {
 				part["signature"] = block.Signature
 			}
 			content = append(content, part)
@@ -472,11 +479,11 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 					providerOptionText:        providerText(block.ThinkingText),
 				}},
 			}
-			item["id"] = responsesBoundedID("rs", providerID(block.ProviderMetadata), fmt.Sprintf("rs_sigma_%d", messageIndex))
-			if block.Signature != "" {
+			item["id"] = ids.itemID("rs", providerID(block.ProviderMetadata), fmt.Sprintf("rs_sigma_%d_%d", messageIndex, blockIndex))
+			if replaySignatures && block.Signature != "" {
 				item["signature"] = block.Signature
 			}
-			if block.ProviderSignature != "" {
+			if replaySignatures && block.ProviderSignature != "" {
 				item["encrypted_content"] = block.ProviderSignature
 			}
 			items = append(items, item)
@@ -488,7 +495,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 				if err != nil {
 					return nil, err
 				}
-				callID, itemID := responsesCustomToolCallIDs(block, fmt.Sprintf("ctc_sigma_%d", messageIndex))
+				callID, itemID := ids.toolIDs(block, "ctc", fmt.Sprintf("ctc_sigma_%d_%d", messageIndex, blockIndex))
 				item := map[string]any{
 					providerToolOptionTypeKey: "custom_tool_call",
 					"call_id":                 callID,
@@ -496,7 +503,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 					"input":                   input,
 				}
 				item["id"] = itemID
-				if block.ProviderSignature != "" {
+				if replaySignatures && block.ProviderSignature != "" {
 					item["encrypted_content"] = block.ProviderSignature
 				}
 				if namespace != "" {
@@ -509,7 +516,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			if err != nil {
 				return nil, err
 			}
-			callID, itemID := responsesToolCallIDs(block, fmt.Sprintf("fc_sigma_%d", messageIndex))
+			callID, itemID := ids.toolIDs(block, "fc", fmt.Sprintf("fc_sigma_%d_%d", messageIndex, blockIndex))
 			item := map[string]any{
 				providerToolOptionTypeKey: "function_call",
 				"call_id":                 callID,
@@ -519,7 +526,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			if !omitToolItemID {
 				item["id"] = itemID
 			}
-			if block.ProviderSignature != "" {
+			if replaySignatures && block.ProviderSignature != "" {
 				item["encrypted_content"] = block.ProviderSignature
 			}
 			if namespace != "" {
@@ -635,7 +642,7 @@ func responsesToolParameters(tool sigma.Tool, strict bool) (any, error) {
 	return parameters, nil
 }
 
-func responsesDeferredToolItems(message sigma.Message, mode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesDeferredToolItems(message sigma.Message, ids *responsesIDs, mode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
 	if len(deferredTools) == 0 {
 		return nil, nil
 	}
@@ -667,7 +674,7 @@ func responsesDeferredToolItems(message sigma.Message, mode responsesDeferredToo
 			"tools":                   converted,
 		}}, nil
 	}
-	callID := responsesToolSearchCallID(message.ToolCallID, names)
+	callID := uniqueResponsesID(responsesToolSearchCallID(ids.callID(message.ToolCallID), names), ids.usedCalls)
 	return []map[string]any{
 		{
 			providerToolOptionTypeKey: "tool_search_call",
@@ -949,40 +956,6 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 	return parts, nil
 }
 
-func responsesToolCallIDs(block sigma.ContentBlock, fallbackItemID string) (string, string) {
-	callID := firstNonEmpty(block.ToolCallID, providerMetadataString(block.ProviderMetadata, "call_id"))
-	itemID := providerID(block.ProviderMetadata)
-	if before, after, ok := strings.Cut(callID, "|"); ok {
-		callID = before
-		if itemID == "" {
-			itemID = after
-		}
-	}
-	callID = responsesBoundedID("call", callID, fallbackItemID+"_call")
-	itemID = responsesBoundedID("fc", itemID, fallbackItemID)
-	if !strings.HasPrefix(itemID, "fc_") {
-		itemID = responsesBoundedID("fc", "fc_"+itemID, fallbackItemID)
-	}
-	return callID, itemID
-}
-
-func responsesCustomToolCallIDs(block sigma.ContentBlock, fallbackItemID string) (string, string) {
-	callID := firstNonEmpty(block.ToolCallID, providerMetadataString(block.ProviderMetadata, "call_id"))
-	itemID := providerID(block.ProviderMetadata)
-	if before, after, ok := strings.Cut(callID, "|"); ok {
-		callID = before
-		if itemID == "" {
-			itemID = after
-		}
-	}
-	callID = responsesBoundedID("call", callID, fallbackItemID+"_call")
-	itemID = responsesBoundedID("ctc", itemID, fallbackItemID)
-	if !strings.HasPrefix(itemID, "ctc_") {
-		itemID = responsesBoundedID("ctc", "ctc_"+itemID, fallbackItemID)
-	}
-	return callID, itemID
-}
-
 func grammarToolCallInput(api string, toolName string, arguments any, property string) (string, error) {
 	argumentsText, err := toolArgumentsString(arguments)
 	if err != nil {
@@ -997,11 +970,6 @@ func grammarToolCallInput(api string, toolName string, arguments any, property s
 		return "", fmt.Errorf("%s: grammar tool %q arguments must contain string property %q", api, toolName, property)
 	}
 	return input, nil
-}
-
-func responsesCallID(raw string) string {
-	callID, _, _ := strings.Cut(raw, "|")
-	return responsesBoundedID("call", callID, "call_sigma")
 }
 
 func providerID(metadata map[string]any) string {
@@ -1024,6 +992,9 @@ func providerMetadataString(metadata map[string]any, key string) string {
 }
 
 func responsesBoundedID(prefix string, raw string, fallback string) string {
+	if validResponsesCallID(raw) {
+		return raw
+	}
 	id := sanitizeResponsesID(firstNonEmpty(raw, fallback))
 	if id == "" {
 		id = sanitizeResponsesID(fallback)
@@ -1034,7 +1005,7 @@ func responsesBoundedID(prefix string, raw string, fallback string) string {
 	if len(id) <= 64 {
 		return id
 	}
-	hash := sha256.Sum256([]byte(id))
+	hash := sha256.Sum256([]byte(firstNonEmpty(raw, fallback)))
 	suffix := hex.EncodeToString(hash[:])[:16]
 	trimmed := strings.TrimRight(id, "_-")
 	maxPrefix := 64 - len(suffix) - 1

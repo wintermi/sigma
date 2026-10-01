@@ -90,11 +90,14 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+	body, err := embeddingwire.ReadResponse(resp)
 	if err != nil {
 		response := sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return response, contextError(ctx, err)
+		}
+		if errors.Is(err, embeddingwire.ErrResponseTooLarge) {
+			return response, googleEmbeddingsProviderError(resp, model, nil, err)
 		}
 		return response, fmt.Errorf("google embeddings: read response: %w", err)
 	}
