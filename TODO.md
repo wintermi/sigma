@@ -8,6 +8,23 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve supplied Responses cache-write usage in normalized and raw accounting,
+  deduct cache reads and writes from ordinary input, and apply existing pricing
+  and tier adjustments across streaming and deferred results, Azure, and Codex.
+- [x] Keep distinct adjacent reasoning blocks separate when IDs, formats, signatures,
+  or supplied indexes conflict. Compatible fragments still merge, missing identity
+  fields may be filled, and encrypted entries remain discrete and ordered.
+- [x] Accept OpenRouter image response bodies up to 64 MiB, with typed, safe overflow
+  errors retaining HTTP status and request ID and no retry after body consumption.
+- [x] Apply schema container keywords to the actual value without inferring a type;
+  preserve explicit types, nested opt-in coercion, full-schema validation, exact
+  numbers, strict nullable semantics, and caller-owned data.
+- [x] Require exact nonempty provider/API/model provenance for modern and legacy
+  reasoning replay. Stored histories remain readable and unchanged; incompatible
+  reasoning is omitted while ordinary text, tool calls, and results are retained.
+- [x] Reconcile Azure, Codex, and Xiaomi provider documentation with registration
+  helpers, generated metadata, auth paths, and Xiaomi regional token-plan routes.
+
 - [x] Generate distinct Responses item IDs while reserving native IDs.
 - [x] Preserve Responses tool-call identity through normalization and result replay.
 - [x] Restrict Responses signature replay to exact nonempty source provenance.
@@ -507,7 +524,7 @@ work until their API boundaries are explicit.
 - [x] Preserve complete validated OpenAI-compatible Chat Completions
       `reasoning_details` sequences in provider order across assistant-content
       persistence and exact-provenance replay, coalescing consecutive streamed
-      text and summary fragments while retaining legacy tool-call metadata and
+      compatible text and summary fragments while retaining legacy tool-call metadata and
       keeping broader provider-neutral rendering deferred.
 - [x] Harden provider replay and protocol edge cases across Anthropic, Google,
       Bedrock, OpenAI-compatible, Azure Responses, and GitHub Copilot OAuth

@@ -125,10 +125,13 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	respBody, err := readImageResponse(resp)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return sigma.AssistantImages{StopReason: sigma.StopReasonAborted}, contextError(ctx, err)
+		}
+		if errors.Is(err, errImageResponseTooLarge) {
+			err = providerError(resp, model, nil, err)
 		}
 		return sigma.AssistantImages{StopReason: sigma.StopReasonError}, err
 	}
@@ -138,6 +141,24 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 
 	return decodeResponse(respBody, model)
 }
+
+const maxImageResponseBytes = 64 << 20
+
+func readImageResponse(resp *http.Response) ([]byte, error) {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImageResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxImageResponseBytes {
+		return nil, errImageResponseTooLarge
+	}
+	return body, nil
+}
+
+var errImageResponseTooLarge = errors.New("openrouter images: response exceeds 64 MiB limit")
 
 func (p *ImagesProvider) newRequest(ctx context.Context, model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options) (*http.Request, error) {
 	if opts.AuthResolver == nil {

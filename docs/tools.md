@@ -150,7 +150,14 @@ External, file, and network references are rejected locally. Other unsupported
 JSON Schema keywords remain outside Sigma's validation contract.
 
 Supported constraints apply to the value's type even when a schema branch does
-not repeat `type`. This includes numeric bounds and string length, pattern, and
+not repeat `type`. Only an explicit `type` restricts primitive types:
+`properties`, `required`, and `additionalProperties` constrain object values,
+and `items` constrains array values without requiring a container type. For
+example, `anyOf` allowing a string or array alongside numeric `items` accepts a
+string or an array of numbers, but rejects invalid array elements. Nested
+coercion follows the actual container; explicit primitive coercion remains
+opt-in. Strict optional-null normalization also respects these semantics.
+This includes numeric bounds and string length, pattern, and
 format constraints in `$ref` siblings and composed schemas. Previously accepted
 out-of-range arguments may therefore fail validation. Exact numeric comparisons
 remain lossless, including numbers nested in objects and arrays compared by

@@ -175,7 +175,15 @@ Environment: `OPENAI_API_KEY`.
 
 Use `APIOpenAIResponses` model metadata. Responses supports streaming output,
 reasoning summaries, tool calls, image input, and usage where the upstream
-response includes it.
+response includes it. Supplied cache reads and cache writes are retained in raw
+usage and deducted from ordinary input tokens, clamped at zero. Provider totals
+remain intact; cache-write pricing and existing cost/service tiers apply across
+shared Responses parsing, including Azure, Codex, and deferred results.
+
+Chat Completions reasoning details replay only with exact, nonempty source
+provider/API/model provenance, including legacy tool-call metadata. Modern
+validated metadata takes precedence over the legacy fallback. Missing or
+mismatched provenance omits reasoning details while preserving ordinary history.
 
 ### Azure OpenAI Responses
 
@@ -187,7 +195,8 @@ _ = azure.Register(registry)
 Environment: `AZURE_OPENAI_API_KEY` for API-key auth. Microsoft Entra auth uses
 `azure.WithTokenCredential` with a caller-supplied token source.
 
-Model metadata should include `AzureOpenAIResponsesConfig`, or requests should
+Generated models use `ProviderAzureOpenAIResponses`. Model metadata should
+include `AzureOpenAIResponsesConfig`, or requests should
 set endpoint, deployment, API version, and credential source with the Azure
 option helpers. Use `openai.RegisterAzureResponses` when registering a custom
 provider ID instead of the built-in Azure OpenAI Responses provider ID.
@@ -219,11 +228,13 @@ APIs.
 
 ```go
 registry := sigma.NewRegistry()
-_ = openai.RegisterCodexResponses(registry, sigma.ProviderGitHubCopilot)
+_ = openai.RegisterCodexResponses(registry, sigma.ProviderOpenAICodex)
 ```
 
-Codex Responses requires OAuth credentials through
-`openai.WithCodexResponsesOAuthTokenProvider`. Use
+Generated Codex models use `ProviderOpenAICodex`. Codex Responses accepts OAuth
+credentials through `openai.WithCodexResponsesOAuthTokenProvider` or the general
+auth resolver, including stored provider auth. An explicit token provider takes
+precedence. Use
 `openai.LoginOpenAICodexBrowser`, `openai.LoginOpenAICodexDeviceCode`,
 `openai.RefreshOpenAICodexToken`, and `openai.NewCodexOAuthTokenProvider` for
 stdlib-only login and refresh.
@@ -513,10 +524,10 @@ Environment: `XIAOMI_API_KEY` for `ProviderXiaomi`,
 
 The Xiaomi wrapper uses Sigma's shared OpenAI-compatible Chat Completions
 adapter for the API-billing and regional token-plan `/v1` routes. Built-in
-metadata includes the API-billing MiMo rows plus token-plan rows for
-`mimo-v2-omni`, `mimo-v2-pro`, `mimo-v2.5`, `mimo-v2.5-pro`, and
-`mimo-v2.5-pro-ultraspeed`. Token-plan metadata intentionally omits
-`mimo-v2-flash`, which remains scoped to the API-billing provider.
+metadata includes `mimo-v2.5`, `mimo-v2.5-pro`, and
+`mimo-v2.5-pro-ultraspeed` for API billing. Each CN, AMS, and SGP token-plan
+route includes `mimo-v2.5` and `mimo-v2.5-pro`; use `RegisterTokenPlanCN`,
+`RegisterTokenPlanAMS`, or `RegisterTokenPlanSGP` for the respective region.
 
 ### Google Generative AI
 

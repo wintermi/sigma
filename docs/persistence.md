@@ -44,7 +44,13 @@ Other unsigned empty text remains invalid. Persistence does not interpret
 signatures. Provider replay validates their format and exact
 provider/API/model provenance before sending them. Responses serializers omit
 signatures and encrypted content when any provenance component is missing or
-mismatched, without erasing them from saved blocks.
+mismatched, without erasing them from saved blocks. Chat Completions applies the
+same nonempty provenance requirement to both ordered `openai_reasoning_details`
+and legacy tool-call `reasoning_details`. Eligible modern metadata takes
+precedence; validated legacy metadata is a fallback only for the same source.
+Existing histories remain readable without migration, but histories lacking
+provenance no longer replay reasoning details. Ordinary text, calls, and results
+remain available.
 
 Responses request serialization reserves existing native item IDs before
 allocating distinct synthetic IDs for messages, reasoning, and tool calls.

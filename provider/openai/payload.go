@@ -385,13 +385,11 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		return converted, nil
 	case sigma.RoleAssistant:
 		converted := map[string]any{"role": "assistant"}
-		text, reasoningContent, reasoningDetails, toolCalls, err := assistantContent(message.Content, compat, grammarToolInputProperties)
+		text, reasoningContent, toolCalls, err := assistantContent(message.Content, compat, grammarToolInputProperties)
 		if err != nil {
 			return nil, err
 		}
-		if preserved := preservedReasoningDetails(model, message); len(preserved) > 0 {
-			reasoningDetails = preserved
-		}
+		reasoningDetails := preservedReasoningDetails(model, message)
 		if text != "" {
 			converted["content"] = text
 		}
@@ -592,10 +590,9 @@ func unsupportedDocumentInputError(model sigma.Model, provider string) error {
 	}
 }
 
-func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, grammarToolInputProperties map[string]string) (string, string, []any, []map[string]any, error) {
+func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, grammarToolInputProperties map[string]string) (string, string, []map[string]any, error) {
 	var text strings.Builder
 	var reasoningContent strings.Builder
-	var reasoningDetails []any
 	var toolCalls []map[string]any
 	for _, block := range blocks {
 		switch block.Type {
@@ -609,11 +606,10 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, gra
 				appendContent(&reasoningContent, providerText(block.ThinkingText))
 			}
 		case sigma.ContentBlockToolCall:
-			reasoningDetails = appendReasoningDetails(reasoningDetails, block.ProviderMetadata)
 			if property, ok := grammarToolInputProperties[block.ToolName]; ok {
 				input, err := grammarToolCallInput("openai completions", block.ToolName, block.ToolArguments, property)
 				if err != nil {
-					return "", "", nil, nil, err
+					return "", "", nil, err
 				}
 				toolCalls = append(toolCalls, map[string]any{
 					"id":                      block.ToolCallID,
@@ -627,7 +623,7 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, gra
 			}
 			arguments, err := toolArgumentsString(block.ToolArguments)
 			if err != nil {
-				return "", "", nil, nil, err
+				return "", "", nil, err
 			}
 			toolCalls = append(toolCalls, map[string]any{
 				"id":                      block.ToolCallID,
@@ -638,18 +634,10 @@ func assistantContent(blocks []sigma.ContentBlock, compat completionsCompat, gra
 				},
 			})
 		default:
-			return "", "", nil, nil, fmt.Errorf("openai completions: unsupported assistant content block %q", block.Type)
+			return "", "", nil, fmt.Errorf("openai completions: unsupported assistant content block %q", block.Type)
 		}
 	}
-	return text.String(), reasoningContent.String(), reasoningDetails, toolCalls, nil
-}
-
-func appendReasoningDetails(details []any, metadata map[string]any) []any {
-	value, ok := metadata["reasoning_details"]
-	if !ok {
-		return details
-	}
-	return append(details, validatedReasoningDetails(value)...)
+	return text.String(), reasoningContent.String(), toolCalls, nil
 }
 
 func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
@@ -665,11 +653,18 @@ func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
 			return details
 		}
 	}
-	return nil
+	var legacy []any
+	for _, block := range message.Content {
+		if block.Type == sigma.ContentBlockToolCall {
+			legacy = append(legacy, validatedReasoningDetails(block.ProviderMetadata["reasoning_details"])...)
+		}
+	}
+	return legacy
 }
 
 func sameOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {
-	return message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
+	return message.Provider != "" && message.API != "" && message.Model != "" &&
+		message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 }
 
 // mapChatToolCallIDs reserves existing safe IDs before allocating wire IDs.

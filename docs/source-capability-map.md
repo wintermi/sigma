@@ -42,8 +42,8 @@ packages and metadata fields. It should be read with
 | Source provider family | Go provider ID | API path today | Notes |
 | --- | --- | --- | --- |
 | OpenAI | `openai` | `openai-responses`, `openai-completions`, `openai-images`, `openai-embeddings` | Text Responses, Chat Completions, Images generation, and embeddings adapters exist. |
-| Azure OpenAI | caller-chosen, usually Azure-specific | `azure-openai-responses` | Uses model/request `AzureOpenAIResponses` config rather than generated default metadata. |
-| OpenAI Codex | caller-chosen, usually Codex-specific | `openai-codex-responses` | Uses explicit OAuth token providers; includes browser callback login, device-code login, and refresh helpers. |
+| Azure OpenAI | `azure-openai-responses` | `azure-openai-responses` | Use [provider/azure](../provider/azure). Generated text metadata is included; callers supply resource endpoint and deployment configuration. API-key and caller-supplied Microsoft Entra token auth are supported. |
+| OpenAI Codex | `openai-codex` | `openai-codex-responses` | Use `openai.RegisterCodexResponses` in [provider/openai](../provider/openai) with `sigma.ProviderOpenAICodex`. Generated text metadata is included. Explicit OAuth token providers or the general auth resolver supply credentials; browser/device login and stored-auth refresh helpers are available. |
 | Anthropic | `anthropic` | `anthropic-messages` | Generated metadata includes a Claude text model. Includes browser callback OAuth login, refresh helpers, an in-memory OAuth token provider, and automatic Claude Code identity for OAuth tokens. |
 | Amazon Bedrock | `amazon-bedrock` | `bedrock-converse-stream`, `bedrock-embeddings` | Generated metadata includes representative Bedrock text and embedding routes. |
 | Google Gemini API | `google` | `google-generative-ai`, `google-images`, `google-embeddings` | Generated metadata includes representative Gemini text, image, and embedding routes. |
@@ -62,7 +62,8 @@ packages and metadata fields. It should be read with
 | Qwen Token Plan | `qwen-token-plan`, `qwen-token-plan-cn` | `openai-completions` | Use [provider/qwen](../provider/qwen). Generated metadata includes focused Qwen3.7 Max and Qwen3.8 Max rows with regional API-key fallback and Qwen thinking compatibility metadata. |
 | Kimi Coding | `kimi`, `kimi-coding` | `anthropic-messages` | Use [provider/kimi](../provider/kimi). The shared wrapper supplies Sigma-owned request identity for both provider IDs; generated metadata includes API-key auth and Kimi Coding opt-in device-code OAuth. |
 | Vercel AI Gateway | `vercel-ai-gateway` | `anthropic-messages` | Use [provider/vercel](../provider/vercel). Generated metadata includes curated gateway routes with `AI_GATEWAY_API_KEY` credential metadata and route-specific Anthropic compatibility metadata. |
-| Xiaomi | `xiaomi` | `openai-completions` when callers register a compatible provider | Generated metadata includes a representative metadata-only route with compatibility metadata. |
+| Xiaomi | `xiaomi` | `openai-completions` | Use [provider/xiaomi](../provider/xiaomi) for the API-billing route. Generated metadata includes MiMo V2.5, V2.5 Pro, and V2.5 Pro Ultraspeed with API-key and thinking compatibility metadata. |
+| Xiaomi Token Plan | `xiaomi-token-plan-cn`, `xiaomi-token-plan-ams`, `xiaomi-token-plan-sgp` | `openai-completions` | The Xiaomi wrapper provides regional registration helpers and API-key fallbacks. Each region has generated MiMo V2.5 and V2.5 Pro rows. |
 | Custom/local endpoints | `custom` or caller-defined | Usually `openai-completions` | Use explicit registry entries, `WithBaseURL`, and compatibility metadata. |
 
 ## Metadata flags

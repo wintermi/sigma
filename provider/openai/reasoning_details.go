@@ -60,7 +60,7 @@ func appendReasoningDetail(details []any, detail any) []any {
 		return append(details, detail)
 	}
 	current, ok := details[len(details)-1].(map[string]any)
-	if !ok || current["type"] != next["type"] {
+	if !ok || current["type"] != next["type"] || reasoningIdentityConflicts(current, next) {
 		return append(details, detail)
 	}
 
@@ -72,7 +72,6 @@ func appendReasoningDetail(details []any, detail any) []any {
 			return append(details, detail)
 		}
 		current["text"] = currentText + nextText
-		fillMissingReasoningDetailString(current, next, "signature")
 	case "reasoning.summary":
 		currentSummary, currentOK := current["summary"].(string)
 		nextSummary, nextOK := next["summary"].(string)
@@ -83,10 +82,25 @@ func appendReasoningDetail(details []any, detail any) []any {
 	default:
 		return append(details, detail)
 	}
+	fillMissingReasoningDetailString(current, next, "signature")
 	fillMissingReasoningDetailString(current, next, "id")
 	fillMissingReasoningDetailString(current, next, "format")
 	fillMissingReasoningDetailValue(current, next, "index")
 	return details
+}
+
+// Inputs have been validated and normalized by parseReasoningDetails.
+func reasoningIdentityConflicts(current, next map[string]any) bool {
+	for _, key := range []string{"id", "format", "signature"} {
+		left, _ := current[key].(string)
+		right, _ := next[key].(string)
+		if left != "" && right != "" && left != right {
+			return true
+		}
+	}
+	left, leftOK := current["index"].(float64)
+	right, rightOK := next["index"].(float64)
+	return leftOK && rightOK && left != right
 }
 
 func fillMissingReasoningDetailString(target, source map[string]any, key string) {

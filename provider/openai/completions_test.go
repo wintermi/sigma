@@ -2712,7 +2712,8 @@ func TestStreamingCoalescesOrderedReasoningDetailsForSameModelReplay(t *testing.
 		"type":    "reasoning.summary",
 		"summary": "after encrypted",
 	}
-	wantOrdered := []any{signedText, summary, encrypted, laterSummary}
+	distinctText := map[string]any{"type": "reasoning.text", "id": "reasoning_other", "text": "", "signature": "replacement", "format": "other", "index": float64(1)}
+	wantOrdered := []any{signedText, distinctText, summary, encrypted, laterSummary}
 
 	requests := make(chan capturedRequest, 2)
 	var requestCount int
@@ -2783,7 +2784,7 @@ func TestStreamingCoalescesOrderedReasoningDetailsForSameModelReplay(t *testing.
 	if !reflect.DeepEqual(legacy, []any{summary, laterSummary, encrypted}) {
 		t.Fatalf("legacy reasoning metadata = %#v, want %#v", legacy, []any{summary, laterSummary, encrypted})
 	}
-	ordered[2].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	ordered[3].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
 	if got := legacy[2].(map[string]any)["extension"].(map[string]any)["trace"]; got != "original" {
 		t.Fatalf("legacy metadata trace = %v, want independent original copy", got)
 	}
@@ -2808,12 +2809,21 @@ func TestStreamingCoalescesOrderedReasoningDetailsForSameModelReplay(t *testing.
 		Model:      model.ID,
 		StopReason: final.StopReason,
 	}
-	_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{
+	history := sigma.Request{Messages: []sigma.Message{
 		sigma.UserText("read the file"),
 		assistant,
 		sigma.ToolResult("call_1", "contents"),
 		sigma.UserText("continue"),
-	}})
+	}}
+	persisted, err := sigma.MarshalRequest(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, err := sigma.UnmarshalRequest(persisted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Complete(context.Background(), model, restored)
 	if err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
@@ -2824,7 +2834,7 @@ func TestStreamingCoalescesOrderedReasoningDetailsForSameModelReplay(t *testing.
 	if !ok {
 		t.Fatalf("replayed reasoning_details type = %T, want []any", replayAssistant["reasoning_details"])
 	}
-	wantOrdered[2].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
+	wantOrdered[3].(map[string]any)["extension"].(map[string]any)["trace"] = "mutated"
 	if !reflect.DeepEqual(replayedDetails, wantOrdered) {
 		t.Fatalf("replayed reasoning_details = %#v, want %#v", replayedDetails, wantOrdered)
 	}
@@ -2954,8 +2964,8 @@ func TestReasoningDetailsReplayValidatesHistoryAndRequiresMatchingProvenance(t *
 	}
 	for mismatch := 0; mismatch < 3; mismatch++ {
 		mismatched := assistantMessageFromRequest(t, receiveRequest(t, requests).Body)
-		if got := mismatched["reasoning_details"]; !reflect.DeepEqual(got, []any{validLegacy}) {
-			t.Fatalf("mismatched reasoning_details = %#v, want validated legacy fallback", got)
+		if got := mismatched["reasoning_details"]; got != nil {
+			t.Fatalf("mismatched reasoning_details = %#v, want omitted", got)
 		}
 	}
 }

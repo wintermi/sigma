@@ -187,11 +187,8 @@ func (context *validationContext) coerceValue(schema map[string]any, value any, 
 	if err != nil {
 		return nil, toolValidationError(toolName, path, "valid schema type", schema["type"], "schema is malformed", err)
 	}
-	if len(types) == 0 {
-		types = inferredTypes(schema)
-	}
 	if len(types) > 1 && valueMatchesAnyType(value, types) {
-		return context.coerceNestedValue(schema, value, types, path, toolName)
+		return context.coerceNestedValue(schema, value, path, toolName)
 	}
 	if len(types) > 0 && !valueMatchesAnyType(value, types) {
 		for _, typ := range types {
@@ -202,7 +199,7 @@ func (context *validationContext) coerceValue(schema map[string]any, value any, 
 			}
 		}
 	}
-	return context.coerceNestedValue(schema, value, types, path, toolName)
+	return context.coerceNestedValue(schema, value, path, toolName)
 }
 
 func (context *validationContext) coerceAllOf(schema map[string]any, value any, path string, toolName string) (any, bool, error) {
@@ -284,25 +281,15 @@ func (context *validationContext) coerceOneOf(schema map[string]any, value any, 
 	return value, false, nil
 }
 
-func (context *validationContext) coerceNestedValue(schema map[string]any, value any, types []string, path string, toolName string) (any, error) {
-	for _, typ := range types {
-		switch typ {
-		case "object":
-			object, ok := value.(map[string]any)
-			if !ok {
-				continue
-			}
-			if err := context.coerceObject(schema, object, path, toolName); err != nil {
-				return nil, err
-			}
-		case "array":
-			array, ok := value.([]any)
-			if !ok {
-				continue
-			}
-			if err := context.coerceArray(schema, array, path, toolName); err != nil {
-				return nil, err
-			}
+func (context *validationContext) coerceNestedValue(schema map[string]any, value any, path string, toolName string) (any, error) {
+	switch container := value.(type) {
+	case map[string]any:
+		if err := context.coerceObject(schema, container, path, toolName); err != nil {
+			return nil, err
+		}
+	case []any:
+		if err := context.coerceArray(schema, container, path, toolName); err != nil {
+			return nil, err
 		}
 	}
 	return value, nil
@@ -582,9 +569,6 @@ func (context *validationContext) validateValue(schema map[string]any, value any
 	types, err := schemaTypes(schema)
 	if err != nil {
 		return toolValidationError(toolName, path, "valid schema type", schema["type"], "schema is malformed", err)
-	}
-	if len(types) == 0 {
-		types = inferredTypes(schema)
 	}
 	if len(types) > 0 && !valueMatchesAnyType(value, types) {
 		return toolValidationError(toolName, path, strings.Join(types, " or "), value, "wrong primitive type", nil)
@@ -913,22 +897,6 @@ func schemaTypes(schema map[string]any) ([]string, error) {
 	default:
 		return nil, fmt.Errorf("type must be a string or string array")
 	}
-}
-
-func inferredTypes(schema map[string]any) []string {
-	if _, ok := schema["properties"]; ok {
-		return []string{"object"}
-	}
-	if _, ok := schema["required"]; ok {
-		return []string{"object"}
-	}
-	if _, ok := schema["additionalProperties"]; ok {
-		return []string{"object"}
-	}
-	if _, ok := schema["items"]; ok {
-		return []string{"array"}
-	}
-	return nil
 }
 
 func supportedType(typ string) bool {

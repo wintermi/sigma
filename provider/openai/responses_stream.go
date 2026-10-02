@@ -99,7 +99,8 @@ type responsesUsage struct {
 }
 
 type responsesInputTokenDetails struct {
-	CachedTokens int `json:"cached_tokens"`
+	CachedTokens     int  `json:"cached_tokens"`
+	CacheWriteTokens *int `json:"cache_write_tokens,omitempty"`
 }
 
 type responsesOutputTokenDetails struct {
@@ -1303,7 +1304,10 @@ func (u responsesUsage) sigmaUsage() sigma.Usage {
 	}
 	if u.InputTokensDetails != nil {
 		usage.CacheReadInputTokens = u.InputTokensDetails.CachedTokens
-		usage.InputTokens = max(0, u.InputTokens-usage.CacheReadInputTokens)
+		if u.InputTokensDetails.CacheWriteTokens != nil {
+			usage.CacheWriteInputTokens = *u.InputTokensDetails.CacheWriteTokens
+		}
+		usage.InputTokens = max(0, u.InputTokens-usage.CacheReadInputTokens-usage.CacheWriteInputTokens)
 	}
 	if u.OutputTokensDetails != nil {
 		usage.ThinkingTokens = u.OutputTokensDetails.ReasoningTokens

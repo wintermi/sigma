@@ -173,6 +173,23 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Preserve supplied Responses cache-write usage in normalized and raw accounting,
+  deduct cache reads and writes from ordinary input, and apply existing pricing
+  and tier adjustments across streaming and deferred results, Azure, and Codex.
+- Keep distinct adjacent reasoning blocks separate when IDs, formats, signatures,
+  or supplied indexes conflict. Compatible fragments still merge, missing identity
+  fields may be filled, and encrypted entries remain discrete and ordered.
+- Accept OpenRouter image response bodies up to 64 MiB, with typed, safe overflow
+  errors retaining HTTP status and request ID and no retry after body consumption.
+- Apply schema container keywords to the actual value without inferring a type;
+  preserve explicit types, nested opt-in coercion, full-schema validation, exact
+  numbers, strict nullable semantics, and caller-owned data.
+- Require exact nonempty provider/API/model provenance for modern and legacy
+  reasoning replay. Stored histories remain readable and unchanged; incompatible
+  reasoning is omitted while ordinary text, tool calls, and results are retained.
+- Reconcile Azure, Codex, and Xiaomi provider documentation with registration
+  helpers, generated metadata, auth paths, and Xiaomi regional token-plan routes.
+
 - Responses replay generates distinct item IDs for parallel tool calls and
   reasoning blocks, and preserves call/result associations when tool IDs require
   normalization. Native IDs are reserved before synthetic IDs are allocated.
@@ -407,11 +424,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
   precedence.
 - OpenAI-compatible Chat Completions streams now preserve validated encrypted,
   signed-text, and summary `reasoning_details` in provider order, coalescing
-  consecutive streamed text and summary fragments into complete logical
+  consecutive compatible streamed text and summary fragments into complete logical
   entries before assistant-content persistence and exact same-provider/API/
   model replay. Later fragments fill missing identity and format metadata
   without replacing prior values; invalid persisted entries are omitted
-  without losing valid siblings, legacy tool-call metadata remains replayable,
+  without losing valid siblings, legacy tool-call metadata remains replayable
+  only with exact nonempty source provenance,
   and requests without stored details are unchanged.
 - OpenAI, Azure, and Codex Responses streams now preserve non-empty assistant
   message phases in opaque content metadata. Recognized `commentary` and

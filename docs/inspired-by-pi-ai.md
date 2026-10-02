@@ -59,7 +59,9 @@ out of the box. Sigma's Go design is intentionally explicit:
 - Built-in text adapters currently cover OpenAI-compatible Chat Completions,
   OpenAI Responses, Azure OpenAI Responses, OpenAI Codex Responses, Anthropic
   Messages, Google Generative AI, Google Vertex, Mistral Conversations, and
-  Amazon Bedrock Converse Stream.
+  Amazon Bedrock Converse Stream. Azure and Codex have generated text model
+  metadata under `azure-openai-responses` and `openai-codex`; Azure supplies a
+  registration wrapper, and Codex uses `openai.RegisterCodexResponses`.
 - Image generation has OpenRouter, OpenAI Images, Google Gemini API, and Google
   Vertex Imagen adapters. See [Images](images.md) for supported operations.
 - Provider IDs such as DeepSeek, Groq, Cerebras, xAI, Together, GitHub Copilot,
@@ -68,6 +70,9 @@ out of the box. Sigma's Go design is intentionally explicit:
   coverage vary. OpenCode Zen and OpenCode Go include curated
   OpenAI-compatible built-in metadata, and MiniMax has direct
   Anthropic-compatible registration helpers for the global and CN routes.
+  Xiaomi has a direct registration wrapper and generated MiMo V2.5 metadata
+  for API billing plus CN, AMS, and SGP token-plan routes. See the
+  [provider guide](providers.md) for credential and endpoint configuration.
 - Cloudflare AI Gateway, Cloudflare Workers AI, and non-OpenAI OpenCode routes
   do not have complete Go parity at the time of this guide. Check
   [provider-parity.md](provider-parity.md) before relying on those routes.

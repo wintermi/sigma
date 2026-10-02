@@ -552,6 +552,23 @@ selection remains available through existing provider-specific controls.
 
 ## Reliability corrections
 
+- Preserve supplied Responses cache-write usage in normalized and raw accounting,
+  deduct cache reads and writes from ordinary input, and apply existing pricing
+  and tier adjustments across streaming and deferred results, Azure, and Codex.
+- Keep distinct adjacent reasoning blocks separate when IDs, formats, signatures,
+  or supplied indexes conflict. Compatible fragments still merge, missing identity
+  fields may be filled, and encrypted entries remain discrete and ordered.
+- Accept OpenRouter image response bodies up to 64 MiB, with typed, safe overflow
+  errors retaining HTTP status and request ID and no retry after body consumption.
+- Apply schema container keywords to the actual value without inferring a type;
+  preserve explicit types, nested opt-in coercion, full-schema validation, exact
+  numbers, strict nullable semantics, and caller-owned data.
+- Require exact nonempty provider/API/model provenance for modern and legacy
+  reasoning replay. Stored histories remain readable and unchanged; incompatible
+  reasoning is omitted while ordinary text, tool calls, and results are retained.
+- Reconcile Azure, Codex, and Xiaomi provider documentation with registration
+  helpers, generated metadata, auth paths, and Xiaomi regional token-plan routes.
+
 Synthetic tool-call IDs for Google and OpenAI Chat Completions are now random,
 opaque identifiers that remain distinct across turns and concurrent streams.
 This includes custom Chat Completions tools and Vertex text through the shared
@@ -611,6 +628,16 @@ available explicitly. The embedding guide covers OpenAI-compatible, Gemini,
 Vertex, and Bedrock adapters without changing release classifications.
 
 ## Compatibility
+
+- Existing histories remain loadable and retain opaque metadata. Outbound
+  reasoning replay now omits both modern and legacy metadata when any source
+  provider/API/model component is absent or mismatched; no history migration is
+  required, and ordinary text, calls, and results are preserved.
+- Responses with cache writes can report higher costs because writes now use
+  their checked-in cache-write rates. Provider token totals are unchanged.
+- Valid composed-schema arguments previously rejected by implicit container
+  typing may now succeed. Explicit types and object-only tool arguments remain
+  enforced.
 
 - `bedrock.ConverseUsage` adds `LongCacheWriteInputTokens`, the one-hour subset
   of total cache writes. Callers using unkeyed literals must update them; keyed
@@ -774,12 +801,15 @@ Vertex, and Bedrock adapters without changing release classifications.
   events, usage, raw finish reasons, and normalized stops remain unchanged.
   Indexless correlation behavior and request payloads are unchanged.
 - OpenAI-compatible Chat Completions replays complete `reasoning_details` only
-  when persisted provider, API, and model provenance exactly match the target.
-  Consecutive streamed text and summary fragments are coalesced into complete
+  when persisted provider, API, and model provenance are nonempty and exactly
+  match the target, for both modern and legacy representations.
+  Consecutive compatible text and summary fragments are coalesced into complete
   logical entries, with later fragments filling missing identity, format,
   index, and signature metadata without replacing prior values. Encrypted
-  entries remain discrete and ordered. Invalid or unknown entries are omitted
-  individually, older tool-call metadata remains a replay fallback, and
+  entries remain discrete and ordered. Conflicting nonempty IDs, formats, or
+  signatures and differing supplied indexes (including zero) start new entries.
+  Invalid or unknown entries are omitted
+  individually, older tool-call metadata remains a same-provenance replay fallback, and
   requests without persisted details retain their previous payloads and
   defaults.
 - Typed max-token options below 16 now serialize as 16 for
