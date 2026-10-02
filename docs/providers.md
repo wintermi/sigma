@@ -543,6 +543,30 @@ metadata, and usage in fixture-tested paths.
 
 ### Google Vertex AI
 
+The generated catalog includes 14 native Gemini text models, three Gemini image
+models, and one embedding model under `google-vertex`. Separate registrations
+provide 17 Claude models under `google-vertex-anthropic` and eight
+OpenAI-compatible MaaS models under `google-vertex-openai`, including Llama,
+GPT-OSS, Grok, and GLM. Use `anthropic.RegisterVertex` or `openai.RegisterVertex`
+for those text routes; native text registration does not register MaaS adapters.
+Catalog presence does not guarantee account access or availability in every
+region. In particular, select `global` for GLM-5.2.
+
+Gemini Pro rows include long-context cost tiers, while newer Claude rows use
+flat global endpoint estimates. Regional Claude prices can differ. See
+[Vertex pricing](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing)
+and [model lifecycle dates](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions).
+Deprecated entries remain selectable until their scheduled retirement; Sigma
+does not automatically migrate a caller to another model.
+
+GPT-OSS supports named reasoning effort. Grok and GLM MaaS models preserve
+provider-default reasoning and reject named levels locally. GLM's Vertex-specific
+`chat_template_kwargs.enable_thinking` switch can be supplied explicitly through
+provider `extra_body`; the direct Z.ai `thinking` shape does not apply. See
+[Vertex thinking controls](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/capabilities/thinking).
+Native Flash and Flash-Lite latest aliases retain their existing named-thinking
+restrictions.
+
 ```go
 registry := sigma.NewRegistry()
 _ = google.RegisterVertex(registry, sigma.ProviderGoogleVertex,

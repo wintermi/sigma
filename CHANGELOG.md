@@ -12,6 +12,16 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- The October Vertex catalog review adds 14 text models across the existing
+  Claude and OpenAI-compatible MaaS routes, two Gemini image models, and
+  Gemini Embedding 001. It refreshes native Gemini long-context pricing,
+  Claude output limits, Llama pricing and limits, image aspect ratios, and
+  retirement metadata. Default Vertex embedding batches respect Gemini
+  Embedding's one-input limit. Default discovery excludes Gemini 3.1 Flash Lite
+  Image and the three older text embedding IDs absent from the reviewed
+  inventory; these exclusions do not declare provider retirement. These
+  catalog changes add no adapters or live-validation claims.
+
 - The September registry review adds 50 text models, GPT Image 1.5 and 2, and
   Gemini Embedding 2 through existing adapters. It refreshes 18 text entries,
   including provider-specific prices and long-context tiers, and removes 167

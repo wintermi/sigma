@@ -291,7 +291,7 @@ func TestRegistryRefreshRetirementBoundaries(t *testing.T) {
 	if _, ok := registry.EmbeddingModel(sigma.ProviderGoogle, "text-embedding-004"); ok {
 		t.Fatal("retired direct embedding remains")
 	}
-	if _, ok := registry.EmbeddingModel(sigma.ProviderGoogleVertex, "text-embedding-004"); !ok {
-		t.Fatal("direct retirement removed Vertex embedding")
+	if _, ok := registry.EmbeddingModel(sigma.ProviderGoogleVertex, "gemini-embedding-001"); !ok {
+		t.Fatal("Vertex embedding replacement missing")
 	}
 }

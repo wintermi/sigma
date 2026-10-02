@@ -52,7 +52,7 @@ Release scope values:
 | OpenAI Images generation | `openai-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | OpenRouter image generation | `openrouter-images` | `preview` | `not supported by provider` | `fixture-tested` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `fixture-tested` | `implemented` | `fixture-tested` | `not supported by provider` | `fixture-tested` | `intentionally omitted` |
 | Google Gemini API image generation | `google-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `partial` | `fixture-tested` | `intentionally omitted` |
-| Google Vertex AI Imagen generation | `google-vertex-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
+| Google Vertex AI image generation | `google-vertex-images` | `preview` | `not supported by provider` | `not supported by provider` | `fixture-tested` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `not supported by provider` | `partial` | `implemented` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` |
 | DeepSeek, Groq, Cerebras, and Together OpenAI-compatible Chat Completions | `openai-completions` | `preview` | `fixture-tested` | `partial` | `not supported by provider` | `fixture-tested` | `partial` | `partial` | `partial` | `partial` | `fixture-tested` | `fixture-tested` | `fixture-tested` | `intentionally omitted` | `fixture-tested` | `intentionally omitted` |
 
 ## Evidence references
@@ -95,9 +95,10 @@ Release scope values:
 - `google-images` supports Gemini API Imagen `predict` generation and Gemini
   image `generateContent` image outputs. Edits, variations, and live image
   validation remain outside deterministic CI.
-- `google-vertex-images` supports Vertex Imagen `predict` generation with
-  explicit project/location routing. Ambient routing and live validation remain
-  outside deterministic CI.
+- `google-vertex-images` supports Gemini image `generateContent` and Imagen
+  `predict` generation with explicit project/location routing. Generated rows
+  currently select three Gemini image models. Ambient routing and live validation
+  remain outside deterministic CI.
 - Azure OpenAI Responses has generated metadata and a first-class provider
   wrapper over the existing Responses adapter. Codex Responses has generated
   metadata and remains registered through the OpenAI provider package.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-09-23",
+  "snapshotDate": "2026-10-03",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -169,6 +169,26 @@
     {
       "name": "OpenAI model retirement schedule",
       "url": "https://developers.openai.com/api/docs/deprecations"
+    },
+    {
+      "name": "Google Vertex Claude models",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/partner-models/claude"
+    },
+    {
+      "name": "Google Vertex Gemini image models",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro-image"
+    },
+    {
+      "name": "Google Vertex open model deprecations",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/deprecations/open-models"
+    },
+    {
+      "name": "Google Vertex text embeddings",
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings"
+    },
+    {
+      "name": "Google Vertex MaaS thinking controls",
+      "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/capabilities/thinking"
     }
   ],
   "textModels": [
@@ -9209,7 +9229,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gemini",
-        "vertexPublisher": "google"
+        "vertexPublisher": "google",
+        "retirementDate": "2026-10-20"
       }
     },
     {
@@ -9237,7 +9258,7 @@
         "currency": "USD"
       },
       "contextWindow": 1048576,
-      "maxOutputTokens": 65536,
+      "maxOutputTokens": 65535,
       "headers": {},
       "authEnvNames": [
         "GOOGLE_CLOUD_API_KEY",
@@ -9246,7 +9267,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gemini",
-        "vertexPublisher": "google"
+        "vertexPublisher": "google",
+        "retirementDate": "2026-10-20"
       }
     },
     {
@@ -9274,6 +9296,14 @@
         "inputPerMillion": 1.25,
         "outputPerMillion": 10,
         "cacheReadInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.25
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 1048576,
@@ -9286,7 +9316,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gemini",
-        "vertexPublisher": "google"
+        "vertexPublisher": "google",
+        "retirementDate": "2026-10-20"
       }
     },
     {
@@ -9373,6 +9404,14 @@
         "inputPerMillion": 2,
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 1048576,
@@ -9413,6 +9452,14 @@
         "inputPerMillion": 2,
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
         "currency": "USD"
       },
       "contextWindow": 1048576,
@@ -9692,6 +9739,144 @@
       ]
     },
     {
+      "id": "claude-fable-5",
+      "name": "Claude Fable 5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-fable-5-1",
+      "name": "Claude Fable 5.1 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-haiku-4-5",
+      "name": "Claude Haiku 4.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 1.25,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
       "id": "claude-opus-4",
       "name": "Claude Opus 4 (Vertex)",
       "provider": "google-vertex-anthropic",
@@ -9720,7 +9905,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "claude",
-        "vertexPublisher": "anthropic"
+        "vertexPublisher": "anthropic",
+        "status": "deprecated"
       },
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "supported",
@@ -9758,7 +9944,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "claude",
-        "vertexPublisher": "anthropic"
+        "vertexPublisher": "anthropic",
+        "status": "deprecated"
       },
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "supported",
@@ -9929,6 +10116,106 @@
       }
     },
     {
+      "id": "claude-opus-5",
+      "name": "Claude Opus 5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 25,
+        "cacheReadInputPerMillion": 0.5,
+        "cacheWriteInputPerMillion": 6.25,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-opus-5-5",
+      "name": "Claude Opus 5.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
       "id": "claude-sonnet-4",
       "name": "Claude Sonnet 4 (Vertex)",
       "provider": "google-vertex-anthropic",
@@ -9957,7 +10244,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "claude",
-        "vertexPublisher": "anthropic"
+        "vertexPublisher": "anthropic",
+        "status": "deprecated"
       },
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "supported",
@@ -10024,7 +10312,7 @@
         "currency": "USD"
       },
       "contextWindow": 1000000,
-      "maxOutputTokens": 64000,
+      "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
         "GOOGLE_CLOUD_API_KEY",
@@ -10071,7 +10359,8 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "claude",
-        "vertexPublisher": "anthropic"
+        "vertexPublisher": "anthropic",
+        "status": "deprecated"
       },
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "supported",
@@ -10079,6 +10368,104 @@
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
       }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "name": "Claude Sonnet 5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
     },
     {
       "id": "meta/llama-3.3-70b-instruct-maas",
@@ -10092,12 +10479,12 @@
       "supportsTools": true,
       "supportsThinking": false,
       "cost": {
-        "inputPerMillion": 0,
-        "outputPerMillion": 0,
+        "inputPerMillion": 0.72,
+        "outputPerMillion": 0.72,
         "currency": "USD"
       },
       "contextWindow": 128000,
-      "maxOutputTokens": 32768,
+      "maxOutputTokens": 8192,
       "headers": {},
       "authEnvNames": [
         "GOOGLE_CLOUD_API_KEY",
@@ -10106,7 +10493,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "llama",
-        "vertexOpenAICompatible": true
+        "vertexOpenAICompatible": true,
+        "status": "deprecated",
+        "retirementDate": "2026-10-21"
       },
       "openAICompletionsCompat": {
         "supportsDeveloperRole": "unsupported",
@@ -10699,6 +11088,330 @@
         "off",
         "low",
         "medium"
+      ]
+    },
+    {
+      "id": "meta/llama-4-maverick-17b-128e-instruct-maas",
+      "name": "Llama 4 Maverick 17B 128E Instruct (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 0.35,
+        "outputPerMillion": 1.15,
+        "currency": "USD"
+      },
+      "contextWindow": 524288,
+      "maxOutputTokens": 8192,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "llama",
+        "vertexOpenAICompatible": true
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
+      "id": "openai/gpt-oss-120b-maas",
+      "name": "GPT OSS 120B (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.09,
+        "outputPerMillion": 0.36,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt-oss",
+        "vertexOpenAICompatible": true
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "supported",
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "xai/grok-4.20-non-reasoning",
+      "name": "Grok 4.20 (Non-Reasoning) (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": false,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 5,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 2000000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "vertexOpenAICompatible": true
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      }
+    },
+    {
+      "id": "xai/grok-4.20-reasoning",
+      "name": "Grok 4.20 (Reasoning) (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 5,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 2000000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "vertexOpenAICompatible": true
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "xai/grok-4.3",
+      "name": "Grok 4.3 (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 5,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 30000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "vertexOpenAICompatible": true,
+        "status": "beta"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "xai/grok-4.6",
+      "name": "Grok 4.6 (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 12,
+            "cacheReadInputPerMillion": 1
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 524288,
+      "maxOutputTokens": 500000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "grok",
+        "vertexOpenAICompatible": true,
+        "status": "beta"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "zai-org/glm-5.2-maas",
+      "name": "GLM-5.2 (Vertex)",
+      "provider": "google-vertex-openai",
+      "api": "openai-completions",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.14,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm",
+        "vertexOpenAICompatible": true,
+        "status": "beta"
+      },
+      "openAICompletionsCompat": {
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
       ]
     },
     {
@@ -21314,6 +22027,91 @@
       }
     },
     {
+      "id": "gemini-2.5-flash-image",
+      "name": "Gemini 2.5 Flash Image (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex-images",
+      "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
+      "maxWidth": 2048,
+      "maxHeight": 2048,
+      "supportedSizes": [
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0.039
+        }
+      },
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "gemini-image",
+        "vertexPublisher": "google"
+      }
+    },
+    {
+      "id": "gemini-3-pro-image",
+      "name": "Gemini 3 Pro Image (Vertex)",
+      "provider": "google-vertex",
+      "api": "google-vertex-images",
+      "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
+      "maxWidth": 4096,
+      "maxHeight": 4096,
+      "supportedSizes": [
+        "1:1",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9",
+        "1:4",
+        "4:1",
+        "1:8",
+        "8:1",
+        "9:21"
+      ],
+      "supportedFormats": [
+        "image/png"
+      ],
+      "cost": {
+        "unit": "image",
+        "currency": "USD",
+        "values": {
+          "image": 0.134
+        }
+      },
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "providerMetadata": {
+        "modelFamily": "gemini-image",
+        "vertexPublisher": "google"
+      }
+    },
+    {
       "id": "gemini-3.1-flash-image",
       "name": "Gemini 3.1 Flash Image (Vertex)",
       "provider": "google-vertex",
@@ -21323,10 +22121,15 @@
       "maxHeight": 4096,
       "supportedSizes": [
         "1:1",
-        "16:9",
-        "9:16",
-        "4:3",
+        "2:3",
+        "3:2",
         "3:4",
+        "4:3",
+        "4:5",
+        "5:4",
+        "9:16",
+        "16:9",
+        "21:9",
         "1:4",
         "4:1",
         "1:8",
@@ -23225,17 +24028,17 @@
       }
     },
     {
-      "id": "text-embedding-004",
-      "name": "Text Embedding 004 (Vertex)",
+      "id": "gemini-embedding-001",
+      "name": "Gemini Embedding 001 (Vertex)",
       "provider": "google-vertex",
       "api": "google-vertex-embeddings",
       "baseURL": "https://{location}-aiplatform.googleapis.com/v1",
-      "defaultDimensions": 768,
+      "defaultDimensions": 3072,
       "minDimensions": 1,
-      "maxDimensions": 768,
+      "maxDimensions": 3072,
       "maxInputTokens": 2048,
-      "maxBatchInputs": 250,
-      "inputCostPerMillion": 0,
+      "maxBatchInputs": 1,
+      "inputCostPerMillion": 0.15,
       "currency": "USD",
       "headers": {},
       "authEnvNames": [

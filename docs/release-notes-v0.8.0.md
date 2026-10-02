@@ -47,11 +47,39 @@ receive the Claude Code system prompt, betas, or client headers.
 The September model registry review adds 50 text models across existing routes,
 GPT Image 1.5 and 2, and text input for Gemini Embedding 2. It updates 18 existing
 text rows and removes 167 text entries, three OpenRouter image previews, and
-direct Gemini `text-embedding-004`. The resulting offline catalog has 548 text,
+direct Gemini `text-embedding-004`. That review produced 548 text,
 56 image, and 8 embedding models. Removals include IDs absent from the comparison
 inventory across matching providers and confirmed direct-provider shutdowns.
 Removed IDs no longer resolve through default discovery; applications must
 explicitly choose replacements. Histories and stored embeddings are unchanged.
+
+The October Vertex review brings its catalog to 39 text models (14 native
+Gemini, 17 Claude, and eight OpenAI-compatible MaaS), three Gemini image models,
+and one embedding model. The complete offline catalog now contains 562 text,
+58 image, and 8 embedding models. Additions use existing adapters; model and
+region access still depend on the caller's account. No runtime route or release
+classification changes, and live validation remains opt-in.
+
+Vertex Gemini Pro estimates now apply documented pricing above 200,000 input
+tokens, including cached input. Newer Claude models retain flat global rates
+across that boundary. Claude Sonnet 4.6's output limit, Llama 3.3's pricing and
+output limit, and Gemini image aspect ratios are corrected. Deprecated models
+with future retirement dates remain discoverable. Existing restrictions on
+named thinking levels for Vertex latest aliases remain in place; Grok and GLM
+MaaS entries preserve provider-default reasoning without advertising named
+controls that the adapter cannot express.
+
+Vertex embeddings add `gemini-embedding-001`, with default batching limited to
+one input per request. Default Vertex discovery excludes
+`gemini-3.1-flash-lite-image`, `text-embedding-004`, `text-embedding-005`, and
+`text-multilingual-embedding-002` because they are absent from the reviewed
+inventory. These are catalog-policy exclusions, not provider-retirement claims.
+Text models represented by equivalent versioned Claude IDs remain discoverable.
+Model selection and vector-store migration remain explicit; stored vectors,
+histories, caller-registered metadata, and other providers are unchanged.
+Image cost metadata records baseline output prices; larger resolutions can cost
+more. Deterministic tests cover routing, reasoning payloads, batch splitting,
+pricing boundaries, and removal boundaries.
 
 Pricing remains provider-specific and estimated. New entries preserve existing
 route, authentication, context-default, and transport policies. Google Flash

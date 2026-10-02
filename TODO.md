@@ -418,8 +418,9 @@ deterministic request, stream, error, and metadata evidence.
       MaaS and Anthropic Claude routes without broad catalog expansion.
 - [ ] Add Mistral-on-Vertex `rawPredict`/`streamRawPredict` support only after
       settling its Chat Completions-shaped request and response fixtures.
-- [ ] Add broader Vertex MaaS catalog refresh support through the existing
-      reviewable catalog workflow rather than ad hoc metadata imports.
+- [x] Refresh the Vertex MaaS catalog through the reviewable catalog workflow:
+      17 Claude and eight OpenAI-compatible models, provider-specific pricing,
+      reasoning controls, lifecycle metadata, and deterministic request tests.
 - [x] Add an opt-in live Vertex Anthropic Claude probe with catalog-backed
       model selection, explicit project/location routing, and caller-supplied
       API-key or OAuth credentials outside `mise run ci`.
@@ -992,6 +993,12 @@ should still come through the catalog refresh workflow.
 - [x] Refresh the native Vertex Gemini text catalog with Gemini 3.6 Flash and
       Gemini 3.5 Flash-Lite, remove retired and superseded rows, and align
       Gemini 3.1 Pro thinking-level metadata with current provider support.
+- [x] Review all native Vertex text rows, add Gemini Pro long-context pricing,
+      curate three image models and Gemini Embedding 001, and verify embedding
+      batch limits and image routing with offline fixtures.
+- [x] Remove four Vertex image/embedding entries absent from the reviewed
+      inventory, retain equivalent Claude IDs, and test discovery boundaries
+      without treating catalog exclusions as provider retirements.
 - [x] Add opt-in native Vertex Gemini text probes that reuse built-in model
       metadata, explicit project/location routing, externally supplied OAuth
       access tokens or API keys, and capability-gated cases without network

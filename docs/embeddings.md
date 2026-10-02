@@ -3,10 +3,20 @@
 The direct Google catalog now includes `gemini-embedding-2` for text input, with
 3,072 default dimensions, a documented 128–3,072 range, and an 8,192-token input
 limit. This metadata does not add dimension enforcement or normalize vectors.
-The retired direct `text-embedding-004` entry is removed; its independent Vertex
-entry remains. Choose the new model explicitly and rebuild affected vector stores
+The retired direct `text-embedding-004` entry is removed.
+Choose a new model explicitly and rebuild affected vector stores
 as needed: embeddings from different models are not interchangeable. Existing
 cached vectors are not repaired or migrated.
+
+Vertex uses its existing `predict` adapter for `gemini-embedding-001`, with a
+2,048-token input limit, 3,072 default dimensions, and one input per request.
+`EmbedBatch` uses this catalog limit unless explicitly overridden. See
+[Vertex text embeddings](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/embeddings/get-text-embeddings).
+The reviewed Vertex catalog excludes `text-embedding-004`, `text-embedding-005`,
+and `text-multilingual-embedding-002`; this is a discovery policy rather than a
+provider-retirement claim. Existing stored vectors remain unchanged. Vertex
+Gemini Embedding 2 is not listed because it requires a different request protocol
+from this adapter.
 
 Sigma exposes vector embeddings as a separate provider surface from text
 generation and image generation.
