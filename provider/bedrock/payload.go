@@ -166,7 +166,7 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		return ConverseRequest{}, err
 	}
 
-	messages, err := converseMessages(transformed)
+	messages, err := converseMessages(model, transformed)
 	if err != nil {
 		return ConverseRequest{}, err
 	}
@@ -196,14 +196,6 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 			}
 		}
 	}
-	if thinkingFields := bedrockThinkingFields(model, opts, config); len(thinkingFields) > 0 {
-		if payload.AdditionalModelRequestFields == nil {
-			payload.AdditionalModelRequestFields = make(map[string]any)
-		}
-		for key, value := range thinkingFields {
-			payload.AdditionalModelRequestFields[key] = value
-		}
-	}
 	tools := transformed.Tools
 	toolChoice := bedrockToolChoice(opts, model.Provider)
 	tools, toolChoice, err = addBedrockResponseFormatTool(model, tools, toolChoice, opts)
@@ -219,6 +211,14 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		payload.ToolChoice = toolChoice
 	} else if toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone {
 		payload.Tools = replayToolSpecs(transformed.Messages)
+	}
+	if thinkingFields := bedrockThinkingFields(model, opts, config, &payload); len(thinkingFields) > 0 {
+		if payload.AdditionalModelRequestFields == nil {
+			payload.AdditionalModelRequestFields = make(map[string]any)
+		}
+		for key, value := range thinkingFields {
+			payload.AdditionalModelRequestFields[key] = value
+		}
 	}
 	return payload, nil
 }
@@ -348,7 +348,7 @@ func unsupportedError(model sigma.Model, message string) error {
 	}
 }
 
-func converseMessages(req sigma.Request) ([]ConverseMessage, error) {
+func converseMessages(model sigma.Model, req sigma.Request) ([]ConverseMessage, error) {
 	messages := make([]ConverseMessage, 0, len(req.Messages))
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
@@ -361,7 +361,7 @@ func converseMessages(req sigma.Request) ([]ConverseMessage, error) {
 			index = next - 1
 			continue
 		}
-		converted, err := converseMessage(message)
+		converted, err := converseMessage(model, message)
 		if err != nil {
 			return nil, err
 		}
@@ -376,13 +376,13 @@ func converseMessages(req sigma.Request) ([]ConverseMessage, error) {
 	return messages, nil
 }
 
-func converseMessage(message sigma.Message) (ConverseMessage, error) {
+func converseMessage(model sigma.Model, message sigma.Message) (ConverseMessage, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := converseInputContent(message.Content)
 		return ConverseMessage{Role: "user", Content: content}, err
 	case sigma.RoleAssistant:
-		content, err := converseAssistantContent(message.Content)
+		content, err := converseAssistantContent(model, message.Content)
 		return ConverseMessage{Role: "assistant", Content: content}, err
 	case sigma.RoleTool:
 		converted, _, err := converseToolResults([]sigma.Message{message}, 0)
@@ -481,7 +481,7 @@ func converseInputContent(blocks []sigma.ContentBlock) ([]ConverseContentBlock, 
 	return content, nil
 }
 
-func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlock, error) {
+func converseAssistantContent(model sigma.Model, blocks []sigma.ContentBlock) ([]ConverseContentBlock, error) {
 	content := make([]ConverseContentBlock, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
@@ -497,6 +497,15 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 			if strings.TrimSpace(thinkingText) == "" && !block.Redacted {
 				continue
 			}
+			signature := block.Signature
+			if !block.Redacted {
+				if !isClaudeBedrockModel(model) {
+					signature = ""
+				} else if strings.TrimSpace(signature) == "" {
+					content = append(content, ConverseContentBlock{Type: converseBlockText, Text: thinkingText})
+					continue
+				}
+			}
 			providerSignature := firstNonEmpty(block.ProviderSignature, block.Signature)
 			if block.Redacted {
 				redactedContent, err := decodeBedrockBlob(providerSignature)
@@ -507,7 +516,7 @@ func converseAssistantContent(blocks []sigma.ContentBlock) ([]ConverseContentBlo
 			}
 			reasoning := &ConverseReasoningBlock{
 				Text:              thinkingText,
-				Signature:         block.Signature,
+				Signature:         signature,
 				ProviderSignature: providerSignature,
 				Redacted:          block.Redacted,
 			}
@@ -783,7 +792,7 @@ func mapToolChoice(values map[string]any) *sigma.BedrockToolChoice {
 	return &choice
 }
 
-func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config) map[string]any {
+func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config, payload *ConverseRequest) map[string]any {
 	if opts.ThinkingBudgetTokens == nil && (opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff) {
 		return nil
 	}
@@ -821,6 +830,28 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config)
 	}
 
 	budget := bedrockThinkingBudget(opts)
+	maxTokens := model.MaxOutputTokens
+	if maxTokens <= 0 {
+		maxTokens = 1024
+	}
+	if opts.MaxTokens != nil {
+		maxTokens = *opts.MaxTokens
+	}
+	interleaved := bedrockInterleavedThinking(opts, model.Provider)
+	// Only interleaved tool use permits a budget larger than the output cap.
+	// Otherwise reserve output space, matching the direct Messages adapter.
+	if !interleaved || len(payload.Tools) == 0 {
+		budget = min(budget, maxTokens-1024)
+	}
+	if budget < 1024 {
+		return map[string]any{"thinking": map[string]any{bedrockFieldType: "disabled"}}
+	}
+	if opts.MaxTokens == nil {
+		if payload.InferenceConfig == nil {
+			payload.InferenceConfig = &ConverseInferenceConfig{}
+		}
+		payload.InferenceConfig.MaxTokens = &maxTokens
+	}
 	thinking := map[string]any{
 		"type":          "enabled",
 		"budget_tokens": budget,
@@ -829,7 +860,7 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config)
 		thinking["display"] = display
 	}
 	fields := map[string]any{"thinking": thinking}
-	if bedrockInterleavedThinking(opts, model.Provider) {
+	if interleaved {
 		fields["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
 	}
 	return fields

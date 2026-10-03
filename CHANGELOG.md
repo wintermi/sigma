@@ -183,6 +183,17 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Make Bedrock reasoning replay model-aware: omit non-Claude signatures and
+  convert unsigned Claude thinking to text while preserving signed and redacted
+  blocks. Reconcile manual Claude thinking budgets with output caps, disabling
+  thinking when no valid budget fits and retaining the interleaved tool-use
+  exception.
+- Keep Anthropic server-tool invocation counts out of token totals and preserve
+  accumulated raw usage across sparse streaming updates, including unknown
+  fields, explicit zero/null values, and independent usage snapshots.
+- Correct the stored-auth client example to pass the registry through
+  `WithRegistry`.
+
 - Preserve supplied Responses cache-write usage in normalized and raw accounting,
   deduct cache reads and writes from ordinary input, and apply existing pricing
   and tier adjustments across streaming and deferred results, Azure, and Codex.

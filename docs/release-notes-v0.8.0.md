@@ -7,6 +7,24 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock reasoning replay now omits signatures for non-Claude models and converts
+unsigned Claude thinking to ordinary text. Signed and redacted Claude blocks and
+persisted histories retain their existing behavior. Manual Claude thinking
+budgets respect the effective output cap with 1,024 tokens reserved for output;
+thinking is disabled when a minimum 1,024-token budget cannot fit. Enabled manual
+thinking resolves an absent output cap from model metadata, falling back to
+1,024. Interleaved thinking with tools in the final request retains the exception
+allowing a larger budget. Adaptive and non-Claude controls remain unchanged.
+
+Anthropic server-tool invocation counts now remain in raw usage without being
+added to token totals. Raw usage accumulates supplied fields across sparse stream
+updates, preserves unknown metadata, and applies explicit zero/null replacements
+without mutating earlier snapshots. Token totals may therefore decrease for
+responses using server tools, while invocation counts remain available in
+`Usage.Raw.server_tool_use`. The stored-auth example now correctly wraps its
+registry in `WithRegistry`. These corrections add no public APIs or persistence
+migrations and are covered by deterministic tests, without live-provider claims.
+
 Responses replay now generates distinct item IDs for parallel tool calls and
 reasoning blocks, reserving native IDs before allocating synthetic ones. A shared
 request mapping keeps normalized function/custom calls and results associated,

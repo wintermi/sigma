@@ -642,12 +642,11 @@ func awsReasoningBlock(reasoning *ConverseReasoningBlock) map[string]any {
 			"redactedContent": reasoning.ProviderSignature,
 		}}
 	}
-	return map[string]any{"reasoningContent": map[string]any{
-		"reasoningText": map[string]any{
-			"text":      reasoning.Text,
-			"signature": reasoning.Signature,
-		},
-	}}
+	text := map[string]any{"text": reasoning.Text}
+	if reasoning.Signature != "" {
+		text["signature"] = reasoning.Signature
+	}
+	return map[string]any{"reasoningContent": map[string]any{"reasoningText": text}}
 }
 
 func awsTools(tools []ConverseTool) []map[string]any {

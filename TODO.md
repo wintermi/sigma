@@ -8,6 +8,15 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Replay Bedrock reasoning with model-appropriate signatures and text fallback
+  for unsigned Claude thinking, without changing persisted histories.
+- [x] Fit manual Claude Bedrock thinking budgets within output caps, preserving
+  the interleaved tool-use exception and disabling budgets below the minimum.
+- [x] Keep Anthropic server-tool request counts separate from token usage.
+- [x] Preserve accumulated Anthropic raw usage and independent snapshots across
+  sparse streaming updates, including explicit zero/null and unknown fields.
+- [x] Correct the stored-auth documentation example to use `WithRegistry`.
+
 - [x] Preserve supplied Responses cache-write usage in normalized and raw accounting,
   deduct cache reads and writes from ordinary input, and apply existing pricing
   and tier adjustments across streaming and deferred results, Azure, and Codex.

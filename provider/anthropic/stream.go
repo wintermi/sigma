@@ -67,14 +67,26 @@ type streamDelta struct {
 }
 
 type streamUsage struct {
+	Raw                      map[string]any       `json:"-"`
 	InputTokens              *int                 `json:"input_tokens"`
 	OutputTokens             *int                 `json:"output_tokens"`
 	CacheCreationInputTokens *int                 `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     *int                 `json:"cache_read_input_tokens"`
 	CacheCreation            *streamCacheCreation `json:"cache_creation"`
 	OutputTokensDetails      *streamOutputDetails `json:"output_tokens_details"`
-	ServerToolUse            map[string]int       `json:"server_tool_use"`
-	ServiceTier              string               `json:"service_tier"`
+}
+
+// UnmarshalJSON retains supplied fields, including unknown fields and explicit
+// zero or null values, without inventing values for omitted usage fields.
+func (u *streamUsage) UnmarshalJSON(data []byte) error {
+	type plain streamUsage
+	var value plain
+	if err := jsonutil.Decode(data, &value); err != nil {
+		return err
+	}
+	*u = streamUsage(value)
+	// Match the JSON-like numeric representation used by AccountUsage.
+	return json.Unmarshal(data, &u.Raw)
 }
 
 type streamOutputDetails struct {
@@ -107,6 +119,7 @@ type streamParser struct {
 	providerModel  string
 	metadata       map[string]any
 	usage          *sigma.Usage
+	rawUsage       map[string]any
 	stopReason     sigma.StopReason
 	rawStopReason  string
 	messageStarted bool
@@ -792,12 +805,6 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	if update.OutputTokensDetails != nil {
 		usage.ThinkingTokens = update.OutputTokensDetails.ThinkingTokens
 	}
-	if len(update.ServerToolUse) > 0 {
-		usage.ToolUseInputTokens = 0
-		for _, tokens := range update.ServerToolUse {
-			usage.ToolUseInputTokens += tokens
-		}
-	}
 	if update.CacheCreation != nil {
 		usage.LongCacheWriteInputTokens = update.CacheCreation.Ephemeral1hInputTokens
 	}
@@ -806,8 +813,26 @@ func (p *streamParser) mergeUsage(update *streamUsage) {
 	} else if usage.CacheWriteInputTokens == 0 && update.CacheCreation != nil {
 		usage.CacheWriteInputTokens = update.CacheCreation.Ephemeral5mInputTokens + update.CacheCreation.Ephemeral1hInputTokens
 	}
-	usage, _ = sigma.AccountUsage(p.usageModel(), usage, sigma.WithRawUsage(*update))
+	p.rawUsage = mergeRawUsage(p.rawUsage, update.Raw)
+	// AccountUsage copies the accumulated raw data so later deltas cannot alter
+	// usage snapshots already emitted to callers.
+	usage, _ = sigma.AccountUsage(p.usageModel(), usage, sigma.WithRawUsage(p.rawUsage))
 	p.usage = &usage
+}
+
+func mergeRawUsage(dst, update map[string]any) map[string]any {
+	if dst == nil {
+		dst = make(map[string]any, len(update))
+	}
+	for key, value := range update {
+		if object, ok := value.(map[string]any); ok {
+			previous, _ := dst[key].(map[string]any)
+			dst[key] = mergeRawUsage(previous, object)
+		} else {
+			dst[key] = value
+		}
+	}
+	return dst
 }
 
 func (p *streamParser) usageModel() sigma.Model {

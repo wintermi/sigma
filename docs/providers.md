@@ -248,7 +248,7 @@ store := sigma.NewInMemoryCredentialStore()
 credentials, _ := openai.LoginOpenAICodexDeviceCode(ctx, openai.CodexDeviceCodeLoginOptions{})
 _, _ = openai.StoreCodexOAuthCredentials(ctx, store, sigma.ProviderOpenAICodex, credentials)
 _ = openai.RegisterCodexProviderAuth(registry, sigma.ProviderOpenAICodex, openai.CodexOAuthTokenProviderOptions{})
-client := sigma.NewClient(registry, sigma.WithCredentialStore(store), sigma.WithStoredProviderAuth())
+client := sigma.NewClient(sigma.WithRegistry(registry), sigma.WithCredentialStore(store), sigma.WithStoredProviderAuth())
 ```
 
 Concrete disk, keychain, or encrypted credential storage remains caller-owned.
@@ -365,6 +365,13 @@ provider-registered callback at `http://localhost:53692/callback`.
 This adapter also handles Anthropic-compatible endpoints used by some Kimi,
 Fireworks, and Xiaomi routes. Compatibility varies by endpoint; check
 [provider parity](provider-parity.md).
+
+Server-tool invocation counts, such as `web_search_requests`, remain in
+`Usage.Raw.server_tool_use`; they are not token counts and do not contribute to
+`Usage.ToolUseInputTokens` or total tokens. Raw usage accumulates supplied fields
+across streaming updates, retaining earlier metadata when later updates omit it.
+Explicit zero or null values replace earlier raw values, and nested objects merge
+by supplied key. Previously emitted usage snapshots remain unchanged.
 
 ### Kimi and Kimi Coding
 
@@ -656,6 +663,18 @@ request metadata, additional model request fields, and response field paths.
 Request headers from `sigma.WithHeader` and `sigma.WithHeaders` are applied
 before SigV4 signing; `authorization`, `host`, and `x-amz-*` headers remain
 owned by the adapter.
+
+Manual Claude thinking reserves 1,024 tokens for output within the effective
+`MaxTokens` cap and clamps the thinking budget to the remaining space. If fewer
+than 1,024 thinking tokens fit, thinking is disabled. With no supplied cap,
+enabled manual thinking sends the model's output limit, falling back to 1,024.
+Interleaved thinking with tools in the final request may exceed the output cap;
+its thinking budget must still be at least 1,024. Adaptive thinking and non-Claude
+reasoning retain their existing controls.
+
+Replayed non-Claude reasoning omits signatures. Claude thinking without a valid
+nonblank signature is sent as ordinary text; signed and redacted blocks retain
+their existing replay behavior. These conversions do not alter stored histories.
 
 Bedrock usage retains the one-hour cache-write subset from `cacheDetails` in
 `Usage.LongCacheWriteInputTokens`, so long-retention writes use the existing

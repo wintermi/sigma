@@ -2405,7 +2405,7 @@ event: content_block_start
 data: {"type":"content_block_start","index":2,"content_block":{"type":"redacted_thinking","data":"redacted_payload"}}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"cache_creation":{"ephemeral_5m_input_tokens":4,"ephemeral_1h_input_tokens":2},"cache_read_input_tokens":3,"output_tokens":8,"server_tool_use":{"web_search":5}}}
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"cache_creation":{"ephemeral_5m_input_tokens":4,"ephemeral_1h_input_tokens":2},"cache_read_input_tokens":3,"output_tokens":8,"server_tool_use":{"web_search_requests":5}}}
 
 event: message_stop
 data: {"type":"message_stop"}
@@ -2470,7 +2470,7 @@ data: {"type":"message_stop"}
 	if got, want := final.Usage.CacheReadInputTokens, 3; got != want {
 		t.Fatalf("cache read tokens = %d, want %d", got, want)
 	}
-	if got, want := final.Usage.ToolUseInputTokens, 5; got != want {
+	if got, want := final.Usage.ToolUseInputTokens, 0; got != want {
 		t.Fatalf("tool use input tokens = %d, want %d", got, want)
 	}
 	if got, want := final.Usage.Provider, providerID; got != want {
@@ -2482,8 +2482,8 @@ data: {"type":"message_stop"}
 	if got, want := final.Usage.Raw["input_tokens"], float64(10); got != want {
 		t.Fatalf("raw input tokens = %v, want %v", got, want)
 	}
-	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.ToolUseInputTokens != 5 {
-		t.Fatalf("terminal usage = %#v, want tool use tokens", events[len(events)-1].Usage)
+	if events[len(events)-1].Usage == nil || events[len(events)-1].Usage.ToolUseInputTokens != 0 {
+		t.Fatalf("terminal usage = %#v, want no tool request counts in token fields", events[len(events)-1].Usage)
 	}
 }
 

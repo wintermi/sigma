@@ -270,7 +270,7 @@ func TestConverseReplaySanitizesInvalidUTF8AndRejectsUnsupportedBlocks(t *testin
 		t.Fatalf("invalid UTF-8 user text = %q, want placeholder %q", got, want)
 	}
 
-	assistantContent, err := converseAssistantContent([]sigma.ContentBlock{sigma.Text(invalidUTF8)})
+	assistantContent, err := converseAssistantContent(bedrockTestModel(sigma.ProviderAmazonBedrock), []sigma.ContentBlock{sigma.Text(invalidUTF8)})
 	if err != nil {
 		t.Fatalf("converseAssistantContent returned error: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestConverseReplaySanitizesInvalidUTF8AndRejectsUnsupportedBlocks(t *testin
 		{
 			name: "assistant",
 			convert: func(blocks []sigma.ContentBlock) error {
-				_, err := converseAssistantContent(blocks)
+				_, err := converseAssistantContent(bedrockTestModel(sigma.ProviderAmazonBedrock), blocks)
 				return err
 			},
 			want: "unsupported assistant content block",
@@ -600,6 +600,7 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			tt.model.MaxOutputTokens = 32768
 			payload, err := conversePayload(tt.model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}, tt.opts, tt.config)
 			if err != nil {
 				t.Fatalf("conversePayload returned error: %v", err)
@@ -1957,7 +1958,9 @@ func TestAWSContentBlocksReplayRedactedReasoningBeforeToolUse(t *testing.T) {
 	redacted := sigma.Thinking("", "")
 	redacted.Redacted = true
 	redacted.ProviderSignature = want
-	content, err := converseAssistantContent([]sigma.ContentBlock{
+	model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+	model.Name = "Claude Sonnet 4.5"
+	content, err := converseAssistantContent(model, []sigma.ContentBlock{
 		redacted,
 		sigma.ToolCallBlock("tool-1", "read", map[string]any{"path": "/tmp/a.txt"}),
 	})
@@ -1997,7 +2000,7 @@ func TestConverseAssistantContentDropsInvalidRedactedReasoning(t *testing.T) {
 			redacted := sigma.Thinking("", "")
 			redacted.Redacted = true
 			redacted.ProviderSignature = tt.signature
-			content, err := converseAssistantContent([]sigma.ContentBlock{redacted, sigma.Text("answer")})
+			content, err := converseAssistantContent(bedrockTestModel(sigma.ProviderAmazonBedrock), []sigma.ContentBlock{redacted, sigma.Text("answer")})
 			if err != nil {
 				t.Fatalf("converseAssistantContent returned error: %v", err)
 			}
