@@ -148,8 +148,25 @@ must supply nonempty arrays of numeric elements that convert to finite float32
 values. Missing or null vectors, null or nonnumeric elements, and float32
 overflow are malformed success responses. Zero-valued vectors remain valid.
 Failures retain HTTP status, request ID, model identity, and attempt metadata;
-`EmbedBatch` does not cache their vectors. Requested/model dimension checks and
-cache keys are unchanged, and previously cached values are not repaired.
+`EmbedBatch` does not cache their vectors.
+
+Every successful response must contain consistently sized, nonempty vectors.
+When the final request payload supplies a dimension, each vector must match it.
+Validation uses the payload of the HTTP attempt that supplies the response,
+after provider options, request metadata, and auth-derived configuration are
+applied. Controls must be positive integers: OpenAI `dimensions`, Gemini/Vertex
+`outputDimensionality`, Titan `dimensions` or `outputEmbeddingLength`, Nova
+`embeddingDimension`, and Cohere `output_dimension`. Malformed controls fail
+locally. If no dimension is sent, Sigma infers consistency from the response;
+it does not impose catalog defaults.
+
+Dimension failures in successful HTTP responses return typed provider errors
+with status, request ID, and attempt metadata, with no vectors, retries, batch
+splitting, or cache writes from that response. Shared batch checks also reject
+incompatible dimensions from custom providers, split batches, and cache hits
+before cache writes and before returning merged results. A dimension failure
+terminates the batch; valid entries written by earlier independent batches
+remain stored.
 
 OpenAI, Gemini, Vertex, and Bedrock adapters bound successful response bodies at
 256 MiB, allowing large batches that exceed 16 MiB. A body beyond this bound
@@ -203,7 +220,7 @@ Set `Cache` and a non-empty, non-secret `CacheNamespace` to reuse embeddings
 across separate `EmbedBatch` calls. A configured cache with a blank namespace
 returns `ErrInvalidOptions`. `ReuseDuplicateInputs` alone needs no namespace.
 
-Version 2 `EmbeddingCacheKey` values include `Version`, `Namespace`, and
+Version 3 `EmbeddingCacheKey` values include `Version`, `Namespace`, and
 `ConfigurationSHA256`, alongside provider, API, model, dimensions, input type,
 and the per-input SHA-256 hash. The configuration digest covers the effective
 model, request dimensions and input type, request provider metadata, effective
@@ -212,7 +229,9 @@ Map insertion order does not affect the digest. Raw inputs and fingerprint
 configuration are never included in keys or traces.
 
 Cache implementations must compare **every key field**. Old persisted entries
-are invalidated: Sigma does not read legacy keys. HTTP clients, callbacks, and
+are bypassed, including version 2 entries written before dimension validation.
+Sigma does not scan, rewrite, or delete old cache contents. Subsequent requests
+may regenerate embeddings and incur provider costs. HTTP clients, callbacks, and
 credential resolvers are not fingerprinted. Callers own namespace isolation for
 opaque endpoints, tenants, custom transports, and provider configuration that
 Sigma cannot inspect, including auth-derived configuration. Change the namespace

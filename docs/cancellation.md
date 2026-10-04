@@ -7,7 +7,15 @@ the turn.
 
 Before terminal acceptance, canceled text streams end with `StopReasonAborted`.
 `Collect` returns the final assistant message available at cancellation time
-plus an inspectable error:
+plus an inspectable error.
+
+For client-dispatched streams and direct built-in provider streams, synthesized
+aborted finals retain the requested provider and model even before the first
+event or when the incoming context is already canceled. The terminal event,
+`Final`, `Collect`, and `GenerationError.Final` agree on that identity. Initial
+pending snapshots remain empty; standalone `NewStream` calls have no inferred
+identity. Partial content and provider thinking level are retained, but usage
+is not reconstructed during cancellation.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())

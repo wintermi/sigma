@@ -94,7 +94,7 @@ func (p *Provider) API() sigma.API {
 // Stream sends req to a Chat Completions-compatible endpoint and emits sigma
 // events as SSE chunks arrive.
 func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
-	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, opts)
+	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, model, opts)
 	go func() {
 		defer cleanup()
 		p.run(ctx, writer, model, req, opts)

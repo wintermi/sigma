@@ -8,6 +8,13 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve signed empty Google text blocks and exact-provenance replay.
+- [x] Keep stream-wrapped credential and network failures correctly classified.
+- [x] Validate final-payload embedding dimensions and batch/cache consistency;
+  advance cache keys to version 3 without modifying older entries.
+- [x] Retain provider/model identity in cancellation-generated text finals.
+- [x] Replace the removed image preview ID in the comparison example.
+
 - [x] Replay Bedrock reasoning with model-appropriate signatures and text fallback
   for unsigned Claude thinking, without changing persisted histories.
 - [x] Fit manual Claude Bedrock thinking budgets within output caps, preserving

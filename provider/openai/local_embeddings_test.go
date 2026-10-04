@@ -122,7 +122,7 @@ func TestRegisterLocalEmbeddingsUsesMetadataForRunnableEndpoint(t *testing.T) {
 	_, err = client.Embed(
 		context.Background(),
 		model,
-		sigma.EmbeddingRequest{Inputs: []string{"hi"}, Dimensions: 512},
+		sigma.EmbeddingRequest{Inputs: []string{"hi"}, Dimensions: 2},
 		sigma.WithEmbeddingHeader("X-Model", "request"),
 	)
 	if err != nil {

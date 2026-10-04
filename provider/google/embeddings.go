@@ -68,12 +68,22 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
+	var expectedDimensions []int
 	resp, attempts, err := sigma.DoHTTPWithRetryAttempts(
 		ctx,
 		p.base.httpClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return p.newRequest(ctx, model, req, opts)
+			httpReq, err := p.newRequest(ctx, model, req, opts)
+			if err != nil {
+				return nil, err
+			}
+			expectedDimensions, err = embeddingwire.RequestDimensions(httpReq, "requests", "*", "outputDimensionality")
+			if err != nil {
+				_ = httpReq.Body.Close()
+				return nil, &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: err.Error(), Err: err}
+			}
+			return httpReq, nil
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return googleEmbeddingsResponseError(resp, model)
@@ -105,11 +115,18 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, googleEmbeddingsProviderError(resp, model, body, nil)
 	}
 	embeddings, err := decodeGoogleEmbeddingsResponse(body, model, len(req.Inputs))
+	if err == nil {
+		lengths := make([]int, len(embeddings.Vectors))
+		for i, vector := range embeddings.Vectors {
+			lengths[i] = len(vector.Vector)
+		}
+		err = embeddingwire.ValidateDimensions(lengths, expectedDimensions)
+	}
 	if err != nil {
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, googleEmbeddingsProviderError(resp, model, body, err)
 	}
 	embeddings.Attempts = embeddingAttempts
-	return embeddings, err
+	return embeddings, nil
 }
 
 func (p *EmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
@@ -157,7 +174,7 @@ func googleEmbeddingsPayload(model sigma.EmbeddingModel, req sigma.EmbeddingRequ
 	modelPath := modelPath(model.ID)
 	requests := make([]map[string]any, 0, len(req.Inputs))
 	taskType := googleEmbeddingTaskType(req, opts, model.Provider)
-	dimensions := googleEmbeddingOutputDimensionality(req, opts, model.Provider)
+	dimensions, hasDimensions := googleEmbeddingOutputDimensionality(req, opts, model.Provider)
 	for _, input := range req.Inputs {
 		item := map[string]any{
 			"model": modelPath,
@@ -168,7 +185,7 @@ func googleEmbeddingsPayload(model sigma.EmbeddingModel, req sigma.EmbeddingRequ
 		if taskType != "" {
 			item["taskType"] = taskType
 		}
-		if dimensions > 0 {
+		if hasDimensions {
 			item["outputDimensionality"] = dimensions
 		}
 		requests = append(requests, item)
@@ -198,15 +215,15 @@ func googleEmbeddingTaskType(req sigma.EmbeddingRequest, opts sigma.Options, pro
 	}
 }
 
-func googleEmbeddingOutputDimensionality(req sigma.EmbeddingRequest, opts sigma.Options, provider sigma.ProviderID) int {
+func googleEmbeddingOutputDimensionality(req sigma.EmbeddingRequest, opts sigma.Options, provider sigma.ProviderID) (any, bool) {
 	options := providerOptions(opts, provider)
-	if value, ok := intOption(options, googleEmbeddingOptionOutputDimensionality); ok {
-		return value
+	if value, ok := options[googleEmbeddingOptionOutputDimensionality]; ok {
+		return value, true
 	}
-	if value, ok := intOption(options, googleEmbeddingOptionOutputDimensionalityGo); ok {
-		return value
+	if value, ok := options[googleEmbeddingOptionOutputDimensionalityGo]; ok {
+		return value, true
 	}
-	return req.Dimensions
+	return req.Dimensions, req.Dimensions != 0
 }
 
 func (p *EmbeddingsProvider) endpoint(model sigma.EmbeddingModel, opts sigma.Options) (string, error) {

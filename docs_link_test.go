@@ -13,9 +13,27 @@ import (
 	"strings"
 	"testing"
 	"unicode"
+
+	"github.com/wintermi/sigma"
 )
 
 var markdownLinkPattern = regexp.MustCompile(`!?\[[^\]]+\]\(([^)]+)\)`)
+
+func TestComparisonImageExampleResolves(t *testing.T) {
+	t.Parallel()
+	data, err := os.ReadFile("docs/inspired-by-pi-ai.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(`sigma.GetImageModel\(sigma.ProviderOpenRouter, "([^"]+)"\)`)
+	match := pattern.FindSubmatch(data)
+	if len(match) != 2 {
+		t.Fatal("missing image discovery example")
+	}
+	if _, ok := sigma.GetImageModel(sigma.ProviderOpenRouter, sigma.ModelID(match[1])); !ok {
+		t.Fatalf("image example model %s is not registered", match[1])
+	}
+}
 
 func TestMarkdownInternalLinksResolve(t *testing.T) {
 	t.Parallel()

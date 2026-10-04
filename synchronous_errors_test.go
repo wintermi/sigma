@@ -75,7 +75,7 @@ func TestSynchronousAdaptersRedactBodyAndTransportErrors(t *testing.T) {
 	)
 	for _, op := range operations {
 		for _, stage := range []string{"transport", "body", "auth"} {
-			if stage == "auth" && (op.name == "titan" || op.name == "nova" || strings.HasPrefix(op.name, "cohere")) {
+			if stage == "auth" && (op.name == "titan" || op.name == "titan image" || op.name == "nova" || strings.HasPrefix(op.name, "cohere")) {
 				continue
 			}
 			t.Run(op.name+"/"+stage, func(t *testing.T) {

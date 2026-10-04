@@ -42,6 +42,7 @@ func embeddingWireCases() []embeddingWireCase {
 		{"gemini", sigma.EmbeddingModel{ID: "test", Provider: sigma.ProviderGoogle, API: sigma.EmbeddingAPIGoogleEmbeddings}, google.NewEmbeddingsProvider(), `{"embeddings":[{"values":%s}]}`},
 		{"vertex", sigma.EmbeddingModel{ID: "test", Provider: sigma.ProviderGoogleVertex, API: sigma.EmbeddingAPIGoogleVertexEmbeddings}, vertex, `{"predictions":[{"embeddings":{"values":%s}}]}`},
 		{"titan", sigma.EmbeddingModel{ID: "amazon.titan-embed-text-v2:0", Provider: sigma.ProviderAmazonBedrock, API: sigma.EmbeddingAPIBedrockEmbeddings}, bedrockProvider, `{"embedding":%s}`},
+		{"titan image", sigma.EmbeddingModel{ID: "amazon.titan-embed-image-v1", Provider: sigma.ProviderAmazonBedrock, API: sigma.EmbeddingAPIBedrockEmbeddings}, bedrockProvider, `{"embedding":%s}`},
 		{"nova", sigma.EmbeddingModel{ID: "amazon.nova-2-multimodal-embeddings-v1:0", Provider: sigma.ProviderAmazonBedrock, API: sigma.EmbeddingAPIBedrockEmbeddings}, bedrockProvider, `{"embeddings":[{"embedding":%s}]}`},
 		{"cohere flat", sigma.EmbeddingModel{ID: "cohere.embed-v4:0", Provider: sigma.ProviderAmazonBedrock, API: sigma.EmbeddingAPIBedrockEmbeddings}, bedrockProvider, `{"embeddings":[%s]}`},
 		{"cohere float", sigma.EmbeddingModel{ID: "cohere.embed-v4:0", Provider: sigma.ProviderAmazonBedrock, API: sigma.EmbeddingAPIBedrockEmbeddings}, bedrockProvider, `{"embeddings":{"float":[%s]}}`},
@@ -107,6 +108,12 @@ func TestEmbeddingAdaptersAcceptResponseAboveOldLimit(t *testing.T) {
 			opts := sigma.Options{AuthResolver: sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
 				return sigma.Credential{Type: sigma.CredentialTypeAPIKey, Value: "synthetic"}, nil
 			})}
+			if tt.name == "titan image" {
+				opts.ProviderOptions = map[sigma.ProviderID]map[string]any{tt.model.Provider: {"outputEmbeddingLength": 2}}
+			}
+			if tt.name == "nova" {
+				opts.ProviderOptions = map[sigma.ProviderID]map[string]any{tt.model.Provider: {"embeddingDimension": 2}}
+			}
 			opts.HTTPClient = &http.Client{Transport: ownershipTransport(func(req *http.Request) (*http.Response, error) {
 				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(io.MultiReader(strings.NewReader(padding), strings.NewReader(fmt.Sprintf(tt.shape, "[1,2]")))), Request: req}, nil
 			})}

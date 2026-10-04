@@ -58,7 +58,7 @@ func TestGoogleEmbeddingsSendsBatchPayloadAndMapsResponse(t *testing.T) {
 		model,
 		sigma.EmbeddingRequest{
 			Inputs:     []string{"alpha", "beta"},
-			Dimensions: 128,
+			Dimensions: 2,
 			InputType:  sigma.EmbeddingInputTypeDocument,
 		},
 		sigma.WithEmbeddingProviderOption(model.Provider, "task_type", "CLASSIFICATION"),
@@ -85,7 +85,7 @@ func TestGoogleEmbeddingsSendsBatchPayloadAndMapsResponse(t *testing.T) {
 	if gotTask, want := first["taskType"], "CLASSIFICATION"; gotTask != want {
 		t.Fatalf("taskType = %v, want %q", gotTask, want)
 	}
-	if gotDims, want := first["outputDimensionality"], float64(128); gotDims != want {
+	if gotDims, want := first["outputDimensionality"], float64(2); gotDims != want {
 		t.Fatalf("outputDimensionality = %v, want %v", gotDims, want)
 	}
 }

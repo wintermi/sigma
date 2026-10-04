@@ -151,7 +151,7 @@ func (p *VertexProvider) API() sigma.API {
 
 // Stream sends req to Vertex OpenAI-compatible Chat Completions and emits sigma events.
 func (p *VertexProvider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
-	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, opts)
+	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, model, opts)
 	go func() {
 		defer cleanup()
 		p.run(ctx, writer, model, req, opts)

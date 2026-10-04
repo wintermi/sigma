@@ -162,7 +162,8 @@ See [release notes](docs/release-notes-v0.8.0.md).
   streaming, cancellation, persistence, validation, and replay; typed token
   counters and costs are unchanged.
 - External embedding caches require a non-secret `CacheNamespace` and honor
-  version 2 keys including the configuration digest. Legacy entries are invalidated.
+  version 3 keys including the configuration digest. Older entries remain stored
+  but are bypassed; regenerating embeddings may incur provider costs.
 - Chat Completions and Google/Vertex text generation enforce a single alternative
   after effective payload overrides and hooks.
 - `mise run go:build` compiles all packages with CGO disabled, produces no binary
@@ -182,6 +183,17 @@ See [release notes](docs/release-notes-v0.8.0.md).
   retain their existing precedence.
 
 ### Fixed
+
+- Preserve signed empty Google text parts as separate blocks after thinking or
+  tool calls, retaining each signature for exact-provenance Gemini/Vertex replay.
+- Preserve authentication and transient network classifications through stream
+  error wrapping, restoring retry/fallback advice without automatic replay.
+- Validate embedding dimensions against the final request payload and across
+  batch/cache results. Malformed successes retain typed errors and attempt
+  metadata, with no returned vectors, retries, or cache writes from that response.
+- Retain provider/model identity in cancellation-generated text finals, including
+  cancellation before the first event and independent collector cancellation.
+- Correct the image comparison example to use a registered model ID.
 
 - Make Bedrock reasoning replay model-aware: omit non-Claude signatures and
   convert unsigned Claude thinking to text while preserving signed and redacted

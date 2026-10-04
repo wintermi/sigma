@@ -229,7 +229,7 @@ func TestOpenAICompatibleEmbeddingModelUsesLocalEndpointMetadata(t *testing.T) {
 	_, err := client.Embed(
 		context.Background(),
 		model,
-		sigma.EmbeddingRequest{Inputs: []string{"hi"}, Dimensions: 512},
+		sigma.EmbeddingRequest{Inputs: []string{"hi"}, Dimensions: 2},
 		sigma.WithEmbeddingHeader("X-Model", "request"),
 	)
 	if err != nil {
@@ -247,7 +247,7 @@ func TestOpenAICompatibleEmbeddingModelUsesLocalEndpointMetadata(t *testing.T) {
 		"model":           "local-embed",
 		"input":           []any{"hi"},
 		"encoding_format": "float",
-		"dimensions":      float64(512),
+		"dimensions":      float64(2),
 	})
 	if got, want := model.ProviderMetadata["family"], "local"; got != want {
 		t.Fatalf("provider metadata family = %q, want %q", got, want)

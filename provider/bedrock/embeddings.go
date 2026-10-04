@@ -104,12 +104,31 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider}, fmt.Errorf("bedrock embeddings: credentials: %w", err)
 	}
 
+	var expectedDimensions []int
+	dimensionPath := []string{"dimensions"}
+	switch {
+	case strings.Contains(modelID, "cohere"):
+		dimensionPath = []string{"output_dimension"}
+	case strings.Contains(modelID, "nova"):
+		dimensionPath = []string{"singleEmbeddingParams", "embeddingDimension"}
+	case strings.HasPrefix(modelID, "amazon.titan-embed-image"):
+		dimensionPath = []string{"embeddingConfig", "outputEmbeddingLength"}
+	}
 	resp, attempts, err := sigma.DoHTTPWithRetryAttempts(
 		ctx,
 		bedrockHTTPClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return bedrockEmbeddingRequest(ctx, effective, modelID, body, opts, credentials)
+			httpReq, err := bedrockEmbeddingRequest(ctx, effective, modelID, body, opts, credentials)
+			if err != nil {
+				return nil, err
+			}
+			expectedDimensions, err = embeddingwire.RequestDimensions(httpReq, dimensionPath...)
+			if err != nil {
+				_ = httpReq.Body.Close()
+				return nil, &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: err.Error(), Err: err}
+			}
+			return httpReq, nil
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return bedrockEmbeddingsResponseError(resp, model)
@@ -141,11 +160,18 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, bedrockEmbeddingsProviderError(resp, model, respBody, sigma.ErrProviderResponse)
 	}
 	embeddings, err := decodeBedrockEmbeddingResponse(modelID, model, req, respBody)
+	if err == nil {
+		lengths := make([]int, len(embeddings.Vectors))
+		for i, vector := range embeddings.Vectors {
+			lengths[i] = len(vector.Vector)
+		}
+		err = embeddingwire.ValidateDimensions(lengths, expectedDimensions)
+	}
 	if err != nil {
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, bedrockEmbeddingsProviderError(resp, model, respBody, err)
 	}
 	embeddings.Attempts = embeddingAttempts
-	return embeddings, err
+	return embeddings, nil
 }
 
 func bedrockEmbeddingPayload(modelID string, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (map[string]any, error) {
@@ -187,7 +213,7 @@ func addTitanV2EmbeddingOptions(payload map[string]any, req sigma.EmbeddingReque
 	if req.Dimensions > 0 {
 		payload["dimensions"] = req.Dimensions
 	}
-	if value, ok := intBedrockOption(options, bedrockEmbeddingOptionDimensions); ok {
+	if value, ok := options[bedrockEmbeddingOptionDimensions]; ok {
 		payload["dimensions"] = value
 	}
 	if value, ok := boolOption(options, bedrockEmbeddingOptionNormalize); ok {
@@ -204,10 +230,10 @@ func addTitanV2EmbeddingOptions(payload map[string]any, req sigma.EmbeddingReque
 
 func titanImageEmbeddingPayload(model sigma.EmbeddingModel, input string, opts sigma.Options) map[string]any {
 	options := providerOptions(opts, model.Provider)
-	length := 1024
-	if value, ok := intBedrockOption(options, bedrockEmbeddingOptionOutputEmbeddingLength); ok {
+	var length any = 1024
+	if value, ok := options[bedrockEmbeddingOptionOutputEmbeddingLength]; ok {
 		length = value
-	} else if value, ok := intBedrockOption(options, bedrockEmbeddingOptionOutputEmbeddingLengthSnake); ok {
+	} else if value, ok := options[bedrockEmbeddingOptionOutputEmbeddingLengthSnake]; ok {
 		length = value
 	}
 	return map[string]any{
@@ -226,10 +252,10 @@ func novaEmbeddingPayload(model sigma.EmbeddingModel, input string, opts sigma.O
 	} else if value, ok := stringOption(options, bedrockEmbeddingOptionEmbeddingPurposeSnake); ok {
 		purpose = value
 	}
-	dimension := 3072
-	if value, ok := intBedrockOption(options, bedrockEmbeddingOptionEmbeddingDimension); ok {
+	var dimension any = 3072
+	if value, ok := options[bedrockEmbeddingOptionEmbeddingDimension]; ok {
 		dimension = value
-	} else if value, ok := intBedrockOption(options, bedrockEmbeddingOptionEmbeddingDimensionSnake); ok {
+	} else if value, ok := options[bedrockEmbeddingOptionEmbeddingDimensionSnake]; ok {
 		dimension = value
 	}
 	truncation := "END"
@@ -507,22 +533,4 @@ func bedrockEmbeddingAttemptsFromHTTP(model sigma.EmbeddingModel, attempts []sig
 		})
 	}
 	return out
-}
-
-func intBedrockOption(options map[string]any, key string) (int, bool) {
-	switch value := options[key].(type) {
-	case int:
-		return value, true
-	case int32:
-		return int(value), true
-	case int64:
-		return int(value), true
-	case float64:
-		return int(value), true
-	case json.Number:
-		parsed, err := value.Int64()
-		return int(parsed), err == nil
-	default:
-		return 0, false
-	}
 }

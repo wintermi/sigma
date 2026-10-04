@@ -55,7 +55,7 @@ func TestEmbeddingCacheConfigurationAndNamespaceIsolation(t *testing.T) {
 		t.Fatal("map ordering changed fingerprint")
 	}
 	for key := range cache.values {
-		if key.Version != 2 || key.Namespace == "" || len(key.ConfigurationSHA256) != 64 {
+		if key.Version != 3 || key.Namespace == "" || len(key.ConfigurationSHA256) != 64 {
 			t.Fatalf("incomplete key: %#v", key)
 		}
 	}

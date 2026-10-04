@@ -247,7 +247,7 @@ func (source *ModelSource) CachedTextModels(ctx context.Context) ([]sigma.Model,
 
 // Stream sends a Radius messages request and emits Sigma events as SSE chunks arrive.
 func (provider *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
-	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, opts)
+	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, model, opts)
 	go func() {
 		defer cleanup()
 		provider.run(ctx, writer, model, req, opts)

@@ -10,11 +10,13 @@ import (
 	"sync"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/streamstate"
 )
 
 // NewTextStream creates a sigma stream whose request context is canceled when
 // the consumer closes the stream or the stream naturally finishes.
-func NewTextStream(ctx context.Context, opts sigma.Options) (context.Context, *sigma.Stream, sigma.StreamWriter, func()) {
+func NewTextStream(ctx context.Context, model sigma.Model, opts sigma.Options) (context.Context, *sigma.Stream, sigma.StreamWriter, func()) {
+	ctx = streamstate.WithTextIdentity(ctx, string(model.Provider), string(model.ID))
 	ctx, stopTimeout := sigma.ContextWithRequestTimeout(ctx, opts)
 	ctx, cancel := context.WithCancel(ctx)
 	stream, writer := sigma.NewStream(ctx)

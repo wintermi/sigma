@@ -78,6 +78,14 @@ if errors.As(err, &providerErr) {
 
 ## Stream Errors
 
+Generic stream wrappers preserve authentication classification for
+`ErrCredentialUnavailable` and transient classification for retryable network
+causes such as connection resets and unexpected EOF. `RoutePolicy.Fallback`
+therefore advises retrying the same model for transient failures; authentication
+failures retain fallback-or-abort advice. Classification adds no automatic replay.
+Typed provider errors, context overflow, cancellation, invalid options, and debug
+hook errors retain their existing precedence, error chains, and redaction.
+
 Stream terminal errors are wrapped in `*sigma.GenerationError`, which preserves
 the final assistant message:
 

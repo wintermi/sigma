@@ -7,6 +7,25 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Google streams preserve explicitly empty signed text after thinking or tool
+calls, so Gemini and Vertex replay signatures on their original blocks. Exact
+provenance rules and caller-owned histories are unchanged. Generic stream error
+wrappers retain credential failures as authentication errors and retryable
+network failures as transient errors, restoring routing advice without automatic
+request replay. Synthesized cancellation finals retain provider/model identity
+before any event, after partial output, and during independent collector
+cancellation. Initial pending snapshots and accepted terminals are unchanged.
+
+Embedding adapters validate consistent nonempty dimensions against the final
+payload sent by the responding HTTP attempt, including existing overrides.
+Malformed controls fail locally; malformed successes retain typed provider
+errors and attempt metadata with no vectors, retries, splitting, or cache writes
+from that response. Shared batch checks also cover custom providers, split
+responses, and cache-hit combinations. Cache keys advance to version 3: old
+entries remain stored but are bypassed, so subsequent requests may regenerate
+embeddings and incur provider costs. The image comparison example now uses a
+registered model ID. Catalog contents and live-validation claims are unchanged.
+
 Bedrock reasoning replay now omits signatures for non-Claude models and converts
 unsigned Claude thinking to ordinary text. Signed and redacted Claude blocks and
 persisted histories retain their existing behavior. Manual Claude thinking
@@ -658,9 +677,10 @@ one, including after overrides and payload hooks. Nonzero alternatives cannot
 alter the accumulated result. Radius premature EOF retains partial content and
 returns transient retry advice; post-body retries remain caller-owned.
 
-External embedding caches now require a non-secret `CacheNamespace`. Version 2
-keys add namespace and a deterministic configuration digest; implementations must
-honor every field, and old persisted entries are invalidated. Callers must change
+External embedding caches now require a non-secret `CacheNamespace`. Version 3
+keys retain namespace and a deterministic configuration digest; implementations
+must honor every field. Older entries, including version 2 entries, are bypassed
+without scanning, rewriting, or deleting them. Callers must change
 namespaces when opaque tenant, endpoint, custom transport, or provider identities
 change. Warm cache paths perform the same preparation and validation as cold
 paths and honor cancellation without authenticating. Batch option functions run

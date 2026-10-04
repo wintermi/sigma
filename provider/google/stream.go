@@ -43,7 +43,7 @@ type googleStreamContent struct {
 }
 
 type googlePart struct {
-	Text             string              `json:"text"`
+	Text             *string             `json:"text"`
 	Thought          bool                `json:"thought"`
 	ThoughtSignature string              `json:"thoughtSignature"`
 	FunctionCall     *googleFunctionCall `json:"functionCall"`
@@ -200,7 +200,7 @@ func (p *streamParser) handlePart(ctx context.Context, part googlePart) error {
 		return p.emitToolCall(ctx, part)
 	case part.Thought:
 		return p.emitThinking(ctx, part)
-	case part.Text != "":
+	case part.Text != nil:
 		return p.emitText(ctx, part)
 	case part.ThoughtSignature != "":
 		p.attachSignature(part.ThoughtSignature)
@@ -236,11 +236,14 @@ func (p *streamParser) emitText(ctx context.Context, part googlePart) error {
 		}
 		state.started = true
 	}
-	text := state.text.Append(part.Text)
+	if *part.Text == "" {
+		return nil
+	}
+	text := state.text.Append(*part.Text)
 	return p.writer.Emit(ctx, sigma.Event{
 		Kind:         sigma.EventKindTextDelta,
 		ContentIndex: intPtr(state.contentIndex),
-		DeltaText:    part.Text,
+		DeltaText:    *part.Text,
 		Text:         text,
 	})
 }
@@ -263,14 +266,14 @@ func (p *streamParser) emitThinking(ctx context.Context, part googlePart) error 
 		}
 		state.started = true
 	}
-	if part.Text == "" {
+	if part.Text == nil || *part.Text == "" {
 		return nil
 	}
-	thinking := state.thinking.Append(part.Text)
+	thinking := state.thinking.Append(*part.Text)
 	return p.writer.Emit(ctx, sigma.Event{
 		Kind:         sigma.EventKindThinkingDelta,
 		ContentIndex: intPtr(state.contentIndex),
-		DeltaText:    part.Text,
+		DeltaText:    *part.Text,
 		Thinking:     thinking,
 	})
 }

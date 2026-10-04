@@ -117,6 +117,12 @@ func classifySigmaError(err error, sigmaErr *Error) ErrorClass {
 	case ErrorProviderResponse:
 		return ErrorClassProvider
 	case ErrorStream:
+		if errors.Is(err, ErrCredentialUnavailable) {
+			return ErrorClassAuth
+		}
+		if RetryableNetworkError(err) {
+			return ErrorClassTransient
+		}
 		if messageIndicatesPrematureProviderStreamTermination(sigmaErr.Message) {
 			return ErrorClassTransient
 		}

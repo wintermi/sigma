@@ -356,7 +356,7 @@ const result = await generateImages(model, {
 Go:
 
 ```go
-imageModel, ok := sigma.GetImageModel(sigma.ProviderOpenRouter, "google/gemini-2.5-flash-image-preview")
+imageModel, ok := sigma.GetImageModel(sigma.ProviderOpenRouter, "google/gemini-2.5-flash-image")
 if !ok {
 	return fmt.Errorf("image model is not registered")
 }

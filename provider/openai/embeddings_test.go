@@ -43,7 +43,7 @@ func TestGenerateEmbeddingsSendsPayloadAndMapsResponse(t *testing.T) {
 	got, err := client.Embed(
 		context.Background(),
 		openAIEmbeddingModel(),
-		sigma.EmbeddingRequest{Inputs: []string{"alpha", "beta"}, Dimensions: 128, InputType: sigma.EmbeddingInputTypeDocument},
+		sigma.EmbeddingRequest{Inputs: []string{"alpha", "beta"}, Dimensions: 2, InputType: sigma.EmbeddingInputTypeDocument},
 		sigma.WithEmbeddingAPIKey("request-key"),
 		sigma.WithEmbeddingHeader("X-Custom", "custom"),
 		sigma.WithEmbeddingProviderOption(sigma.ProviderOpenAI, "organization", "org_123"),
@@ -88,7 +88,7 @@ func TestGenerateEmbeddingsSendsPayloadAndMapsResponse(t *testing.T) {
 	if !strings.Contains(body, `"encoding_format":"float"`) {
 		t.Fatalf("payload = %s, want float encoding format", request.Body)
 	}
-	if !strings.Contains(body, `"dimensions":128`) {
+	if !strings.Contains(body, `"dimensions":2`) {
 		t.Fatalf("payload = %s, want dimensions", request.Body)
 	}
 	if !strings.Contains(body, `"input":["alpha","beta"]`) {

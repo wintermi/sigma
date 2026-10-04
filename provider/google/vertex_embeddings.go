@@ -67,12 +67,22 @@ func (p *VertexEmbeddingsProvider) Embed(ctx context.Context, model sigma.Embedd
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
+	var expectedDimensions []int
 	resp, attempts, err := sigma.DoHTTPWithRetryAttempts(
 		ctx,
 		p.base.httpClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return p.newRequest(ctx, model, req, opts)
+			httpReq, err := p.newRequest(ctx, model, req, opts)
+			if err != nil {
+				return nil, err
+			}
+			expectedDimensions, err = embeddingwire.RequestDimensions(httpReq, "parameters", "outputDimensionality")
+			if err != nil {
+				_ = httpReq.Body.Close()
+				return nil, &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: err.Error(), Err: err}
+			}
+			return httpReq, nil
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return vertexEmbeddingsResponseError(resp, model)
@@ -104,11 +114,18 @@ func (p *VertexEmbeddingsProvider) Embed(ctx context.Context, model sigma.Embedd
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, vertexEmbeddingsProviderError(resp, model, body, nil)
 	}
 	embeddings, err := decodeVertexEmbeddingsResponse(body, model, len(req.Inputs))
+	if err == nil {
+		lengths := make([]int, len(embeddings.Vectors))
+		for i, vector := range embeddings.Vectors {
+			lengths[i] = len(vector.Vector)
+		}
+		err = embeddingwire.ValidateDimensions(lengths, expectedDimensions)
+	}
 	if err != nil {
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, vertexEmbeddingsProviderError(resp, model, body, err)
 	}
 	embeddings.Attempts = embeddingAttempts
-	return embeddings, err
+	return embeddings, nil
 }
 
 func (p *VertexEmbeddingsProvider) newRequest(ctx context.Context, model sigma.EmbeddingModel, req sigma.EmbeddingRequest, opts sigma.Options) (*http.Request, error) {
@@ -173,7 +190,7 @@ func vertexEmbeddingsPayload(model sigma.EmbeddingModel, req sigma.EmbeddingRequ
 
 	payload := map[string]any{"instances": instances}
 	parameters := make(map[string]any)
-	if dimensions := googleEmbeddingOutputDimensionality(req, opts, model.Provider); dimensions > 0 {
+	if dimensions, ok := googleEmbeddingOutputDimensionality(req, opts, model.Provider); ok {
 		parameters["outputDimensionality"] = dimensions
 	}
 	if value, ok := boolOption(options, vertexEmbeddingOptionAutoTruncate); ok {

@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/streamstate"
 )
 
 // ClientOption configures a Client.
@@ -169,6 +170,7 @@ func (c *Client) Stream(ctx context.Context, model Model, req Request, opts ...O
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx = streamstate.WithTextIdentity(ctx, string(model.Provider), string(model.ID))
 	if c == nil {
 		c = NewClient()
 	}

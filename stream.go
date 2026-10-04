@@ -62,6 +62,7 @@ type streamWriter struct {
 // NewStream constructs a stream and its provider-side writer.
 func NewStream(ctx context.Context) (*Stream, StreamWriter) {
 	partial := newPartialAccumulator()
+	partial.identity = streamstate.TextIdentityFromContext(ctx)
 	producer := streamstate.NewProducer[Event, AssistantMessage](ctx, streamEventBuffer, partial.cancelTerminal)
 	return &Stream{producer: producer}, &streamWriter{producer: producer, partial: partial}
 }
@@ -220,6 +221,7 @@ func Collect(ctx context.Context, stream *Stream) (AssistantMessage, error) {
 }
 
 type partialAccumulator struct {
+	identity              streamstate.TextIdentity
 	mu                    sync.Mutex
 	blocks                map[int]*partialBlock
 	providerThinkingLevel string
@@ -329,6 +331,8 @@ func (a *partialAccumulator) block(index int, kind ContentBlockType) *partialBlo
 func (a *partialAccumulator) cancelTerminal(err error) streamstate.Terminal[Event, AssistantMessage] {
 	terminalErr := terminalError(ErrorAborted, err, "stream aborted")
 	final := a.final()
+	final.Provider = ProviderID(a.identity.Provider)
+	final.Model = ModelID(a.identity.Model)
 	final.StopReason = StopReasonAborted
 	return streamstate.Terminal[Event, AssistantMessage]{
 		Event:    finalEvent(EventKindError, final, terminalErr.Error()),

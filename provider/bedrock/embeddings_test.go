@@ -53,7 +53,7 @@ func TestTitanV2EmbeddingsInvokeModelPayloadAndResponse(t *testing.T) {
 	got, err := client.Embed(
 		context.Background(),
 		model,
-		sigma.EmbeddingRequest{Inputs: []string{"alpha"}, Dimensions: 512},
+		sigma.EmbeddingRequest{Inputs: []string{"alpha"}, Dimensions: 2},
 		sigma.WithEmbeddingProviderOption(sigma.ProviderAmazonBedrock, "embeddingTypes", []string{"float"}),
 	)
 	if err != nil {
@@ -77,7 +77,7 @@ func TestTitanV2EmbeddingsInvokeModelPayloadAndResponse(t *testing.T) {
 	if gotText, want := payload["inputText"], "alpha"; gotText != want {
 		t.Fatalf("inputText = %v, want %q", gotText, want)
 	}
-	if gotDimensions, want := payload["dimensions"], float64(512); gotDimensions != want {
+	if gotDimensions, want := payload["dimensions"], float64(2); gotDimensions != want {
 		t.Fatalf("dimensions = %v, want %v", gotDimensions, want)
 	}
 	if gotNormalize, want := payload["normalize"], true; gotNormalize != want {
@@ -157,7 +157,7 @@ func TestNovaEmbeddingPayloadAndResponse(t *testing.T) {
 		context.Background(),
 		model,
 		sigma.EmbeddingRequest{Inputs: []string{"alpha"}},
-		sigma.WithEmbeddingProviderOption(sigma.ProviderAmazonBedrock, "embeddingDimension", 1024),
+		sigma.WithEmbeddingProviderOption(sigma.ProviderAmazonBedrock, "embeddingDimension", 2),
 	)
 	if err != nil {
 		t.Fatalf("Embed returned error: %v", err)
@@ -171,7 +171,7 @@ func TestNovaEmbeddingPayloadAndResponse(t *testing.T) {
 		t.Fatalf("schemaVersion = %v, want %q", got, want)
 	}
 	params := payload["singleEmbeddingParams"].(map[string]any)
-	if got, want := params["embeddingDimension"], float64(1024); got != want {
+	if got, want := params["embeddingDimension"], float64(2); got != want {
 		t.Fatalf("embeddingDimension = %v, want %v", got, want)
 	}
 	text := params["text"].(map[string]any)

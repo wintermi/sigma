@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/wintermi/sigma/internal/embeddingwire"
 )
 
 // EmbeddingOption configures a single embedding provider request.
@@ -62,7 +64,7 @@ type EmbeddingCacheKey struct {
 }
 
 // EmbeddingCache stores embeddings for reuse across EmbedBatch calls.
-// Implementations must honor every key field. Version 2 keys invalidate legacy entries.
+// Implementations must honor every key field. Version 3 keys bypass entries written before dimension validation.
 //
 // When EmbeddingBatchConfig.MaxParallelBatches is greater than zero, Get and Set
 // may be called concurrently from multiple goroutines, so implementations must be
@@ -169,8 +171,9 @@ type embeddingBatcher struct {
 	errMu    sync.Mutex
 	firstErr error
 
-	mu      sync.Mutex
-	summary EmbeddingBatchSummary
+	mu         sync.Mutex
+	summary    EmbeddingBatchSummary
+	dimensions int
 }
 
 // WithEmbeddingAPIKey configures a request-scoped embedding API key override.
@@ -334,6 +337,12 @@ func dispatchEmbedding(ctx context.Context, provider EmbeddingProvider, model Em
 
 	embeddings, err := provider.Embed(ctx, model, req, options)
 	embeddings = finalEmbeddings(model, embeddings)
+	if err == nil {
+		if dimensionErr := validateEmbeddingDimensions(embeddings.Vectors, 0); dimensionErr != nil {
+			embeddings.Vectors = nil
+			err = dimensionErr
+		}
+	}
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return embeddings, embeddingAbortedError(err)
@@ -406,6 +415,12 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 		}, err
 	}
 	vectors, err := batcher.embedJobs(jobs, 0)
+	if err == nil {
+		err = validateEmbeddingDimensions(vectors, 0)
+		if err != nil {
+			vectors = nil
+		}
+	}
 	vectors = orderEmbeddingsByIndex(vectors)
 	result := EmbeddingBatchResult{
 		Embeddings: Embeddings{
@@ -914,6 +929,9 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 		}
 		key := b.cacheKey(job.text)
 		if embedding, ok := b.cacheLoad(key); ok {
+			if err := b.checkDimensions([]Embedding{embedding}); err != nil {
+				return nil, nil, err
+			}
 			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
 			cached = append(cached, expandCachedEmbedding(job, embedding)...)
 			continue
@@ -928,6 +946,9 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 			return nil, nil, fmt.Errorf("embedding batch cache get: %w", err)
 		}
 		if ok {
+			if err := b.checkDimensions([]Embedding{embedding}); err != nil {
+				return nil, nil, err
+			}
 			b.cacheStoreLocal(key, cloneCachedEmbedding(embedding))
 			b.addCacheTrace(EmbeddingBatchPhaseCacheHit, job, key, true)
 			cached = append(cached, expandCachedEmbedding(job, embedding)...)
@@ -942,6 +963,9 @@ func (b *embeddingBatcher) resolveCachedJobs(jobs []embeddingBatchJob) ([]Embedd
 }
 
 func (b *embeddingBatcher) storeCache(jobs []embeddingBatchJob, embeddings []Embedding) error {
+	if err := b.checkDimensions(embeddings); err != nil {
+		return err
+	}
 	if b.cache == nil && b.config.Cache == nil {
 		return nil
 	}
@@ -992,7 +1016,7 @@ func (b *embeddingBatcher) cacheStoreLocal(key EmbeddingCacheKey, embedding Embe
 func (b *embeddingBatcher) cacheKey(text string) EmbeddingCacheKey {
 	sum := sha256.Sum256([]byte(text))
 	return EmbeddingCacheKey{
-		Version: 2, Namespace: b.config.CacheNamespace, ConfigurationSHA256: b.configurationSHA256,
+		Version: 3, Namespace: b.config.CacheNamespace, ConfigurationSHA256: b.configurationSHA256,
 		Provider:    b.model.Provider,
 		API:         b.model.API,
 		Model:       b.model.ID,
@@ -1151,6 +1175,31 @@ func indexesForJobs(jobs []embeddingBatchJob) []int {
 		out = append(out, job.indexes...)
 	}
 	return out
+}
+
+func validateEmbeddingDimensions(vectors []Embedding, expected int) error {
+	lengths := make([]int, len(vectors))
+	for i, vector := range vectors {
+		lengths[i] = len(vector.Vector)
+	}
+	if err := embeddingwire.ValidateDimensions(lengths, []int{expected}); err != nil {
+		return &Error{Code: ErrorProviderResponse, Message: err.Error(), Err: ErrEmbeddingVectorDimensionMismatch}
+	}
+	return nil
+}
+
+// checkDimensions keeps independently dispatched batches and cache hits compatible.
+// Earlier valid batches may already have written their cache entries.
+func (b *embeddingBatcher) checkDimensions(vectors []Embedding) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if err := validateEmbeddingDimensions(vectors, b.dimensions); err != nil {
+		return err
+	}
+	if len(vectors) > 0 {
+		b.dimensions = len(vectors[0].Vector)
+	}
+	return nil
 }
 
 func embeddingsForJobs(jobs []embeddingBatchJob, embeddings Embeddings) ([]Embedding, error) {

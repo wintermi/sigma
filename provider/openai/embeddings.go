@@ -63,12 +63,22 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 	ctx, cancel := sigma.ContextWithRequestTimeout(ctx, opts)
 	defer cancel()
 
+	var expectedDimensions []int
 	resp, attempts, err := sigma.DoHTTPWithRetryAttempts(
 		ctx,
 		p.base.httpClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return p.newRequest(ctx, model, req, opts)
+			httpReq, err := p.newRequest(ctx, model, req, opts)
+			if err != nil {
+				return nil, err
+			}
+			expectedDimensions, err = embeddingwire.RequestDimensions(httpReq, "dimensions")
+			if err != nil {
+				_ = httpReq.Body.Close()
+				return nil, &sigma.Error{Code: sigma.ErrorInvalidOptions, Provider: model.Provider, Model: model.ID, Message: err.Error(), Err: err}
+			}
+			return httpReq, nil
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return embeddingsResponseError(resp, model)
@@ -100,6 +110,13 @@ func (p *EmbeddingsProvider) Embed(ctx context.Context, model sigma.EmbeddingMod
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, embeddingsProviderError(resp, model, body, nil)
 	}
 	embeddings, err := decodeEmbeddingsResponse(body, model, len(req.Inputs))
+	if err == nil {
+		lengths := make([]int, len(embeddings.Vectors))
+		for i, vector := range embeddings.Vectors {
+			lengths[i] = len(vector.Vector)
+		}
+		err = embeddingwire.ValidateDimensions(lengths, expectedDimensions)
+	}
 	if err != nil {
 		return sigma.Embeddings{Model: model.ID, Provider: model.Provider, Attempts: embeddingAttempts}, embeddingsProviderError(resp, model, body, err)
 	}
