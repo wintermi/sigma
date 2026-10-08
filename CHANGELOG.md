@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Import models.dev long-context price tiers in the catalog refresh, filling
+  rates a tier omits from the base price. Refreshed rows previously kept stale
+  tiers beside updated base rates, and new rows had none. Rows whose source
+  lists no tiers keep their curated tiers.
 - Add the missing long-context price tiers to 20 text rows: direct Gemini 2.5
   Pro and 3.1 Pro, xAI Grok 4.3 and 4.5, OpenCode and OpenCode Go Grok, GPT,
   Gemini, MiniMax M3, and Qwen 3.7 Plus rows, OpenRouter GPT-5.6, Vercel AI

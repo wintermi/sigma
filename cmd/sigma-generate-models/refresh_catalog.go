@@ -41,10 +41,51 @@ type modelsDevLimit struct {
 }
 
 type modelsDevCost struct {
-	Input      float64 `json:"input"`
-	Output     float64 `json:"output"`
-	CacheRead  float64 `json:"cache_read"`
-	CacheWrite float64 `json:"cache_write"`
+	Input      float64             `json:"input"`
+	Output     float64             `json:"output"`
+	CacheRead  float64             `json:"cache_read"`
+	CacheWrite float64             `json:"cache_write"`
+	Tiers      []modelsDevCostTier `json:"tiers"`
+}
+
+type modelsDevCostTier struct {
+	Input      *float64 `json:"input"`
+	Output     *float64 `json:"output"`
+	CacheRead  *float64 `json:"cache_read"`
+	CacheWrite *float64 `json:"cache_write"`
+	Tier       struct {
+		Type string `json:"type"`
+		Size *int   `json:"size"`
+	} `json:"tier"`
+}
+
+// modelsDevCostTiers converts models.dev context tiers, filling rates a tier
+// omits from the base price. Without source tiers, existing tiers are kept.
+func modelsDevCostTiers(cost modelsDevCost, existing []modeldata.CostTier) []modeldata.CostTier {
+	var tiers []modeldata.CostTier
+	for _, tier := range cost.Tiers {
+		if tier.Tier.Type != "context" || tier.Tier.Size == nil {
+			continue
+		}
+		tiers = append(tiers, modeldata.CostTier{
+			InputTokensAbove:          *tier.Tier.Size,
+			InputPerMillion:           floatOrDefault(tier.Input, cost.Input),
+			OutputPerMillion:          floatOrDefault(tier.Output, cost.Output),
+			CacheReadInputPerMillion:  floatOrDefault(tier.CacheRead, cost.CacheRead),
+			CacheWriteInputPerMillion: floatOrDefault(tier.CacheWrite, cost.CacheWrite),
+		})
+	}
+	if len(tiers) == 0 {
+		return append([]modeldata.CostTier(nil), existing...)
+	}
+	return tiers
+}
+
+func floatOrDefault(value *float64, fallback float64) float64 {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 type modelsDevModalities struct {
@@ -204,7 +245,7 @@ func mergeModelsDevTextModel(base indexedTextModel, source modelsDevModel, id st
 		OutputPerMillion:          source.Cost.Output,
 		CacheReadInputPerMillion:  source.Cost.CacheRead,
 		CacheWriteInputPerMillion: source.Cost.CacheWrite,
-		Tiers:                     append([]modeldata.CostTier(nil), model.Cost.Tiers...),
+		Tiers:                     modelsDevCostTiers(source.Cost, model.Cost.Tiers),
 		Currency:                  firstNonEmptyString(model.Cost.Currency, "USD"),
 	}
 	model.ContextWindow = positiveOrDefault(source.Limit.Context, model.ContextWindow)

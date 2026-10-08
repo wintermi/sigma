@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The models.dev catalog refresh now imports context-length price tiers, filling
+rates a tier omits from the base price, so refreshed and newly added rows carry
+current long-context pricing. Rows whose source lists no tiers keep their
+curated tiers.
+
 Twenty text rows gain the long-context price tiers their providers charge,
 matching the reference catalog: direct Gemini 2.5 Pro and 3.1 Pro, xAI Grok 4.3
 and 4.5, OpenCode and OpenCode Go Grok, GPT, Gemini, MiniMax M3, and Qwen rows,

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Import models.dev long-context price tiers during catalog refresh.
 - [x] Add missing long-context price tiers to 20 text rows.
 - [x] Reject refreshed OAuth tokens that miss an explicit minimum validity.
 - [x] Ignore OAuth callback requests without the login's state for Anthropic, Codex, and Radius.
