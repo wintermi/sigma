@@ -657,7 +657,9 @@ shared profiles, ECS credentials, web identity, and IMDS, in that order.
 A configured ECS or web
 identity source reports fetch failures instead of falling through to IMDS.
 
-Shared profile lookup uses `AWS_PROFILE` (or `default`).
+Shared profile lookup uses `AWS_PROFILE` (or `default`). When `AWS_PROFILE` is
+set explicitly and that profile has static keys, it takes precedence over the
+static AWS environment credentials.
 `AWS_SHARED_CREDENTIALS_FILE` and `AWS_CONFIG_FILE` each replace their respective
 home-directory default; the effective credentials file is checked before the
 effective config file. Missing files or profiles continue to remaining sources,

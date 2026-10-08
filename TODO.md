@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Prefer an explicit Bedrock `AWS_PROFILE` over ambient AWS environment keys.
 - [x] - [x] Accept `GEMINI_API_KEY` for Gemini API credentials.
 - [x] - [x] Make tool validation error selection deterministic across runs.
 - [x] - [x] Preserve JSON number precision when coercing tool arguments to strings.

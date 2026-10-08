@@ -2672,6 +2672,41 @@ aws_session_token = profile-token
 	}
 }
 
+func TestDefaultCredentialDetectorPrefersExplicitProfileOverEnvironmentKeys(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	credentialsFile := filepath.Join(t.TempDir(), "credentials")
+	if err := os.WriteFile(credentialsFile, []byte(`[dev]
+aws_access_key_id = AKIA_PROFILE
+aws_secret_access_key = profile-secret
+`), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", credentialsFile)
+	t.Setenv("AWS_ACCESS_KEY_ID", "AKIA_ENV")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "env-secret")
+
+	for _, tt := range []struct {
+		profile string
+		want    string
+	}{
+		{profile: "dev", want: "AKIA_PROFILE"},
+		{profile: "", want: "AKIA_ENV"},
+		{profile: "missing", want: "AKIA_ENV"},
+	} {
+		t.Setenv("AWS_PROFILE", tt.profile)
+		info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+			Region:           "us-east-1",
+			CredentialSource: CredentialSourceDefaultChain,
+		})
+		if err != nil {
+			t.Fatalf("AWS_PROFILE=%q: Detect returned error: %v", tt.profile, err)
+		}
+		if info.AccessKeyID != tt.want {
+			t.Fatalf("AWS_PROFILE=%q: access key = %q, want %q", tt.profile, info.AccessKeyID, tt.want)
+		}
+	}
+}
+
 func TestDefaultCredentialDetectorUsesECSCredentials(t *testing.T) {
 	clearAWSCredentialEnv(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

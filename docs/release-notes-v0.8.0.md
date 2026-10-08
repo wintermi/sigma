@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock's default chain honours an explicit `AWS_PROFILE` ahead of static environment keys, as pi and the AWS SDK for JavaScript do. Previously, ambient access keys silently overrode the selected profile. Without `AWS_PROFILE`, or when the profile has no static keys, the environment keys are still used.
+
 The environment resolver recognizes `GEMINI_API_KEY` for `google` models, the variable pi and Google AI Studio document. `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY` still take precedence when set.
 
 Tool-call validation and coercion walk object properties in sorted name order. When more than one property fails, the reported error no longer varies between runs with Go map iteration order.

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock's default credential chain now prefers an explicitly set `AWS_PROFILE` with static keys over ambient `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.
 - `EnvironmentAuthResolver` now accepts `GEMINI_API_KEY` for the Gemini API provider, after `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY`.
 - Tool-call validation now checks object properties in sorted order, so when several properties are invalid or malformed, the same error is reported on every run.
 - Tool-argument coercion from a JSON number to a string now keeps the exact decimal digits instead of rounding through `float64`, so `9007199254740993` no longer becomes `9007199254740992`.
