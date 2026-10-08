@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Request image-only output from image-only OpenRouter models using catalog output modalities.
 - [x] Correct Azure and Bedrock GPT-5.6 pricing and Bedrock AU Opus 4.6 pricing.
 - [x] Replay Responses reasoning items only with encrypted content or stored provider IDs.
 - [x] Resolve missing Responses `output_index` values and reject reused tool-call slots.

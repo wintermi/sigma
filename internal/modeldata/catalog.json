@@ -22317,6 +22317,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "flux",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "black-forest-labs"
       }
     },
@@ -22350,6 +22353,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "flux",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "black-forest-labs"
       }
     },
@@ -22383,6 +22389,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "flux",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "black-forest-labs"
       }
     },
@@ -22416,6 +22425,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "flux",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "black-forest-labs"
       }
     },
@@ -22449,6 +22461,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "bytedance",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "bytedance-seed"
       }
     },
@@ -22482,6 +22497,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "bytedance",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "bytedance-seed"
       }
     },
@@ -22515,6 +22533,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "bytedance",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "bytedance-seed"
       }
     },
@@ -22551,6 +22572,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22587,6 +22612,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22623,6 +22652,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22657,6 +22690,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22691,6 +22728,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22725,6 +22766,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "gemini",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "google"
       }
     },
@@ -22758,6 +22803,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "krea",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "krea"
       }
     },
@@ -22791,6 +22839,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "krea",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "krea"
       }
     },
@@ -22824,6 +22875,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "krea",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "krea"
       }
     },
@@ -22857,6 +22911,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "muse",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "meta"
       }
     },
@@ -22890,6 +22947,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "mai-image",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "microsoft"
       }
     },
@@ -22923,6 +22983,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "mai-image",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "microsoft"
       }
     },
@@ -22958,6 +23021,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -22993,6 +23060,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -23028,6 +23099,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -23063,6 +23138,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -23098,6 +23176,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -23133,6 +23214,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "o-series",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "openai"
       }
     },
@@ -23166,6 +23250,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "openrouter",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "openrouter"
       }
     },
@@ -23199,6 +23287,10 @@
       ],
       "providerMetadata": {
         "modelFamily": "openrouter",
+        "outputModalities": [
+          "image",
+          "text"
+        ],
         "routedProvider": "openrouter"
       }
     },
@@ -23232,6 +23324,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "qwen",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "qwen"
       }
     },
@@ -23265,6 +23360,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "qwen",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "qwen"
       }
     },
@@ -23298,6 +23396,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23331,6 +23432,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23364,6 +23468,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23397,6 +23504,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23430,6 +23540,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23463,6 +23576,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23496,6 +23612,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23529,6 +23648,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23562,6 +23684,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23595,6 +23720,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23628,6 +23756,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23661,6 +23792,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23694,6 +23828,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23727,6 +23864,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23760,6 +23900,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "recraft",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "recraft"
       }
     },
@@ -23793,6 +23936,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "sourceful",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "sourceful"
       }
     },
@@ -23826,6 +23972,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "sourceful",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "sourceful"
       }
     },
@@ -23859,6 +24008,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "riverflow",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "sourceful"
       }
     },
@@ -23892,6 +24044,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "riverflow",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "sourceful"
       }
     },
@@ -23925,6 +24080,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "grok",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "xai"
       }
     },
@@ -23958,6 +24116,9 @@
       ],
       "providerMetadata": {
         "modelFamily": "grok",
+        "outputModalities": [
+          "image"
+        ],
         "routedProvider": "xai"
       }
     }

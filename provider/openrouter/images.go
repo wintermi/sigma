@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/wintermi/sigma"
@@ -220,7 +221,7 @@ func payload(model sigma.ImageModel, req sigma.ImageRequest, opts sigma.Options)
 			"role":    "user",
 			"content": content,
 		}},
-		"modalities": modalities(opts),
+		"modalities": modalities(model, opts),
 		"stream":     false,
 	}
 	if len(opts.Metadata) > 0 {
@@ -348,10 +349,16 @@ func aspectRatioForSize(size string) string {
 	}
 }
 
-func modalities(opts sigma.Options) []string {
+// modalities requests text output only from models that produce it; OpenRouter
+// rejects text output for image-only models. Models without catalog output
+// modalities keep the image-and-text default.
+func modalities(model sigma.ImageModel, opts sigma.Options) []string {
 	options := providerOptions(opts)
 	if values, ok := stringSliceOption(options, "modalities"); ok && len(values) > 0 {
 		return values
+	}
+	if outputs, ok := stringSliceOption(model.ProviderMetadata, "outputModalities"); ok && !slices.Contains(outputs, "text") {
+		return []string{"image"}
 	}
 	return []string{"image", "text"}
 }

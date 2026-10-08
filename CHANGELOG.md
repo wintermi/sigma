@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Request only image output from image-only OpenRouter models. Generated
+  OpenRouter image metadata now records `outputModalities`, and requests send
+  `modalities: ["image"]` unless the model also produces text, so FLUX,
+  Recraft, Seedream, and similar models are no longer rejected. Models without
+  that metadata and explicit `modalities` options are unchanged.
 - Correct GPT-5.6 Luna, Terra, and Sol pricing on Azure (now matching direct
   OpenAI) and Bedrock (the 1.1x in-region rate), giving the Bedrock rows their
   1.05M context window and 272K long-context tier. Bedrock
