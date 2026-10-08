@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Fail Anthropic streams with a typed provider error when a server-side model
+  fallback arrives after output, instead of merging the refusing and fallback
+  models' text into one successful turn. A fallback before any output is still
+  skipped.
 - Replay same-model Chat Completions reasoning in the field it streamed in
   (`reasoning_content`, `reasoning`, or `reasoning_text`), so thinking tool loops
   on Moonshot Kimi and similar models keep the reasoning those providers require.

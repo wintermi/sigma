@@ -291,6 +291,16 @@ func (p *streamParser) handleContentBlockStart(ctx context.Context, index int, c
 		return p.captureHostedResult(content)
 	}
 	switch content.Type {
+	case "fallback":
+		// A server-side fallback marks where one model's output gives way to
+		// another's. Before any output it is invisible; after output the two
+		// answers would be merged into one turn.
+		if len(p.text)+len(p.thinking)+len(p.toolCalls)+len(p.hostedResults) > 0 {
+			return sigma.NewProviderError(p.model.Provider, sigma.APIAnthropicMessages, p.model.ID, 0, "", 0,
+				[]byte(`{"error":{"type":"unsupported_fallback","message":"Anthropic performed an unsupported mid-output model fallback"}}`),
+				sigma.ErrProviderResponse)
+		}
+		return nil
 	case "text": //nolint:goconst
 		state := p.textState(index)
 		if len(content.Citations) > 0 {

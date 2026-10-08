@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic streams now fail with a typed provider error when a server-side model
+fallback starts after output has been produced; previously the refusing model's
+partial text and the fallback model's answer were returned as one successful
+turn. A fallback before any output remains transparent.
+
 Chat Completions thinking now records the field it streamed in, and same-model
 replay sends it back in that field when no reasoning details are preserved.
 Thinking tool loops on Moonshot Kimi and similar models previously omitted the
