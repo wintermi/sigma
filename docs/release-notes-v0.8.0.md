@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Thinking carried over from another model is now replayed to Gemini as plain text
+rather than inside `<thinking>` tags, so Gemini no longer copies the tags into
+its responses. Other adapters keep their existing delimiters.
+
 Google and Vertex responses that finish with `TOO_MANY_TOOL_CALLS` now end with
 a typed error, matching the other tool-call failure reasons, rather than a
 successful completion whose partial tool calls a caller might execute.

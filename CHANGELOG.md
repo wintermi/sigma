@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Replay thinking from other models to Google and Vertex Gemini as plain text
+  instead of wrapping it in `<thinking>` tags, which Gemini imitates in its
+  visible output.
 - Treat the Gemini `TOO_MANY_TOOL_CALLS` finish reason as a typed error, like
   `MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL`, instead of a successful
   `unknown` stop carrying partial tool calls.

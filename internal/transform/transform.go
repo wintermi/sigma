@@ -43,6 +43,9 @@ type Compatibility struct {
 type Policy struct {
 	ThinkingStartDelimiter string
 	ThinkingEndDelimiter   string
+	// PlainThinking replays converted thinking as bare text, for models that
+	// imitate delimiter tags in their visible output.
+	PlainThinking          bool
 	AllowUnsupportedImages bool
 }
 
@@ -327,6 +330,9 @@ func validateImageSupport(block sigma.ContentBlock, ctx messageContext) error {
 }
 
 func wrapThinking(text string, policy Policy) string {
+	if policy.PlainThinking {
+		return text
+	}
 	return policy.ThinkingStartDelimiter + "\n" + text + "\n" + policy.ThinkingEndDelimiter
 }
 

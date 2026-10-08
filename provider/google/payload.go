@@ -55,6 +55,8 @@ func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options)
 			RequireToolResultName:   true,
 			DropUnansweredToolCalls: true,
 		},
+		// Gemini imitates delimiter tags in its visible output.
+		Policy: transform.Policy{PlainThinking: true},
 	})
 	if err != nil {
 		return nil, err
