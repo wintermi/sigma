@@ -256,6 +256,9 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("User-Agent", "sigma/vertex-anthropic-messages")
+	if beta := anthropicBeta(model, opts, compat, len(req.Tools) > 0); beta != "" {
+		httpReq.Header.Set("Anthropic-Beta", beta)
+	}
 
 	p.addProviderHeaders(httpReq, model.Provider, opts, compat)
 	for key, value := range p.headers {

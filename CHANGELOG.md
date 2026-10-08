@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Vertex Anthropic requests now send the `anthropic-beta` header computed for direct Anthropic requests (provider `anthropic_beta`, tool streaming, interleaved thinking, refusal fallbacks, and mid-conversation effort betas).
 - Kimi Coding OAuth refresh now retries transport errors, 429, and 5xx responses up to three times with 1s, 2s, and 4s backoff. Rejected refresh tokens still fail immediately.
 - GitHub Copilot device login now adopts the `interval` that GitHub returns with `slow_down`, rather than always adding five seconds.
 - Bedrock now rejects a plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` that targets a host other than loopback or the ECS/EKS credential addresses, so the container authorization token is not sent in clear text to an arbitrary host.

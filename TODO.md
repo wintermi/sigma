@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Send `anthropic-beta` on Vertex Anthropic requests.
 - [x] - [x] Retry transient Kimi Coding OAuth refresh failures.
 - [x] - [x] Use the server-provided interval on Copilot device-flow `slow_down`.
 - [x] - [x] Restrict plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` hosts as the AWS SDKs do.

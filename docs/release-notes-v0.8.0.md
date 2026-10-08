@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Vertex Anthropic requests send the same `anthropic-beta` header as direct Anthropic requests. Previously, Vertex silently dropped configured betas such as `context-1m-2025-08-07` and the automatic tool-streaming and thinking betas.
+
 Kimi Coding token refresh retries transient failures (transport errors, rate limits, and server errors) up to three times with exponential backoff, as pi does. Other rejections, such as `invalid_grant` or 401, still fail immediately so the caller can prompt for a new login.
 
 GitHub Copilot device login follows the poll interval GitHub sends with a `slow_down` response, as pi does. The fixed five-second increment remains the fallback when the server omits an interval. This avoids polling early repeatedly and timing out.

@@ -89,6 +89,38 @@ func TestVertexAnthropicCompleteSendsAPIKeyRequest(t *testing.T) {
 	goldentest.AssertJSON(t, []byte(request.Body), "provider/anthropic/vertex/basic_payload.json")
 }
 
+func TestVertexAnthropicSendsBetaHeader(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	model := vertexAnthropicTestModel()
+	client := vertexAnthropicTestClient(
+		t,
+		model,
+		vertexAnthropicCredentialResolver(sigma.CredentialTypeAPIKey, "vertex-api-key"),
+		anthropic.WithVertexConfig(anthropic.VertexConfig{ProjectID: "test-project", Location: "us-central1"}),
+		anthropic.WithVertexBaseURL(server.URL+"/v1"),
+	)
+	if _, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+		sigma.WithMaxTokens(64),
+		sigma.WithProviderOption(model.Provider, "anthropic_beta", "context-1m-2025-08-07"),
+	); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	request := receiveRequest(t, requests)
+	assertHeader(t, request.Headers, "Anthropic-Beta", "context-1m-2025-08-07")
+}
+
 func TestVertexAnthropicEndpointSupportsPublisherGlobalAndOverride(t *testing.T) {
 	t.Parallel()
 
