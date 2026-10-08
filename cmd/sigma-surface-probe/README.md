@@ -401,7 +401,10 @@ Outcome meanings:
 | `upstream_availability` | The upstream route or model is currently unavailable. |
 | `inconclusive` | The failure does not contain enough evidence for a request-shape, capability, or availability conclusion. |
 | `fixed_by_repair_variant` | The original case failed, but a targeted variant worked. |
-| `no_working_attempt` | The original case and repair variants did not produce a working request. |
+| `no_working_attempt` | The request completed without the required output (an image probe with no image, partial image, or image tool output), or handoff model discovery failed. |
+
+A text case whose repair variants all fail keeps the classification of its
+original failure; it is not reported as `no_working_attempt`.
 
 When a failed case still passes the minimal-text availability check, the
 result keeps its original outcome and includes

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- The `sigma-surface-probe` README now describes when `no_working_attempt` is actually emitted (image probes without the required output and failed handoff model discovery) and notes that failed text repairs keep their original classification.
 - `sigma-surface-probe` image probes now retry HTTP 5xx and connection-reset failures, as the README describes, instead of only retrying responses without an image.
 - Embedding vector utilities now return `ErrEmbeddingVectorNonFinite` for vectors containing NaN or infinity, instead of producing NaN scores and unstable rankings.
 - `Client.Embed` now rejects provider responses whose vector count differs from the input count, rather than returning misaligned vectors.
