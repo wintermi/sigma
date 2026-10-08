@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+When sigma's own `WithTimeout` elapses during a text stream, the stream now ends
+with `StopReasonError` and a transient error that still matches
+`context.DeadlineExceeded`, so retry and route-fallback advice apply. Caller
+cancellation and caller-owned deadlines remain aborts.
+
 Cached Codex WebSocket connections are now retired after 55 minutes, before the
 backend's 60-minute connection limit, so long sessions open a fresh connection
 instead of failing on a connection the server is about to close.

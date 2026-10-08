@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Report an elapsed `WithTimeout` on text streams as a transient, retryable
+  `StopReasonError` that matches `context.DeadlineExceeded`, instead of a user
+  abort. Caller cancellation and caller deadlines still end as aborted.
 - Retire cached Codex WebSocket connections after 55 minutes instead of reusing
   them until the backend's 60-minute limit closes them mid-request.
 - Honor `CacheRetentionNone` for Codex session affinity: requests no longer send

@@ -148,7 +148,10 @@ continues accepting an explicit `[DONE]` without `finish_reason`.
 HTTP providers share sigma's retry policy:
 
 - no retries by default (`DefaultMaxRetries` is `0`)
-- optional request timeout with `sigma.WithTimeout`
+- optional request timeout with `sigma.WithTimeout`; when it elapses during a
+  text stream, the stream ends with `StopReasonError` and a transient, retryable
+  error that matches `context.DeadlineExceeded`, while caller cancellation and
+  caller deadlines still end as `StopReasonAborted`
 - retries only for transient network errors, HTTP `429`, and `5xx`
 - provider `Retry-After` is honored when it does not exceed
   `WithMaxRetryDelay`

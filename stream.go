@@ -62,6 +62,7 @@ type streamWriter struct {
 // NewStream constructs a stream and its provider-side writer.
 func NewStream(ctx context.Context) (*Stream, StreamWriter) {
 	partial := newPartialAccumulator()
+	partial.ctx = ctx
 	partial.identity = streamstate.TextIdentityFromContext(ctx)
 	producer := streamstate.NewProducer[Event, AssistantMessage](ctx, streamEventBuffer, partial.cancelTerminal)
 	return &Stream{producer: producer}, &streamWriter{producer: producer, partial: partial}
@@ -179,6 +180,10 @@ func (w *streamWriter) Error(ctx context.Context, err error, final AssistantMess
 		code = ErrorAborted
 	}
 	terminalErr := terminalError(code, err, "stream error")
+	if timeoutErr, ok := requestTimeoutTerminal(ctx); ok && final.StopReason == StopReasonAborted {
+		final.StopReason = StopReasonError
+		terminalErr = timeoutErr
+	}
 	event := finalEvent(EventKindError, final, terminalErr.Error())
 	generationErr := &GenerationError{Final: final, Err: terminalErr}
 	return mapStreamStateError(w.producer.Finish(ctx, streamstate.Terminal[Event, AssistantMessage]{
@@ -221,6 +226,7 @@ func Collect(ctx context.Context, stream *Stream) (AssistantMessage, error) {
 }
 
 type partialAccumulator struct {
+	ctx                   context.Context
 	identity              streamstate.TextIdentity
 	mu                    sync.Mutex
 	blocks                map[int]*partialBlock
@@ -334,6 +340,10 @@ func (a *partialAccumulator) cancelTerminal(err error) streamstate.Terminal[Even
 	final.Provider = ProviderID(a.identity.Provider)
 	final.Model = ModelID(a.identity.Model)
 	final.StopReason = StopReasonAborted
+	if timeoutErr, ok := requestTimeoutTerminal(a.ctx); ok {
+		final.StopReason = StopReasonError
+		terminalErr = timeoutErr
+	}
 	return streamstate.Terminal[Event, AssistantMessage]{
 		Event:    finalEvent(EventKindError, final, terminalErr.Error()),
 		Final:    final,

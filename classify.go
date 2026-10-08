@@ -120,6 +120,9 @@ func classifySigmaError(err error, sigmaErr *Error) ErrorClass {
 		if errors.Is(err, ErrCredentialUnavailable) {
 			return ErrorClassAuth
 		}
+		if errors.Is(err, errRequestTimeout) {
+			return ErrorClassTransient
+		}
 		if RetryableNetworkError(err) {
 			return ErrorClassTransient
 		}

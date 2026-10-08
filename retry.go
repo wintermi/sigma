@@ -57,7 +57,20 @@ func ContextWithRequestTimeout(ctx context.Context, opts Options) (context.Conte
 	if opts.Timeout == nil || *opts.Timeout == 0 {
 		return ctx, func() {}
 	}
-	return context.WithTimeout(ctx, *opts.Timeout)
+	return context.WithTimeoutCause(ctx, *opts.Timeout, errRequestTimeout)
+}
+
+// errRequestTimeout is the cause of a context ended by Options.Timeout, which
+// distinguishes sigma's own deadline from caller cancellation.
+var errRequestTimeout = errors.New("request timeout exceeded")
+
+// requestTimeoutTerminal reports whether ctx ended because Options.Timeout
+// elapsed, and if so returns the transient error a stream should end with.
+func requestTimeoutTerminal(ctx context.Context) (*Error, bool) {
+	if ctx == nil || !errors.Is(context.Cause(ctx), errRequestTimeout) {
+		return nil, false
+	}
+	return &Error{Code: ErrorStream, Message: errRequestTimeout.Error(), Err: errors.Join(errRequestTimeout, context.DeadlineExceeded)}, true
 }
 
 // DoHTTPWithRetry sends a request with sigma's shared HTTP retry policy.
