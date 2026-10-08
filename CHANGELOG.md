@@ -184,6 +184,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Complete and persist a started OAuth refresh when the caller cancels. Stored
+  credential refresh and the Codex, Anthropic, GitHub Copilot, Kimi, xAI, and
+  Radius token providers now run the refresh request and persistence callback
+  detached from caller cancellation with a 15-second timeout, so a rotated
+  refresh token is no longer discarded. Cancellation before or during the
+  ownership wait still returns promptly without refreshing.
 - Send OpenAI Codex requests to the ChatGPT Codex Responses endpoint. Base URLs
   ending in the backend root, `/codex`, or `/codex/responses` all resolve to
   `/codex/responses`, so generated Codex models no longer post to

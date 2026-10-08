@@ -305,7 +305,9 @@ func (p *anthropicOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model
 			Sources:  []string{"anthropic-refresh-token"},
 		}
 	}
-	refreshed, err := RefreshAnthropicToken(ctx, p.credentials.RefreshToken, AnthropicOAuthTokenProviderOptions{
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshAnthropicToken(refreshCtx, p.credentials.RefreshToken, AnthropicOAuthTokenProviderOptions{
 		HTTPClient: p.client,
 	})
 	if err != nil {
@@ -315,7 +317,7 @@ func (p *anthropicOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return errors.New("anthropic oauth: refresh callback failed")
 	}
 	return nil

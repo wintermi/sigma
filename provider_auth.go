@@ -249,7 +249,12 @@ func (r StoredCredentialAuthResolver) refreshStoredOAuth(
 		if !oauthvalidity.NeedsRefresh(now(), current.Expiry, refreshBefore, minimumValidity) {
 			return StoredCredential{}, false, nil
 		}
-		refreshed, err := oauth.Refresh(ctx, current)
+		if err := ctx.Err(); err != nil {
+			return StoredCredential{}, false, err
+		}
+		refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+		defer cancel()
+		refreshed, err := oauth.Refresh(refreshCtx, current)
 		if err != nil {
 			return StoredCredential{}, false, err
 		}

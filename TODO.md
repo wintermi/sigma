@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Persist started OAuth refreshes despite caller cancellation, bounded by a timeout.
 - [x] Route OpenAI Codex requests to the ChatGPT `/codex/responses` endpoint.
 
 - [x] Preserve signed empty Google text blocks and exact-provenance replay.

@@ -462,7 +462,9 @@ func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, m
 			Sources:  []string{"github-copilot-refresh-token"},
 		}
 	}
-	refreshed, err := RefreshGitHubCopilotToken(ctx, p.credentials.RefreshToken, GitHubCopilotOAuthTokenProviderOptions{
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshGitHubCopilotToken(refreshCtx, p.credentials.RefreshToken, GitHubCopilotOAuthTokenProviderOptions{
 		HTTPClient:       p.client,
 		EnterpriseDomain: p.credentials.EnterpriseDomain,
 	})
@@ -473,7 +475,7 @@ func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, m
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return fmt.Errorf("github copilot oauth: refresh callback failed")
 	}
 	return nil

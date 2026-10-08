@@ -251,7 +251,9 @@ func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma
 			Sources:  []string{"xai-refresh-token"},
 		}
 	}
-	refreshed, err := RefreshXAIToken(ctx, p.credentials.RefreshToken, XAIOAuthTokenProviderOptions{
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshXAIToken(refreshCtx, p.credentials.RefreshToken, XAIOAuthTokenProviderOptions{
 		Client:     p.client,
 		HTTPClient: p.httpClient,
 	})
@@ -262,7 +264,7 @@ func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return errors.New("xai oauth: refresh callback failed")
 	}
 	return nil

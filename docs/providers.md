@@ -110,9 +110,13 @@ operations for other providers remain independent.
 The Codex, Anthropic, GitHub Copilot, Kimi, xAI, and Radius in-memory token
 providers serialize credential inspection, refresh, replacement, and persistence
 callbacks. A context canceled before or during the ownership wait returns
-promptly without starting refresh work or changing credentials. Successful
-waiters reuse refreshed credentials under the existing validity rules; callback
-failure and credential-rotation semantics are unchanged.
+promptly without starting refresh work or changing credentials. Once a refresh
+starts, the refresh request and its persistence callback ignore caller
+cancellation and are bounded by a 15-second timeout, because the provider may
+already have rotated the refresh token; stored-credential refresh through
+`StoredCredentialAuthResolver` follows the same rule. Successful waiters reuse
+refreshed credentials under the existing validity rules; callback failure and
+credential-rotation semantics are unchanged.
 
 ### Request-scoped OAuth lifetime
 

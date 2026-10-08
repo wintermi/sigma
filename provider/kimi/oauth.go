@@ -235,7 +235,9 @@ func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, mode
 			Sources:  []string{"kimi-coding-refresh-token"},
 		}
 	}
-	refreshed, err := RefreshKimiCodingToken(ctx, p.credentials.RefreshToken, KimiCodingOAuthTokenProviderOptions{HTTPClient: p.client})
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshKimiCodingToken(refreshCtx, p.credentials.RefreshToken, KimiCodingOAuthTokenProviderOptions{HTTPClient: p.client})
 	if err != nil {
 		return err
 	}
@@ -243,7 +245,7 @@ func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, mode
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return errors.New("kimi coding oauth: refresh callback failed")
 	}
 	return nil

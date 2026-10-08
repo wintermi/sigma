@@ -66,7 +66,7 @@ func TestOAuthOwnershipCancellation(t *testing.T) {
 					body := fmt.Sprintf(`{"access_token":%q,"token":%q,"refresh_token":"rotated","expires_in":7200,"expires_at":%d}`, token, token, time.Now().Add(2*time.Hour).Unix())
 					return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 				})}
-				onRefresh := func() error {
+				onRefresh := func(context.Context) error {
 					callbacks.Add(1)
 					if failure == "callback" {
 						close(started)
@@ -161,20 +161,20 @@ func waitOwnership(t *testing.T, ch <-chan struct{}) {
 	}
 }
 
-func ownershipProvider(name string, client *http.Client, callback func() error) sigma.OAuthTokenProvider {
+func ownershipProvider(name string, client *http.Client, callback func(context.Context) error) sigma.OAuthTokenProvider {
 	expiry := time.Now().Add(-time.Hour)
 	switch name {
 	case "codex":
-		return openai.NewCodexOAuthTokenProvider(openai.CodexOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry, AccountID: "account"}, openai.CodexOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(context.Context, openai.CodexOAuthCredentials) error { return callback() }})
+		return openai.NewCodexOAuthTokenProvider(openai.CodexOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry, AccountID: "account"}, openai.CodexOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(ctx context.Context, _ openai.CodexOAuthCredentials) error { return callback(ctx) }})
 	case "anthropic":
-		return anthropic.NewAnthropicOAuthTokenProvider(anthropic.AnthropicOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, anthropic.AnthropicOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(context.Context, anthropic.AnthropicOAuthCredentials) error { return callback() }})
+		return anthropic.NewAnthropicOAuthTokenProvider(anthropic.AnthropicOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, anthropic.AnthropicOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(ctx context.Context, _ anthropic.AnthropicOAuthCredentials) error { return callback(ctx) }})
 	case "copilot":
-		return githubcopilot.NewGitHubCopilotOAuthTokenProvider(githubcopilot.GitHubCopilotOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, githubcopilot.GitHubCopilotOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(context.Context, githubcopilot.GitHubCopilotOAuthCredentials) error { return callback() }})
+		return githubcopilot.NewGitHubCopilotOAuthTokenProvider(githubcopilot.GitHubCopilotOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, githubcopilot.GitHubCopilotOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(ctx context.Context, _ githubcopilot.GitHubCopilotOAuthCredentials) error { return callback(ctx) }})
 	case "kimi":
-		return kimi.NewKimiCodingOAuthTokenProvider(kimi.KimiCodingOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, kimi.KimiCodingOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(context.Context, kimi.KimiCodingOAuthCredentials) error { return callback() }})
+		return kimi.NewKimiCodingOAuthTokenProvider(kimi.KimiCodingOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, kimi.KimiCodingOAuthTokenProviderOptions{HTTPClient: client, OnRefresh: func(ctx context.Context, _ kimi.KimiCodingOAuthCredentials) error { return callback(ctx) }})
 	case "xai":
-		return xai.NewXAIOAuthTokenProvider(xai.XAIOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, xai.XAIOAuthTokenProviderOptions{Client: xai.XAIOAuthClientConfig{ClientID: "test", Scopes: []string{"openid"}}, HTTPClient: client, OnRefresh: func(context.Context, xai.XAIOAuthCredentials) error { return callback() }})
+		return xai.NewXAIOAuthTokenProvider(xai.XAIOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, xai.XAIOAuthTokenProviderOptions{Client: xai.XAIOAuthClientConfig{ClientID: "test", Scopes: []string{"openid"}}, HTTPClient: client, OnRefresh: func(ctx context.Context, _ xai.XAIOAuthCredentials) error { return callback(ctx) }})
 	default:
-		return radius.NewRadiusOAuthTokenProvider(radius.RadiusOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, radius.RadiusOAuthTokenProviderOptions{Client: radius.RadiusOAuthClientConfig{ClientID: "test", Scopes: []string{"openid"}, GatewayURL: "https://example.invalid"}, HTTPClient: client, OnRefresh: func(context.Context, radius.RadiusOAuthCredentials) error { return callback() }})
+		return radius.NewRadiusOAuthTokenProvider(radius.RadiusOAuthCredentials{AccessToken: "old", RefreshToken: "refresh", Expiry: expiry}, radius.RadiusOAuthTokenProviderOptions{Client: radius.RadiusOAuthClientConfig{ClientID: "test", Scopes: []string{"openid"}, GatewayURL: "https://example.invalid"}, HTTPClient: client, OnRefresh: func(ctx context.Context, _ radius.RadiusOAuthCredentials) error { return callback(ctx) }})
 	}
 }

@@ -435,7 +435,9 @@ func (p *codexOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sig
 			Sources:  []string{"openai-codex-refresh-token"},
 		}
 	}
-	refreshed, err := RefreshOpenAICodexToken(ctx, p.credentials.RefreshToken, CodexOAuthTokenProviderOptions{
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshOpenAICodexToken(refreshCtx, p.credentials.RefreshToken, CodexOAuthTokenProviderOptions{
 		HTTPClient: p.client,
 	})
 	if err != nil {
@@ -445,7 +447,7 @@ func (p *codexOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sig
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return errors.New("openai codex oauth: refresh callback failed")
 	}
 	return nil

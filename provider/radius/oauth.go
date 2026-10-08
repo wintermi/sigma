@@ -304,7 +304,9 @@ func (p *RadiusOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model si
 	if p.credentials.RefreshToken == "" {
 		return &sigma.CredentialUnavailableError{Provider: model.Provider, Model: model.ID, Sources: []string{"radius-refresh-token"}}
 	}
-	refreshed, err := RefreshRadiusToken(ctx, p.credentials.RefreshToken, RadiusOAuthTokenProviderOptions{
+	refreshCtx, cancel := oauthvalidity.RefreshContext(ctx)
+	defer cancel()
+	refreshed, err := RefreshRadiusToken(refreshCtx, p.credentials.RefreshToken, RadiusOAuthTokenProviderOptions{
 		Client:     p.client,
 		HTTPClient: p.httpClient,
 	})
@@ -315,7 +317,7 @@ func (p *RadiusOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model si
 	if p.onRefresh == nil {
 		return nil
 	}
-	if err := p.onRefresh(ctx, refreshed); err != nil {
+	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
 		return errors.New("radius oauth: refresh callback failed")
 	}
 	return nil

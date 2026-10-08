@@ -6,6 +6,7 @@
 package oauthvalidity
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -39,5 +40,22 @@ func TestNeedsRefresh(t *testing.T) {
 				t.Fatalf("NeedsRefresh() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRefreshContextOutlivesCallerCancellationWithinTimeout(t *testing.T) {
+	t.Parallel()
+
+	caller, cancel := context.WithCancel(context.Background())
+	cancel()
+	ctx, release := RefreshContext(caller)
+	defer release()
+
+	if err := ctx.Err(); err != nil {
+		t.Fatalf("refresh context inherited caller cancellation: %v", err)
+	}
+	deadline, ok := ctx.Deadline()
+	if !ok || time.Until(deadline) > RefreshTimeout {
+		t.Fatalf("refresh deadline = %v (set %v), want within %v", deadline, ok, RefreshTimeout)
 	}
 }
