@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/fireworks"
 	"github.com/wintermi/sigma/provider/google"
@@ -610,6 +611,16 @@ func isGoogleVertexRoute(route routeSpec) bool {
 	return route.Name == routeGoogleVertex || route.Name == "google-vertex-anthropic"
 }
 
+// redactedProbeBody prepares a provider error body for probe output, removing
+// the request credential and recognized secret shapes.
+func redactedProbeBody(body []byte, apiKey string) string {
+	text := strings.TrimSpace(string(body))
+	if apiKey != "" {
+		text = strings.ReplaceAll(text, apiKey, "[redacted]")
+	}
+	return redact.Preview(text, 2048)
+}
+
 func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]string, error) {
 	baseURL := route.BaseURL
 	if route.ModelBaseURL != "" {
@@ -630,7 +641,7 @@ func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]stri
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("GET /models returned HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, fmt.Errorf("GET /models returned HTTP %d: %s", resp.StatusCode, redactedProbeBody(body, apiKey))
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -728,7 +739,7 @@ func fetchFireworksModelCapabilities(ctx context.Context, inferenceBaseURL strin
 	defer resp.Body.Close()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fireworksModelCapabilities{}, fmt.Errorf("GET Fireworks model metadata returned HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return fireworksModelCapabilities{}, fmt.Errorf("GET Fireworks model metadata returned HTTP %d: %s", resp.StatusCode, redactedProbeBody(body, apiKey))
 	}
 
 	var capabilities fireworksModelCapabilities

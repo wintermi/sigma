@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`sigma-surface-probe` now redacts the request credential and recognized secret
+shapes from provider error bodies it reports during model discovery and
+Fireworks capability lookups, matching the redaction applied elsewhere.
+
 `EmbedBatch` splits and averages an input larger than the batch byte limit only
 when `SplitOversized` is set. Without it, the call now fails with
 `ErrInvalidOptions` before any provider request instead of returning a lossy

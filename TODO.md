@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Redact credentials from surface-probe HTTP error bodies.
 - [x] Require `SplitOversized` before splitting inputs over the batch byte limit.
 - [x] Apply neutral dimensions and query purpose to Bedrock Nova, Titan image, and Cohere embeddings.
 - [x] Stop retrieval splitter fragment crawl and whitespace-only chunks.

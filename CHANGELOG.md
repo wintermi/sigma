@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Redact credentials from provider error bodies that `sigma-surface-probe`
+  reports for model discovery and Fireworks capability lookups. These raw bodies
+  previously reached stdout, stderr, and handoff output unredacted.
 - Return `ErrInvalidOptions` before dispatch when an `EmbedBatch` input exceeds
   the batch byte limit and `SplitOversized` is not set, instead of silently
   splitting it and returning an averaged synthetic vector.
