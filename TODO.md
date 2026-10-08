@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Correct MiniMax-M3, Mistral cached-input, and regional Bedrock Claude pricing.
 - [x] Import models.dev long-context price tiers during catalog refresh.
 - [x] Add missing long-context price tiers to 20 text rows.
 - [x] Reject refreshed OAuth tokens that miss an explicit minimum validity.

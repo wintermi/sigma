@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Catalog pricing corrections: direct MiniMax-M3 now charges its base rate below
+512K input tokens and accepts its full 1M context and 512K output; 27 Mistral
+rows price cached input at a tenth of the input rate rather than zero; and 28
+geographic and in-region Bedrock Claude profiles include AWS's 10% regional
+premium. All values match the reference catalog.
+
 The models.dev catalog refresh now imports context-length price tiers, filling
 rates a tier omits from the base price, so refreshed and newly added rows carry
 current long-context pricing. Rows whose source lists no tiers keep their

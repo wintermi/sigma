@@ -188,6 +188,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Correct catalog pricing from the reference catalog. Direct MiniMax-M3 (global
+  and CN) uses its 0.3/1.2 base rate with the 512K long-context tier and a 1M
+  context window and 512K output limit instead of always charging the
+  long-context rate. 27 Mistral rows gain their cached-input rate instead of
+  costing cached tokens at zero. 28 geographic and in-region Bedrock Claude
+  profiles carry AWS's 10% regional premium.
 - Import models.dev long-context price tiers in the catalog refresh, filling
   rates a tier omits from the base price. Refreshed rows previously kept stale
   tiers beside updated base rates, and new rows had none. Rows whose source
