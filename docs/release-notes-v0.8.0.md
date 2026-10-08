@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI and Google image generation now handle over-limit success bodies the same way OpenRouter does. A response over 64 MiB returns a `ProviderError` with the HTTP status and a size-limit diagnostic, instead of a silently truncated body that failed JSON decoding.
+
 Radius requests use the transcript context shape that current pi clients send. The system prompt and tool declarations are carried by a leading `{"role":"system","content":...,"toolsAdded":[...]}` message instead of the legacy `context.systemPrompt` and `context.tools` fields. Requests with neither a prompt nor tools send only the conversation messages.
 
 Radius forwards the provider-neutral `ToolChoice` option as `options.toolChoice`, as pi's pi-messages client does. Previously, `none` and other tool choices were silently ignored on this route.

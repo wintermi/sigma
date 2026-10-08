@@ -27,6 +27,8 @@ import (
 
 const maxImagesResponseBytes = 64 << 20
 
+var errImagesResponseTooLarge = errors.New("openai images: response exceeds 64 MiB limit")
+
 // ImagesProvider adapts OpenAI's image generation API to sigma.
 type ImagesProvider struct {
 	base *Provider
@@ -81,7 +83,7 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImagesResponseBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxImagesResponseBytes+1))
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return sigma.AssistantImages{StopReason: sigma.StopReasonAborted}, contextError(ctx, err)
@@ -90,6 +92,9 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return sigma.AssistantImages{StopReason: sigma.StopReasonError}, imagesProviderError(resp, model, body, nil)
+	}
+	if len(body) > maxImagesResponseBytes {
+		return sigma.AssistantImages{StopReason: sigma.StopReasonError}, imagesProviderError(resp, model, nil, errImagesResponseTooLarge)
 	}
 
 	return decodeImagesResponse(body, model, req)

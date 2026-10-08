@@ -40,6 +40,8 @@ const (
 	googleImageOptionSeed               = "seed"
 )
 
+var errGoogleImagesResponseTooLarge = errors.New("google images: response exceeds 64 MiB limit")
+
 // ImagesProvider adapts Google's Imagen and Gemini image generation APIs to sigma.
 type ImagesProvider struct {
 	base *Provider
@@ -94,7 +96,7 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxGoogleImagesResponseBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxGoogleImagesResponseBytes+1))
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonAborted}, contextError(ctx, err)
@@ -103,6 +105,9 @@ func (p *ImagesProvider) Generate(ctx context.Context, model sigma.ImageModel, r
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}, googleImagesProviderError(resp, model, body, nil)
+	}
+	if len(body) > maxGoogleImagesResponseBytes {
+		return sigma.AssistantImages{Model: model.ID, Provider: model.Provider, StopReason: sigma.StopReasonError}, googleImagesProviderError(resp, model, nil, errGoogleImagesResponseTooLarge)
 	}
 	if googleImagenModel(model.ID) {
 		return decodeGoogleImagenResponse(body, model)

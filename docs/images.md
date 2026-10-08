@@ -17,7 +17,7 @@ Sigma has two image paths:
 These paths are separate because chat/completion providers and image providers
 have different request and response shapes.
 
-OpenRouter accepts successful image response bodies up to 64 MiB, including
+OpenAI, Google, and OpenRouter accept successful image response bodies up to 64 MiB, including
 base64 and multiple-image responses. Larger bodies return a typed
 `ProviderError` retaining HTTP status and request ID with a size-limit diagnostic
 that excludes image data. Consumed bodies are not retried. HTTP error-body

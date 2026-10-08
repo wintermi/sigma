@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Return typed overflow errors for OpenAI and Google image responses over 64 MiB.
 - [x] - [x] Send Radius context as pi's transcript shape with a leading system message.
 - [x] - [x] Forward `ToolChoice` on Radius requests.
 - [x] - [x] Surface Bedrock `:message-type: error` frames as provider errors.
