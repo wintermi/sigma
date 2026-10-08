@@ -19,6 +19,7 @@
 //
 // HTTP provider adapters share the root retry policy: no retries by default,
 // optional per-request timeouts through context, retries for transient network
-// failures, 429, and 5xx responses, and conservative streaming retries only
+// failures and 408, 409, 429, and 5xx responses unless the provider's
+// x-should-retry header says otherwise, and conservative streaming retries only
 // before a response body is consumed.
 package sigma

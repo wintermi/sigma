@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -148,7 +149,7 @@ func DoHTTPWithRetryAttempts(
 			_ = resp.Body.Close()
 			return nil, httpAttempts, err
 		}
-		if !RetryableStatusCode(resp.StatusCode) || attempt+1 == attempts {
+		if !shouldRetryResponse(resp) || attempt+1 == attempts {
 			return resp, httpAttempts, nil
 		}
 
@@ -204,6 +205,19 @@ func RetryableNetworkError(err error) bool {
 	return false
 }
 
+// shouldRetryResponse applies a provider's x-should-retry directive before the
+// status-based policy, as the OpenAI and Anthropic SDKs do.
+func shouldRetryResponse(resp *http.Response) bool {
+	switch strings.ToLower(strings.TrimSpace(resp.Header.Get("x-should-retry"))) {
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return RetryableStatusCode(resp.StatusCode)
+	}
+}
+
 // RetryAfter returns the duration requested by a Retry-After header.
 func RetryAfter(header http.Header) time.Duration {
 	if header == nil {
@@ -244,6 +258,9 @@ func parseRetryAfterMillis(value string) time.Duration {
 }
 
 func parsePositiveDuration(value string, unit time.Duration) (time.Duration, bool) {
+	if whole, fraction, ok := strings.Cut(value, "."); ok {
+		return parseFractionalDuration(whole, fraction, unit)
+	}
 	for _, char := range value {
 		if char < '0' || char > '9' {
 			return 0, false
@@ -264,6 +281,28 @@ func parsePositiveDuration(value string, unit time.Duration) (time.Duration, boo
 		return maxDuration, true
 	}
 	return time.Duration(amount) * unit, true
+}
+
+// parseFractionalDuration parses a decimal delay such as "1.5", which
+// providers send in Retry-After and Retry-After-Ms headers.
+func parseFractionalDuration(whole string, fraction string, unit time.Duration) (time.Duration, bool) {
+	if whole == "" && fraction == "" {
+		return 0, false
+	}
+	for _, char := range whole + fraction {
+		if char < '0' || char > '9' {
+			return 0, false
+		}
+	}
+	amount, err := strconv.ParseFloat(whole+"."+fraction+"0", 64)
+	if err != nil {
+		return 0, false
+	}
+	delay := amount * float64(unit)
+	if delay >= float64(maxDuration) {
+		return maxDuration, true
+	}
+	return time.Duration(delay), true
 }
 
 func retryPolicyFromOptions(opts Options) retryPolicy {

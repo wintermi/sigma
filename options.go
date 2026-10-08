@@ -369,6 +369,7 @@ func WithMaxRetries(maxRetries int) Option {
 
 // WithMaxRetryDelay configures the maximum delay between HTTP provider retries,
 // including provider Retry-After values. The default is DefaultMaxRetryDelay.
+// Zero retries without backoff and fails any response that asks to wait.
 func WithMaxRetryDelay(maxRetryDelay time.Duration) Option {
 	return func(options *Options) {
 		options.MaxRetryDelay = durationPtr(maxRetryDelay)

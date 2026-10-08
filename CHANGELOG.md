@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Honor the `x-should-retry` response header in HTTP retries and accept
+  fractional `Retry-After` and `Retry-After-Ms` values, which previously fell
+  back to the base delay. Document that 408 and 409 are retried and that a zero
+  `WithMaxRetryDelay` retries without backoff.
 - Deliver the synthesized cancellation terminal event to consumers that range
   over `Events` even when an unread event still fills the buffer, so the channel
   no longer closes without a `done` or `error` event.

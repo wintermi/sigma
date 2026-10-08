@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+HTTP retries now follow a provider's `x-should-retry` header, retrying a
+response the provider marks retryable and stopping on one it marks final, and
+accept fractional `Retry-After` and `Retry-After-Ms` delays. The retry
+documentation now lists 408 and 409 and describes a zero `WithMaxRetryDelay`.
+
 Cancelled streams now always deliver their synthesized terminal event. When a
 slow consumer had left an earlier event unread, the terminal event was dropped
 and the channel closed without one; the stale event is now replaced instead.

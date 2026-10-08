@@ -152,9 +152,11 @@ HTTP providers share sigma's retry policy:
   text stream, the stream ends with `StopReasonError` and a transient, retryable
   error that matches `context.DeadlineExceeded`, while caller cancellation and
   caller deadlines still end as `StopReasonAborted`
-- retries only for transient network errors, HTTP `429`, and `5xx`
-- provider `Retry-After` is honored when it does not exceed
-  `WithMaxRetryDelay`
+- retries only for transient network errors and HTTP `408`, `409`, `429`, and
+  `5xx`, unless the provider's `x-should-retry` header says otherwise
+- provider `Retry-After` and `Retry-After-Ms`, including fractional values, are
+  honored when they do not exceed `WithMaxRetryDelay`; a zero maximum retries
+  without backoff and fails any response that asks to wait
 - streaming responses are not retried after the response body has been handed to
   the stream parser
 
