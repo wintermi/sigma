@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`DotProduct`, `CosineSimilarity`, `NormalizeEmbeddingVector`, `CombineEmbeddingVectors`, and `RankEmbeddingsByCosine` reject vectors containing NaN or infinity with the new `ErrEmbeddingVectorNonFinite` sentinel. Previously, such values passed through as NaN scores, which also left rankings in an arbitrary order.
+
 `Client.Embed` checks that a provider returns one vector per input on every call, not only inside the batcher. A short or long response now returns an `ErrorProviderResponse` error with no vectors, so callers cannot pair vectors with the wrong inputs.
 
 The `sigmatest` faux image and embedding providers fail when called with no queued script, matching the faux text provider. Tests that make more calls than they scripted now fail loudly instead of passing on an empty result.

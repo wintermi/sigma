@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Reject NaN and infinite values in embedding vector utilities.
 - [x] - [x] Reject embedding responses whose vector count differs from the input count.
 - [x] - [x] Fail faux image and embedding calls when no script is queued.
 - [x] - [x] Map portrait and landscape image sizes to Gemini 2:3 and 3:2 aspect ratios.

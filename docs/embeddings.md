@@ -285,8 +285,9 @@ for _, score := range scores {
 
 `DotProduct`, `CosineSimilarity`, `NormalizeEmbeddingVector`,
 `CombineEmbeddingVectors`, and `RankEmbeddingsByCosine` return typed sentinel
-errors for mismatched dimensions, zero-norm vectors, weight mismatches, and
-zero total weight. These helpers are deterministic numeric utilities; they do
+errors for mismatched dimensions, zero-norm vectors, weight mismatches, zero
+total weight, and vectors containing NaN or infinity
+(`ErrEmbeddingVectorNonFinite`). These helpers are deterministic numeric utilities; they do
 not perform vector-store persistence or provider token estimation.
 
 ## Retrieval Primitives

@@ -21,12 +21,17 @@ var (
 	ErrEmbeddingVectorWeightMismatch = errors.New("embedding vector weights do not match vectors")
 	// ErrEmbeddingVectorZeroWeight reports a weighted operation with no effective weight.
 	ErrEmbeddingVectorZeroWeight = errors.New("embedding vector weight sum is zero")
+	// ErrEmbeddingVectorNonFinite reports a vector containing NaN or infinity.
+	ErrEmbeddingVectorNonFinite = errors.New("embedding vector contains NaN or infinity")
 )
 
 // DotProduct calculates the dot product for two embedding vectors.
 func DotProduct(a, b []float32) (float64, error) {
 	if len(a) != len(b) {
 		return 0, ErrEmbeddingVectorDimensionMismatch
+	}
+	if !finiteEmbeddingVector(a) || !finiteEmbeddingVector(b) {
+		return 0, ErrEmbeddingVectorNonFinite
 	}
 	var score float64
 	for i := range a {
@@ -51,6 +56,9 @@ func CosineSimilarity(a, b []float32) (float64, error) {
 
 // NormalizeEmbeddingVector returns a unit-length copy of vector.
 func NormalizeEmbeddingVector(vector []float32) ([]float32, error) {
+	if !finiteEmbeddingVector(vector) {
+		return nil, ErrEmbeddingVectorNonFinite
+	}
 	norm := embeddingVectorNorm(vector)
 	if norm == 0 {
 		return nil, ErrEmbeddingVectorZeroNorm
@@ -76,6 +84,9 @@ func CombineEmbeddingVectors(vectors [][]float32, weights []int) ([]float32, err
 	for i, vector := range vectors {
 		if len(vector) != dimensions {
 			return nil, ErrEmbeddingVectorDimensionMismatch
+		}
+		if !finiteEmbeddingVector(vector) {
+			return nil, ErrEmbeddingVectorNonFinite
 		}
 		weight := weights[i]
 		totalWeight.Add(&totalWeight, weightValue.SetInt64(int64(weight)))
@@ -125,6 +136,15 @@ func RankEmbeddingsByCosine(query []float32, candidates []Embedding) ([]Embeddin
 		return scores[i].Score > scores[j].Score
 	})
 	return scores, nil
+}
+
+func finiteEmbeddingVector(vector []float32) bool {
+	for _, value := range vector {
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			return false
+		}
+	}
+	return true
 }
 
 func embeddingVectorNorm(vector []float32) float64 {
