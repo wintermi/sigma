@@ -805,6 +805,9 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config,
 			},
 		}
 	}
+	if fields, ok := bedrockOpenAIReasoningFields(model, opts.ReasoningLevel); ok {
+		return fields
+	}
 	if !isClaudeBedrockModel(model) {
 		if opts.ThinkingBudgetTokens == nil {
 			return nil
@@ -872,6 +875,38 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config,
 		fields["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
 	}
 	return fields
+}
+
+// bedrockOpenAIReasoningFields maps a thinking level for OpenAI models, which
+// take a reasoning effort rather than a thinking budget. gpt-oss uses a flat
+// reasoning_effort limited to low through high; other GPT models use a nested
+// reasoning.effort. Bedrock rejects minimal, so it is sent as low.
+func bedrockOpenAIReasoningFields(model sigma.Model, level sigma.ThinkingLevel) (map[string]any, bool) {
+	gpt, gptOSS := false, false
+	for _, candidate := range modelMatchCandidates(model) {
+		gpt = gpt || strings.Contains(candidate, "gpt-")
+		gptOSS = gptOSS || strings.Contains(candidate, "gpt-oss")
+	}
+	if !gpt {
+		return nil, false
+	}
+	if level == "" || level == sigma.ThinkingLevelOff {
+		return nil, true
+	}
+	effort := string(level)
+	if level == sigma.ThinkingLevelMinimal {
+		effort = "low"
+	}
+	if gptOSS {
+		if level == sigma.ThinkingLevelXHigh || level == sigma.ThinkingLevel("max") {
+			effort = "high"
+		}
+		return map[string]any{"reasoning_effort": effort}, true
+	}
+	if mapped := model.ThinkingLevelMap[level]; mapped != "" {
+		effort = mapped
+	}
+	return map[string]any{"reasoning": map[string]any{"effort": effort}}, true
 }
 
 func bedrockThinkingDisplay(model sigma.Model, opts sigma.Options, config Config) string {

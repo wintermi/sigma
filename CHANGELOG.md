@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send reasoning effort to OpenAI models on Bedrock Converse: gpt-oss receives
+  `reasoning_effort` clamped to low through high, other GPT models nested
+  `reasoning.effort`, with `minimal` sent as low. Reasoning levels were
+  previously dropped, and a thinking budget sent an Anthropic `thinking` block
+  that GPT models do not accept.
 - Send Bedrock Claude adaptive thinking with `thinking.block_binding`
   (`drop_block`) and the `thinking-binding-controls-2026-08-01` beta for Opus 4.7
   and later, Sonnet 5, Haiku 5, and Fable 5 outside GovCloud, so replaying signed
