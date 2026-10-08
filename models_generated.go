@@ -6380,8 +6380,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2.5,
 		OutputCostPerMillion:         15,
 		CacheReadInputCostPerMillion: 0.25,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          5,
+				OutputCostPerMillion:         22.5,
+				CacheReadInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"COPILOT_GITHUB_TOKEN"},
 			"baseURL":             "https://api.individual.githubcopilot.com",
@@ -6461,8 +6469,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"COPILOT_GITHUB_TOKEN"},
 			"baseURL":             "https://api.individual.githubcopilot.com",
@@ -6951,8 +6967,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          1.25,
 		OutputCostPerMillion:         10,
 		CacheReadInputCostPerMillion: 0.125,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          2.5,
+				OutputCostPerMillion:         15,
+				CacheReadInputCostPerMillion: 0.25,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GOOGLE_API_KEY", "GOOGLE_CLOUD_API_KEY"},
 			"baseURL":             "https://generativelanguage.googleapis.com/v1beta",
@@ -7024,8 +7048,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         12,
 		CacheReadInputCostPerMillion: 0.2,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         18,
+				CacheReadInputCostPerMillion: 0.4,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GOOGLE_API_KEY", "GOOGLE_CLOUD_API_KEY"},
 			"baseURL":             "https://generativelanguage.googleapis.com/v1beta",
@@ -7051,8 +7083,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         12,
 		CacheReadInputCostPerMillion: 0.2,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         18,
+				CacheReadInputCostPerMillion: 0.4,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GOOGLE_API_KEY", "GOOGLE_CLOUD_API_KEY"},
 			"baseURL":             "https://generativelanguage.googleapis.com/v1beta",
@@ -12012,8 +12052,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         12,
 		CacheReadInputCostPerMillion: 0.2,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         18,
+				CacheReadInputCostPerMillion: 0.4,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
 			"baseURL":             "https://opencode.ai/zen/v1",
@@ -12829,8 +12877,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SupportsGrammarTools:  true,
 			SessionAffinityFormat: OpenAIResponsesSessionAffinityFormat("openai-nosession"),
@@ -13167,8 +13223,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         6,
 		CacheReadInputCostPerMillion: 0.3,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         12,
+				CacheReadInputCostPerMillion: 0.6,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SessionAffinityFormat: OpenAIResponsesSessionAffinityFormat("openai-nosession"),
 		},
@@ -13200,8 +13264,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         6,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         12,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SessionAffinityFormat: OpenAIResponsesSessionAffinityFormat("openai-nosession"),
 		},
@@ -14152,8 +14224,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          1.2,
 		CacheReadInputCostPerMillion:  0.02,
 		CacheWriteInputCostPerMillion: 0.25,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           0.4,
+				OutputCostPerMillion:          1.8,
+				CacheReadInputCostPerMillion:  0.04,
+				CacheWriteInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SessionAffinityFormat: OpenAIResponsesSessionAffinityFormat("openai-nosession"),
 		},
@@ -14185,8 +14266,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         6,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         12,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SessionAffinityFormat: OpenAIResponsesSessionAffinityFormat("openai-nosession"),
 		},
@@ -14616,8 +14705,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          0.3,
 		OutputCostPerMillion:         1.2,
 		CacheReadInputCostPerMillion: 0.06,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             512000,
+				InputCostPerMillion:          0.6,
+				OutputCostPerMillion:         2.4,
+				CacheReadInputCostPerMillion: 0.12,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
 			"baseURL":             "https://opencode.ai/zen/go/v1",
@@ -14786,8 +14883,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          1.6,
 		CacheReadInputCostPerMillion:  0.04,
 		CacheWriteInputCostPerMillion: 0.5,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              256000,
+				InputCostPerMillion:           1.2,
+				OutputCostPerMillion:          4.8,
+				CacheReadInputCostPerMillion:  0.12,
+				CacheWriteInputCostPerMillion: 1.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:         OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole: OpenAICompatSupport("unsupported"),
@@ -15066,8 +15172,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          1.2,
 		CacheReadInputCostPerMillion:  0.02,
 		CacheWriteInputCostPerMillion: 0.25,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           0.4,
+				OutputCostPerMillion:          1.8,
+				CacheReadInputCostPerMillion:  0.04,
+				CacheWriteInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning"),
 		},
@@ -15102,8 +15217,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          10,
 		CacheReadInputCostPerMillion:  0.2,
 		CacheWriteInputCostPerMillion: 2.5,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           4,
+				OutputCostPerMillion:          15,
+				CacheReadInputCostPerMillion:  0.4,
+				CacheWriteInputCostPerMillion: 5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning"),
 		},
@@ -15138,8 +15262,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          12,
 		CacheReadInputCostPerMillion:  0.2,
 		CacheWriteInputCostPerMillion: 2.5,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           4,
+				OutputCostPerMillion:          18,
+				CacheReadInputCostPerMillion:  0.4,
+				CacheWriteInputCostPerMillion: 5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning"),
 		},
@@ -15887,8 +16020,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2.5,
 		OutputCostPerMillion:         15,
 		CacheReadInputCostPerMillion: 0.25,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             271999,
+				InputCostPerMillion:          5,
+				OutputCostPerMillion:         22.5,
+				CacheReadInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{defaultVercelAIGatewayKeyEnv},
 			"baseURL":             "https://ai-gateway.vercel.sh/v1",
@@ -15913,8 +16054,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             271999,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{defaultVercelAIGatewayKeyEnv},
 			"baseURL":             "https://ai-gateway.vercel.sh/v1",
@@ -15959,8 +16108,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          1.25,
 		OutputCostPerMillion:         2.5,
 		CacheReadInputCostPerMillion: 0.2,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          2.5,
+				OutputCostPerMillion:         5,
+				CacheReadInputCostPerMillion: 0.4,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsReasoningEffort: OpenAICompatSupport("unsupported"),
 			SupportsStreamingUsage:  OpenAICompatSupport("supported"),
@@ -15989,8 +16146,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2,
 		OutputCostPerMillion:         6,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             200000,
+				InputCostPerMillion:          4,
+				OutputCostPerMillion:         12,
+				CacheReadInputCostPerMillion: 0.6,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
 			SupportsLongCacheRetention: OpenAICompatSupport("unsupported"),
 		},

@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Twenty text rows gain the long-context price tiers their providers charge,
+matching the reference catalog: direct Gemini 2.5 Pro and 3.1 Pro, xAI Grok 4.3
+and 4.5, OpenCode and OpenCode Go Grok, GPT, Gemini, MiniMax M3, and Qwen rows,
+OpenRouter GPT-5.6, Vercel AI Gateway and GitHub Copilot GPT-5.4 and 5.5. Cost
+estimates for prompts above each threshold previously used the base rate.
+
 An explicit OAuth minimum validity is now a requirement on the refreshed token.
 When a provider's tokens are shorter-lived than the requested minimum, the
 rotation is persisted and the request fails with an error wrapping

@@ -188,6 +188,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Add the missing long-context price tiers to 20 text rows: direct Gemini 2.5
+  Pro and 3.1 Pro, xAI Grok 4.3 and 4.5, OpenCode and OpenCode Go Grok, GPT,
+  Gemini, MiniMax M3, and Qwen 3.7 Plus rows, OpenRouter GPT-5.6, Vercel AI
+  Gateway GPT-5.4 and 5.5, and GitHub Copilot GPT-5.4 and 5.5. Long prompts on
+  these routes were costed at the base rate, about half the real price.
 - Fail a request with an error wrapping `ErrCredentialUnavailable` when a
   refreshed OAuth token still expires within an explicit
   `WithOAuthMinimumValidity`, for stored credentials and the built-in token

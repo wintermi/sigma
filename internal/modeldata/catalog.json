@@ -9049,7 +9049,15 @@
         "inputPerMillion": 2.5,
         "outputPerMillion": 15,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.25
+        "cacheReadInputPerMillion": 0.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22.5,
+            "cacheReadInputPerMillion": 0.5
+          }
+        ]
       },
       "contextWindow": 400000,
       "maxOutputTokens": 128000,
@@ -9172,7 +9180,15 @@
         "inputPerMillion": 5,
         "outputPerMillion": 30,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.5
+        "cacheReadInputPerMillion": 0.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 400000,
       "maxOutputTokens": 128000,
@@ -10646,7 +10662,15 @@
         "inputPerMillion": 1.25,
         "outputPerMillion": 10,
         "cacheReadInputPerMillion": 0.125,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.25
+          }
+        ]
       },
       "contextWindow": 1048576,
       "maxOutputTokens": 65536,
@@ -10742,7 +10766,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ]
       },
       "contextWindow": 1048576,
       "maxOutputTokens": 65536,
@@ -10781,7 +10813,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ]
       },
       "contextWindow": 1048576,
       "maxOutputTokens": 65536,
@@ -15936,7 +15976,15 @@
         "inputPerMillion": 0.3,
         "outputPerMillion": 1.2,
         "cacheReadInputPerMillion": 0.06,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 512000,
+            "inputPerMillion": 0.6,
+            "outputPerMillion": 2.4,
+            "cacheReadInputPerMillion": 0.12
+          }
+        ]
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 131072,
@@ -16067,7 +16115,16 @@
         "outputPerMillion": 1.6,
         "cacheReadInputPerMillion": 0.04,
         "cacheWriteInputPerMillion": 0.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 256000,
+            "inputPerMillion": 1.2,
+            "outputPerMillion": 4.8,
+            "cacheReadInputPerMillion": 0.12,
+            "cacheWriteInputPerMillion": 1.5
+          }
+        ]
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 65536,
@@ -16248,7 +16305,16 @@
         "outputPerMillion": 1.2,
         "cacheReadInputPerMillion": 0.02,
         "cacheWriteInputPerMillion": 0.25,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.4,
+            "outputPerMillion": 1.8,
+            "cacheReadInputPerMillion": 0.04,
+            "cacheWriteInputPerMillion": 0.5
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -16292,7 +16358,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 6,
         "cacheReadInputPerMillion": 0.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 12,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 500000,
       "maxOutputTokens": 500000,
@@ -17245,7 +17319,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ]
       },
       "contextWindow": 1048576,
       "maxOutputTokens": 65536,
@@ -18132,7 +18214,15 @@
         "inputPerMillion": 5,
         "outputPerMillion": 30,
         "cacheReadInputPerMillion": 0.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -18211,7 +18301,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 6,
         "cacheReadInputPerMillion": 0.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 12,
+            "cacheReadInputPerMillion": 0.6
+          }
+        ]
       },
       "contextWindow": 500000,
       "maxOutputTokens": 500000,
@@ -18788,7 +18886,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 6,
         "cacheReadInputPerMillion": 0.3,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 12,
+            "cacheReadInputPerMillion": 0.6
+          }
+        ]
       },
       "contextWindow": 500000,
       "maxOutputTokens": 500000,
@@ -19553,7 +19659,15 @@
         "inputPerMillion": 2,
         "outputPerMillion": 6,
         "cacheReadInputPerMillion": 0.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 12,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 500000,
       "maxOutputTokens": 500000,
@@ -20136,7 +20250,16 @@
         "outputPerMillion": 1.2,
         "cacheReadInputPerMillion": 0.02,
         "cacheWriteInputPerMillion": 0.25,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.4,
+            "outputPerMillion": 1.8,
+            "cacheReadInputPerMillion": 0.04,
+            "cacheWriteInputPerMillion": 0.5
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -20184,7 +20307,16 @@
         "outputPerMillion": 10,
         "cacheReadInputPerMillion": 0.2,
         "cacheWriteInputPerMillion": 2.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.4,
+            "cacheWriteInputPerMillion": 5
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -20232,7 +20364,16 @@
         "outputPerMillion": 12,
         "cacheReadInputPerMillion": 0.2,
         "cacheWriteInputPerMillion": 2.5,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4,
+            "cacheWriteInputPerMillion": 5
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -21237,7 +21378,15 @@
         "inputPerMillion": 2.5,
         "outputPerMillion": 15,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.25
+        "cacheReadInputPerMillion": 0.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 271999,
+            "inputPerMillion": 5,
+            "outputPerMillion": 22.5,
+            "cacheReadInputPerMillion": 0.5
+          }
+        ]
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -21270,7 +21419,15 @@
         "inputPerMillion": 5,
         "outputPerMillion": 30,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.5
+        "cacheReadInputPerMillion": 0.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 271999,
+            "inputPerMillion": 10,
+            "outputPerMillion": 45,
+            "cacheReadInputPerMillion": 1
+          }
+        ]
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 128000,
@@ -21333,7 +21490,15 @@
         "inputPerMillion": 1.25,
         "outputPerMillion": 2.5,
         "cacheReadInputPerMillion": 0.2,
-        "currency": "USD"
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 2.5,
+            "outputPerMillion": 5,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ]
       },
       "contextWindow": 1000000,
       "maxOutputTokens": 30000,
