@@ -176,7 +176,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.supportsStrictTools = true
 		compat.supportsLongCacheRetention = false
 	case provider == sigma.ProviderCerebras || strings.Contains(host, "cerebras.ai"):
-	case provider == sigma.ProviderXAI || strings.Contains(host, "x.ai"):
+	case provider == sigma.ProviderXAI || hostWithinDomain(host, "x.ai"):
 		compat.supportsReasoningEffort = false
 		compat.supportsStreamingUsage = true
 		compat.supportsStrictTools = true
@@ -186,7 +186,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningAntLing
 		compat.supportsReasoningEffort = false
 		compat.maxTokensField = sigma.OpenAICompletionsMaxTokens
-	case providerText == "z.ai" || providerText == "zai" || strings.Contains(host, "z.ai"):
+	case providerText == "z.ai" || providerText == "zai" || hostWithinDomain(host, "z.ai"):
 	case providerText == "cloudflare" || strings.Contains(host, "workers-ai") || strings.Contains(host, "cloudflare.com"):
 	case strings.Contains(host, "ai-gateway.vercel.sh") || strings.Contains(host, "gateway.ai.vercel.com"):
 		compat.supportsStreamingUsage = true
@@ -232,6 +232,12 @@ func baseURLHost(baseURL string) string {
 		return ""
 	}
 	return strings.ToLower(parsed.Hostname())
+}
+
+// hostWithinDomain reports whether host is domain or one of its subdomains, so
+// short domains such as x.ai do not match look-alike hosts.
+func hostWithinDomain(host string, domain string) bool {
+	return host == domain || strings.HasSuffix(host, "."+domain)
 }
 
 func isLocalHost(host string) bool {

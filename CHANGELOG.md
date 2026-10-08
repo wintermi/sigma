@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Chat Completions compat detection now matches `x.ai` and `z.ai` base URLs by domain, so look-alike hosts such as `fox.ai` or `fizz.ai` no longer pick up xAI or Z.ai settings.
 - Chat Completions history no longer replays assistant turns that hold only reasoning, which DeepSeek and other compatible servers rejected for missing `content`.
 - Chat Completions tool results now join text blocks with newlines and send `(no tool output)` instead of an empty string when a result has no content.
 - Chat Completions streaming now resolves tool-call deltas by index and then by id, so index-less named calls no longer merge into one and calls whose index and id arrive on different deltas no longer split in two.
