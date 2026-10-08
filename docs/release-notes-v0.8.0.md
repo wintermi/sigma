@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Mistral tool results keep their string `function.result` shape, but images now
+follow the consecutive results as `image_url` chunks in a user entry rather than
+inlined base64 text that the model could not see and that inflated the prompt.
+Failed tool results are prefixed with `[tool error]`, image-only results read
+`(see attached image)`, and empty results send `(no tool output)`.
+
 Anthropic streams that end with an unrecognised stop reason now return a typed
 provider error, as the Bedrock, Responses, and Chat Completions adapters do.
 `model_context_window_exceeded` is reported as a context overflow, so overflow

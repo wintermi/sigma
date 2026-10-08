@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send Mistral tool-result images as image chunks and mark failed or empty tool results.
 - [x] Report unrecognised Anthropic stop reasons as typed errors, with context-window stops as overflow.
 - [x] Reject Anthropic mid-output model fallbacks instead of merging answers.
 - [x] Replay same-model Chat Completions reasoning in its source field.

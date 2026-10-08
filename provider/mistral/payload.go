@@ -146,14 +146,55 @@ func unsupportedError(model sigma.Model, message string) error {
 func conversationInputs(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
 	inputs := make([]map[string]any, 0, len(req.Messages))
 	ids := newToolCallIDNormalizer()
+	// Function results are plain strings, so tool images follow the run of
+	// consecutive results as image chunks in one user entry.
+	var toolImages []map[string]any
+	flushToolImages := func() {
+		if len(toolImages) == 0 {
+			return
+		}
+		inputs = append(inputs, map[string]any{
+			"object":       "entry",
+			payloadKeyType: "message.input",
+			"role":         "user",
+			"content":      toolImages,
+		})
+		toolImages = nil
+	}
 	for _, message := range req.Messages {
+		if message.Role != sigma.RoleTool {
+			flushToolImages()
+		}
+		if message.Role == sigma.RoleTool {
+			entry, images, err := conversationToolResultEntry(model, message, ids)
+			if err != nil {
+				return nil, err
+			}
+			inputs = append(inputs, entry)
+			toolImages = append(toolImages, images...)
+			continue
+		}
 		converted, err := conversationInput(model, message, ids)
 		if err != nil {
 			return nil, err
 		}
 		inputs = append(inputs, converted...)
 	}
+	flushToolImages()
 	return inputs, nil
+}
+
+func conversationToolResultEntry(model sigma.Model, message sigma.Message, ids *toolCallIDNormalizer) (map[string]any, []map[string]any, error) {
+	result, images, err := conversationToolResult(model, message)
+	if err != nil {
+		return nil, nil, err
+	}
+	return map[string]any{
+		"object":       "entry",
+		payloadKeyType: "function.result",
+		"tool_call_id": ids.normalize(message.ToolCallID),
+		"result":       result,
+	}, images, nil
 }
 
 func conversationInput(model sigma.Model, message sigma.Message, ids *toolCallIDNormalizer) ([]map[string]any, error) {
@@ -172,15 +213,9 @@ func conversationInput(model sigma.Model, message sigma.Message, ids *toolCallID
 	case sigma.RoleAssistant:
 		return assistantEntries(message.Content, ids)
 	case sigma.RoleTool:
-		result, err := conversationToolResult(model, message.Content)
+		entry, _, err := conversationToolResultEntry(model, message, ids)
 		if err != nil {
 			return nil, err
-		}
-		entry := map[string]any{
-			"object":       "entry",
-			payloadKeyType: "function.result",
-			"tool_call_id": ids.normalize(message.ToolCallID),
-			"result":       result,
 		}
 		return []map[string]any{entry}, nil
 	default:
@@ -525,32 +560,39 @@ func conversationMessageContent(model sigma.Model, blocks []sigma.ContentBlock) 
 	return chunks, nil
 }
 
-func conversationToolResult(model sigma.Model, blocks []sigma.ContentBlock) (any, error) {
-	return conversationToolResultText(model, blocks)
-}
-
-func conversationToolResultText(model sigma.Model, blocks []sigma.ContentBlock) (string, error) {
-	parts := make([]string, 0, len(blocks))
-	for _, block := range blocks {
+// conversationToolResult returns a tool result's text and its image chunks.
+// Errors are marked so the model can tell a failed call from a successful one.
+func conversationToolResult(model sigma.Model, message sigma.Message) (string, []map[string]any, error) {
+	parts := make([]string, 0, len(message.Content))
+	var images []map[string]any
+	for _, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:
 			if text := providertext.Clean(block.Text); text != "" {
 				parts = append(parts, text)
 			}
 		case sigma.ContentBlockImage:
-			if !model.SupportsImages() {
-				return "", unsupportedError(model, "target model does not declare image input support")
-			}
-			imageURL, err := conversationImageURL(block)
+			image, err := conversationImage(model, block)
 			if err != nil {
-				return "", err
+				return "", nil, err
 			}
-			parts = append(parts, "Image: "+imageURL)
+			images = append(images, image)
 		default:
-			return "", fmt.Errorf("mistral conversations: unsupported tool result content block %q", block.Type)
+			return "", nil, fmt.Errorf("mistral conversations: unsupported tool result content block %q", block.Type)
 		}
 	}
-	return strings.Join(parts, "\n"), nil
+	text := strings.TrimSpace(strings.Join(parts, "\n"))
+	switch {
+	case text != "":
+	case len(images) > 0:
+		text = "(see attached image)"
+	default:
+		text = "(no tool output)"
+	}
+	if message.IsError {
+		text = "[tool error] " + text
+	}
+	return text, images, nil
 }
 
 func conversationContentChunks(model sigma.Model, blocks []sigma.ContentBlock) ([]map[string]any, bool, error) {

@@ -240,7 +240,7 @@ func TestConversationPayloadSynthesizesUnansweredToolCallsBeforeUserTurn(t *test
 	if got, want := toolResult["tool_call_id"], toolCallID; got != want {
 		t.Fatalf("synthetic tool id = %v, want %q", got, want)
 	}
-	if got, want := toolResult["result"], "No result provided"; got != want {
+	if got, want := toolResult["result"], "[tool error] No result provided"; got != want {
 		t.Fatalf("synthetic result = %v, want %q", got, want)
 	}
 	user := inputs[2].(map[string]any)
@@ -1183,8 +1183,14 @@ func TestConversationToolResultUsesSchemaFields(t *testing.T) {
 	if !ok {
 		t.Fatalf("result type = %T, want string", result["result"])
 	}
-	if got, want := text, "Screenshot captured.\nImage: https://example.test/screenshot.png"; got != want {
+	if got, want := text, "[tool error] Screenshot captured."; got != want {
 		t.Fatalf("result = %q, want %q", got, want)
+	}
+	images := inputs[3].(map[string]any)
+	content := images["content"].([]any)
+	if images["type"] != "message.input" || images["role"] != "user" || len(content) != 1 ||
+		content[0].(map[string]any)["image_url"] != "https://example.test/screenshot.png" {
+		t.Fatalf("image entry = %#v, want a user image_url chunk after the tool result", images)
 	}
 }
 

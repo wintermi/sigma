@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send Mistral tool-result images as `image_url` chunks in a user entry after the
+  consecutive function results, instead of inlining base64 data as result text.
+  Failed tool results are prefixed with `[tool error]`, and empty results send
+  `(no tool output)`.
 - Return a typed provider error for unrecognised Anthropic stop reasons instead
   of a successful `unknown` stop, matching the Bedrock, Responses, and Chat
   Completions adapters. `model_context_window_exceeded` is a context overflow.

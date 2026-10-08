@@ -15,9 +15,20 @@
     },
     {
       "object": "entry",
-      "result": "Image: data:image/png;base64,aW1hZ2U=",
+      "result": "(see attached image)",
       "tool_call_id": "66c7c5b6f",
       "type": "function.result"
+    },
+    {
+      "content": [
+        {
+          "image_url": "data:image/png;base64,aW1hZ2U=",
+          "type": "image_url"
+        }
+      ],
+      "object": "entry",
+      "role": "user",
+      "type": "message.input"
     }
   ],
   "model": "pixtral-12b",

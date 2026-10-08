@@ -15,9 +15,20 @@
     },
     {
       "object": "entry",
-      "result": "Screenshot captured.\nImage: https://example.test/screenshot.png",
+      "result": "Screenshot captured.",
       "tool_call_id": "66c7c5b6f",
       "type": "function.result"
+    },
+    {
+      "content": [
+        {
+          "image_url": "https://example.test/screenshot.png",
+          "type": "image_url"
+        }
+      ],
+      "object": "entry",
+      "role": "user",
+      "type": "message.input"
     }
   ],
   "model": "pixtral-12b",

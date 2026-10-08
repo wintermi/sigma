@@ -21,7 +21,7 @@
     },
     {
       "object": "entry",
-      "result": "No result provided",
+      "result": "[tool error] No result provided",
       "tool_call_id": "23336afc7",
       "type": "function.result"
     }

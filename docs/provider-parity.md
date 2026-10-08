@@ -190,7 +190,8 @@ Release scope values:
   tokens are accounted as cache reads. Duration-specific retention choices are
   still limited by the provider's Conversations API.
 - Mistral Conversations supports base64 and URL image input for image-capable
-  models, replays image-bearing tool results as string image references, and
+  models, replays image-bearing tool results as string results followed by a
+  user entry carrying the images as image chunks, marks failed tool results, and
   exposes server-executed web search, premium web search, and document-library
   tools. Returned retrieval references populate existing source and citation
   results. File image references, code interpreter, image generation, external
