@@ -988,7 +988,7 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			if source.Route.Name == target.Route.Name && source.Model.ID == target.Model.ID {
 				continue
 			}
-			emit(runHandoffTarget(ctx, source, target))
+			emit(runHandoffTarget(ctx, source, target, cfg.caseTimeout))
 		}
 	}
 }
@@ -1288,6 +1288,8 @@ func imageProbeClient(route imageRouteSpec, modelID sigma.ModelID) *sigma.Client
 }
 
 func generateHandoffSource(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config) (handoffSource, probeResult) {
+	ctx, cancel := withCaseTimeout(ctx, cfg.caseTimeout)
+	defer cancel()
 	model := resolveProbeModel(ctx, route, modelID, credential)
 	result := probeResult{
 		Route:   route.Name,
@@ -1353,7 +1355,9 @@ func generateHandoffSource(ctx context.Context, route routeSpec, modelID string,
 	}, result
 }
 
-func runHandoffTarget(ctx context.Context, source handoffSource, target handoffSource) probeResult {
+func runHandoffTarget(ctx context.Context, source handoffSource, target handoffSource, timeout time.Duration) probeResult {
+	ctx, cancel := withCaseTimeout(ctx, timeout)
+	defer cancel()
 	client := probeClient(target.Route, target.Model)
 	messages := append([]sigma.Message(nil), source.Messages...)
 	messages = append(messages, sigma.UserText("Great, thanks. Reply with exactly: Hello, handoff successful."))
@@ -1905,6 +1909,15 @@ func runCaseWithTransportRetries(ctx context.Context, route routeSpec, client *s
 			return result
 		}
 	}
+}
+
+// withCaseTimeout bounds one probe case by timeout; zero or less uses only the
+// overall deadline already on ctx.
+func withCaseTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 func transientRetryAttempt(attempt string, retry int) string {

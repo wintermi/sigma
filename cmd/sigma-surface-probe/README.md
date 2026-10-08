@@ -267,7 +267,8 @@ OPENAI_API_KEY=... XAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe 
 Handoff mode asks each selected route/model to produce a small tool-call
 context, appends a deterministic tool result, then replays each source context
 into every other selected target route/model. Missing credentials and source
-models that do not emit a tool call are reported as skipped diagnostics.
+models that do not emit a tool call are reported as skipped diagnostics. Each
+source context and each target replay receives its own `-case-timeout`.
 
 Discover and probe every model returned by one provider:
 

@@ -2172,7 +2172,7 @@ func TestRunHandoffTargetEmitsSourceMetadata(t *testing.T) {
 		Credential: routeCredential{apiKey: "key"},
 	}
 
-	result := runHandoffTarget(context.Background(), source, target)
+	result := runHandoffTarget(context.Background(), source, target, time.Second)
 	if result.Outcome != "ok" {
 		t.Fatalf("result = %+v, want ok", result)
 	}
@@ -2181,6 +2181,34 @@ func TestRunHandoffTargetEmitsSourceMetadata(t *testing.T) {
 	}
 	if got, want := result.SourceModel, "source-model"; got != want {
 		t.Fatalf("source model = %q, want %q", got, want)
+	}
+}
+
+func TestHandoffProbesApplyCaseTimeout(t *testing.T) {
+	t.Parallel()
+
+	stalled := sigmatest.Script{WaitForCancel: true}
+	sourceRoute := handoffProbeRoute(t, "handoff-stalled-source", stalled)
+	targetRoute := handoffProbeRoute(t, "handoff-stalled-target", stalled)
+	cfg := config{caseTimeout: 20 * time.Millisecond}
+
+	results := make(chan probeResult, 2)
+	go func() {
+		_, result := generateHandoffSource(context.Background(), sourceRoute, "model", routeCredential{apiKey: "key"}, cfg)
+		results <- result
+		source := handoffSource{Route: sourceRoute, Model: sourceRoute.Model(sourceRoute, "model"), Messages: []sigma.Message{sigma.UserText("hi")}}
+		target := handoffSource{Route: targetRoute, Model: targetRoute.Model(targetRoute, "model"), Credential: routeCredential{apiKey: "key"}}
+		results <- runHandoffTarget(context.Background(), source, target, cfg.caseTimeout)
+	}()
+	for _, name := range []string{"source", "target"} {
+		select {
+		case result := <-results:
+			if !strings.Contains(result.Error, "deadline exceeded") {
+				t.Fatalf("%s result = %+v, want case timeout", name, result)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s ignored -case-timeout", name)
+		}
 	}
 }
 

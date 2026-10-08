@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface-probe handoff mode bounds each source context and each target replay with `-case-timeout`, as surface and image cases already were. Previously, a stalled handoff request could run until the overall `-timeout`.
+
 The surface-probe README no longer says `no_working_attempt` covers failed text repairs. The outcome comes from image probes that complete without the required image or tool output, and from failed handoff model discovery. A text case whose repair variants all fail keeps its original classification.
 
 The surface probe's image cases retry transient HTTP 5xx and connection-reset failures twice with the identical request, as text cases already did and the README describes. Previously, a single image-route 5xx was reported straight away as upstream availability.
