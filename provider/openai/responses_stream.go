@@ -40,6 +40,8 @@ type responsesEvent struct {
 	Part         responsesContentPart `json:"part"`
 	Response     responsesResponse    `json:"response"`
 	Error        *responsesError      `json:"error"`
+	Code         any                  `json:"code"`
+	Message      string               `json:"message"`
 	Sequence     int                  `json:"sequence_number"`
 }
 
@@ -337,6 +339,9 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 	case "error":
 		if parsed.Error != nil {
 			return false, openAIResponsesStreamProviderError(p.model, parsed.Error)
+		}
+		if parsed.Code != nil || parsed.Message != "" {
+			return false, openAIResponsesStreamProviderError(p.model, &responsesError{Code: parsed.Code, Message: parsed.Message})
 		}
 		return false, fmt.Errorf("openai responses: stream error")
 	case "response.output_item.added":

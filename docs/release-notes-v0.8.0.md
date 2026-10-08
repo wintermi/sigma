@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses stream `error` events with OpenAI's documented top-level `code` and
+`message` fields now return typed provider errors over SSE and Codex WebSocket.
+Context-length errors are recognized as overflow and server errors as transient,
+where they previously surfaced as a generic stream error.
+
 Mistral conversations that end with `stop_reason: "error"`, which Mistral uses
 for transient server failures, now return a transient `server_error` with retry
 advice. Unknown stop reasons remain non-retryable errors without the event type

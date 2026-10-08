@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Preserve top-level code and message on Responses stream error events.
 - [x] Classify Mistral `stop_reason: "error"` as a retryable server error.
 - [x] Classify mid-body HTTP/2 resets and other untyped stream failures by message.
 - [x] Recognize z.ai CN, Qwen, DS4, and generic too-many-tokens overflow messages.

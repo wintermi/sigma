@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Keep the code and message of Responses stream `error` events that use OpenAI's
+  top-level `code` and `message` fields, over SSE and Codex WebSocket, so they
+  return typed provider errors with overflow and retry classification instead of
+  a generic stream error.
 - Classify a Mistral `stop_reason: "error"` as a transient, retryable server
   error. Unknown Mistral stop reasons no longer report the event type as their
   provider code.
