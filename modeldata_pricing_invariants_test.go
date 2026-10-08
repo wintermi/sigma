@@ -90,3 +90,43 @@ func TestDirectMiniMaxM3PricingAndLimits(t *testing.T) {
 		}
 	}
 }
+
+// Mistral's current Large, Medium, Small, Ministral, Magistral Medium, and
+// Devstral Small models accept image input, and the adapter rejects images
+// for models that do not advertise it.
+func TestMistralVisionModelsAdvertiseImageInput(t *testing.T) {
+	t.Parallel()
+	registry := NewRegistry()
+	if err := registerBuiltinTextModels(registry); err != nil {
+		t.Fatal(err)
+	}
+	for _, ref := range []struct {
+		provider ProviderID
+		id       ModelID
+	}{
+		{ProviderMistral, "labs-devstral-small-2512"},
+		{ProviderMistral, "magistral-medium-latest"},
+		{ProviderMistral, "ministral-3b-latest"},
+		{ProviderMistral, "ministral-8b-latest"},
+		{ProviderMistral, "mistral-large-2512"},
+		{ProviderMistral, "mistral-large-latest"},
+		{ProviderMistral, "mistral-medium-2505"},
+		{ProviderMistral, "mistral-medium-2508"},
+		{ProviderMistral, "mistral-medium-2604"},
+		{ProviderMistral, "mistral-medium-3.5"},
+		{ProviderMistral, "mistral-medium-latest"},
+		{ProviderMistral, "mistral-small-2506"},
+		{ProviderMistral, "mistral-small-2603"},
+		{ProviderMistral, "mistral-small-latest"},
+		{ProviderAmazonBedrock, "mistral.ministral-3-8b-instruct"},
+		{ProviderAmazonBedrock, "mistral.ministral-3-14b-instruct"},
+	} {
+		model, ok := registry.Model(ref.provider, ref.id)
+		if !ok {
+			t.Fatalf("missing %s/%s", ref.provider, ref.id)
+		}
+		if !model.SupportsImages() {
+			t.Errorf("%s/%s does not advertise image input", ref.provider, ref.id)
+		}
+	}
+}

@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Advertise image input on 14 Mistral rows (current Large, Medium, Small,
+  Ministral, Magistral Medium, and Devstral Small models) and the two Bedrock
+  Ministral 3 rows, matching the reference catalog. Images sent to these models
+  were previously rejected locally.
 - Correct catalog pricing from the reference catalog. Direct MiniMax-M3 (global
   and CN) uses its 0.3/1.2 base rate with the 512K long-context tier and a 1M
   context window and 512K output limit instead of always charging the

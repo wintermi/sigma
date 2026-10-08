@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Fourteen Mistral models and the two Bedrock Ministral 3 models now advertise
+image input, so image requests reach the provider instead of failing local
+capability checks.
+
 Catalog pricing corrections: direct MiniMax-M3 now charges its base rate below
 512K input tokens and accepts its full 1M context and 512K output; 27 Mistral
 rows price cached input at a tenth of the input rate rather than zero; and 28

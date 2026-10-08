@@ -524,8 +524,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if !ok {
 		t.Fatal("fresh registry missing generated Mistral Medium 3.5 model")
 	}
-	if mistralMedium.API != APIMistralConversations || !mistralMedium.SupportsTools || mistralMedium.SupportsImages() || !mistralMedium.SupportsReasoning() {
-		t.Fatalf("Mistral Medium 3.5 metadata = %+v, want text-only conversations tools and reasoning", mistralMedium)
+	if mistralMedium.API != APIMistralConversations || !mistralMedium.SupportsTools || !mistralMedium.SupportsImages() || !mistralMedium.SupportsReasoning() {
+		t.Fatalf("Mistral Medium 3.5 metadata = %+v, want image-capable conversations tools and reasoning", mistralMedium)
 	}
 	assertMetadataString(t, mistralMedium.ProviderMetadata, "mistral_reasoning_mode", "reasoning_effort")
 
