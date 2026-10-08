@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`Client.Embed` checks that a provider returns one vector per input on every call, not only inside the batcher. A short or long response now returns an `ErrorProviderResponse` error with no vectors, so callers cannot pair vectors with the wrong inputs.
+
 The `sigmatest` faux image and embedding providers fail when called with no queued script, matching the faux text provider. Tests that make more calls than they scripted now fail loudly instead of passing on an empty result.
 
 Gemini image requests turn the portrait and landscape sizes `1024x1536` and `1536x1024` into the `2:3` and `3:2` aspect ratios. Previously, they were dropped and the model default was used. Imagen has no such ratios, so those sizes still leave its aspect ratio unset.

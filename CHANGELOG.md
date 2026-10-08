@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `Client.Embed` now rejects provider responses whose vector count differs from the input count, rather than returning misaligned vectors.
 - `sigmatest` faux image and embedding providers now fail with "no scripted response queued" when their script queue is empty, as the text faux provider does, instead of returning an empty success.
 - Google Gemini image requests now map `1024x1536` and `1536x1024` sizes to the `2:3` and `3:2` aspect ratios instead of dropping them.
 - OpenAI image edits with several uploaded images now send them as `image[]` multipart parts, as the edits endpoint and the OpenAI SDKs expect, instead of repeating `image`.

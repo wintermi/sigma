@@ -88,6 +88,10 @@ Sigma validates that dimensions are non-negative. Dimension ranges are model
 metadata for discovery and routing; providers may still reject unsupported
 dimensions.
 
+Every `Embed` call checks that the provider returned exactly one vector per
+input and that all vectors share a dimension. A mismatch returns an
+`ErrorProviderResponse` error with no vectors.
+
 ## Query And Document Intent
 
 Use `EmbeddingQuery` and `EmbeddingDocuments` when your application needs to

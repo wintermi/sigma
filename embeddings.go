@@ -337,6 +337,10 @@ func dispatchEmbedding(ctx context.Context, provider EmbeddingProvider, model Em
 
 	embeddings, err := provider.Embed(ctx, model, req, options)
 	embeddings = finalEmbeddings(model, embeddings)
+	if err == nil && len(embeddings.Vectors) != len(req.Inputs) {
+		err = &Error{Code: ErrorProviderResponse, Message: fmt.Sprintf("embedding provider returned %d vectors for %d inputs", len(embeddings.Vectors), len(req.Inputs))}
+		embeddings.Vectors = nil
+	}
 	if err == nil {
 		if dimensionErr := validateEmbeddingDimensions(embeddings.Vectors, 0); dimensionErr != nil {
 			embeddings.Vectors = nil
