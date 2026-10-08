@@ -158,6 +158,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Changed
 
+- Generated Bedrock gpt-oss (including safeguard and versioned IDs) and GPT-5.4
+  through 5.6 rows now advertise reasoning, and the GPT-5.x rows accept `xhigh`,
+  matching the reference catalog. Reasoning levels on these models were
+  previously rejected locally.
 - Provider-authored numeric tool arguments now use `json.Number` throughout
   streaming, cancellation, persistence, validation, and replay; typed token
   counters and costs are unchanged.

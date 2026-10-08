@@ -681,9 +681,8 @@ its thinking budget must still be at least 1,024. Adaptive thinking and non-Clau
 reasoning retain their existing controls, except that OpenAI models take a
 reasoning effort instead of a thinking budget: gpt-oss receives a flat
 `reasoning_effort` limited to low through high, other GPT models a nested
-`reasoning.effort`, and `minimal` is sent as low. The generated Bedrock GPT rows
-do not yet advertise reasoning, so these controls apply to caller-registered
-models that set `SupportsThinking`.
+`reasoning.effort`, and `minimal` is sent as low. Generated Bedrock gpt-oss and
+GPT-5.x rows advertise reasoning; GPT-5.x rows also accept `xhigh`.
 
 Replayed non-Claude reasoning omits signatures. Claude thinking without a valid
 nonblank signature is sent as ordinary text; signed and redacted blocks retain

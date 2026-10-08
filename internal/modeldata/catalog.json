@@ -1736,7 +1736,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.15,
         "outputPerMillion": 0.6,
@@ -1765,7 +1765,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.07,
         "outputPerMillion": 0.3,
@@ -1794,7 +1794,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.15,
         "outputPerMillion": 0.6,
@@ -1823,7 +1823,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.07,
         "outputPerMillion": 0.3,
@@ -1852,7 +1852,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.15,
         "outputPerMillion": 0.6,
@@ -1881,7 +1881,7 @@
         "text"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.07,
         "outputPerMillion": 0.2,
@@ -3197,7 +3197,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 2.75,
         "outputPerMillion": 16.5,
@@ -3215,6 +3215,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {
@@ -3228,7 +3231,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 5.5,
         "outputPerMillion": 33,
@@ -3246,6 +3249,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {
@@ -3259,7 +3265,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 0.22,
         "outputPerMillion": 1.32,
@@ -3287,6 +3293,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {
@@ -3300,7 +3309,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 4.4,
         "outputPerMillion": 22,
@@ -3328,6 +3337,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {
@@ -3341,7 +3353,7 @@
         "image"
       ],
       "supportsTools": true,
-      "supportsThinking": false,
+      "supportsThinking": true,
       "cost": {
         "inputPerMillion": 2.2,
         "outputPerMillion": 13.2,
@@ -3369,6 +3381,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {

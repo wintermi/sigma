@@ -37,7 +37,6 @@ func TestConverseOpenAIReasoningEffort(t *testing.T) {
 			if !ok {
 				t.Fatalf("missing generated model %s", tt.id)
 			}
-			model.SupportsThinking = true
 			payload, err := conversePayload(model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}, tt.opts, Config{Region: "us-east-1"})
 			if err != nil {
 				t.Fatal(err)

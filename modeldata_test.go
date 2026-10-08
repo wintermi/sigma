@@ -558,6 +558,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		cacheReadCost   float64
 		cacheWriteCost  float64
 		modelFamily     string
+		reasoning       bool
 	}{
 		{id: "meta.llama3-1-70b-instruct-v1:0", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.72, outputCost: 0.72, modelFamily: "llama"},
 		{id: "meta.llama3-1-8b-instruct-v1:0", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.22, outputCost: 0.22, modelFamily: "llama"},
@@ -568,11 +569,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{id: "nvidia.nemotron-nano-3-30b", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.06, outputCost: 0.24, modelFamily: "nemotron"},
 		{id: "nvidia.nemotron-nano-9b-v2", contextWindow: 128000, maxOutputTokens: 4096, inputCost: 0.06, outputCost: 0.23, modelFamily: "nemotron"},
 		{id: "nvidia.nemotron-super-3-120b", contextWindow: 262144, maxOutputTokens: 131072, inputCost: 0.15, outputCost: 0.65, modelFamily: "nemotron"},
-		{id: "openai.gpt-5.4", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.75, outputCost: 16.5, cacheReadCost: 0.275, modelFamily: "o-series"},
-		{id: "openai.gpt-5.5", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5.5, outputCost: 33, cacheReadCost: 0.55, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-luna", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 0.22, outputCost: 1.32, cacheReadCost: 0.022, cacheWriteCost: 0.275, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-sol", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 4.4, outputCost: 22, cacheReadCost: 0.44, cacheWriteCost: 5.5, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-terra", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 2.2, outputCost: 13.2, cacheReadCost: 0.22, cacheWriteCost: 2.75, modelFamily: "o-series"},
+		{id: "openai.gpt-5.4", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.75, outputCost: 16.5, cacheReadCost: 0.275, modelFamily: "o-series", reasoning: true},
+		{id: "openai.gpt-5.5", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5.5, outputCost: 33, cacheReadCost: 0.55, modelFamily: "o-series", reasoning: true},
+		{id: "openai.gpt-5.6-luna", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 0.22, outputCost: 1.32, cacheReadCost: 0.022, cacheWriteCost: 0.275, modelFamily: "o-series", reasoning: true},
+		{id: "openai.gpt-5.6-sol", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 4.4, outputCost: 22, cacheReadCost: 0.44, cacheWriteCost: 5.5, modelFamily: "o-series", reasoning: true},
+		{id: "openai.gpt-5.6-terra", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 2.2, outputCost: 13.2, cacheReadCost: 0.22, cacheWriteCost: 2.75, modelFamily: "o-series", reasoning: true},
 		{id: "writer.palmyra-x4-v1:0", contextWindow: 122880, maxOutputTokens: 8192, inputCost: 2.5, outputCost: 10, modelFamily: "palmyra"},
 		{id: "writer.palmyra-x5-v1:0", contextWindow: 1040000, maxOutputTokens: 8192, inputCost: 0.6, outputCost: 6, modelFamily: "palmyra"},
 		{id: "xai.grok-4.3", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 131072, inputCost: 1.25, outputCost: 2.5, cacheReadCost: 0.2, modelFamily: "grok"},
@@ -582,8 +583,11 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		if !ok {
 			t.Fatalf("fresh registry missing curated Bedrock model %s", tt.id)
 		}
-		if model.API != APIBedrockConverseStream || !model.SupportsTools || model.SupportsImages() != tt.supportsImages || model.SupportsReasoning() {
+		if model.API != APIBedrockConverseStream || !model.SupportsTools || model.SupportsImages() != tt.supportsImages || model.SupportsReasoning() != tt.reasoning {
 			t.Fatalf("curated Bedrock model %s capabilities = %+v", tt.id, model)
+		}
+		if tt.reasoning && !model.SupportsThinkingLevel(ThinkingLevelXHigh) {
+			t.Fatalf("curated Bedrock model %s does not support xhigh reasoning", tt.id)
 		}
 		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens {
 			t.Fatalf("curated Bedrock model %s limits = %d/%d, want %d/%d", tt.id, model.ContextWindow, model.MaxOutputTokens, tt.contextWindow, tt.maxOutputTokens)
@@ -1295,8 +1299,8 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 		contextWindow, maxOutputTokens               int
 		inputCost, outputCost, cacheRead, cacheWrite float64
 	}{
-		{id: "openai.gpt-oss-120b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.15, outputCost: 0.6},
-		{id: "openai.gpt-oss-20b", modelFamily: "o-series", contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.07, outputCost: 0.3},
+		{id: "openai.gpt-oss-120b", modelFamily: "o-series", supportsThinking: true, contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.15, outputCost: 0.6},
+		{id: "openai.gpt-oss-20b", modelFamily: "o-series", supportsThinking: true, contextWindow: 128000, maxOutputTokens: 16384, inputCost: 0.07, outputCost: 0.3},
 		{id: "us.meta.llama4-maverick-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 16384, inputCost: 0.24, outputCost: 0.97},
 		{id: "us.meta.llama4-scout-17b-instruct-v1:0", modelFamily: "llama", supportsImages: true, contextWindow: 3500000, maxOutputTokens: 16384, inputCost: 0.17, outputCost: 0.66},
 	}
