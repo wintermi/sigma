@@ -665,8 +665,11 @@ func awsTools(tools []ConverseTool) []map[string]any {
 	for _, tool := range tools {
 		spec := map[string]any{
 			"name":        tool.Name,
-			"description": tool.Description,
 			"inputSchema": map[string]any{"json": tool.InputSchema},
+		}
+		// Converse rejects an empty description; it has a minimum length of 1.
+		if tool.Description != "" {
+			spec["description"] = tool.Description
 		}
 		converted = append(converted, map[string]any{"toolSpec": spec})
 	}

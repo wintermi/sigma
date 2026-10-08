@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock tool specs omit `description` for tools without one. Converse requires a non-empty description when the field is present, so tools with blank descriptions were rejected.
+
 Vertex Anthropic requests send the same `anthropic-beta` header as direct Anthropic requests. Previously, Vertex silently dropped configured betas such as `context-1m-2025-08-07` and the automatic tool-streaming and thinking betas.
 
 Kimi Coding token refresh retries transient failures (transport errors, rate limits, and server errors) up to three times with exponential backoff, as pi does. Other rejections, such as `invalid_grant` or 401, still fail immediately so the caller can prompt for a new login.
