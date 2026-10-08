@@ -196,7 +196,7 @@ func googleGeminiImagePayload(model sigma.ImageModel, req sigma.ImageRequest, op
 		"responseModalities": []string{"TEXT", "IMAGE"},
 	}
 	imageConfig := make(map[string]any)
-	if aspect := imageAspectRatio(model.Provider, req, opts); aspect != "" {
+	if aspect := imageAspectRatio(model.Provider, req, opts, true); aspect != "" {
 		imageConfig["aspectRatio"] = aspect
 	}
 	options := providerOptions(opts, model.Provider)
@@ -219,7 +219,7 @@ func googleGeminiImagePayload(model sigma.ImageModel, req sigma.ImageRequest, op
 
 func googleImagenParameters(provider sigma.ProviderID, req sigma.ImageRequest, opts sigma.Options) map[string]any {
 	parameters := map[string]any{"sampleCount": imageCount(req)}
-	if aspect := imageAspectRatio(provider, req, opts); aspect != "" {
+	if aspect := imageAspectRatio(provider, req, opts, false); aspect != "" {
 		parameters["aspectRatio"] = aspect
 	}
 	options := providerOptions(opts, provider)
@@ -255,7 +255,9 @@ func imageCount(req sigma.ImageRequest) int {
 	return 1
 }
 
-func imageAspectRatio(provider sigma.ProviderID, req sigma.ImageRequest, opts sigma.Options) string {
+// imageAspectRatio maps req.Size to an aspect ratio. Only Gemini image models
+// accept the 2:3 and 3:2 ratios of the portrait and landscape sizes.
+func imageAspectRatio(provider sigma.ProviderID, req sigma.ImageRequest, opts sigma.Options, gemini bool) string {
 	options := providerOptions(opts, provider)
 	if value, ok := stringOption(options, googleImageOptionAspectRatio); ok {
 		return value
@@ -270,6 +272,16 @@ func imageAspectRatio(provider sigma.ProviderID, req sigma.ImageRequest, opts si
 	switch strings.ToLower(size) {
 	case "256x256", "512x512", "1024x1024", "2048x2048":
 		return "1:1"
+	case "1024x1536":
+		if gemini {
+			return "2:3"
+		}
+		return ""
+	case "1536x1024":
+		if gemini {
+			return "3:2"
+		}
+		return ""
 	default:
 		return ""
 	}

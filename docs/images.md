@@ -113,7 +113,9 @@ OpenAI embedding requests follow the same auth-resolution contract.
 The Vertex catalog includes `gemini-2.5-flash-image`, `gemini-3-pro-image`,
 and `gemini-3.1-flash-image`, all through the existing `generateContent` route
 with explicit project/location routing.
-Generated sizes describe supported aspect ratios. Cost metadata is a baseline
+Generated sizes describe supported aspect ratios. A request `Size` of
+`1024x1536` or `1536x1024` maps to Gemini's `2:3` or `3:2` aspect ratio; Imagen
+has no such ratios, so those sizes keep the Imagen default. Cost metadata is a baseline
 output estimate (1K where applicable), not a resolution-aware quote; larger
 outputs and input tokens can add cost. Consult
 [Vertex image pricing](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing)
