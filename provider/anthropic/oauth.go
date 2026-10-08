@@ -38,10 +38,12 @@ const (
 var (
 	anthropicOAuthAuthorizeURL = "https://claude.ai/oauth/authorize"
 	anthropicOAuthTokenURL     = "https://platform.claude.com/v1/oauth/token"
-	// Anthropic's OAuth client registers a fixed localhost redirect URI, so the
-	// callback listener must bind this exact port.
-	anthropicOAuthListenAddr      = "127.0.0.1:53692"
-	anthropicOAuthDefaultRedirect = "http://localhost:53692/callback"
+	// The preferred callback port. When it is reserved (for example by
+	// Hyper-V/WSL port exclusions) or in use, login falls back to a free
+	// loopback port, then to pasted input only.
+	anthropicOAuthListenAddr         = "127.0.0.1:53692"
+	anthropicOAuthFallbackListenAddr = "127.0.0.1:0"
+	anthropicOAuthDefaultRedirect    = "http://localhost:53692/callback"
 )
 
 // AnthropicOAuthCredentials carries Anthropic (Claude Pro/Max) OAuth tokens.
@@ -170,13 +172,20 @@ func LoginAnthropicBrowser(ctx context.Context, opts AnthropicBrowserLoginOption
 	// Anthropic's flow uses the PKCE verifier as the OAuth state value, and the
 	// token exchange echoes it back as the state field.
 	state := verifier
-	server, err := startAnthropicBrowserCallbackServer(state)
+	server, err := startAnthropicBrowserCallbackServer(anthropicOAuthListenAddr, state)
 	if err != nil {
+		server, err = startAnthropicBrowserCallbackServer(anthropicOAuthFallbackListenAddr, state)
+	}
+	if err != nil && opts.OnManualCode == nil {
 		return AnthropicOAuthCredentials{}, err
 	}
-	defer server.close()
+	redirectURI := anthropicOAuthDefaultRedirect
+	if server != nil {
+		defer server.close()
+		redirectURI = server.redirectURI
+	}
 
-	authURL, err := anthropicAuthorizationURL(challenge, state, server.redirectURI)
+	authURL, err := anthropicAuthorizationURL(challenge, state, redirectURI)
 	if err != nil {
 		return AnthropicOAuthCredentials{}, err
 	}
@@ -191,7 +200,7 @@ func LoginAnthropicBrowser(ctx context.Context, opts AnthropicBrowserLoginOption
 	if err != nil {
 		return AnthropicOAuthCredentials{}, err
 	}
-	return exchangeAnthropicAuthorizationCode(ctx, opts.HTTPClient, code, state, verifier, server.redirectURI)
+	return exchangeAnthropicAuthorizationCode(ctx, opts.HTTPClient, code, state, verifier, redirectURI)
 }
 
 // RefreshAnthropicToken refreshes Anthropic OAuth credentials from a refresh
@@ -345,9 +354,9 @@ func anthropicAuthorizationURL(challenge string, state string, redirectURI strin
 	return authURL.String(), nil
 }
 
-func startAnthropicBrowserCallbackServer(state string) (*anthropicBrowserCallbackServer, error) {
+func startAnthropicBrowserCallbackServer(listenAddr string, state string) (*anthropicBrowserCallbackServer, error) {
 	var listenConfig net.ListenConfig
-	listener, err := listenConfig.Listen(context.Background(), "tcp", anthropicOAuthListenAddr)
+	listener, err := listenConfig.Listen(context.Background(), "tcp", listenAddr)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic oauth: start callback server: %w", err)
 	}
@@ -436,14 +445,21 @@ func waitAnthropicBrowserAuthorizationCode(
 		}()
 	}
 
+	// Without a callback server, only pasted input can complete the login.
+	var callback <-chan anthropicBrowserCallbackResult
+	if server != nil {
+		callback = server.done
+	}
 	for {
 		select {
-		case result := <-server.done:
+		case result := <-callback:
 			return result.code, result.err
 		case result := <-manualResult:
 			return result.code, result.err
 		case <-ctx.Done():
-			server.close()
+			if server != nil {
+				server.close()
+			}
 			return "", ctx.Err()
 		}
 	}
@@ -478,17 +494,16 @@ func parseAnthropicAuthorizationInput(input string) anthropicAuthorizationInput 
 	return anthropicAuthorizationInput{code: value}
 }
 
+// anthropicBrowserRedirectURI names the bound callback port on localhost,
+// which matches the default redirect URI on the preferred port.
 func anthropicBrowserRedirectURI(listener net.Listener) string {
-	if anthropicOAuthListenAddr == "127.0.0.1:53692" {
-		return anthropicOAuthDefaultRedirect
-	}
-	host, port, err := net.SplitHostPort(listener.Addr().String())
+	_, port, err := net.SplitHostPort(listener.Addr().String())
 	if err != nil {
 		return anthropicOAuthDefaultRedirect
 	}
 	return (&url.URL{
 		Scheme: "http",
-		Host:   net.JoinHostPort(host, port),
+		Host:   net.JoinHostPort("localhost", port),
 		Path:   anthropicOAuthCallbackPath,
 	}).String()
 }

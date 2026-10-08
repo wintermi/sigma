@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic browser login falls back to a free loopback port when port 53692 is
+reserved or in use, for example by Hyper-V/WSL port exclusions, and then to
+pasted input alone. Codex browser login completes with `OnManualCode` input when
+port 1455 is held by the Codex CLI. Both previously failed with `address already
+in use`.
+
 `ValidateToolCall` accepts schema shapes common in zod, Pydantic, and MCP tool
 definitions. ECMAScript `\uXXXX` pattern escapes are translated for Go's RE2
 engine, lookaround and backreference patterns are treated as annotations,

@@ -245,7 +245,9 @@ auth resolver, including stored provider auth. An explicit token provider takes
 precedence. Use
 `openai.LoginOpenAICodexBrowser`, `openai.LoginOpenAICodexDeviceCode`,
 `openai.RefreshOpenAICodexToken`, and `openai.NewCodexOAuthTokenProvider` for
-stdlib-only login and refresh.
+stdlib-only login and refresh. Codex browser login listens on port 1455, which
+the Codex CLI also uses; when that port is taken and `OnManualCode` is set, login
+completes with the pasted redirect URL or code.
 
 Store-backed applications can persist a login result through a caller-owned
 credential store and let Sigma's stored-auth resolver handle refresh
@@ -367,8 +369,10 @@ callback login, refresh, and request-time token resolution; credential
 persistence stays caller-owned. When the resolved credential is an Anthropic
 OAuth token, the adapter automatically sends the required Claude Code identity
 (beta headers, identity system block, and canonical tool-name casing, with
-streamed tool names restored to the caller's casing). Browser login binds the
-provider-registered callback at `http://localhost:53692/callback`.
+streamed tool names restored to the caller's casing). Browser login prefers the
+callback at `http://localhost:53692/callback`; when that port is reserved or in
+use it binds a free loopback port, and if no port is available it completes with
+`OnManualCode` input alone.
 
 This adapter also handles Anthropic-compatible endpoints used by some Kimi,
 Fireworks, and Xiaomi routes. Compatibility varies by endpoint; check

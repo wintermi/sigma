@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Fall back from unavailable Anthropic and Codex OAuth callback ports.
 - [x] Validate ECMAScript patterns, tuple items, and patternProperties in tool schemas.
 - [x] Repair invalid escapes in final tool-call arguments across all adapters.
 - [x] Send Mistral tool-result images as image chunks and mark failed or empty tool results.

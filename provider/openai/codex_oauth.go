@@ -259,13 +259,19 @@ func LoginOpenAICodexBrowser(ctx context.Context, opts CodexBrowserLoginOptions)
 	if err != nil {
 		return CodexOAuthCredentials{}, err
 	}
+	// Port 1455 is shared with the Codex CLI. When it is taken, the login can
+	// still complete with a pasted redirect URL or code.
 	server, err := startOpenAICodexBrowserCallbackServer(state)
-	if err != nil {
+	if err != nil && opts.OnManualCode == nil {
 		return CodexOAuthCredentials{}, err
 	}
-	defer server.close()
+	redirectURI := codexOAuthBrowserDefaultRedirect
+	if server != nil {
+		defer server.close()
+		redirectURI = server.redirectURI
+	}
 
-	flow, err := newOpenAICodexBrowserAuthorizationFlow(state, server.redirectURI)
+	flow, err := newOpenAICodexBrowserAuthorizationFlow(state, redirectURI)
 	if err != nil {
 		return CodexOAuthCredentials{}, err
 	}
@@ -280,7 +286,7 @@ func LoginOpenAICodexBrowser(ctx context.Context, opts CodexBrowserLoginOptions)
 	if err != nil {
 		return CodexOAuthCredentials{}, err
 	}
-	token, err := exchangeOpenAICodexAuthorizationCode(ctx, opts.HTTPClient, code, flow.verifier, server.redirectURI)
+	token, err := exchangeOpenAICodexAuthorizationCode(ctx, opts.HTTPClient, code, flow.verifier, redirectURI)
 	if err != nil {
 		return CodexOAuthCredentials{}, err
 	}
@@ -571,14 +577,21 @@ func waitOpenAICodexBrowserAuthorizationCode(
 		}()
 	}
 
+	// Without a callback server, only pasted input can complete the login.
+	var callback <-chan codexBrowserCallbackResult
+	if server != nil {
+		callback = server.done
+	}
 	for {
 		select {
-		case result := <-server.done:
+		case result := <-callback:
 			return result.code, result.err
 		case result := <-manualResult:
 			return result.code, result.err
 		case <-ctx.Done():
-			server.close()
+			if server != nil {
+				server.close()
+			}
 			return "", ctx.Err()
 		}
 	}

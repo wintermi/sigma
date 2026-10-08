@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Fall back when OAuth browser-login callback ports are unavailable. Anthropic
+  login tries a free loopback port after 53692, then pasted input alone, and
+  Codex login completes with `OnManualCode` input when port 1455 is taken,
+  instead of both failing with `address already in use`.
 - Accept common generated tool schemas in `ValidateToolCall`: ECMAScript
   `\uXXXX` pattern escapes are translated, lookaround and backreference patterns
   are treated as annotations, array-form tuple `items` and `additionalItems` are
