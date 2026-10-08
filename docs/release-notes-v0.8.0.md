@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`SplitRetrievalText` no longer crawls forward one rune at a time after a chunk
+shorter than the overlap, which produced suffix fragments such as `" Heading"`
+and `"eading"`, and it omits whitespace-only chunks that embedding rejects.
+`AddDocuments` therefore succeeds for documents that open with a short heading.
+
 Radius final messages now carry a cost estimate from the gateway catalog's
 pricing, as other adapters do. Radius also keeps text and tool-call thought
 signatures from the stream and replays them, so tool loops on Gemini-backed

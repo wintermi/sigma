@@ -311,7 +311,8 @@ for _, result := range results {
 
 `SplitRetrievalText` and `SplitRetrievalDocuments` provide deterministic
 character-based splitting with rune-safe byte offsets, overlap, separator
-preference, and metadata copying. `InMemoryRetrievalIndex` embeds chunks as
+preference, and metadata copying. Chunks shorter than the overlap are not
+overlapped, and whitespace-only chunks are omitted. `InMemoryRetrievalIndex` embeds chunks as
 `EmbeddingInputTypeDocument`, embeds searches as `EmbeddingInputTypeQuery`,
 routes provider work through `Client.EmbedBatch`, stores normalized vectors
 internally, and returns `RetrievalResult` values without exposing stored

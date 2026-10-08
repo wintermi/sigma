@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Stop the retrieval splitter emitting one-rune-shifted fragments and
+  whitespace-only chunks when a separator falls near the start of a window,
+  which made `AddDocuments` fail on ordinary Markdown such as a leading heading.
 - Set `Cost` on Radius final messages from catalog pricing, and replay Radius
   text signatures (`textSignature`) and tool-call thought signatures
   (`thoughtSignature`), which were dropped. Gemini-backed Radius tool loops need

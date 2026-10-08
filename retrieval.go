@@ -318,17 +318,22 @@ func (s retrievalSplitter) split(text string) []RetrievalChunk {
 		}
 		startByte := s.spans[startRune].start
 		endByte := s.spans[endRune-1].end
-		chunks = append(chunks, RetrievalChunk{
-			Text:      text[startByte:endByte],
-			StartByte: startByte,
-			EndByte:   endByte,
-		})
+		// Whitespace-only chunks carry nothing to retrieve and fail embedding.
+		if strings.TrimSpace(text[startByte:endByte]) != "" {
+			chunks = append(chunks, RetrievalChunk{
+				Text:      text[startByte:endByte],
+				StartByte: startByte,
+				EndByte:   endByte,
+			})
+		}
 		if endRune == len(s.spans) {
 			break
 		}
+		// A chunk shorter than the overlap is not overlapped; restarting one
+		// rune later would emit its suffixes as separate chunks.
 		nextStart := endRune - s.config.ChunkOverlap
 		if nextStart <= startRune {
-			nextStart = startRune + 1
+			nextStart = endRune
 		}
 		startRune = nextStart
 	}
