@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- GitHub Copilot device login now adopts the `interval` that GitHub returns with `slow_down`, rather than always adding five seconds.
 - Bedrock now rejects a plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` that targets a host other than loopback or the ECS/EKS credential addresses, so the container authorization token is not sent in clear text to an arbitrary host.
 - `StoredCredential`, the provider OAuth credential structs, Bedrock `StaticCredentials`, and `openai.AzureAccessToken` now print redacted descriptions under `fmt` verbs instead of exposing tokens and keys.
 - Bedrock's default credential chain now prefers an explicitly set `AWS_PROFILE` with static keys over ambient `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.

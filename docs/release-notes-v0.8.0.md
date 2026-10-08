@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+GitHub Copilot device login follows the poll interval GitHub sends with a `slow_down` response, as pi does. The fixed five-second increment remains the fallback when the server omits an interval. This avoids polling early repeatedly and timing out.
+
 Bedrock applies the AWS SDK host rule to `AWS_CONTAINER_CREDENTIALS_FULL_URI`. HTTPS endpoints may use any host. Plain HTTP endpoints must be loopback, `169.254.170.2`, `169.254.170.23`, or `fd00:ec2::23`; any other value is reported as a container credential error instead of being fetched.
 
 Credential structs no longer print secrets when formatted with `%v`, `%+v`, `%#v`, or `%s`. `StoredCredential`, the Anthropic, Codex, Copilot, Kimi, OpenRouter, Radius, and xAI OAuth credentials, Bedrock `StaticCredentials`, and `openai.AzureAccessToken` now follow `sigma.Credential` and print a description that names the secret fields without their values. JSON encoding is unchanged.

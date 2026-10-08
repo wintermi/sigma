@@ -229,6 +229,8 @@ const (
 type githubCopilotDevicePollResult struct {
 	status githubCopilotDevicePollStatus
 	token  string
+	// interval is the server-required poll interval sent with slow_down.
+	interval time.Duration
 }
 
 type githubCopilotModelsResponse struct {
@@ -755,7 +757,13 @@ func pollGitHubCopilotDeviceFlow(ctx context.Context, client *http.Client, domai
 		case githubCopilotDevicePollComplete:
 			return result.token, nil
 		case githubCopilotDevicePollSlowDown:
-			interval += githubCopilotOAuthSlowDownPollIncrement
+			// GitHub reports the new minimum interval; fall back to the RFC 8628
+			// increment when it is absent.
+			if result.interval > 0 {
+				interval = result.interval
+			} else {
+				interval += githubCopilotOAuthSlowDownPollIncrement
+			}
 			slowed = true
 		case githubCopilotDevicePollPending:
 		default:
@@ -797,9 +805,10 @@ func pollGitHubCopilotDeviceFlowOnce(ctx context.Context, client *http.Client, d
 		return githubCopilotDevicePollResult{}, githubCopilotContextOrError(ctx, fmt.Errorf("github copilot oauth: read device token response: %w", err))
 	}
 	var decoded struct {
-		AccessToken      string `json:"access_token"`
-		Error            string `json:"error"`
-		ErrorDescription string `json:"error_description"`
+		AccessToken      string  `json:"access_token"`
+		Error            string  `json:"error"`
+		ErrorDescription string  `json:"error_description"`
+		Interval         float64 `json:"interval"`
 	}
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return githubCopilotDevicePollResult{}, fmt.Errorf("github copilot oauth: decode device token response: %w", err)
@@ -811,7 +820,7 @@ func pollGitHubCopilotDeviceFlowOnce(ctx context.Context, client *http.Client, d
 	case "authorization_pending":
 		return githubCopilotDevicePollResult{status: githubCopilotDevicePollPending}, nil
 	case "slow_down":
-		return githubCopilotDevicePollResult{status: githubCopilotDevicePollSlowDown}, nil
+		return githubCopilotDevicePollResult{status: githubCopilotDevicePollSlowDown, interval: time.Duration(decoded.Interval * float64(time.Second))}, nil
 	case "":
 		if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
 			return githubCopilotDevicePollResult{}, fmt.Errorf("github copilot oauth: device token response missing fields")
