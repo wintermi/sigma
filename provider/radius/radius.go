@@ -542,10 +542,10 @@ type radiusPayload struct {
 	Options radiusOptions `json:"options"`
 }
 
+// radiusContext is pi's transcript context: the system prompt and tools travel
+// in a leading system message rather than beside the messages.
 type radiusContext struct {
-	SystemPrompt string          `json:"systemPrompt,omitempty"`
-	Messages     []radiusMessage `json:"messages"`
-	Tools        []radiusTool    `json:"tools,omitempty"`
+	Messages []radiusMessage `json:"messages"`
 }
 
 type radiusOptions struct {
@@ -560,6 +560,7 @@ type radiusOptions struct {
 type radiusMessage struct {
 	Role           string       `json:"role"`
 	Content        any          `json:"content,omitempty"`
+	ToolsAdded     []radiusTool `json:"toolsAdded,omitempty"`
 	ToolCallID     string       `json:"toolCallId,omitempty"`
 	ToolName       string       `json:"toolName,omitempty"`
 	AddedToolNames []string     `json:"addedToolNames,omitempty"`
@@ -579,7 +580,7 @@ type radiusTool struct {
 
 func requestPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (radiusPayload, error) {
 	req = transform.PrepareReplay(model, req)
-	messages := make([]radiusMessage, 0, len(req.Messages))
+	messages := make([]radiusMessage, 0, len(req.Messages)+1)
 	for _, message := range req.Messages {
 		converted, err := messagePayload(message)
 		if err != nil {
@@ -610,13 +611,13 @@ func requestPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (r
 			return radiusPayload{}, unsupportedError(model, fmt.Sprintf("thinking level %q is not supported", opts.ReasoningLevel))
 		}
 	}
+	if req.SystemPrompt != "" || len(tools) > 0 {
+		system := radiusMessage{Role: "system", Content: req.SystemPrompt, ToolsAdded: tools}
+		messages = append([]radiusMessage{system}, messages...)
+	}
 	return radiusPayload{
-		Model: string(model.ID),
-		Context: radiusContext{
-			SystemPrompt: req.SystemPrompt,
-			Messages:     messages,
-			Tools:        tools,
-		},
+		Model:   string(model.ID),
+		Context: radiusContext{Messages: messages},
 		Options: options,
 	}, nil
 }

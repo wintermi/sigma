@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Radius requests now send pi's transcript context: the system prompt and tools travel in a leading `system` message with `toolsAdded`, replacing the pre-0.86 `context.systemPrompt` and `context.tools` fields.
 - Radius requests now forward `Options.ToolChoice` as `options.toolChoice` instead of dropping it.
 - Bedrock streams now surface `:message-type: error` event-stream frames as provider errors, using their `:error-code` and `:error-message` headers, instead of ignoring them.
 - Bedrock Converse tool specs now omit `description` when a tool has none, rather than sending an empty string that fails the API's minimum-length check.

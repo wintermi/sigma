@@ -377,13 +377,18 @@ data: {"type":"done","reason":"toolUse","usage":{"input":12,"output":8,"cacheRea
 		t.Fatalf("payload model = %v, want %q", got, want)
 	}
 	contextPayload := payload["context"].(map[string]any)
-	if got, want := contextPayload["systemPrompt"], "Be concise."; got != want {
-		t.Fatalf("system prompt = %v, want %q", got, want)
-	}
 	messages := contextPayload["messages"].([]any)
-	if got, want := len(messages), 3; got != want {
+	if got, want := len(messages), 4; got != want {
 		t.Fatalf("message count = %d, want %d", got, want)
 	}
+	system := messages[0].(map[string]any)
+	if got, want := system["content"], "Be concise."; got != want {
+		t.Fatalf("system prompt = %v, want %q", got, want)
+	}
+	if got, want := len(system["toolsAdded"].([]any)), 1; got != want {
+		t.Fatalf("tool count = %d, want %d", got, want)
+	}
+	messages = messages[1:]
 	userContent := messages[0].(map[string]any)["content"].([]any)
 	if got, want := userContent[1].(map[string]any)["type"], "image"; got != want {
 		t.Fatalf("image type = %v, want %q", got, want)
@@ -394,9 +399,6 @@ data: {"type":"done","reason":"toolUse","usage":{"input":12,"output":8,"cacheRea
 	}
 	if got, want := messages[2].(map[string]any)["role"], "toolResult"; got != want {
 		t.Fatalf("tool result role = %v, want %q", got, want)
-	}
-	if got, want := len(contextPayload["tools"].([]any)), 1; got != want {
-		t.Fatalf("tool count = %d, want %d", got, want)
 	}
 	options := payload["options"].(map[string]any)
 	if got, want := options["temperature"], temperature; got != want {

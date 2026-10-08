@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Send Radius context as pi's transcript shape with a leading system message.
 - [x] - [x] Forward `ToolChoice` on Radius requests.
 - [x] - [x] Surface Bedrock `:message-type: error` frames as provider errors.
 - [x] - [x] Omit empty Bedrock tool descriptions.
