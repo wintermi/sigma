@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Token estimates now use 3.5 characters per token instead of 4, matching the
+reference implementation. Context-based output limits are slightly more
+conservative, reducing context-limit request failures.
+
 Generated Azure OpenAI Responses models now send `api-version=v1`, the default
 of the `/openai/v1` API they call. The previous `2025-04-01-preview` value is a
 legacy-route version outside the v1 API's accepted values (`v1`, `preview`).

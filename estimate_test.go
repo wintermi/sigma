@@ -21,6 +21,14 @@ func TestEstimateTextTokensRoundsUp(t *testing.T) {
 	if got, want := sigma.EstimateTextTokens("ééééé"), 2; got != want {
 		t.Fatalf("EstimateTextTokens unicode = %d, want %d", got, want)
 	}
+	// Estimates use 3.5 characters per token so context-based output limits
+	// leave room for denser tokenizers.
+	if got, want := sigma.EstimateTextTokens("12345678"), 3; got != want {
+		t.Fatalf("EstimateTextTokens 8 characters = %d, want %d", got, want)
+	}
+	if got, want := sigma.EstimateTextTokens("1234567"), 2; got != want {
+		t.Fatalf("EstimateTextTokens 7 characters = %d, want %d", got, want)
+	}
 }
 
 func TestEstimateRequestTokensWithoutUsageAnchor(t *testing.T) {
@@ -46,7 +54,7 @@ func TestEstimateRequestTokensWithoutUsageAnchor(t *testing.T) {
 	}
 
 	estimate := sigma.EstimateRequestTokens(req)
-	if got, want := estimate.Tokens, 2411; got != want {
+	if got, want := estimate.Tokens, 2415; got != want {
 		t.Fatalf("EstimateRequestTokens tokens = %d, want %d", got, want)
 	}
 	if estimate.LastUsageMessageIndex != nil {
@@ -83,7 +91,7 @@ func TestEstimateRequestTokensIncludesTools(t *testing.T) {
 
 	estimate := sigma.EstimateRequestTokens(req)
 	toolJSON := `[{"name":"x","inputSchema":{"type":"object"}}]`
-	want := 1 + ((len(toolJSON) + 3) / 4)
+	want := sigma.EstimateTextTokens("1234") + ((2*len(toolJSON) + 6) / 7)
 	if got := estimate.Tokens; got != want {
 		t.Fatalf("EstimateRequestTokens tokens = %d, want %d", got, want)
 	}
@@ -117,13 +125,13 @@ func TestEstimateRequestTokensUsesLatestSuccessfulUsageAnchor(t *testing.T) {
 	}
 
 	estimate := sigma.EstimateRequestTokens(req)
-	if got, want := estimate.Tokens, 204; got != want {
+	if got, want := estimate.Tokens, 205; got != want {
 		t.Fatalf("EstimateRequestTokens tokens = %d, want %d", got, want)
 	}
 	if got, want := estimate.UsageTokens, 200; got != want {
 		t.Fatalf("usage tokens = %d, want %d", got, want)
 	}
-	if got, want := estimate.TrailingTokens, 4; got != want {
+	if got, want := estimate.TrailingTokens, 5; got != want {
 		t.Fatalf("trailing tokens = %d, want %d", got, want)
 	}
 	if estimate.LastUsageMessageIndex == nil || *estimate.LastUsageMessageIndex != 1 {
@@ -181,7 +189,7 @@ func TestMaxTokensForContextClampsToAvailableContext(t *testing.T) {
 	model := sigma.Model{ContextWindow: 5000, MaxOutputTokens: 1000}
 	req := sigma.Request{Messages: []sigma.Message{sigma.UserText("12345678")}}
 
-	if got, want := sigma.MaxTokensForContext(model, req, 1000), 902; got != want {
+	if got, want := sigma.MaxTokensForContext(model, req, 1000), 901; got != want {
 		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
 	}
 }
@@ -200,7 +208,7 @@ func TestMaxTokensForContextUsesUsageAnchoredEstimate(t *testing.T) {
 		sigma.UserText("12345678"),
 	}}
 
-	if got, want := sigma.MaxTokensForContext(model, req, 1000), 102; got != want {
+	if got, want := sigma.MaxTokensForContext(model, req, 1000), 101; got != want {
 		t.Fatalf("MaxTokensForContext = %d, want %d", got, want)
 	}
 }
@@ -282,7 +290,7 @@ func TestReasoningBudgetForContextUsesUsageAnchoredEstimate(t *testing.T) {
 	}}
 
 	got := sigma.ReasoningBudgetForContext(model, req, sigma.ThinkingLevelLow, 2000)
-	want := sigma.ReasoningBudget{MaxTokens: 102}
+	want := sigma.ReasoningBudget{MaxTokens: 101}
 	if got != want {
 		t.Fatalf("ReasoningBudgetForContext = %+v, want %+v", got, want)
 	}

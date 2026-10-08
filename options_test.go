@@ -355,7 +355,7 @@ func TestWithMaxTokensForContextSetsOnlyUsableBudget(t *testing.T) {
 	if _, err := client.Complete(context.Background(), model, req, sigma.WithMaxTokensForContext(model, req, 1000)); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
-	if got, want := valueOf(provider.opts.MaxTokens), 902; got != want {
+	if got, want := valueOf(provider.opts.MaxTokens), 901; got != want {
 		t.Fatalf("max tokens = %d, want %d", got, want)
 	}
 
@@ -398,7 +398,7 @@ func TestAutomaticMaxTokensForContextUsesModelCapWhenUnset(t *testing.T) {
 	if _, err := client.Complete(context.Background(), model, req, sigma.WithAutomaticMaxTokensForContext(true)); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
-	if got, want := valueOf(provider.opts.MaxTokens), 902; got != want {
+	if got, want := valueOf(provider.opts.MaxTokens), 901; got != want {
 		t.Fatalf("max tokens = %d, want %d", got, want)
 	}
 }
@@ -420,7 +420,7 @@ func TestAutomaticMaxTokensForContextClampsExplicitMaxTokens(t *testing.T) {
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
-	if got, want := valueOf(provider.opts.MaxTokens), 402; got != want {
+	if got, want := valueOf(provider.opts.MaxTokens), 401; got != want {
 		t.Fatalf("max tokens = %d, want %d", got, want)
 	}
 }

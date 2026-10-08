@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	estimateCharsPerToken       = 4
 	estimateImageTokens         = 1200
 	estimateDocumentTokens      = 1200
 	estimateContextSafetyTokens = 4096
@@ -37,8 +36,9 @@ func EstimateTextTokens(text string) int {
 	if text == "" {
 		return 0
 	}
+	// 3.5 characters per token, rounded up: ceil(characters / 3.5).
 	characters := utf8.RuneCountInString(text)
-	return (characters + estimateCharsPerToken - 1) / estimateCharsPerToken
+	return (2*characters + 6) / 7
 }
 
 // EstimateContentTokens returns a deterministic approximate token count for

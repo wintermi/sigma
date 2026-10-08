@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Estimate text at 3.5 characters per token instead of 4, so context-based output
+  limits from `MaxTokensForContext` and related helpers leave room for denser
+  tokenizers and avoid context-limit failures.
 - Default generated Azure OpenAI Responses rows to `api-version=v1`. Requests use
   the `/openai/v1/responses` path, whose published API accepts only `v1` or
   `preview`; the previous `2025-04-01-preview` default belongs to the legacy
