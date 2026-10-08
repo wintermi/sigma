@@ -442,11 +442,11 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 	}
 }
 
+// assistantHasContent reports whether an assistant turn can be replayed.
+// Reasoning alone does not count: compatible servers require content or tool
+// calls on assistant messages.
 func assistantHasContent(message map[string]any) bool {
 	if content, ok := message["content"].(string); ok && content != "" {
-		return true
-	}
-	if reasoning, ok := message["reasoning_content"].(string); ok && reasoning != "" {
 		return true
 	}
 	if toolCalls, ok := message["tool_calls"].([]map[string]any); ok && len(toolCalls) > 0 {

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Chat Completions history no longer replays assistant turns that hold only reasoning, which DeepSeek and other compatible servers rejected for missing `content`.
 - Chat Completions tool results now join text blocks with newlines and send `(no tool output)` instead of an empty string when a result has no content.
 - Chat Completions streaming now resolves tool-call deltas by index and then by id, so index-less named calls no longer merge into one and calls whose index and id arrive on different deltas no longer split in two.
 - Native Vertex Gemini text requests that use an API key without a project now route through Vertex express mode instead of failing with a missing-project error.

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Chat Completions history skips assistant turns that contain only reasoning, as pi does. Previously, such a turn (for example, an aborted DeepSeek response) was replayed with `reasoning_content` and no `content`, which compatible servers reject.
+
 Chat Completions tool results join multiple text blocks with newlines instead of concatenating them. Empty results send `(no tool output)`, since some compatible servers reject empty tool content.
 
 Chat Completions tool-call streaming now matches deltas by stream index and then by provider id, as pi does. Separate index-less calls stay separate, and a call whose continuation carries only its id stays whole.
