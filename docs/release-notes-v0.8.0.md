@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+An explicit OAuth minimum validity is now a requirement on the refreshed token.
+When a provider's tokens are shorter-lived than the requested minimum, the
+rotation is persisted and the request fails with an error wrapping
+`ErrCredentialUnavailable` instead of silently dispatching a token that expires
+too soon and refreshing again on every request.
+
 Anthropic, Codex, and Radius browser logins validate the callback state before
 anything else. Requests without the login's state, non-GET requests, and
 callbacks without a code are answered with an error page while the login keeps

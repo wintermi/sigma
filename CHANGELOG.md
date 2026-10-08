@@ -188,6 +188,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Fail a request with an error wrapping `ErrCredentialUnavailable` when a
+  refreshed OAuth token still expires within an explicit
+  `WithOAuthMinimumValidity`, for stored credentials and the built-in token
+  providers. Such requests previously dispatched the shorter-lived token. The
+  rotated token is still persisted.
 - Ignore OAuth browser-login callback requests that do not carry the login's
   state for Anthropic, Codex, and Radius. Stray, stale, cross-site, non-GET, and
   code-less requests receive an error page while the login keeps waiting; only a

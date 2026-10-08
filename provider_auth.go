@@ -216,6 +216,11 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 			return Credential{}, unavailableCredential(model, "credential-store:"+string(model.Provider))
 		}
 		credential = post
+		// The default window only triggers a refresh; an explicit minimum is a
+		// requirement the refreshed token must meet.
+		if opts.OAuthMinimumValidity != nil && oauthvalidity.NeedsRefresh(now(), credential.Expiry, refreshBefore, opts.OAuthMinimumValidity) {
+			return Credential{}, fmt.Errorf("provider oauth: refresh %s returned a token that expires too soon for the requested minimum validity: %w", model.Provider, ErrCredentialUnavailable)
+		}
 	}
 	if oauth.Credential == nil {
 		return Credential{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)

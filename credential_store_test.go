@@ -311,7 +311,7 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 					Type:         sigma.CredentialTypeOAuthToken,
 					Value:        "new-token",
 					RefreshToken: "next-refresh",
-					Expiry:       now.Add(5 * time.Minute),
+					Expiry:       now.Add(time.Hour),
 				}, nil
 			},
 			Credential: func(_ context.Context, _ sigma.Model, _ sigma.Options, stored sigma.StoredCredential) (sigma.Credential, error) {
@@ -321,8 +321,8 @@ func TestStoredCredentialAuthResolverRefreshesOAuthOnce(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RegisterProviderAuth returned error: %v", err)
 	}
-	// Both callers must inspect the old credential before either can refresh.
-	// A short-lived refreshed token still must be reused by an overlapping waiter.
+	// Both callers must inspect the old credential before either can refresh,
+	// and the overlapping waiter must reuse the refreshed token.
 	observed, release := make(chan struct{}, 2), make(chan struct{})
 	var releaseOnce sync.Once
 	releaseReads := func() { releaseOnce.Do(func() { close(release) }) }

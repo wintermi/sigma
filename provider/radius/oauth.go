@@ -314,11 +314,13 @@ func (p *RadiusOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model si
 		return err
 	}
 	p.credentials = refreshed
-	if p.onRefresh == nil {
-		return nil
+	if p.onRefresh != nil {
+		if err := p.onRefresh(refreshCtx, refreshed); err != nil {
+			return errors.New("radius oauth: refresh callback failed")
+		}
 	}
-	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
-		return errors.New("radius oauth: refresh callback failed")
+	if opts.OAuthMinimumValidity != nil && p.shouldRefresh(opts) {
+		return fmt.Errorf("radius oauth: refreshed token expires too soon for the requested minimum validity: %w", sigma.ErrCredentialUnavailable)
 	}
 	return nil
 }

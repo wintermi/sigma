@@ -242,11 +242,13 @@ func (p *KimiCodingOAuthTokenProvider) refreshIfNeeded(ctx context.Context, mode
 		return err
 	}
 	p.credentials = refreshed
-	if p.onRefresh == nil {
-		return nil
+	if p.onRefresh != nil {
+		if err := p.onRefresh(refreshCtx, refreshed); err != nil {
+			return errors.New("kimi coding oauth: refresh callback failed")
+		}
 	}
-	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
-		return errors.New("kimi coding oauth: refresh callback failed")
+	if opts.OAuthMinimumValidity != nil && p.shouldRefresh(opts) {
+		return fmt.Errorf("kimi coding oauth: refreshed token expires too soon for the requested minimum validity: %w", sigma.ErrCredentialUnavailable)
 	}
 	return nil
 }

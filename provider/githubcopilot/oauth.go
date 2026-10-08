@@ -472,11 +472,13 @@ func (p *GitHubCopilotOAuthTokenProvider) refreshIfNeeded(ctx context.Context, m
 		return err
 	}
 	p.credentials = refreshed
-	if p.onRefresh == nil {
-		return nil
+	if p.onRefresh != nil {
+		if err := p.onRefresh(refreshCtx, refreshed); err != nil {
+			return fmt.Errorf("github copilot oauth: refresh callback failed")
+		}
 	}
-	if err := p.onRefresh(refreshCtx, refreshed); err != nil {
-		return fmt.Errorf("github copilot oauth: refresh callback failed")
+	if opts.OAuthMinimumValidity != nil && p.shouldRefresh(opts) {
+		return fmt.Errorf("github copilot oauth: refreshed token expires too soon for the requested minimum validity: %w", sigma.ErrCredentialUnavailable)
 	}
 	return nil
 }

@@ -154,7 +154,10 @@ persist the rotation through the caller-supplied credential store. Sigma's
 built-in Anthropic, OpenAI Codex, GitHub Copilot, Kimi Coding, Radius, and xAI
 in-memory OAuth token providers honor the same option and continue reporting
 rotations through their existing callbacks. Negative durations fail locally
-before provider dispatch.
+before provider dispatch. If a refreshed token still expires within an explicit
+minimum, the rotation is persisted and the request fails with an error wrapping
+`ErrCredentialUnavailable` rather than dispatching a shorter-lived token; choose
+a minimum within the provider's token lifetime.
 
 ## Setup Snippets
 
