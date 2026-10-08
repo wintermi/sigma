@@ -63,10 +63,15 @@ type codexWebSocketConnection struct {
 type codexWebSocketSessionEntry struct {
 	fingerprint  [sha256.Size]byte
 	conn         *codexWebSocketConnection
+	createdAt    time.Time
 	busy         bool
 	idleTimer    *time.Timer
 	continuation *codexWebSocketContinuation
 }
+
+// codexWebSocketMaxAge retires cached connections before the Codex backend's
+// 60-minute connection limit closes them mid-request.
+const codexWebSocketMaxAge = 55 * time.Minute
 
 type codexWebSocketContinuation struct {
 	lastRequestBody   map[string]any
@@ -448,7 +453,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 			entry.idleTimer.Stop()
 			entry.idleTimer = nil
 		}
-		if !entry.busy && entry.conn.IsOpen() && entry.fingerprint == fingerprint {
+		if !entry.busy && entry.conn.IsOpen() && entry.fingerprint == fingerprint && time.Since(entry.createdAt) < codexWebSocketMaxAge {
 			entry.busy = true
 			cancelCodexWebSocketSessionStateExpiryLocked(sessionID)
 			codexWebSocketSessions.Unlock()
@@ -485,7 +490,7 @@ func acquireCodexWebSocket(ctx context.Context, wsURL string, headers http.Heade
 	if err != nil {
 		return nil, err
 	}
-	entry := &codexWebSocketSessionEntry{conn: conn, busy: true, fingerprint: fingerprint}
+	entry := &codexWebSocketSessionEntry{conn: conn, busy: true, fingerprint: fingerprint, createdAt: time.Now()}
 	codexWebSocketSessions.Lock()
 	accountEntries = codexWebSocketSessions.entries[sessionID]
 	if accountEntries == nil {

@@ -188,6 +188,8 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Retire cached Codex WebSocket connections after 55 minutes instead of reusing
+  them until the backend's 60-minute limit closes them mid-request.
 - Honor `CacheRetentionNone` for Codex session affinity: requests no longer send
   session headers or a prompt cache key, or reuse a cached WebSocket
   continuation, when caching is turned off.

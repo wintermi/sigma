@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Cached Codex WebSocket connections are now retired after 55 minutes, before the
+backend's 60-minute connection limit, so long sessions open a fresh connection
+instead of failing on a connection the server is about to close.
+
 Codex requests with `CacheRetentionNone` now drop session affinity entirely,
 omitting session headers and the prompt cache key and skipping cached WebSocket
 continuation, matching the direct Responses adapter and the reference
