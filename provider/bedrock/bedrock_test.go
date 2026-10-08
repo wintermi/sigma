@@ -502,8 +502,12 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 			}(),
 			opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelXHigh},
 			want: map[string]any{
-				"thinking":      map[string]any{"type": "adaptive", "display": "summarized"},
-				"output_config": map[string]any{"effort": "xhigh"},
+				"thinking": map[string]any{
+					"type": "adaptive", "display": "summarized",
+					"block_binding": map[string]any{"prefix_mismatch_behavior": "drop_block"},
+				},
+				"output_config":  map[string]any{"effort": "xhigh"},
+				"anthropic_beta": []string{"thinking-binding-controls-2026-08-01"},
 			},
 		},
 		{
@@ -516,8 +520,12 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 			}(),
 			opts: sigma.Options{ReasoningLevel: sigma.ThinkingLevelXHigh},
 			want: map[string]any{
-				"thinking":      map[string]any{"type": "adaptive", "display": "summarized"},
-				"output_config": map[string]any{"effort": "xhigh"},
+				"thinking": map[string]any{
+					"type": "adaptive", "display": "summarized",
+					"block_binding": map[string]any{"prefix_mismatch_behavior": "drop_block"},
+				},
+				"output_config":  map[string]any{"effort": "xhigh"},
+				"anthropic_beta": []string{"thinking-binding-controls-2026-08-01"},
 			},
 		},
 		{

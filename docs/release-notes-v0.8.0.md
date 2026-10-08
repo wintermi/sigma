@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock Claude adaptive thinking for Opus 4.7 and later, Sonnet 5, Haiku 5, and
+Fable 5 now sends `thinking.block_binding` with `drop_block` and the
+`thinking-binding-controls-2026-08-01` beta outside GovCloud, matching the direct
+Anthropic adapter. Replaying signed thinking after the system prompt or tools
+change drops stale blocks instead of failing with an invalid signature.
+
 Claude adaptive thinking on Anthropic and Bedrock sends `xhigh` effort only to
 Opus 4.7 and later, Sonnet 5, Haiku 5, and Fable 5, or where model metadata maps
 `xhigh` explicitly. Sonnet 4.6 and similar models now receive `high` instead of

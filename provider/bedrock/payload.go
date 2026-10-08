@@ -823,10 +823,18 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config,
 		if display != "" {
 			thinking["display"] = display
 		}
-		return map[string]any{
+		fields := map[string]any{
 			"thinking":      thinking,
 			"output_config": map[string]any{"effort": bedrockThinkingEffort(model, opts.ReasoningLevel)},
 		}
+		// Replayed signed thinking is bound to the system prompt and tools it was
+		// created with; drop stale blocks instead of failing the replay. GovCloud
+		// rejects the field, as it does display.
+		if supportsThinkingBlockBinding(model) && !isGovCloudBedrockTarget(model, config) {
+			thinking["block_binding"] = map[string]any{"prefix_mismatch_behavior": "drop_block"}
+			fields["anthropic_beta"] = []string{"thinking-binding-controls-2026-08-01"}
+		}
+		return fields
 	}
 
 	budget := bedrockThinkingBudget(opts)
@@ -1020,6 +1028,22 @@ func supportsAdaptiveThinking(model sigma.Model) bool {
 			strings.Contains(candidate, "sonnet-5") ||
 			strings.Contains(candidate, "haiku-5") ||
 			strings.Contains(candidate, "opus-5") ||
+			strings.Contains(candidate, "fable-5") {
+			return true
+		}
+	}
+	return false
+}
+
+// supportsThinkingBlockBinding reports Claude families that accept
+// thinking.block_binding; Opus 4.6 and Sonnet 4.6 reject it.
+func supportsThinkingBlockBinding(model sigma.Model) bool {
+	for _, candidate := range modelMatchCandidates(model) {
+		if strings.Contains(candidate, "opus-4-7") ||
+			strings.Contains(candidate, "opus-4-8") ||
+			strings.Contains(candidate, "opus-5") ||
+			strings.Contains(candidate, "sonnet-5") ||
+			strings.Contains(candidate, "haiku-5") ||
 			strings.Contains(candidate, "fable-5") {
 			return true
 		}

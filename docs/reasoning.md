@@ -50,6 +50,10 @@ lowest supported level instead, such as `LOW` for Gemini 3.8 Flash or the minima
 budget for Gemini 2.5 Pro. Anthropic and Bedrock Claude adaptive thinking sends
 `xhigh` effort only to Opus 4.7 and later, Sonnet 5, Haiku 5, and Fable 5, or
 where metadata maps `xhigh` explicitly; other adaptive models receive `high`.
+Bedrock adaptive thinking for those same families, outside GovCloud, also sends
+`thinking.block_binding` with `drop_block` and the matching beta, so replayed
+signed thinking is dropped rather than rejected after the system prompt or
+tools change.
 
 ## Streaming Thinking
 
