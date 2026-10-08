@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+GPT-5.6 Luna, Terra, and Sol estimates on Azure now match direct OpenAI pricing,
+and the Bedrock rows use the 1.1x in-region rate with a 1.05M context window and
+272K long-context tier. Bedrock `au.anthropic.claude-opus-4-6-v1` now carries
+Opus 4.6 pricing. These rows previously overestimated cost by up to 5x; no
+adapters or live-validation claims change.
+
 Responses replay sends a thinking block as a reasoning item only when OpenAI can
 resolve it: with same-model encrypted content, or by its provider item ID when
 the request sets the `store` provider option. Reasoning models used without a

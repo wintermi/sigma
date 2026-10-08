@@ -446,9 +446,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		cacheWriteCost float64
 		thinkingLevels map[ThinkingLevel]string
 	}{
-		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-luna", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
-		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-sol", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
-		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-terra", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-luna", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 0.2, outputCost: 1.2, cacheReadCost: 0.02, cacheWriteCost: 0.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-sol", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 4, outputCost: 20, cacheReadCost: 0.4, cacheWriteCost: 5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
+		{provider: ProviderAzureOpenAIResponses, id: "gpt-5.6-terra", api: APIAzureOpenAIResponses, contextWindow: 1_050_000, inputCost: 2, outputCost: 12, cacheReadCost: 0.2, cacheWriteCost: 2.5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 0.2, outputCost: 1.2, cacheReadCost: 0.02, cacheWriteCost: 0.25, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 4, outputCost: 20, cacheReadCost: 0.4, cacheWriteCost: 5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", api: APIOpenAICodexResponses, contextWindow: 272_000, inputCost: 2, outputCost: 12, cacheReadCost: 0.2, cacheWriteCost: 2.5, thinkingLevels: map[ThinkingLevel]string{ThinkingLevelMinimal: "low", ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"}},
@@ -570,9 +570,9 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{id: "nvidia.nemotron-super-3-120b", contextWindow: 262144, maxOutputTokens: 131072, inputCost: 0.15, outputCost: 0.65, modelFamily: "nemotron"},
 		{id: "openai.gpt-5.4", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.75, outputCost: 16.5, cacheReadCost: 0.275, modelFamily: "o-series"},
 		{id: "openai.gpt-5.5", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5.5, outputCost: 33, cacheReadCost: 0.55, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-luna", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 1, outputCost: 6, cacheReadCost: 0.1, cacheWriteCost: 1.25, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-sol", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 5, outputCost: 30, cacheReadCost: 0.5, cacheWriteCost: 6.25, modelFamily: "o-series"},
-		{id: "openai.gpt-5.6-terra", supportsImages: true, contextWindow: 272000, maxOutputTokens: 128000, inputCost: 2.5, outputCost: 15, cacheReadCost: 0.25, cacheWriteCost: 3.125, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-luna", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 0.22, outputCost: 1.32, cacheReadCost: 0.022, cacheWriteCost: 0.275, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-sol", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 4.4, outputCost: 22, cacheReadCost: 0.44, cacheWriteCost: 5.5, modelFamily: "o-series"},
+		{id: "openai.gpt-5.6-terra", supportsImages: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 2.2, outputCost: 13.2, cacheReadCost: 0.22, cacheWriteCost: 2.75, modelFamily: "o-series"},
 		{id: "writer.palmyra-x4-v1:0", contextWindow: 122880, maxOutputTokens: 8192, inputCost: 2.5, outputCost: 10, modelFamily: "palmyra"},
 		{id: "writer.palmyra-x5-v1:0", contextWindow: 1040000, maxOutputTokens: 8192, inputCost: 0.6, outputCost: 6, modelFamily: "palmyra"},
 		{id: "xai.grok-4.3", supportsImages: true, contextWindow: 1000000, maxOutputTokens: 131072, inputCost: 1.25, outputCost: 2.5, cacheReadCost: 0.2, modelFamily: "grok"},
@@ -1216,7 +1216,7 @@ func assertGeneratedRegionalBedrockMetadata(t *testing.T, registry *Registry) {
 		disabledThinkingUnsupported                  bool
 	}{
 		{id: "au.anthropic.claude-haiku-4-5-20251001-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 1, outputCost: 5, cacheRead: 0.1, cacheWrite: 1.25, thinkingFormat: AnthropicThinkingBudget},
-		{id: "au.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 16.5, outputCost: 82.5, cacheRead: 1.65, cacheWrite: 20.625, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
+		{id: "au.anthropic.claude-opus-4-6-v1", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5.5, outputCost: 27.5, cacheRead: 0.55, cacheWrite: 6.875, thinkingFormat: AnthropicThinkingBudget, xhigh: "max"},
 		{id: "au.anthropic.claude-opus-4-8", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 5, outputCost: 25, cacheRead: 0.5, cacheWrite: 6.25, thinkingFormat: AnthropicThinkingBudget, xhigh: "xhigh"},
 		{id: "au.anthropic.claude-sonnet-4-5-20250929-v1:0", contextWindow: 200000, maxOutputTokens: 64000, inputCost: 3, outputCost: 15, cacheRead: 0.3, cacheWrite: 3.75, thinkingFormat: AnthropicThinkingBudget},
 		{id: "au.anthropic.claude-sonnet-4-6", contextWindow: 1000000, maxOutputTokens: 128000, inputCost: 3.3, outputCost: 16.5, cacheRead: 0.33, cacheWrite: 4.125, thinkingFormat: AnthropicThinkingBudget},
@@ -1342,6 +1342,9 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.4, OutputCostPerMillion: 1.8, CacheReadInputCostPerMillion: 0.04, CacheWriteInputCostPerMillion: 0.5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8, OutputCostPerMillion: 30, CacheReadInputCostPerMillion: 0.8, CacheWriteInputCostPerMillion: 10}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
+		{provider: ProviderAmazonBedrock, id: "openai.gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.44, OutputCostPerMillion: 1.98, CacheReadInputCostPerMillion: 0.044, CacheWriteInputCostPerMillion: 0.55}},
+		{provider: ProviderAmazonBedrock, id: "openai.gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8.8, OutputCostPerMillion: 33, CacheReadInputCostPerMillion: 0.88, CacheWriteInputCostPerMillion: 11}},
+		{provider: ProviderAmazonBedrock, id: "openai.gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4.4, OutputCostPerMillion: 19.8, CacheReadInputCostPerMillion: 0.44, CacheWriteInputCostPerMillion: 5.5}},
 		{provider: ProviderXAI, id: "grok-4.6", want: ModelCostTier{InputTokensAbove: 200_000, InputCostPerMillion: 4, OutputCostPerMillion: 12, CacheReadInputCostPerMillion: 1}},
 	}
 	for _, tt := range tests {

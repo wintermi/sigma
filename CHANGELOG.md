@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Correct GPT-5.6 Luna, Terra, and Sol pricing on Azure (now matching direct
+  OpenAI) and Bedrock (the 1.1x in-region rate), giving the Bedrock rows their
+  1.05M context window and 272K long-context tier. Bedrock
+  `au.anthropic.claude-opus-4-6-v1` now uses Opus 4.6 pricing instead of the
+  older Opus rate. Luna estimates on these routes were previously 5x too high.
 - Replay Responses reasoning items only when OpenAI can resolve them: with
   same-model encrypted content, or by provider item ID when the request sets the
   `store` provider option. Unsigned or fabricated reasoning items previously

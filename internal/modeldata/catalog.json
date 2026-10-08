@@ -370,10 +370,10 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 16.5,
-        "outputPerMillion": 82.5,
-        "cacheReadInputPerMillion": 1.65,
-        "cacheWriteInputPerMillion": 20.625,
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 27.5,
+        "cacheReadInputPerMillion": 0.55,
+        "cacheWriteInputPerMillion": 6.875,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -3261,13 +3261,22 @@
       "supportsTools": true,
       "supportsThinking": false,
       "cost": {
-        "inputPerMillion": 1,
-        "outputPerMillion": 6,
-        "cacheReadInputPerMillion": 0.1,
-        "cacheWriteInputPerMillion": 1.25,
-        "currency": "USD"
+        "inputPerMillion": 0.22,
+        "outputPerMillion": 1.32,
+        "cacheReadInputPerMillion": 0.022,
+        "cacheWriteInputPerMillion": 0.275,
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.44,
+            "outputPerMillion": 1.98,
+            "cacheReadInputPerMillion": 0.044,
+            "cacheWriteInputPerMillion": 0.55
+          }
+        ]
       },
-      "contextWindow": 272000,
+      "contextWindow": 1050000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -3293,13 +3302,22 @@
       "supportsTools": true,
       "supportsThinking": false,
       "cost": {
-        "inputPerMillion": 5,
-        "outputPerMillion": 30,
-        "cacheReadInputPerMillion": 0.5,
-        "cacheWriteInputPerMillion": 6.25,
-        "currency": "USD"
+        "inputPerMillion": 4.4,
+        "outputPerMillion": 22,
+        "cacheReadInputPerMillion": 0.44,
+        "cacheWriteInputPerMillion": 5.5,
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 8.8,
+            "outputPerMillion": 33,
+            "cacheReadInputPerMillion": 0.88,
+            "cacheWriteInputPerMillion": 11
+          }
+        ]
       },
-      "contextWindow": 272000,
+      "contextWindow": 1050000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -3325,13 +3343,22 @@
       "supportsTools": true,
       "supportsThinking": false,
       "cost": {
-        "inputPerMillion": 2.5,
-        "outputPerMillion": 15,
-        "cacheReadInputPerMillion": 0.25,
-        "cacheWriteInputPerMillion": 3.125,
-        "currency": "USD"
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 13.2,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 2.75,
+        "currency": "USD",
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 19.8,
+            "cacheReadInputPerMillion": 0.44,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ]
       },
-      "contextWindow": 272000,
+      "contextWindow": 1050000,
       "maxOutputTokens": 128000,
       "headers": {},
       "authEnvNames": [
@@ -5733,11 +5760,11 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 1,
-        "outputPerMillion": 6,
+        "inputPerMillion": 0.2,
+        "outputPerMillion": 1.2,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.1,
-        "cacheWriteInputPerMillion": 1.25
+        "cacheReadInputPerMillion": 0.02,
+        "cacheWriteInputPerMillion": 0.25
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -5776,11 +5803,11 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 5,
-        "outputPerMillion": 30,
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.5,
-        "cacheWriteInputPerMillion": 6.25
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 5
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -5819,11 +5846,11 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 2.5,
-        "outputPerMillion": 15,
+        "inputPerMillion": 2,
+        "outputPerMillion": 12,
         "currency": "USD",
-        "cacheReadInputPerMillion": 0.25,
-        "cacheWriteInputPerMillion": 3.125
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
