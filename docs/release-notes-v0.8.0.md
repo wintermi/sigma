@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Codex WebSocket requests fall back to SSE only when the connection fails before
+any output, or when a connection-limit or missing-continuation error persists
+after its retry. Provider error frames, failed responses, and authentication or
+payload errors are returned with diagnostics instead of resending the request
+over SSE and switching the session to SSE.
+
 Responses stream `error` events with OpenAI's documented top-level `code` and
 `message` fields now return typed provider errors over SSE and Codex WebSocket.
 Context-length errors are recognized as overflow and server errors as transient,

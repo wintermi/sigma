@@ -230,17 +230,43 @@ func (p *CodexResponsesProvider) runWebSocket(ctx context.Context, writer sigma.
 			retriedConnectionLimit = true
 			continue
 		}
-		recordCodexWebSocketFailure(opts.SessionID, err)
-		if parser == nil || !parser.started {
+		// A connection limit or missing continuation that survives its single
+		// retry is tied to the WebSocket session, so SSE can still recover.
+		transportFailure := isCodexWebSocketTransportError(err) || codexWebSocketConnectionLimitReached(err) ||
+			codexWebSocketPreviousResponseNotFound(err)
+		if transportFailure {
+			recordCodexWebSocketFailure(opts.SessionID, err)
+		}
+		if transportFailure && (parser == nil || !parser.started) {
 			recordCodexWebSocketFallback(opts.SessionID)
 			p.runSSE(ctx, writer, model, req, opts, final)
 			return
 		}
-		final = parser.finalize(ctx)
+		if parser != nil && parser.started {
+			final = parser.finalize(ctx)
+		}
+		var providerErr *sigma.ProviderError
+		if errors.As(err, &providerErr) {
+			final.Diagnostics = []sigma.Diagnostic{providerErr.Diagnostic()}
+		}
 		final.StopReason = sigma.StopReasonError
 		_ = writer.Error(ctx, err, final)
 		return
 	}
+}
+
+// codexWebSocketTransportError marks a WebSocket connection failure. Only these
+// justify resending a request over SSE; API, authentication, and payload errors
+// would fail the same way.
+type codexWebSocketTransportError struct{ err error }
+
+func (e codexWebSocketTransportError) Error() string { return e.err.Error() }
+
+func (e codexWebSocketTransportError) Unwrap() error { return e.err }
+
+func isCodexWebSocketTransportError(err error) bool {
+	var transportErr codexWebSocketTransportError
+	return errors.As(err, &transportErr)
 }
 
 func codexWebSocketConnectionLimitReached(err error) bool {
@@ -328,7 +354,7 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 	}
 	acquired, err := acquireCodexWebSocket(ctx, wsURL, headers, opts.SessionID, accountID, codexWebSocketConnectTimeout(opts), codexWebSocketFingerprint(model.Provider, wsURL, headers))
 	if err != nil {
-		return nil, err
+		return nil, codexWebSocketTransportError{err}
 	}
 	keepConnection := false
 	defer func() { acquired.release(keepConnection) }()
@@ -356,12 +382,12 @@ func (p *CodexResponsesProvider) processWebSocket(ctx context.Context, writer si
 		return parser, err
 	}
 	if err := acquired.conn.WriteText(ctx, string(wireData)); err != nil {
-		return parser, err
+		return parser, codexWebSocketTransportError{err}
 	}
 	for {
 		message, err := acquired.conn.ReadText(ctx)
 		if err != nil {
-			return parser, err
+			return parser, codexWebSocketTransportError{err}
 		}
 		completed, err := parser.handleEventData(ctx, "", message)
 		if err != nil {

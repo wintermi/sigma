@@ -96,6 +96,10 @@ Codex cached WebSocket connections require matching provider, effective URL,
 and final handshake headers for reuse. Changing routing, credentials, or account
 headers starts a fresh connection and continuation state. Busy connections remain
 owned by their active request, with overlaps using separate connections.
+A request falls back to SSE, and the session prefers SSE afterward, only when the
+WebSocket connection fails before any output, or when a connection-limit or
+missing-continuation error persists after its single retry. Provider errors,
+authentication failures, and payload errors are returned without an SSE resend.
 OpenAI tool-schema conversion preserves exact JSON numbers. Codex WebSocket
 requests and continuation copies retain those values, including integers beyond
 the exact range of `float64`; changing a schema invalidates continuation reuse.

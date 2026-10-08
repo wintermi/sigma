@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Fall back from Codex WebSocket to SSE only for connection failures before any
+  output, or a connection-limit or missing-continuation error that survives its
+  retry. Provider error frames, failed responses, and authentication or payload
+  errors are now returned directly instead of being resent over SSE and making
+  SSE sticky for the session.
 - Keep the code and message of Responses stream `error` events that use OpenAI's
   top-level `code` and `message` fields, over SSE and Codex WebSocket, so they
   return typed provider errors with overflow and retry classification instead of

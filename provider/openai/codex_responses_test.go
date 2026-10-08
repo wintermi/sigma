@@ -2385,10 +2385,6 @@ func TestCodexResponsesWebSocketHonorsResolvedAuth(t *testing.T) {
 			defer cancel()
 			_, err := client.Complete(ctx, model, sigma.Request{Messages: []sigma.Message{sigma.UserText("test")}}, options...)
 			wantCalls := int32(1)
-			if mode == "resolver failure" {
-				// The existing pre-output SSE fallback starts a separate attempt.
-				wantCalls = 2
-			}
 			if mode == "explicit token" {
 				wantCalls = 0
 			}
