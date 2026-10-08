@@ -884,8 +884,15 @@ func bedrockThinkingDisplay(model sigma.Model, opts sigma.Options, config Config
 }
 
 func bedrockThinkingEffort(model sigma.Model, level sigma.ThinkingLevel) string {
-	if level == sigma.ThinkingLevelXHigh && supportsNativeXHighEffort(model) {
-		return "xhigh"
+	if level == sigma.ThinkingLevelXHigh {
+		// Only native families accept xhigh; others use an explicit mapping or high.
+		if supportsNativeXHighEffort(model) {
+			return "xhigh"
+		}
+		if value := model.ThinkingLevelMap[level]; value != "" {
+			return value
+		}
+		return "high"
 	}
 	if level != "" {
 		if value, ok := model.ProviderThinkingLevel(level); ok {
@@ -1011,6 +1018,7 @@ func supportsAdaptiveThinking(model sigma.Model) bool {
 			strings.Contains(candidate, "sonnet-4-6") ||
 			strings.Contains(candidate, "claude-5") ||
 			strings.Contains(candidate, "sonnet-5") ||
+			strings.Contains(candidate, "haiku-5") ||
 			strings.Contains(candidate, "opus-5") ||
 			strings.Contains(candidate, "fable-5") {
 			return true
@@ -1024,6 +1032,8 @@ func supportsNativeXHighEffort(model sigma.Model) bool {
 		if strings.Contains(candidate, "opus-4-7") ||
 			strings.Contains(candidate, "opus-4-8") ||
 			strings.Contains(candidate, "opus-5") ||
+			strings.Contains(candidate, "sonnet-5") ||
+			strings.Contains(candidate, "haiku-5") ||
 			strings.Contains(candidate, "fable-5") {
 			return true
 		}

@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send `xhigh` adaptive effort only to Claude families that accept it (Opus 4.7
+  and later, Sonnet 5, Haiku 5, and Fable 5) or where metadata maps `xhigh`, on
+  both Anthropic and Bedrock. Sonnet 4.6 and similar rows previously sent an
+  unsupported `xhigh` and now send `high`. Bedrock also applies adaptive thinking
+  to Haiku 5 models.
 - Request the lowest supported Gemini thinking level when thinking is turned off
   on a model whose metadata marks `off` unsupported. Gemini 3.7 and 3.8 Flash now
   receive `LOW` instead of an unsupported `MINIMAL`, and Gemini 2.5 Pro its

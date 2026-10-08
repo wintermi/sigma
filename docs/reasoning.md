@@ -47,7 +47,9 @@ model does not advertise the requested thinking level, `Client.Stream` returns a
 local invalid-options error before dispatch. Turning thinking off on a Google or
 Vertex Gemini model whose metadata marks `off` unsupported requests the model's
 lowest supported level instead, such as `LOW` for Gemini 3.8 Flash or the minimal
-budget for Gemini 2.5 Pro.
+budget for Gemini 2.5 Pro. Anthropic and Bedrock Claude adaptive thinking sends
+`xhigh` effort only to Opus 4.7 and later, Sonnet 5, Haiku 5, and Fable 5, or
+where metadata maps `xhigh` explicitly; other adaptive models receive `high`.
 
 ## Streaming Thinking
 

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Gate Anthropic and Bedrock `xhigh` adaptive effort on native support or explicit mappings.
 - [x] Derive Gemini thinking-off requests from model metadata.
 - [x] Limit Codex WebSocket SSE fallback to connection failures.
 - [x] Preserve top-level code and message on Responses stream error events.

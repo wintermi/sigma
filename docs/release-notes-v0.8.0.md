@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Claude adaptive thinking on Anthropic and Bedrock sends `xhigh` effort only to
+Opus 4.7 and later, Sonnet 5, Haiku 5, and Fable 5, or where model metadata maps
+`xhigh` explicitly. Sonnet 4.6 and similar models now receive `high` instead of
+an unsupported `xhigh`. Bedrock also uses adaptive thinking for Haiku 5 models.
+
 Turning thinking off on Google and Vertex Gemini models that cannot disable it
 now requests the lowest level their metadata supports: `LOW` for Gemini 3.7 and
 3.8 Flash, and the minimal budget for Gemini 2.5 Pro. These requests previously

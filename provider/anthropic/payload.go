@@ -696,6 +696,16 @@ func thinkingRequested(opts sigma.Options) bool {
 }
 
 func adaptiveEffort(model sigma.Model, opts sigma.Options) string {
+	if opts.ReasoningLevel == sigma.ThinkingLevelXHigh {
+		// Only native families accept xhigh; others use an explicit mapping or high.
+		if value := model.ThinkingLevelMap[opts.ReasoningLevel]; value != "" {
+			return value
+		}
+		if supportsNativeXHighEffort(model) {
+			return "xhigh"
+		}
+		return "high"
+	}
 	if opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff {
 		if value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel); ok && value != "" {
 			return value
@@ -711,6 +721,19 @@ func adaptiveEffort(model sigma.Model, opts sigma.Options) string {
 	default:
 		return "high"
 	}
+}
+
+// supportsNativeXHighEffort reports Claude families that accept xhigh effort:
+// Opus 4.7 and later, Sonnet 5, Haiku 5, and Fable 5.
+func supportsNativeXHighEffort(model sigma.Model) bool {
+	for _, candidate := range []string{strings.ToLower(string(model.ID)), strings.ToLower(model.Name)} {
+		for _, family := range []string{"opus-4-7", "opus-4-8", "opus-5", "sonnet-5", "haiku-5", "fable-5"} {
+			if strings.Contains(candidate, family) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func thinkingBudget(model sigma.Model, opts sigma.Options) int {
