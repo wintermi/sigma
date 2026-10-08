@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Classify Cerebras's bodyless HTTP 400 as a context overflow, which is how
+  Cerebras reports an oversized prompt. Other bodyless 400 responses remain
+  invalid requests, and HTTP 413 keeps its split-recoverable overflow class.
 - Honor the `x-should-retry` response header in HTTP retries and accept
   fractional `Retry-After` and `Retry-After-Ms` values, which previously fell
   back to the base delay. Document that 408 and 409 are retried and that a zero

@@ -157,6 +157,9 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 	if class, ok := classForCodeAndMessage(code, message); ok {
 		return class
 	}
+	if bodylessCerebrasOverflow(providerErr.Provider, providerErr.StatusCode, providerErr.ProviderCode, providerErr.ProviderMessage, providerErr.BodyPreview) {
+		return ErrorClassContextOverflow
+	}
 	if class, ok := classForStatus(providerErr.StatusCode); ok {
 		return class
 	}
@@ -202,6 +205,13 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 	default:
 		return "", false
 	}
+}
+
+// bodylessCerebrasOverflow reports Cerebras's context overflow, which arrives
+// as an HTTP 400 with no body.
+func bodylessCerebrasOverflow(provider ProviderID, status int, code string, message string, body string) bool {
+	return provider == ProviderCerebras && status == http.StatusBadRequest &&
+		strings.TrimSpace(code+message+body) == ""
 }
 
 func classForStatus(status int) (ErrorClass, bool) {
@@ -302,6 +312,9 @@ func diagnosticClass(diagnostic Diagnostic) ErrorClass {
 	))
 	if class, ok := classForCodeAndMessage(code, message); ok {
 		return class
+	}
+	if bodylessCerebrasOverflow(diagnostic.Provider, diagnostic.StatusCode, diagnostic.ProviderCode, diagnostic.ProviderMessage, diagnostic.BodyPreview) {
+		return ErrorClassContextOverflow
 	}
 	if class, ok := classForStatus(diagnostic.StatusCode); ok {
 		return class

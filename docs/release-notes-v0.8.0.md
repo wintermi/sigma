@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Cerebras context overflows, which arrive as an HTTP 400 with no body, now
+classify as context overflow with split-recoverable advice. HTTP 413 keeps its
+existing overflow classification, which embedding batch splitting relies on.
+
 HTTP retries now follow a provider's `x-should-retry` header, retrying a
 response the provider marks retryable and stopping on one it marks final, and
 accept fractional `Retry-After` and `Retry-After-Ms` delays. The retry

@@ -306,6 +306,17 @@ func TestClassifyError(t *testing.T) {
 			split: true,
 		},
 		{
+			name:  "cerebras bodyless 400",
+			err:   NewProviderError(ProviderCerebras, APIOpenAICompletions, "gpt-oss-120b", 400, "", 0, nil, ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+		},
+		{
+			name:  "other bodyless 400",
+			err:   NewProviderError(ProviderOpenAI, APIOpenAICompletions, "gpt-test", 400, "", 0, nil, ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+		},
+		{
 			name:  "ollama tokenizer eof",
 			err:   NewProviderError(ProviderCustom, API(EmbeddingAPIOpenAIEmbeddings), "nomic-embed", 400, "", 0, []byte(`{"error":{"message":"tokenizer failed: EOF"}}`), ErrProviderResponse),
 			class: ErrorClassContextOverflow,
