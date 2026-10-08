@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool-call validation and coercion walk object properties in sorted name order. When more than one property fails, the reported error no longer varies between runs with Go map iteration order.
+
 Tool-argument coercion from a JSON number to a string keeps the exact decimal value. Large integers and long decimals no longer lose precision by passing through `float64`.
 
 OpenRouter requests for non-Anthropic models no longer carry message-level `cache_control`. Long retention previously sent `{"type":"persistent"}`, which OpenRouter does not define. Anthropic routes keep their explicit breakpoints, and an explicit `CacheControlFormat` compat override still opts in.

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/mail"
 	"net/netip"
@@ -16,6 +17,7 @@ import (
 	"reflect"
 	"regexp"
 	"regexp/syntax"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -301,12 +303,12 @@ func (context *validationContext) coerceObject(schema map[string]any, object map
 	if err != nil {
 		return toolValidationError(toolName, path, "properties object", schema["properties"], "schema is malformed", err)
 	}
-	for name, propertySchema := range properties {
+	for _, name := range slices.Sorted(maps.Keys(properties)) {
 		value, ok := object[name]
 		if !ok {
 			continue
 		}
-		coerced, err := context.coerceValue(propertySchema, value, joinPath(path, name), toolName)
+		coerced, err := context.coerceValue(properties[name], value, joinPath(path, name), toolName)
 		if err != nil {
 			return err
 		}
@@ -989,12 +991,12 @@ func (context *validationContext) validateObject(schema map[string]any, object m
 		}
 	}
 
-	for name, propertySchema := range properties {
+	for _, name := range slices.Sorted(maps.Keys(properties)) {
 		value, ok := object[name]
 		if !ok {
 			continue
 		}
-		if err := context.validateValue(propertySchema, value, joinPath(path, name), toolName); err != nil {
+		if err := context.validateValue(properties[name], value, joinPath(path, name), toolName); err != nil {
 			return err
 		}
 	}
@@ -1060,8 +1062,8 @@ func schemaProperties(schema map[string]any) (map[string]map[string]any, error) 
 		return nil, fmt.Errorf("properties must be an object")
 	}
 	properties := make(map[string]map[string]any, len(rawProperties))
-	for name, rawSchema := range rawProperties {
-		propertySchema, ok := rawSchema.(map[string]any)
+	for _, name := range sortedKeys(rawProperties) {
+		propertySchema, ok := rawProperties[name].(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("property %q schema must be an object", name)
 		}
