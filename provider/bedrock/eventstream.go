@@ -17,7 +17,10 @@ type eventStreamFrame struct {
 	EventType     string
 	ContentType   string
 	ExceptionType string
-	Payload       []byte
+	// ErrorCode and ErrorMessage come from :message-type error frames.
+	ErrorCode    string
+	ErrorMessage string
+	Payload      []byte
 }
 
 type eventStreamDecoder struct {
@@ -108,6 +111,10 @@ func parseEventStreamHeaders(headers []byte, frame *eventStreamFrame) error {
 				frame.ContentType = value
 			case ":exception-type":
 				frame.ExceptionType = value
+			case ":error-code":
+				frame.ErrorCode = value
+			case ":error-message":
+				frame.ErrorMessage = value
 			}
 		case 0, 1:
 		case 2:

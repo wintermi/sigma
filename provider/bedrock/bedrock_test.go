@@ -1926,6 +1926,33 @@ func TestConverseEventFromFrameParsesExceptionType(t *testing.T) {
 	}
 }
 
+func TestHTTPConverseStreamSurfacesErrorMessageFrames(t *testing.T) {
+	t.Parallel()
+
+	headers := appendEventStreamHeader(nil, ":message-type", "error")
+	headers = appendEventStreamHeader(headers, ":error-code", "InternalServerException")
+	headers = appendEventStreamHeader(headers, ":error-message", "stream failed")
+	stream := newHTTPConverseStream(io.NopCloser(bytes.NewReader(bedrockEventStreamFrameWithHeaders(headers, nil))), "", "")
+	events := readConverseEvents(stream)
+
+	var errEvent *ConverseEvent
+	for i := range events {
+		if events[i].Kind == ConverseEventError {
+			errEvent = &events[i]
+		}
+	}
+	if errEvent == nil {
+		t.Fatalf("events = %#v, want an error event", events)
+	}
+	classification := sigma.ClassifyError(errEvent.Err)
+	if got, want := classification.ProviderCode, "InternalServerException"; got != want {
+		t.Fatalf("provider code = %q, want %q", got, want)
+	}
+	if !strings.Contains(errEvent.Err.Error(), "stream failed") {
+		t.Fatalf("error = %v, want the frame's error message", errEvent.Err)
+	}
+}
+
 func TestHTTPConverseStreamDecodesScalarRedactedReasoning(t *testing.T) {
 	t.Parallel()
 

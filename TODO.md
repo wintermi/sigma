@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Surface Bedrock `:message-type: error` frames as provider errors.
 - [x] - [x] Omit empty Bedrock tool descriptions.
 - [x] - [x] Send `anthropic-beta` on Vertex Anthropic requests.
 - [x] - [x] Retry transient Kimi Coding OAuth refresh failures.

@@ -789,14 +789,21 @@ func (s *httpConverseStream) addResponseMetadata(event ConverseEvent) {
 }
 
 func converseEventFromFrame(frame *eventStreamFrame) (ConverseEvent, bool) {
-	if frame.MessageType == "exception" {
+	if frame.MessageType == "exception" || frame.MessageType == "error" {
 		code := frame.ExceptionType
+		if code == "" {
+			code = frame.ErrorCode
+		}
 		if code == "" {
 			code = frame.EventType
 		}
+		message := string(frame.Payload)
+		if frame.ErrorMessage != "" {
+			message = frame.ErrorMessage
+		}
 		body, _ := json.Marshal(map[string]any{"error": map[string]any{
 			"type":    code,
-			"message": string(frame.Payload),
+			"message": message,
 		}})
 		return ConverseEvent{
 			Kind: ConverseEventError,

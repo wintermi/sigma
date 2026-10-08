@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock streams now surface `:message-type: error` event-stream frames as provider errors, using their `:error-code` and `:error-message` headers, instead of ignoring them.
 - Bedrock Converse tool specs now omit `description` when a tool has none, rather than sending an empty string that fails the API's minimum-length check.
 - Vertex Anthropic requests now send the `anthropic-beta` header computed for direct Anthropic requests (provider `anthropic_beta`, tool streaming, interleaved thinking, refusal fallbacks, and mid-conversation effort betas).
 - Kimi Coding OAuth refresh now retries transport errors, 429, and 5xx responses up to three times with 1s, 2s, and 4s backoff. Rejected refresh tokens still fail immediately.
