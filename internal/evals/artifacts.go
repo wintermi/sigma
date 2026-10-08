@@ -52,10 +52,7 @@ func createDefaultArtifactDirectory() (string, string, error) {
 		if err != nil {
 			return "", "", fmt.Errorf("evals: resolve artifact directory: %w", err)
 		}
-		moduleRoot, err := findModuleRoot()
-		if err != nil {
-			return "", "", err
-		}
+		moduleRoot, _ := findModuleRoot()
 		return absolute, moduleRoot, nil
 	}
 	moduleRoot, err := findModuleRoot()

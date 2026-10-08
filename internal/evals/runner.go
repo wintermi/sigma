@@ -92,10 +92,8 @@ type runTestRecord struct {
 // NewRunner constructs a private artifact-backed evaluation runner.
 func NewRunner(config RunnerConfig) (*Runner, error) {
 	artifactDirectory := strings.TrimSpace(config.ArtifactDir)
-	moduleRoot, err := findModuleRoot()
-	if err != nil {
-		return nil, err
-	}
+	var moduleRoot string
+	var err error
 	if artifactDirectory == "" {
 		artifactDirectory, moduleRoot, err = createDefaultArtifactDirectory()
 		if err != nil {
@@ -106,6 +104,9 @@ func NewRunner(config RunnerConfig) (*Runner, error) {
 		if err != nil {
 			return nil, fmt.Errorf("evals: resolve artifact directory: %w", err)
 		}
+		// The module root only shortens recorded caller paths, so an explicit
+		// directory works outside a module with absolute paths.
+		moduleRoot, _ = findModuleRoot()
 	}
 	if err := ensurePrivateDirectory(artifactDirectory); err != nil {
 		return nil, err

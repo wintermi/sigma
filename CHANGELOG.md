@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- The eval runner no longer requires a Go module when `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` names the artifact directory; only the default `.eval/` location needs the module root.
 - `sigma-surface-probe -handoff` now applies `-case-timeout` to each source context and target replay, so one stalled route no longer consumes the whole run.
 - The `sigma-surface-probe` README now describes when `no_working_attempt` is actually emitted (image probes without the required output and failed handoff model discovery) and notes that failed text repairs keep their original classification.
 - `sigma-surface-probe` image probes now retry HTTP 5xx and connection-reset failures, as the README describes, instead of only retrying responses without an image.

@@ -122,7 +122,8 @@ Command-line baseline selection takes precedence and requires both values.
 Candidate models are selected explicitly on the command line. Use
 `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` to select an exact output
 directory; otherwise each invocation creates a private directory beneath
-`.eval/`.
+`.eval/`. An explicit directory also works outside a Go module, in which case
+artifacts record absolute caller paths.
 
 Artifacts contain complete prompts, responses, model traces, and usage data.
 They may contain sensitive content and must not be committed or shared without

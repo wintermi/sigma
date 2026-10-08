@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`sigma-evals-runner` accepts an explicit `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` outside a Go module. The module root is only used to shorten recorded caller paths, so those paths stay absolute when no module is found. The default `.eval/` location still requires running inside the module.
+
 Surface-probe handoff mode bounds each source context and each target replay with `-case-timeout`, as surface and image cases already were. Previously, a stalled handoff request could run until the overall `-timeout`.
 
 The surface-probe README no longer says `no_working_attempt` covers failed text repairs. The outcome comes from image probes that complete without the required image or tool output, and from failed handoff model discovery. A text case whose repair variants all fail keeps its original classification.
