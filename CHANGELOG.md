@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Request the lowest supported Gemini thinking level when thinking is turned off
+  on a model whose metadata marks `off` unsupported. Gemini 3.7 and 3.8 Flash now
+  receive `LOW` instead of an unsupported `MINIMAL`, and Gemini 2.5 Pro its
+  minimal budget instead of a rejected zero budget.
 - Fall back from Codex WebSocket to SSE only for connection failures before any
   output, or a connection-limit or missing-continuation error that survives its
   retry. Provider error frames, failed responses, and authentication or payload

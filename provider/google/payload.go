@@ -502,6 +502,21 @@ func googleThinkingDisabled(opts sigma.Options) bool {
 }
 
 func googleDisabledThinkingConfig(model sigma.Model) map[string]any {
+	if !model.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
+		// The model cannot turn thinking off, so request its lowest supported level.
+		for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelMinimal, sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh} {
+			value, ok := model.ProviderThinkingLevel(level)
+			if !ok {
+				continue
+			}
+			if tokens, err := strconv.Atoi(value); err == nil {
+				return map[string]any{"thinkingBudget": tokens}
+			}
+			if thinkingLevel, ok := googleThinkingLevel(value); ok {
+				return map[string]any{"thinkingLevel": thinkingLevel}
+			}
+		}
+	}
 	switch {
 	case isGemini3ProModel(model.ID):
 		return map[string]any{"thinkingLevel": "LOW"}

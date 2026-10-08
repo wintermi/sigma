@@ -44,7 +44,10 @@ that is not provider-neutral:
 
 Provider packages translate supported controls to their wire formats. If a
 model does not advertise the requested thinking level, `Client.Stream` returns a
-local invalid-options error before dispatch.
+local invalid-options error before dispatch. Turning thinking off on a Google or
+Vertex Gemini model whose metadata marks `off` unsupported requests the model's
+lowest supported level instead, such as `LOW` for Gemini 3.8 Flash or the minimal
+budget for Gemini 2.5 Pro.
 
 ## Streaming Thinking
 

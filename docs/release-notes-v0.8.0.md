@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Turning thinking off on Google and Vertex Gemini models that cannot disable it
+now requests the lowest level their metadata supports: `LOW` for Gemini 3.7 and
+3.8 Flash, and the minimal budget for Gemini 2.5 Pro. These requests previously
+sent `MINIMAL` or a zero budget, which the provider rejects. Models that can
+disable thinking are unchanged.
+
 Codex WebSocket requests fall back to SSE only when the connection fails before
 any output, or when a connection-limit or missing-continuation error persists
 after its retry. Provider error frames, failed responses, and authentication or
