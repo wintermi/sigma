@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Radius forwards the provider-neutral `ToolChoice` option as `options.toolChoice`, as pi's pi-messages client does. Previously, `none` and other tool choices were silently ignored on this route.
+
 Bedrock event-stream frames with `:message-type: error` now end the stream with a classified provider error carrying the frame's `:error-code` and `:error-message`. Previously they were skipped, and the stream could end without a terminal error.
 
 Bedrock tool specs omit `description` for tools without one. Converse requires a non-empty description when the field is present, so tools with blank descriptions were rejected.

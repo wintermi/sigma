@@ -554,6 +554,7 @@ type radiusOptions struct {
 	Reasoning      string   `json:"reasoning,omitempty"`
 	CacheRetention string   `json:"cacheRetention,omitempty"`
 	SessionID      string   `json:"sessionId,omitempty"`
+	ToolChoice     string   `json:"toolChoice,omitempty"`
 }
 
 type radiusMessage struct {
@@ -598,6 +599,7 @@ func requestPayload(model sigma.Model, req sigma.Request, opts sigma.Options) (r
 		MaxTokens:      opts.MaxTokens,
 		CacheRetention: string(opts.CacheRetention),
 		SessionID:      opts.SessionID,
+		ToolChoice:     string(opts.ToolChoice),
 	}
 	if opts.ReasoningLevel != "" {
 		if opts.ReasoningLevel == sigma.ThinkingLevelOff {
