@@ -13,9 +13,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -400,7 +402,11 @@ type awsCredentialPayload struct {
 
 func ecsCredentials(ctx context.Context, client *http.Client) (CredentialInfo, bool, error) {
 	endpoint := os.Getenv("AWS_CONTAINER_CREDENTIALS_FULL_URI")
-	if endpoint == "" {
+	if endpoint != "" {
+		if err := validateContainerCredentialsURI(endpoint); err != nil {
+			return CredentialInfo{}, true, err
+		}
+	} else {
 		if relative := os.Getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"); relative != "" {
 			endpoint = "http://169.254.170.2" + relative
 		}
@@ -428,6 +434,40 @@ func ecsCredentials(ctx context.Context, client *http.Client) (CredentialInfo, b
 		return CredentialInfo{}, true, err
 	}
 	return info, true, nil
+}
+
+// containerCredentialHosts are the ECS and EKS link-local credential endpoints
+// the AWS SDKs allow over plain HTTP.
+var containerCredentialHosts = []netip.Addr{
+	netip.MustParseAddr("169.254.170.2"),
+	netip.MustParseAddr("169.254.170.23"),
+	netip.MustParseAddr("fd00:ec2::23"),
+}
+
+// validateContainerCredentialsURI applies the AWS SDK rule for
+// AWS_CONTAINER_CREDENTIALS_FULL_URI: HTTPS may target any host, while plain
+// HTTP must stay on loopback or a container credential endpoint so the
+// authorization token is not sent across the network in clear text.
+func validateContainerCredentialsURI(endpoint string) error {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("invalid AWS_CONTAINER_CREDENTIALS_FULL_URI: %w", err)
+	}
+	switch parsed.Scheme {
+	case "https":
+		return nil
+	case "http":
+		host := parsed.Hostname()
+		if host == "localhost" {
+			return nil
+		}
+		if addr, err := netip.ParseAddr(host); err == nil && (addr.IsLoopback() || slices.Contains(containerCredentialHosts, addr)) {
+			return nil
+		}
+		return fmt.Errorf("AWS_CONTAINER_CREDENTIALS_FULL_URI host %q must be loopback or a container credential endpoint over plain HTTP", host)
+	default:
+		return fmt.Errorf("AWS_CONTAINER_CREDENTIALS_FULL_URI scheme %q must be http or https", parsed.Scheme)
+	}
 }
 
 func webIdentityCredentials(ctx context.Context, client *http.Client) (CredentialInfo, bool, error) {

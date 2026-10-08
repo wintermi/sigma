@@ -2730,6 +2730,20 @@ func TestDefaultCredentialDetectorUsesECSCredentials(t *testing.T) {
 	}
 }
 
+func TestDefaultCredentialDetectorRejectsRemotePlainHTTPContainerURI(t *testing.T) {
+	clearAWSCredentialEnv(t)
+	t.Setenv("AWS_CONTAINER_CREDENTIALS_FULL_URI", "http://credentials.example.invalid/role")
+
+	_, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
+		Region:           "us-east-1",
+		CredentialSource: CredentialSourceDefaultChain,
+	})
+	var sigmaErr *sigma.Error
+	if !errors.As(err, &sigmaErr) || sigmaErr.Err == nil || !strings.Contains(sigmaErr.Err.Error(), "must be loopback") {
+		t.Fatalf("Detect error = %v, want container URI host rejection", err)
+	}
+}
+
 func TestDefaultCredentialDetectorUsesWebIdentityCredentials(t *testing.T) {
 	clearAWSCredentialEnv(t)
 	tokenFile := filepath.Join(t.TempDir(), "token")

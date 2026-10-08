@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock applies the AWS SDK host rule to `AWS_CONTAINER_CREDENTIALS_FULL_URI`. HTTPS endpoints may use any host. Plain HTTP endpoints must be loopback, `169.254.170.2`, `169.254.170.23`, or `fd00:ec2::23`; any other value is reported as a container credential error instead of being fetched.
+
 Credential structs no longer print secrets when formatted with `%v`, `%+v`, `%#v`, or `%s`. `StoredCredential`, the Anthropic, Codex, Copilot, Kimi, OpenRouter, Radius, and xAI OAuth credentials, Bedrock `StaticCredentials`, and `openai.AzureAccessToken` now follow `sigma.Credential` and print a description that names the secret fields without their values. JSON encoding is unchanged.
 
 Bedrock's default chain honours an explicit `AWS_PROFILE` ahead of static environment keys, as pi and the AWS SDK for JavaScript do. Previously, ambient access keys silently overrode the selected profile. Without `AWS_PROFILE`, or when the profile has no static keys, the environment keys are still used.

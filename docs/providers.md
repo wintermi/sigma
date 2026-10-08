@@ -656,6 +656,9 @@ checks request-scoped static credentials,
 shared profiles, ECS credentials, web identity, and IMDS, in that order.
 A configured ECS or web
 identity source reports fetch failures instead of falling through to IMDS.
+As in the AWS SDKs, `AWS_CONTAINER_CREDENTIALS_FULL_URI` may use HTTPS to any
+host, but plain HTTP only to loopback or the ECS and EKS container credential
+addresses.
 
 Shared profile lookup uses `AWS_PROFILE` (or `default`). When `AWS_PROFILE` is
 set explicitly and that profile has static keys, it takes precedence over the
