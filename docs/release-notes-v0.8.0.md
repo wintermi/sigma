@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic message-anchored tool loading now places `tool_reference` blocks
+inside the content of the `tool_result` that loads them, as the Messages API
+requires. The tool's original output follows every tool result as sibling
+blocks, so the conversation cache marker lands on that output rather than on a
+reference.
+
 Chat Completions streams no longer start a text block for an empty `content`
 delta. Servers such as vLLM and OpenRouter open with `{"content":""}`, which
 previously left an empty text block that made tool-only turns fail persistence

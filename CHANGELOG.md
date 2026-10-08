@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send Anthropic deferred-tool `tool_reference` blocks as the content of the
+  loading `tool_result`, with the original tool output as sibling blocks after
+  every tool result. References were previously top-level user content and could
+  receive the conversation cache marker.
 - Ignore empty Chat Completions `content` deltas instead of starting an empty
   text block. Streams that open with `{"content":""}` no longer return tool-only
   turns that persistence rejects or place thinking after the answer.

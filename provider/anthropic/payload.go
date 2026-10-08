@@ -164,17 +164,19 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
 			blocks := make([]map[string]any, 0, 1)
+			var displaced []map[string]any
 			for index < len(req.Messages) && req.Messages[index].Role == sigma.RoleTool {
-				block, err := anthropicToolResultBlock(model, req.Messages[index])
+				block, output, err := anthropicToolResultWithReferences(model, req.Messages[index], deferredTools, loadedToolNames, normalizeToolName)
 				if err != nil {
 					return nil, err
 				}
 				blocks = append(blocks, block)
-				blocks = append(blocks, anthropicToolReferences(req.Messages[index], deferredTools, loadedToolNames, normalizeToolName)...)
+				displaced = append(displaced, output...)
 				index++
 			}
 			index--
-			messages = append(messages, map[string]any{"role": "user", "content": blocks})
+			// Output displaced by tool references must follow every tool_result block.
+			messages = append(messages, map[string]any{"role": "user", "content": append(blocks, displaced...)})
 			continue
 		}
 		converted, err := anthropicMessage(model, message, compat)
@@ -563,6 +565,32 @@ func anthropicToolInputSchema(tool sigma.Tool, strict bool) (any, error) {
 		inputSchema = map[string]any{"type": "object"}
 	}
 	return inputSchema, nil
+}
+
+// anthropicToolResultWithReferences converts a tool result that may load
+// deferred tools. Anthropic rejects tool_reference blocks outside tool_result
+// content or mixed with ordinary result content, so the references become the
+// tool_result content and the original output is returned as sibling blocks.
+func anthropicToolResultWithReferences(model sigma.Model, message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, normalizeToolName func(string) string) (map[string]any, []map[string]any, error) {
+	block, err := anthropicToolResultBlock(model, message)
+	if err != nil {
+		return nil, nil, err
+	}
+	references := anthropicToolReferences(message, deferredTools, loadedToolNames, normalizeToolName)
+	if len(references) == 0 {
+		return block, nil, nil
+	}
+	var output []map[string]any
+	switch content := block["content"].(type) {
+	case string:
+		if strings.TrimSpace(content) != "" {
+			output = []map[string]any{{"type": "text", "text": content}}
+		}
+	case []map[string]any:
+		output = content
+	}
+	block["content"] = references
+	return block, output, nil
 }
 
 func anthropicToolReferences(message sigma.Message, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, normalizeToolName func(string) string) []map[string]any {

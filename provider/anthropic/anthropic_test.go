@@ -443,6 +443,70 @@ func TestMessagesDefersMarkedClientTools(t *testing.T) {
 	if got, want := countAnthropicToolReferences(payload), 1; got != want {
 		t.Fatalf("tool references = %d, want %d", got, want)
 	}
+	messages := payload["messages"].([]any)
+	content := messages[len(messages)-1].(map[string]any)["content"].([]any)
+	if got, want := len(content), 2; got != want {
+		t.Fatalf("tool result content = %#v, want tool_result and displaced output", content)
+	}
+	result := content[0].(map[string]any)
+	references, _ := result["content"].([]any)
+	if result["type"] != "tool_result" || len(references) != 1 || references[0].(map[string]any)["tool_name"] != "late" {
+		t.Fatalf("tool_result = %#v, want reference to late as its content", result)
+	}
+	if output := content[1].(map[string]any); output["type"] != "text" || output["text"] != "first" {
+		t.Fatalf("displaced output = %#v, want text first", output)
+	}
+}
+
+func TestMessagesPlacesDisplacedToolOutputAfterEveryToolResult(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-deferred-layout")
+	model := anthropicTestModel(providerID)
+	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{SupportsToolReferences: sigma.AnthropicCompatSupported}
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	req := sigma.Request{
+		Tools: []sigma.Tool{
+			{Name: "base", InputSchema: sigma.Schema{"type": "object"}},
+			{Name: "late", InputSchema: sigma.Schema{"type": "object"}},
+		},
+		Messages: []sigma.Message{
+			sigma.UserText("hi"),
+			{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{
+				sigma.ToolCallBlock("call_load", "base", map[string]any{}),
+				sigma.ToolCallBlock("call_plain", "base", map[string]any{}),
+			}},
+			{Role: sigma.RoleTool, ToolCallID: "call_load", Content: []sigma.ContentBlock{sigma.Text("loaded"), sigma.ImageBase64("image/png", "aGk=")}, AddedToolNames: []string{"late"}},
+			{Role: sigma.RoleTool, ToolCallID: "call_plain", Content: []sigma.ContentBlock{sigma.Text("plain")}},
+		},
+	}
+	if _, err := client.Complete(context.Background(), model, req, sigma.WithCacheRetention(sigma.CacheRetentionShort)); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	messages := decodePayload(t, receiveRequest(t, requests).Body)["messages"].([]any)
+	content := messages[len(messages)-1].(map[string]any)["content"].([]any)
+	var types []any
+	for _, block := range content {
+		types = append(types, block.(map[string]any)["type"])
+	}
+	if want := []any{"tool_result", "tool_result", "text", "image"}; fmt.Sprint(types) != fmt.Sprint(want) {
+		t.Fatalf("content types = %v, want %v", types, want)
+	}
+	if got := content[1].(map[string]any)["content"]; got != "plain" {
+		t.Fatalf("plain tool_result content = %#v, want unchanged output", got)
+	}
+	if _, ok := content[len(content)-1].(map[string]any)["cache_control"]; !ok {
+		t.Fatalf("cache marker missing from last displaced output block: %#v", content[len(content)-1])
+	}
 }
 
 func TestMessagesDeferredToolsRemainEagerWhenUnsupportedOrAllDeferred(t *testing.T) {
@@ -1145,7 +1209,11 @@ func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
 		t.Fatalf("replayed tool name = %q, want canonical Claude Code casing %q", got, want)
 	}
 	toolResult := messages[2].(map[string]any)
-	toolReference := toolResult["content"].([]any)[1].(map[string]any)
+	references, _ := toolResult["content"].([]any)[0].(map[string]any)["content"].([]any)
+	if len(references) != 1 {
+		t.Fatalf("tool_result content = %#v, want one deferred tool reference", toolResult["content"])
+	}
+	toolReference := references[0].(map[string]any)
 	if got, want := toolReference["tool_name"], "Glob"; got != want {
 		t.Fatalf("deferred tool reference name = %q, want canonical Claude Code casing %q", got, want)
 	}
@@ -3471,9 +3539,17 @@ func anthropicToolByName(t *testing.T, tools []any, name string) map[string]any 
 func countAnthropicToolReferences(payload map[string]any) int {
 	count := 0
 	for _, message := range payload["messages"].([]any) {
-		for _, block := range message.(map[string]any)["content"].([]any) {
-			if block.(map[string]any)["type"] == "tool_reference" {
+		for _, value := range message.(map[string]any)["content"].([]any) {
+			block := value.(map[string]any)
+			if block["type"] == "tool_reference" {
 				count++
+			}
+			if nested, ok := block["content"].([]any); ok {
+				for _, item := range nested {
+					if item.(map[string]any)["type"] == "tool_reference" {
+						count++
+					}
+				}
 			}
 		}
 	}
