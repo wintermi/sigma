@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -31,6 +32,21 @@ func Secret(value string) string {
 		return ""
 	}
 	return replacement
+}
+
+// Credential describes credential material for diagnostics. fields alternates
+// secret field names and values; only the names of non-empty fields appear.
+func Credential(label string, expiry time.Time, fields ...string) string {
+	parts := []string{label}
+	if !expiry.IsZero() {
+		parts = append(parts, "expiry="+expiry.Format(time.RFC3339))
+	}
+	for i := 0; i+1 < len(fields); i += 2 {
+		if fields[i+1] != "" {
+			parts = append(parts, fields[i]+"="+replacement)
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 // Source returns source information with any inline value removed.

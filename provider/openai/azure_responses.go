@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
@@ -48,6 +49,16 @@ const (
 type AzureAccessToken struct {
 	Token     string
 	ExpiresOn time.Time
+}
+
+// String returns a redacted credential description.
+func (c AzureAccessToken) String() string {
+	return redact.Credential("azure access token", c.ExpiresOn, "token", c.Token)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c AzureAccessToken) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
 }
 
 // AzureTokenRequest describes the token request made by AzureResponsesProvider.

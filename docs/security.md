@@ -37,6 +37,13 @@ in truncated pretty-printed bodies. Complete values
 preserve neighboring non-sensitive content. Previews remain bounded and safe at
 UTF-8 boundaries; this does not extend redaction to arbitrary unknown secrets.
 
+Credential types print redacted descriptions under every `fmt` verb, including
+`%v`, `%+v`, and `%#v`. This covers `sigma.Credential`, `sigma.StoredCredential`,
+the provider OAuth credential structs, Bedrock `StaticCredentials` and
+`CredentialInfo`, and `openai.AzureAccessToken`. The description names the
+non-empty secret fields without their values. JSON encoding is unchanged, so
+callers that persist credentials still receive the full values.
+
 Debug hooks receive redacted copies of request payloads, request headers, and
 response headers. Mutating a debug value does not mutate the provider request or
 later hooks. There is currently no unsafe opt-in for raw debug payloads; callers

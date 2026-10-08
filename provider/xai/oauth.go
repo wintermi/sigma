@@ -48,6 +48,16 @@ type XAIOAuthCredentials struct {
 	Expiry       time.Time
 }
 
+// String returns a redacted credential description.
+func (c XAIOAuthCredentials) String() string {
+	return redact.Credential("xai oauth credentials", c.Expiry, "access_token", c.AccessToken, "refresh_token", c.RefreshToken)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c XAIOAuthCredentials) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
+}
+
 // XAIDeviceCodeInfo reports the user code and verification URL callers should
 // show during xAI device-code login.
 type XAIDeviceCodeInfo struct {

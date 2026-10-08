@@ -46,6 +46,16 @@ type OpenRouterOAuthCredentials struct {
 	APIKey string
 }
 
+// String returns a redacted credential description.
+func (c OpenRouterOAuthCredentials) String() string {
+	return redact.Credential("openrouter oauth credentials", time.Time{}, "api_key", c.APIKey)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c OpenRouterOAuthCredentials) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
+}
+
 // OpenRouterBrowserAuthInfo reports the authorization URL that callers should
 // open in a browser to complete OpenRouter OAuth login.
 type OpenRouterBrowserAuthInfo struct {

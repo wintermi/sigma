@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/redact"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 )
 
@@ -44,6 +45,16 @@ type StaticCredentials struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	SessionToken    string
+}
+
+// String returns a redacted credential description.
+func (c StaticCredentials) String() string {
+	return redact.Credential("bedrock static credentials", time.Time{}, "secret_access_key", c.SecretAccessKey, "session_token", c.SessionToken)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c StaticCredentials) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
 }
 
 const (

@@ -1,0 +1,27 @@
+// Copyright (c) 2026 Matthew Winter
+//
+// This source code is licensed under the MIT license found in the LICENSE file
+// in the root directory of this source tree.
+
+package bedrock
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
+
+func TestCredentialFormattingRedactsSecrets(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []any{
+		StaticCredentials{AccessKeyID: "AKIA", SecretAccessKey: "secret-key", SessionToken: "secret-session"},
+		&StaticCredentials{SecretAccessKey: "secret-key"},
+	} {
+		for _, verb := range []string{"%v", "%+v", "%#v", "%s"} {
+			if got := fmt.Sprintf(verb, value); strings.Contains(got, "secret-") {
+				t.Fatalf("%T formatted with %s leaked a secret: %s", value, verb, got)
+			}
+		}
+	}
+}

@@ -41,6 +41,16 @@ type KimiCodingOAuthCredentials struct {
 	Expiry       time.Time
 }
 
+// String returns a redacted credential description.
+func (c KimiCodingOAuthCredentials) String() string {
+	return redact.Credential("kimi coding oauth credentials", c.Expiry, "access_token", c.AccessToken, "refresh_token", c.RefreshToken)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c KimiCodingOAuthCredentials) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
+}
+
 // KimiCodingDeviceCodeInfo reports the device code details callers should show
 // while a user completes Kimi Coding subscription login.
 type KimiCodingDeviceCodeInfo struct {

@@ -8,8 +8,11 @@ package sigma
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 	"time"
+
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 // StoredCredential is provider-owned authentication material read from a
@@ -22,6 +25,16 @@ type StoredCredential struct {
 	Source       string
 	ProviderEnv  map[string]string
 	Metadata     map[string]any
+}
+
+// String returns a redacted credential description.
+func (c StoredCredential) String() string {
+	return redact.Credential("stored credential type="+string(c.Type), c.Expiry, "value", c.Value, "refresh_token", c.RefreshToken)
+}
+
+// Format prevents fmt from printing secrets with struct formatting verbs.
+func (c StoredCredential) Format(state fmt.State, _ rune) {
+	_, _ = io.WriteString(state, c.String())
 }
 
 // CredentialModifyFunc receives the current stored credential. Return ok=false
