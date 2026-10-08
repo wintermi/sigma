@@ -184,6 +184,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Classify a Mistral `stop_reason: "error"` as a transient, retryable server
+  error. Unknown Mistral stop reasons no longer report the event type as their
+  provider code.
 - Classify stream failures from their message when no typed cause applies, so
   HTTP/2 stream resets (`INTERNAL_ERROR`) and GOAWAY closures while reading a
   response body are transient and retryable instead of non-retryable provider

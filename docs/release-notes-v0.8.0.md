@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Mistral conversations that end with `stop_reason: "error"`, which Mistral uses
+for transient server failures, now return a transient `server_error` with retry
+advice. Unknown stop reasons remain non-retryable errors without the event type
+as their provider code.
+
 Stream failures without a typed network cause are now classified from their
 message. HTTP/2 stream resets and GOAWAY closures while reading a response body
 are transient with retry advice instead of non-retryable provider errors.

@@ -497,7 +497,12 @@ func (p *conversationStreamParser) eventError(event conversationEvent) error {
 }
 
 func (p *conversationStreamParser) unhandledStopReasonError(event conversationEvent) error {
-	body, _ := json.Marshal(event)
+	providerErr := map[string]any{"message": fmt.Sprintf("provider stopped with: %s", event.StopReason)}
+	if event.StopReason == "error" {
+		// Mistral reports transient server failures as a terminal "error" stop reason.
+		providerErr["code"] = "server_error"
+	}
+	body, _ := json.Marshal(map[string]any{"error": providerErr})
 	return sigma.NewProviderError(
 		p.model.Provider,
 		sigma.APIMistralConversations,
