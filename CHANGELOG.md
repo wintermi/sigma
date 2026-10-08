@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Return a typed provider error for unrecognised Anthropic stop reasons instead
+  of a successful `unknown` stop, matching the Bedrock, Responses, and Chat
+  Completions adapters. `model_context_window_exceeded` is a context overflow.
 - Fail Anthropic streams with a typed provider error when a server-side model
   fallback arrives after output, instead of merging the refusing and fallback
   models' text into one successful turn. A fallback before any output is still

@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic streams that end with an unrecognised stop reason now return a typed
+provider error, as the Bedrock, Responses, and Chat Completions adapters do.
+`model_context_window_exceeded` is reported as a context overflow, so overflow
+handling and route fallback apply where it previously looked like a normal
+completion.
+
 Anthropic streams now fail with a typed provider error when a server-side model
 fallback starts after output has been produced; previously the refusing model's
 partial text and the fallback model's answer were returned as one successful

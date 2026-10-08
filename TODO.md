@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Report unrecognised Anthropic stop reasons as typed errors, with context-window stops as overflow.
 - [x] Reject Anthropic mid-output model fallbacks instead of merging answers.
 - [x] Replay same-model Chat Completions reasoning in its source field.
 - [x] Scope OpenRouter routing options to OpenRouter requests.

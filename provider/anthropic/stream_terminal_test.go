@@ -7,6 +7,7 @@ package anthropic
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -86,5 +87,38 @@ func TestMessagesStreamSkipsFallbackBeforeOutput(t *testing.T) {
 	}
 	if len(final.Content) != 1 || final.Content[0].Text != "Answer" {
 		t.Fatalf("content = %#v, want the single fallback-model answer", final.Content)
+	}
+}
+
+func TestMessagesStreamUnknownStopReasonsAreTypedErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		reason   string
+		overflow bool
+	}{
+		{reason: "model_context_window_exceeded", overflow: true},
+		{reason: "some_future_reason"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.reason, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := parseTestMessagesStream(t, anthropicTestEvents(
+				anthropicTestMessageStart,
+				`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`,
+				`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}`,
+				`{"type":"content_block_stop","index":0}`,
+				`{"type":"message_delta","delta":{"stop_reason":"`+tt.reason+`"},"usage":{"output_tokens":1}}`,
+				`{"type":"message_stop"}`,
+			))
+			var providerErr *sigma.ProviderError
+			if !errors.As(err, &providerErr) || !strings.Contains(err.Error(), tt.reason) {
+				t.Fatalf("error = %v, want typed provider error naming %s", err, tt.reason)
+			}
+			if errors.Is(err, sigma.ErrContextOverflow) != tt.overflow {
+				t.Fatalf("errors.Is(ErrContextOverflow) = %v, want %v", !tt.overflow, tt.overflow)
+			}
+		})
 	}
 }

@@ -156,7 +156,24 @@ func parseMessagesStream(ctx context.Context, r io.Reader, writer sigma.StreamWr
 	if parser.rawStopReason == "" {
 		return parser.finalize(ctx), fmt.Errorf("anthropic messages: stream ended without a stop reason")
 	}
+	if parser.stopReason == sigma.StopReasonUnknown {
+		return parser.finalize(ctx), unhandledStopReasonError(model, parser.rawStopReason)
+	}
 	return parser.finalize(ctx), nil
+}
+
+// unhandledStopReasonError reports a stop reason sigma cannot treat as a
+// normal completion. model_context_window_exceeded is a context overflow.
+func unhandledStopReasonError(model sigma.Model, reason string) error {
+	body, _ := json.Marshal(map[string]any{"error": map[string]any{
+		providerToolOptionTypeKey: reason,
+		"message":                 "Provider stop_reason: " + reason,
+	}})
+	cause := sigma.ErrProviderResponse
+	if reason == "model_context_window_exceeded" {
+		cause = sigma.ErrContextOverflow
+	}
+	return sigma.NewProviderError(model.Provider, sigma.APIAnthropicMessages, model.ID, 0, "", 0, body, cause)
 }
 
 func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {

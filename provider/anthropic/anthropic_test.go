@@ -3765,7 +3765,6 @@ func TestMessagesCompletionMarkers(t *testing.T) {
 		{name: "truncated partial", body: start + partial, hasPartial: true},
 		{name: "valid empty", body: start + reason + stop, valid: true},
 		{name: "valid trailing proxy", body: start + partial + reason + stop + "data: invalid proxy data\n\n", valid: true, hasPartial: true},
-		{name: "unknown supplied reason", body: start + strings.ReplaceAll(reason, "end_turn", "future_reason") + stop, valid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
