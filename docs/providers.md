@@ -606,7 +606,10 @@ Applications commonly resolve routing from `GOOGLE_CLOUD_PROJECT` and
 `GOOGLE_CLOUD_LOCATION` or `GOOGLE_CLOUD_REGION`, then pass it through
 `VertexConfig` or provider options. API-key auth can use `GOOGLE_API_KEY` or
 `GOOGLE_CLOUD_API_KEY`; ADC/OAuth auth should be supplied with
-`google.WithVertexTokenProvider`.
+`google.WithVertexTokenProvider`. Native Gemini text requests that use an API
+key without a project use Vertex express mode, which routes to
+`https://aiplatform.googleapis.com/v1/publishers/google/models/{model}`.
+OAuth credentials still require a project and location.
 
 Rich auth resolutions can also supply missing routing, headers, and provider
 options. Each attempt resolves before endpoint and payload construction, with

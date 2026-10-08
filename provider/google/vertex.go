@@ -82,6 +82,9 @@ type vertexRequestConfig struct {
 	APIVersion     string
 	CredentialMode VertexCredentialMode
 	BaseURL        string
+	// expressMode allows API-key requests without a project or location,
+	// which Vertex serves through the global publisher model route.
+	expressMode bool
 }
 
 // VertexProviderOption configures a VertexProvider.
@@ -272,6 +275,7 @@ func (p *VertexProvider) newRequest(ctx context.Context, model sigma.Model, req 
 		return nil, fmt.Errorf("google vertex: encode request: %w", err)
 	}
 
+	config.expressMode = credential.Type == sigma.CredentialTypeAPIKey
 	endpoint, err := p.endpoint(model, opts, config)
 	if err != nil {
 		return nil, err
@@ -369,6 +373,9 @@ func (p *VertexProvider) endpoint(model sigma.Model, opts sigma.Options, config 
 	if endpoint, ok := stringOption(options, providerOptionEndpoint); ok {
 		return endpoint, nil
 	}
+	if strings.TrimSpace(config.ProjectID) == "" && config.expressMode && config.ModelEndpoint == "" {
+		return vertexExpressEndpoint(model, config)
+	}
 	if strings.TrimSpace(config.ProjectID) == "" {
 		return "", vertexInvalidOptions(model, "google vertex: project ID is required", nil)
 	}
@@ -386,6 +393,29 @@ func (p *VertexProvider) endpoint(model sigma.Model, opts sigma.Options, config 
 		separator = "&"
 	}
 	return endpoint + separator + "alt=sse", nil
+}
+
+// vertexExpressEndpoint builds the Vertex express-mode route, which an API key
+// reaches without a project or location.
+func vertexExpressEndpoint(model sigma.Model, config vertexRequestConfig) (string, error) {
+	baseURL := strings.TrimRight(config.BaseURL, "/")
+	if baseURL == "" {
+		baseURL = "https://aiplatform.googleapis.com/" + config.APIVersion
+	}
+	if parsed, err := url.Parse(baseURL); err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "", vertexInvalidOptions(model, fmt.Sprintf("google vertex: invalid base URL %q", baseURL), err)
+	}
+	modelID := strings.Trim(string(model.ID), "/")
+	var resource string
+	switch {
+	case strings.HasPrefix(modelID, "publishers/"):
+		resource = modelID
+	case strings.HasPrefix(modelID, "models/"):
+		resource = "publishers/" + url.PathEscape(config.Publisher) + "/" + modelID
+	default:
+		resource = "publishers/" + url.PathEscape(config.Publisher) + "/models/" + url.PathEscape(modelID)
+	}
+	return baseURL + "/" + resource + ":streamGenerateContent?alt=sse", nil
 }
 
 func vertexBaseURL(config vertexRequestConfig) (string, error) {

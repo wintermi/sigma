@@ -586,7 +586,11 @@ func TestVertexMissingProjectAndLocationReturnTypedErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			client, model := vertexTestClient(t, WithVertexConfig(tt.config), WithVertexBaseURL("https://example.invalid/v1"))
+			// API keys may omit the project via express mode; OAuth tokens may not.
+			resolver := sigma.AuthResolverFunc(func(context.Context, sigma.Model, sigma.Options) (sigma.Credential, error) {
+				return sigma.Credential{Type: sigma.CredentialTypeOAuthToken, Value: "vertex-token"}, nil
+			})
+			client, model := vertexTestClientWithAuth(t, resolver, WithVertexConfig(tt.config), WithVertexBaseURL("https://example.invalid/v1"))
 			_, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
 			if err == nil {
 				t.Fatal("Complete returned nil error")

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Native Vertex Gemini text requests that use an API key without a project now route through Vertex express mode instead of failing with a missing-project error.
 - Replay thinking from other models to Google and Vertex Gemini as plain text
   instead of wrapping it in `<thinking>` tags, which Gemini imitates in its
   visible output.

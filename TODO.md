@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Route API-key Vertex Gemini text requests without a project through express mode.
 - [x] Replay foreign thinking to Gemini without delimiter tags.
 - [x] Treat Gemini `TOO_MANY_TOOL_CALLS` as a typed error.
 - [x] Classify bodyless Cerebras 400 responses as context overflow.

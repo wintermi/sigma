@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Vertex express mode is supported for native Gemini text. When an API key is supplied without a project ID, requests go to the global `publishers/google/models/{model}` route instead of failing locally. OAuth credentials still require a project and location.
+
 Thinking carried over from another model is now replayed to Gemini as plain text
 rather than inside `<thinking>` tags, so Gemini no longer copies the tags into
 its responses. Other adapters keep their existing delimiters.
