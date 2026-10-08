@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `EnvironmentAuthResolver` now accepts `GEMINI_API_KEY` for the Gemini API provider, after `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY`.
 - Tool-call validation now checks object properties in sorted order, so when several properties are invalid or malformed, the same error is reported on every run.
 - Tool-argument coercion from a JSON number to a string now keeps the exact decimal digits instead of rounding through `float64`, so `9007199254740993` no longer becomes `9007199254740992`.
 - OpenRouter requests for non-Anthropic models no longer attach message-level `cache_control` (including the unsupported `"persistent"` type); OpenRouter caches those models automatically.

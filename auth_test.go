@@ -129,6 +129,7 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "azure openai", provider: sigma.ProviderAzureOpenAIResponses, env: "AZURE_OPENAI_API_KEY"},
 		{name: "anthropic", provider: sigma.ProviderAnthropic, env: "ANTHROPIC_API_KEY"},
 		{name: "google", provider: sigma.ProviderGoogle, env: "GOOGLE_API_KEY"},
+		{name: "gemini", provider: sigma.ProviderGoogle, env: "GEMINI_API_KEY"},
 		{name: "google cloud", provider: sigma.ProviderGoogleVertex, env: "GOOGLE_CLOUD_API_KEY"},
 		{name: "google vertex openai", provider: sigma.ProviderGoogleVertexOpenAI, env: "GOOGLE_CLOUD_API_KEY"},
 		{name: "google vertex anthropic", provider: sigma.ProviderGoogleVertexAnthropic, env: "GOOGLE_CLOUD_API_KEY"},
@@ -367,6 +368,21 @@ func TestClientAuthResolverCanBeReplacedInTests(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAuthResolverPrefersGoogleAPIKeyOverGeminiAPIKey(t *testing.T) {
+	clearCredentialEnv(t)
+	t.Setenv("GEMINI_API_KEY", "gemini-secret")
+	t.Setenv("GOOGLE_API_KEY", "google-secret")
+
+	model := sigma.Model{ID: "model", Provider: sigma.ProviderGoogle}
+	credential, err := (sigma.EnvironmentAuthResolver{}).Resolve(context.Background(), model, sigma.Options{})
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	if got, want := credential.Value, "google-secret"; got != want {
+		t.Fatalf("credential value = %q, want %q", got, want)
+	}
+}
+
 func clearCredentialEnv(t *testing.T) {
 	t.Helper()
 
@@ -377,6 +393,7 @@ func clearCredentialEnv(t *testing.T) {
 		"ANTHROPIC_API_KEY",
 		"GOOGLE_API_KEY",
 		"GOOGLE_CLOUD_API_KEY",
+		"GEMINI_API_KEY",
 		"MISTRAL_API_KEY",
 		"OPENROUTER_API_KEY",
 		"CUSTOM_OPENAI_KEY",

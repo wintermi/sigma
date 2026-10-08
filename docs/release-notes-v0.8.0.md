@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The environment resolver recognizes `GEMINI_API_KEY` for `google` models, the variable pi and Google AI Studio document. `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY` still take precedence when set.
+
 Tool-call validation and coercion walk object properties in sorted name order. When more than one property fails, the reported error no longer varies between runs with Go map iteration order.
 
 Tool-argument coercion from a JSON number to a string keeps the exact decimal value. Large integers and long decimals no longer lose precision by passing through `float64`.

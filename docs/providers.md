@@ -561,7 +561,7 @@ registry := sigma.NewRegistry()
 _ = google.Register(registry, sigma.ProviderGoogle)
 ```
 
-Environment: `GOOGLE_API_KEY` or `GOOGLE_CLOUD_API_KEY`.
+Environment: `GOOGLE_API_KEY`, `GOOGLE_CLOUD_API_KEY`, or `GEMINI_API_KEY`, checked in that order.
 
 The Gemini API adapter supports text, image input, streaming, tools, thinking
 metadata, and usage in fixture-tested paths.

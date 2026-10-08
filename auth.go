@@ -46,6 +46,7 @@ const (
 	defaultAnthropicAPIKeyEnv     = "ANTHROPIC_API_KEY"
 	defaultGoogleAPIKeyEnv        = "GOOGLE_API_KEY"
 	defaultGoogleCloudAPIKeyEnv   = "GOOGLE_CLOUD_API_KEY"
+	defaultGeminiAPIKeyEnv        = "GEMINI_API_KEY"
 	defaultMistralAPIKeyEnv       = "MISTRAL_API_KEY"
 	defaultRadiusAPIKeyEnv        = "RADIUS_API_KEY"
 	defaultOpenRouterAPIKeyEnv    = "OPENROUTER_API_KEY"
@@ -70,7 +71,7 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderOpenAI:                  {defaultOpenAIAPIKeyEnv},
 	ProviderAzureOpenAIResponses:    {defaultAzureOpenAIAPIKeyEnv},
 	ProviderAnthropic:               {defaultAnthropicAuthTokenEnv, defaultAnthropicOAuthTokenEnv, defaultAnthropicAPIKeyEnv},
-	ProviderGoogle:                  {defaultGoogleAPIKeyEnv, defaultGoogleCloudAPIKeyEnv},
+	ProviderGoogle:                  {defaultGoogleAPIKeyEnv, defaultGoogleCloudAPIKeyEnv, defaultGeminiAPIKeyEnv},
 	ProviderGoogleVertex:            {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderGoogleVertexOpenAI:      {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
 	ProviderGoogleVertexAnthropic:   {defaultGoogleCloudAPIKeyEnv, defaultGoogleAPIKeyEnv},
