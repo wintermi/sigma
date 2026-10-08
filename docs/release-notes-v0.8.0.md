@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Chat Completions thinking now records the field it streamed in, and same-model
+replay sends it back in that field when no reasoning details are preserved.
+Thinking tool loops on Moonshot Kimi and similar models previously omitted the
+`reasoning_content` those providers require. Older saved blocks without the
+recorded field replay as before.
+
 OpenRouter routing options now apply only to requests sent to OpenRouter,
 including custom provider IDs that use an OpenRouter base URL. A client-wide
 OpenRouter routing default previously added an OpenRouter `provider` field to

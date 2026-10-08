@@ -396,6 +396,10 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		if compat.requiresReasoningContentOnAssistantMessages &&
 			(compat.reasoningFormat != sigma.OpenAICompletionsReasoningZAI || sameOpenAICompletionsProvenance(model, message)) {
 			converted["reasoning_content"] = reasoningContent
+		} else if len(reasoningDetails) == 0 && sameOpenAICompletionsProvenance(model, message) {
+			if field, reasoning := sourceFieldReasoning(model, message.Content); field != "" {
+				converted[field] = reasoning
+			}
 		}
 		if len(reasoningDetails) > 0 {
 			converted["reasoning_details"] = reasoningDetails
@@ -660,6 +664,41 @@ func preservedReasoningDetails(model sigma.Model, message sigma.Message) []any {
 		}
 	}
 	return legacy
+}
+
+const (
+	providerMetadataReasoningField = "reasoning_field"
+	reasoningFieldContent          = "reasoning_content"
+	reasoningFieldReasoning        = "reasoning"
+	reasoningFieldText             = "reasoning_text"
+)
+
+func replayableReasoningField(field string) bool {
+	return field == reasoningFieldContent || field == reasoningFieldReasoning || field == reasoningFieldText
+}
+
+// sourceFieldReasoning returns a model's own thinking and the field it streamed
+// in, so thinking models such as Kimi receive their reasoning back where they
+// emitted it when a tool loop continues.
+func sourceFieldReasoning(model sigma.Model, blocks []sigma.ContentBlock) (string, string) {
+	var field string
+	var reasoning []string
+	for _, block := range blocks {
+		if block.Type != sigma.ContentBlockThinking || strings.TrimSpace(block.ThinkingText) == "" {
+			continue
+		}
+		if field == "" {
+			field, _ = block.ProviderMetadata[providerMetadataReasoningField].(string)
+		}
+		reasoning = append(reasoning, providerText(block.ThinkingText))
+	}
+	if !replayableReasoningField(field) {
+		return "", ""
+	}
+	if model.Provider == sigma.ProviderOpenCodeGo && field == reasoningFieldReasoning {
+		field = reasoningFieldContent
+	}
+	return field, strings.Join(reasoning, "\n")
 }
 
 func sameOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {

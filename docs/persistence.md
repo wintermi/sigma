@@ -52,6 +52,9 @@ request but kept in saved blocks. Chat Completions applies the
 same nonempty provenance requirement to both ordered `openai_reasoning_details`
 and legacy tool-call `reasoning_details`. Eligible modern metadata takes
 precedence; validated legacy metadata is a fallback only for the same source.
+Chat Completions thinking records the field it streamed in
+(`ProviderMetadata["reasoning_field"]`), and same-model replay without reasoning
+details sends the thinking back in that field.
 Existing histories remain readable without migration, but histories lacking
 provenance no longer replay reasoning details. Ordinary text, calls, and results
 remain available.

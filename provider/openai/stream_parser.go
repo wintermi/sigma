@@ -116,6 +116,7 @@ type completionStreamParser struct {
 	started          bool
 	text             *streamblocks.Text
 	thinking         *streamblocks.Thinking
+	reasoningField   string
 	toolCalls        map[string]*streamblocks.ToolCall
 	providerIDKeys   map[string]struct{}
 	customToolCalls  map[*streamblocks.ToolCall]*completionCustomToolCall
@@ -251,7 +252,10 @@ func openAIStreamProviderError(model sigma.Model, api sigma.API, err *streamErro
 }
 
 func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDelta) error {
-	if reasoning, ok := firstReasoningDelta(delta); ok {
+	if reasoning, field, ok := firstReasoningDelta(delta); ok {
+		if p.reasoningField == "" {
+			p.reasoningField = field
+		}
 		if err := p.emitThinking(ctx, reasoning); err != nil {
 			return err
 		}
@@ -296,18 +300,23 @@ func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDe
 	return nil
 }
 
-func firstReasoningDelta(delta streamDelta) (string, bool) {
-	for _, value := range []*string{
-		delta.ReasoningContent,
-		delta.Reasoning,
-		delta.ReasoningText,
-		delta.Thinking,
+// firstReasoningDelta returns the first non-empty reasoning delta and the wire
+// field that carried it.
+func firstReasoningDelta(delta streamDelta) (string, string, bool) {
+	for _, candidate := range []struct {
+		field string
+		value *string
+	}{
+		{reasoningFieldContent, delta.ReasoningContent},
+		{reasoningFieldReasoning, delta.Reasoning},
+		{reasoningFieldText, delta.ReasoningText},
+		{"thinking", delta.Thinking},
 	} {
-		if value != nil && *value != "" {
-			return *value, true
+		if candidate.value != nil && *candidate.value != "" {
+			return *candidate.value, candidate.field, true
 		}
 	}
-	return "", false
+	return "", "", false
 }
 
 func (p *completionStreamParser) emitStart(ctx context.Context) error {
@@ -502,7 +511,11 @@ func (p *completionStreamParser) finalize(ctx context.Context) sigma.AssistantMe
 		}
 	}
 	if p.thinking != nil {
-		contentByIndex[p.thinking.ContentIndex] = sigma.Thinking(p.thinking.String(), "")
+		thinking := sigma.Thinking(p.thinking.String(), "")
+		if replayableReasoningField(p.reasoningField) {
+			thinking.ProviderMetadata = map[string]any{providerMetadataReasoningField: p.reasoningField}
+		}
+		contentByIndex[p.thinking.ContentIndex] = thinking
 		if !p.thinking.Closed {
 			_ = p.writer.Emit(ctx, sigma.Event{
 				Kind:         sigma.EventKindThinkingEnd,
