@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -946,5 +947,48 @@ func assertNoSecrets(t *testing.T, value string) {
 		if strings.Contains(value, secret) {
 			t.Fatalf("value leaked %q: %q", secret, value)
 		}
+	}
+}
+
+func TestClassifyErrorRecognizesProviderOverflowMessages(t *testing.T) {
+	t.Parallel()
+
+	overflow := []string{
+		"prompt is too long: 213462 tokens > 200000 maximum",
+		"Prompt exceeds max length",
+		"request_too_large",
+		"Input is too long for requested model.",
+		"Your input exceeds the context window of this model.",
+		"This model's maximum context length is 128000 tokens.",
+		"The input token count (1200000) exceeds the maximum number of tokens allowed (1048576).",
+		"This model's maximum prompt length is 131072 but the request contains 140000 tokens.",
+		"Please reduce the length of the messages or completion.",
+		"Input length 300000 exceeds the maximum allowed input length of 262144 tokens.",
+		"The input (300000 tokens) is longer than the model's context length (262144 tokens).",
+		"prompt token count of 140000 exceeds the limit of 128000",
+		"the request exceeds the available context size, try increasing it",
+		"The number of tokens to keep is greater than the context length",
+		"invalid params, context window exceeds limit",
+		"Your request exceeded model token limit: 262144 (requested: 300000)",
+		"Prompt contains 300000 tokens and 0 draft tokens, too large for model with 262144 maximum context length",
+		"Prompt has 300,000 tokens, but the configured context size is 262,144 tokens",
+		"prompt too long; exceeded max context length by 100 tokens",
+		"Range of input length should be [1, 98304]",
+		"context length exceeded",
+		"Request has too many tokens for this model",
+		"token limit exceeded",
+	}
+	for _, message := range overflow {
+		body := []byte(`{"error":{"message":` + strconv.Quote(message) + `}}`)
+		err := NewProviderError("test-provider", APIOpenAICompletions, "model", 400, "", 0, body, ErrProviderResponse)
+		if got := ClassifyError(err).Class; got != ErrorClassContextOverflow {
+			t.Errorf("%q classified as %q, want context overflow", message, got)
+		}
+	}
+
+	throttled := NewProviderError(ProviderAmazonBedrock, APIBedrockConverseStream, "model", 0, "", 0,
+		[]byte(`{"error":{"message":"ThrottlingException: Too many tokens, please wait before trying again."}}`), ErrProviderResponse)
+	if got := ClassifyError(throttled).Class; got == ErrorClassContextOverflow {
+		t.Errorf("Bedrock throttling classified as context overflow")
 	}
 }

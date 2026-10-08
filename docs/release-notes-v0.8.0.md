@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Context-overflow classification recognizes z.ai CN "Prompt exceeds max length",
+DashScope/Qwen "Range of input length should be", DS4 "configured context size",
+and generic "too many tokens" errors. Rate-limit wording such as Bedrock
+throttling remains excluded.
+
 Temporary provider capacity errors now classify as transient with retry advice:
 `server_busy` codes, "servers are currently busy", "Selected model is at
 capacity", and Azure "currently experiencing high demand" peak-load rejections,

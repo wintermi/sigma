@@ -397,6 +397,10 @@ func messageIndicatesContextOverflow(message string) bool {
 		strings.Contains(message, "context") && (strings.Contains(message, "too long") || strings.Contains(message, "longer than") || strings.Contains(message, "maximum") || strings.Contains(message, "exceed") || strings.Contains(message, "greater than")) ||
 		strings.Contains(message, "prompt is too long") ||
 		strings.Contains(message, "prompt too long") ||
+		strings.Contains(message, "prompt exceeds max length") ||
+		strings.Contains(message, "but the configured context size is") ||
+		strings.Contains(message, "range of input length should be") ||
+		strings.Contains(message, "too many tokens") ||
 		strings.Contains(message, "input is too long for requested model") ||
 		strings.Contains(message, "input token count") && strings.Contains(message, "exceeds the maximum") ||
 		strings.Contains(message, "prompt token count") && strings.Contains(message, "exceeds the limit") ||
