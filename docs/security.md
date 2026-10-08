@@ -60,6 +60,12 @@ original network errors and cancellation; no HTTP response error is invented
 when no response exists. Explicitly unwrapping an error or inspecting its raw
 transport fields can expose credentials and remains the caller's responsibility.
 
+Anthropic, Codex, and Radius browser logins listen on loopback for the OAuth
+callback. Only a GET request carrying the login's PKCE state can complete or
+fail the login; requests with a missing or different state, other methods, or no
+authorization code receive an error page while the login keeps waiting, so a
+stale tab or a cross-site request cannot abort it.
+
 ## Persistence
 
 `MarshalRequest` serializes only the public `Request` shape. It does not store

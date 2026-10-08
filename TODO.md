@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Ignore OAuth callback requests without the login's state for Anthropic, Codex, and Radius.
 - [x] Fall back from unavailable Anthropic and Codex OAuth callback ports.
 - [x] Validate ECMAScript patterns, tuple items, and patternProperties in tool schemas.
 - [x] Repair invalid escapes in final tool-call arguments across all adapters.

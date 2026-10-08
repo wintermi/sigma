@@ -188,6 +188,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Ignore OAuth browser-login callback requests that do not carry the login's
+  state for Anthropic, Codex, and Radius. Stray, stale, cross-site, non-GET, and
+  code-less requests receive an error page while the login keeps waiting; only a
+  state-matching `error` ends it. Codex now also reports such provider errors as
+  authorization failures.
 - Fall back when OAuth browser-login callback ports are unavailable. Anthropic
   login tries a free loopback port after 53692, then pasted input alone, and
   Codex login completes with `OnManualCode` input when port 1455 is taken,

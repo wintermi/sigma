@@ -367,20 +367,25 @@ func startAnthropicBrowserCallbackServer(listenAddr string, state string) (*anth
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(anthropicOAuthCallbackPath, func(w http.ResponseWriter, req *http.Request) {
-		if oauthErr := req.URL.Query().Get("error"); oauthErr != "" {
+		// Only a request carrying this login's state may end it; stray or
+		// cross-site requests are refused while the login keeps waiting.
+		if req.Method != http.MethodGet {
+			writeAnthropicOAuthHTML(w, http.StatusMethodNotAllowed, "Authentication failed", "Method not allowed.")
+			return
+		}
+		query := req.URL.Query()
+		if query.Get("state") != state {
+			writeAnthropicOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
+			return
+		}
+		if oauthErr := query.Get("error"); oauthErr != "" {
 			writeAnthropicOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "Anthropic authentication did not complete.")
 			serverInfo.finish(anthropicBrowserCallbackResult{err: fmt.Errorf("anthropic oauth: authorization failed: %s", redact.Preview(oauthErr, 256))})
 			return
 		}
-		if req.URL.Query().Get("state") != state {
-			writeAnthropicOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
-			serverInfo.finish(anthropicBrowserCallbackResult{err: fmt.Errorf("anthropic oauth: state mismatch")})
-			return
-		}
-		code := req.URL.Query().Get("code")
+		code := query.Get("code")
 		if code == "" {
 			writeAnthropicOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "Missing authorization code.")
-			serverInfo.finish(anthropicBrowserCallbackResult{err: fmt.Errorf("anthropic oauth: missing authorization code")})
 			return
 		}
 		writeAnthropicOAuthHTML(w, http.StatusOK, "Authentication successful", "Anthropic authentication completed. You can close this window.")

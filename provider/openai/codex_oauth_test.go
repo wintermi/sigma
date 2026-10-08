@@ -267,62 +267,69 @@ func TestLoginOpenAICodexBrowserCallbackSuccess(t *testing.T) {
 	}
 }
 
-func TestLoginOpenAICodexBrowserCallbackErrorsBeforeExchange(t *testing.T) {
-	tests := []struct {
-		name  string
-		query func(url.Values) string
-		want  string
-	}{
-		{
-			name: "missing code",
-			query: func(values url.Values) string {
-				return "?state=" + url.QueryEscape(values.Get("state"))
-			},
-			want: "missing authorization code",
-		},
-		{
-			name: "state mismatch",
-			query: func(url.Values) string {
-				return "?code=callback-code&state=wrong-state"
-			},
-			want: "state mismatch",
-		},
+func sendCodexCallbacks(redirectURI string, requests ...[2]string) {
+	for _, request := range requests {
+		req, err := http.NewRequestWithContext(context.Background(), request[0], redirectURI+request[1], nil)
+		if err != nil {
+			continue
+		}
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			_ = resp.Body.Close()
+		}
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			withCodexBrowserTestServer(t)
+// Requests without the login's state, such as a stale tab or a cross-site
+// page, must not end the login; only the matching callback may.
+func TestLoginOpenAICodexBrowserIgnoresCallbacksWithoutMatchingState(t *testing.T) {
+	withCodexBrowserTestServer(t)
 
-			var tokenCalls int
-			client := codexOAuthTestClient(t, func(*http.Request) *http.Response {
-				tokenCalls++
-				return codexOAuthJSONResponse(http.StatusOK, map[string]any{})
-			})
+	client := codexOAuthTestClient(t, func(r *http.Request) *http.Response {
+		if got := readCodexOAuthFormBody(t, r).Get("code"); got != "callback-code" {
+			t.Fatalf("exchanged code = %q, want the matching callback code", got)
+		}
+		return codexOAuthJSONResponse(http.StatusOK, map[string]any{"access_token": codexTestJWT("acct_callback"), "refresh_token": "refresh", "expires_in": 3600})
+	})
+	_, err := LoginOpenAICodexBrowser(context.Background(), CodexBrowserLoginOptions{
+		HTTPClient: client,
+		OnAuth: func(info CodexBrowserAuthInfo) {
+			parsed, _ := url.Parse(info.URL)
+			redirectURI, state := parsed.Query().Get("redirect_uri"), url.QueryEscape(parsed.Query().Get("state"))
+			go sendCodexCallbacks(redirectURI,
+				[2]string{http.MethodGet, "?error=access_denied"},
+				[2]string{http.MethodGet, "?code=attacker&state=wrong"},
+				[2]string{http.MethodGet, "?state=" + state},
+				[2]string{http.MethodPost, "?code=attacker&state=" + state},
+				[2]string{http.MethodGet, "?code=callback-code&state=" + state},
+			)
+		},
+	})
+	if err != nil {
+		t.Fatalf("LoginOpenAICodexBrowser returned error: %v", err)
+	}
+}
 
-			_, err := LoginOpenAICodexBrowser(context.Background(), CodexBrowserLoginOptions{
-				HTTPClient: client,
-				OnAuth: func(info CodexBrowserAuthInfo) {
-					parsed, err := url.Parse(info.URL)
-					if err != nil {
-						t.Errorf("Parse auth URL returned error: %v", err)
-						return
-					}
-					redirectURI := parsed.Query().Get("redirect_uri")
-					go func() {
-						resp, err := http.Get(redirectURI + tt.query(parsed.Query()))
-						if err == nil {
-							_ = resp.Body.Close()
-						}
-					}()
-				},
-			})
-			if err == nil || !strings.Contains(err.Error(), tt.want) {
-				t.Fatalf("error = %v, want %q", err, tt.want)
-			}
-			if tokenCalls != 0 {
-				t.Fatalf("token calls = %d, want 0", tokenCalls)
-			}
-		})
+func TestLoginOpenAICodexBrowserFailsOnMatchingStateError(t *testing.T) {
+	withCodexBrowserTestServer(t)
+
+	var tokenCalls int
+	client := codexOAuthTestClient(t, func(*http.Request) *http.Response {
+		tokenCalls++
+		return codexOAuthJSONResponse(http.StatusOK, map[string]any{})
+	})
+	_, err := LoginOpenAICodexBrowser(context.Background(), CodexBrowserLoginOptions{
+		HTTPClient: client,
+		OnAuth: func(info CodexBrowserAuthInfo) {
+			parsed, _ := url.Parse(info.URL)
+			go sendCodexCallbacks(parsed.Query().Get("redirect_uri"),
+				[2]string{http.MethodGet, "?error=access_denied&state=" + url.QueryEscape(parsed.Query().Get("state"))})
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "authorization failed") {
+		t.Fatalf("error = %v, want authorization failed", err)
+	}
+	if tokenCalls != 0 {
+		t.Fatalf("token calls = %d, want 0", tokenCalls)
 	}
 }
 

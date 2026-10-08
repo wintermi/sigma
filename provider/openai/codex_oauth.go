@@ -504,15 +504,25 @@ func startOpenAICodexBrowserCallbackServer(state string) (*codexBrowserCallbackS
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(codexOAuthBrowserCallbackPath, func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Query().Get("state") != state {
-			writeCodexOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
-			serverInfo.finish(codexBrowserCallbackResult{err: fmt.Errorf("openai codex oauth: state mismatch")})
+		// Only a request carrying this login's state may end it; stray or
+		// cross-site requests are refused while the login keeps waiting.
+		if req.Method != http.MethodGet {
+			writeCodexOAuthHTML(w, http.StatusMethodNotAllowed, "Authentication failed", "Method not allowed.")
 			return
 		}
-		code := req.URL.Query().Get("code")
+		query := req.URL.Query()
+		if query.Get("state") != state {
+			writeCodexOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
+			return
+		}
+		if oauthErr := query.Get("error"); oauthErr != "" {
+			writeCodexOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "OpenAI authentication did not complete.")
+			serverInfo.finish(codexBrowserCallbackResult{err: fmt.Errorf("openai codex oauth: authorization failed: %s", redact.Preview(oauthErr, 256))})
+			return
+		}
+		code := query.Get("code")
 		if code == "" {
 			writeCodexOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "Missing authorization code.")
-			serverInfo.finish(codexBrowserCallbackResult{err: fmt.Errorf("openai codex oauth: missing authorization code")})
 			return
 		}
 		writeCodexOAuthHTML(w, http.StatusOK, "Authentication successful", "OpenAI authentication completed. You can close this window.")

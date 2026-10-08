@@ -7,6 +7,13 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic, Codex, and Radius browser logins validate the callback state before
+anything else. Requests without the login's state, non-GET requests, and
+callbacks without a code are answered with an error page while the login keeps
+waiting, so a stale tab or cross-site request can no longer abort it. A
+state-matching provider `error` still ends the login, and Codex now reports it
+as an authorization failure.
+
 Anthropic browser login falls back to a free loopback port when port 53692 is
 reserved or in use, for example by Hyper-V/WSL port exclusions, and then to
 pasted input alone. Codex browser login completes with `OnManualCode` input when

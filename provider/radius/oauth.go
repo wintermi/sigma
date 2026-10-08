@@ -722,20 +722,25 @@ func startRadiusBrowserCallbackServer(redirectURI string, state string) (*radius
 	serverInfo := &radiusBrowserCallbackServer{done: make(chan radiusBrowserCallbackResult, 1)}
 	mux := http.NewServeMux()
 	mux.HandleFunc(callback.Path, func(w http.ResponseWriter, req *http.Request) {
-		if authErr := req.URL.Query().Get("error"); authErr != "" {
+		// Only a request carrying this login's state may end it; stray or
+		// cross-site requests are refused while the login keeps waiting.
+		if req.Method != http.MethodGet {
+			writeRadiusOAuthHTML(w, http.StatusMethodNotAllowed, "Authentication failed", "Method not allowed.")
+			return
+		}
+		query := req.URL.Query()
+		if query.Get("state") != state {
+			writeRadiusOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
+			return
+		}
+		if authErr := query.Get("error"); authErr != "" {
 			writeRadiusOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "Radius authentication did not complete.")
 			serverInfo.finish(radiusBrowserCallbackResult{err: fmt.Errorf("radius oauth: authorization failed: %s", redact.Preview(authErr, 256))})
 			return
 		}
-		if req.URL.Query().Get("state") != state {
-			writeRadiusOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "State mismatch.")
-			serverInfo.finish(radiusBrowserCallbackResult{err: errors.New("radius oauth: state mismatch")})
-			return
-		}
-		code := req.URL.Query().Get("code")
+		code := query.Get("code")
 		if code == "" {
 			writeRadiusOAuthHTML(w, http.StatusBadRequest, "Authentication failed", "Missing authorization code.")
-			serverInfo.finish(radiusBrowserCallbackResult{err: errors.New("radius oauth: missing authorization code")})
 			return
 		}
 		writeRadiusOAuthHTML(w, http.StatusOK, "Authentication successful", "Radius authentication completed. You can close this window.")
