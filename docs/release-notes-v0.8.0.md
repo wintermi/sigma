@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI image edits that upload more than one image name the file parts `image[]`, matching the documented multi-image form and the OpenAI SDKs. Single-image edits and variations still send `image`.
+
 OpenAI and Google image generation now handle over-limit success bodies the same way OpenRouter does. A response over 64 MiB returns a `ProviderError` with the HTTP status and a size-limit diagnostic, instead of a silently truncated body that failed JSON decoding.
 
 Radius requests use the transcript context shape that current pi clients send. The system prompt and tool declarations are carried by a leading `{"role":"system","content":...,"toolsAdded":[...]}` message instead of the legacy `context.systemPrompt` and `context.tools` fields. Requests with neither a prompt nor tools send only the conversation messages.

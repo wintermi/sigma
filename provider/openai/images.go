@@ -444,13 +444,24 @@ func writeCommonImageFields(writer *multipart.Writer, model sigma.ImageModel, re
 }
 
 func writeEditImageFields(writer *multipart.Writer, req sigma.ImageRequest) error {
+	// The edits endpoint takes several uploaded images as an image[] array.
+	files := 0
+	for _, input := range req.Inputs {
+		if input.Type == sigma.ImageInputImage && input.Source == sigma.ImageSourceBase64 {
+			files++
+		}
+	}
+	fileField := "image"
+	if files > 1 {
+		fileField = "image[]"
+	}
 	for index, input := range req.Inputs {
-		if err := writeImageInputField(writer, "image", index, input); err != nil {
+		if err := writeImageInputField(writer, "image", fileField, index, input); err != nil {
 			return err
 		}
 	}
 	if req.Mask != nil {
-		if err := writeImageInputField(writer, "mask", 0, *req.Mask); err != nil {
+		if err := writeImageInputField(writer, "mask", "mask", 0, *req.Mask); err != nil {
 			return err
 		}
 	}
@@ -458,10 +469,12 @@ func writeEditImageFields(writer *multipart.Writer, req sigma.ImageRequest) erro
 }
 
 func writeVariationImageFields(writer *multipart.Writer, req sigma.ImageRequest) error {
-	return writeImageInputField(writer, "image", 0, req.Inputs[0])
+	return writeImageInputField(writer, "image", "image", 0, req.Inputs[0])
 }
 
-func writeImageInputField(writer *multipart.Writer, field string, index int, input sigma.ImageInput) error {
+// writeImageInputField writes input under field, using fileField as the name of
+// an uploaded file part.
+func writeImageInputField(writer *multipart.Writer, field string, fileField string, index int, input sigma.ImageInput) error {
 	switch input.Type {
 	case sigma.ImageInputText:
 		if err := writer.WriteField(field+"_text", input.Text); err != nil {
@@ -478,7 +491,7 @@ func writeImageInputField(writer *multipart.Writer, field string, index int, inp
 		if err != nil {
 			return fmt.Errorf("openai images: image input data must be base64: %w", err)
 		}
-		part, err := writer.CreateFormFile(field, imageInputFilename(field, index, input.MIMEType))
+		part, err := writer.CreateFormFile(fileField, imageInputFilename(field, index, input.MIMEType))
 		if err != nil {
 			return fmt.Errorf("openai images: create %s file field: %w", field, err)
 		}

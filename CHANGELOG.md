@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI image edits with several uploaded images now send them as `image[]` multipart parts, as the edits endpoint and the OpenAI SDKs expect, instead of repeating `image`.
 - OpenAI and Google image generation now return a typed `ProviderError` when a successful response exceeds 64 MiB, instead of truncating it into a misleading JSON decode error.
 - Radius requests now send pi's transcript context: the system prompt and tools travel in a leading `system` message with `toolsAdded`, replacing the pre-0.86 `context.systemPrompt` and `context.tools` fields.
 - Radius requests now forward `Options.ToolChoice` as `options.toolChoice` instead of dropping it.

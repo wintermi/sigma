@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Send multi-image OpenAI edits as `image[]` multipart parts.
 - [x] - [x] Return typed overflow errors for OpenAI and Google image responses over 64 MiB.
 - [x] - [x] Send Radius context as pi's transcript shape with a leading system message.
 - [x] - [x] Forward `ToolChoice` on Radius requests.

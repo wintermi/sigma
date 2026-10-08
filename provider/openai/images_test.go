@@ -268,6 +268,37 @@ func TestGenerateImagesValidatesBeforeNetwork(t *testing.T) {
 	}
 }
 
+func TestGenerateImagesSendsMultipleEditImagesAsArrayField(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[{"b64_json":"ZWRpdA=="}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	client := openAIImagesTestClient(t, server.URL)
+	if _, err := client.GenerateImages(
+		context.Background(),
+		openAIImageModel(),
+		sigma.ImageRequest{
+			Prompt: "combine these",
+			Inputs: []sigma.ImageInput{sigma.ImageData("image/png", "Zmlyc3Q="), sigma.ImageData("image/png", "c2Vjb25k")},
+		},
+	); err != nil {
+		t.Fatalf("GenerateImages returned error: %v", err)
+	}
+	form := parseMultipartRequest(t, receiveRequest(t, requests))
+	if got, want := len(form.File["image[]"]), 2; got != want {
+		t.Fatalf("image[] file count = %d, want %d", got, want)
+	}
+	if got := len(form.File["image"]); got != 0 {
+		t.Fatalf("image file count = %d, want 0", got)
+	}
+}
+
 func TestGenerateImagesSendsEditMultipartPayload(t *testing.T) {
 	t.Parallel()
 
