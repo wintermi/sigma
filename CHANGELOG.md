@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Tool-argument coercion from a JSON number to a string now keeps the exact decimal digits instead of rounding through `float64`, so `9007199254740993` no longer becomes `9007199254740992`.
 - OpenRouter requests for non-Anthropic models no longer attach message-level `cache_control` (including the unsupported `"persistent"` type); OpenRouter caches those models automatically.
 - Chat Completions compat detection now matches `x.ai` and `z.ai` base URLs by domain, so look-alike hosts such as `fox.ai` or `fizz.ai` no longer pick up xAI or Z.ai settings.
 - Chat Completions history no longer replays assistant turns that hold only reasoning, which DeepSeek and other compatible servers rejected for missing `content`.

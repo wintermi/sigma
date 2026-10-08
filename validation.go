@@ -442,6 +442,11 @@ func coerceString(value any) (any, bool) {
 			return "true", true
 		}
 		return "false", true
+	case json.Number:
+		if number, ok := exactNumber(v); ok {
+			return number.String(), true
+		}
+		return value, false
 	default:
 		if number, ok := numberFloat(value); ok {
 			return formatNumber(number), true

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Preserve JSON number precision when coercing tool arguments to strings.
 - [x] - [x] Stop sending message-level cache_control to OpenRouter non-Anthropic models.
 - [x] - [x] Match xAI and Z.ai compat hosts by domain instead of substring.
 - [x] - [x] Skip thinking-only assistant turns when replaying Chat Completions history.

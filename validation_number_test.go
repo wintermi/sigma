@@ -113,6 +113,24 @@ func TestExactDecimalCoercion(t *testing.T) {
 	}
 }
 
+func TestStringCoercionPreservesJSONNumberPrecision(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		input json.Number
+		want  string
+	}{
+		{"9007199254740993", "9007199254740993"},
+		{"12345678901234567890.125", "12345678901234567890.125"},
+		{"12.50", "12.5"},
+		{"-0.1", "-0.1"},
+	} {
+		got, ok := coerceString(tc.input)
+		if !ok || got != tc.want {
+			t.Fatalf("coerce %q = %v, %v; want %q", tc.input, got, ok, tc.want)
+		}
+	}
+}
+
 func TestRegressionNumericValidationBoundaries(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct{ name, property, input string }{
