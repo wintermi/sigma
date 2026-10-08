@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Apply neutral dimensions and query purpose to Bedrock Nova, Titan image, and Cohere embeddings.
 - [x] Stop retrieval splitter fragment crawl and whitespace-only chunks.
 - [x] Cost Radius finals and replay Radius text and tool-call signatures.
 - [x] Price Responses fast service tier like priority.

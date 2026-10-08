@@ -158,7 +158,9 @@ applied. Controls must be positive integers: OpenAI `dimensions`, Gemini/Vertex
 `outputDimensionality`, Titan `dimensions` or `outputEmbeddingLength`, Nova
 `embeddingDimension`, and Cohere `output_dimension`. Malformed controls fail
 locally. If no dimension is sent, Sigma infers consistency from the response;
-it does not impose catalog defaults.
+it does not impose catalog defaults. On Bedrock, `EmbeddingRequest.Dimensions`
+fills the Titan, Nova, and variable-size Cohere dimension controls when no
+provider option sets them, and Nova queries use the `GENERIC_RETRIEVAL` purpose.
 
 Dimension failures in successful HTTP responses return typed provider errors
 with status, request ID, and attempt metadata, with no vectors, retries, batch

@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock Nova, Titan image, and variable-size Cohere embeddings now honor
+`EmbeddingRequest.Dimensions`, and Nova query embeddings use the
+`GENERIC_RETRIEVAL` purpose. Explicit provider options still take precedence,
+and fixed-size Cohere v3 requests are unchanged.
+
 `SplitRetrievalText` no longer crawls forward one rune at a time after a chunk
 shorter than the overlap, which produced suffix fragments such as `" Heading"`
 and `"eading"`, and it omits whitespace-only chunks that embedding rejects.

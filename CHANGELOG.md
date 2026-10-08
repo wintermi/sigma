@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Apply `EmbeddingRequest.Dimensions` to Bedrock Nova, Titan image, and
+  variable-size Cohere embeddings, and send Nova queries with the
+  `GENERIC_RETRIEVAL` purpose. Nova previously always returned 3072-dimension
+  index embeddings, which dimension-checked retrieval indexes rejected.
 - Stop the retrieval splitter emitting one-rune-shifted fragments and
   whitespace-only chunks when a separator falls near the start of a window,
   which made `AddDocuments` fail on ordinary Markdown such as a leading heading.

@@ -182,12 +182,12 @@ func bedrockEmbeddingPayload(modelID string, model sigma.EmbeddingModel, req sig
 		if len(req.Inputs) != 1 {
 			return nil, fmt.Errorf("bedrock embeddings: model %s supports one input per request", modelID)
 		}
-		return novaEmbeddingPayload(model, req.Inputs[0], opts), nil
+		return novaEmbeddingPayload(model, req.Inputs[0], req, opts), nil
 	case strings.HasPrefix(modelID, "amazon.titan-embed-image"):
 		if len(req.Inputs) != 1 {
 			return nil, fmt.Errorf("bedrock embeddings: model %s supports one input per request", modelID)
 		}
-		return titanImageEmbeddingPayload(model, req.Inputs[0], opts), nil
+		return titanImageEmbeddingPayload(model, req.Inputs[0], req, opts), nil
 	default:
 		if len(req.Inputs) != 1 {
 			return nil, fmt.Errorf("bedrock embeddings: model %s supports one input per request", modelID)
@@ -228,9 +228,12 @@ func addTitanV2EmbeddingOptions(payload map[string]any, req sigma.EmbeddingReque
 	}
 }
 
-func titanImageEmbeddingPayload(model sigma.EmbeddingModel, input string, opts sigma.Options) map[string]any {
+func titanImageEmbeddingPayload(model sigma.EmbeddingModel, input string, req sigma.EmbeddingRequest, opts sigma.Options) map[string]any {
 	options := providerOptions(opts, model.Provider)
 	var length any = 1024
+	if req.Dimensions > 0 {
+		length = req.Dimensions
+	}
 	if value, ok := options[bedrockEmbeddingOptionOutputEmbeddingLength]; ok {
 		length = value
 	} else if value, ok := options[bedrockEmbeddingOptionOutputEmbeddingLengthSnake]; ok {
@@ -244,15 +247,21 @@ func titanImageEmbeddingPayload(model sigma.EmbeddingModel, input string, opts s
 	}
 }
 
-func novaEmbeddingPayload(model sigma.EmbeddingModel, input string, opts sigma.Options) map[string]any {
+func novaEmbeddingPayload(model sigma.EmbeddingModel, input string, req sigma.EmbeddingRequest, opts sigma.Options) map[string]any {
 	options := providerOptions(opts, model.Provider)
 	purpose := "GENERIC_INDEX"
+	if req.InputType == sigma.EmbeddingInputTypeQuery {
+		purpose = "GENERIC_RETRIEVAL"
+	}
 	if value, ok := stringOption(options, bedrockEmbeddingOptionEmbeddingPurpose); ok {
 		purpose = value
 	} else if value, ok := stringOption(options, bedrockEmbeddingOptionEmbeddingPurposeSnake); ok {
 		purpose = value
 	}
 	var dimension any = 3072
+	if req.Dimensions > 0 {
+		dimension = req.Dimensions
+	}
 	if value, ok := options[bedrockEmbeddingOptionEmbeddingDimension]; ok {
 		dimension = value
 	} else if value, ok := options[bedrockEmbeddingOptionEmbeddingDimensionSnake]; ok {
@@ -290,6 +299,10 @@ func cohereEmbeddingPayload(model sigma.EmbeddingModel, req sigma.EmbeddingReque
 	payload := map[string]any{
 		"texts":      append([]string(nil), req.Inputs...),
 		"input_type": inputType,
+	}
+	// Fixed-size models such as embed v3 reject output_dimension.
+	if req.Dimensions > 0 && model.MinDimensions < model.MaxDimensions {
+		payload[bedrockEmbeddingOptionOutputDimension] = req.Dimensions
 	}
 	for _, key := range []string{bedrockEmbeddingOptionTruncate, bedrockEmbeddingOptionOutputDimension, bedrockEmbeddingOptionEmbeddingTypesSnake} {
 		if value, ok := options[key]; ok {
