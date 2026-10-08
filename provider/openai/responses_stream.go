@@ -1299,7 +1299,8 @@ func responsesServiceTierCostMultiplier(model sigma.Model, serviceTier string) f
 	switch serviceTier {
 	case "flex":
 		return 0.5
-	case "priority":
+	case "priority", "fast":
+		// GPT-6 responses report Fast mode as "fast", billed as priority.
 		if openAIServiceTierModelID(model) == "gpt-5.5" {
 			return 2.5
 		}

@@ -188,6 +188,8 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Price Responses `service_tier: "fast"` like priority processing. GPT-6 Fast
+  mode responses were costed at the standard rate, under-reporting cost by half.
 - Advertise image input on 14 Mistral rows (current Large, Medium, Small,
   Ministral, Magistral Medium, and Devstral Small models) and the two Bedrock
   Ministral 3 rows, matching the reference catalog. Images sent to these models

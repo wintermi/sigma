@@ -7,6 +7,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses that report `service_tier: "fast"`, as GPT-6 Fast mode does, are now
+priced like priority processing instead of at the standard rate.
+
 Fourteen Mistral models and the two Bedrock Ministral 3 models now advertise
 image input, so image requests reach the provider instead of failing local
 capability checks.

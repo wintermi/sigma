@@ -2714,6 +2714,8 @@ func TestResponsesAppliesServiceTierCostMultiplier(t *testing.T) {
 		{name: "flex", modelID: "gpt-test", serviceTier: "flex", multiplier: 0.5},
 		{name: "priority", modelID: "gpt-test", serviceTier: "priority", multiplier: 2},
 		{name: "gpt-5.5 priority", modelID: "gpt-5.5", serviceTier: "priority", multiplier: 2.5},
+		{name: "fast", modelID: "gpt-test", serviceTier: "fast", multiplier: 2},
+		{name: "gpt-5.5 fast", modelID: "gpt-5.5", serviceTier: "fast", multiplier: 2.5},
 	}
 	for _, tt := range tests {
 		tt := tt
