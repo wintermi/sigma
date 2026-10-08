@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Resolve missing Responses `output_index` values and reject reused tool-call slots.
 - [x] Nest Anthropic deferred-tool references inside the loading `tool_result`.
 - [x] Ignore empty Chat Completions content deltas instead of starting empty text blocks.
 - [x] Classify overflow messages behind generic invalid-request codes and align `IsContextOverflow`.

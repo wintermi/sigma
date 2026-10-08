@@ -24,7 +24,8 @@ type responsesEvent struct {
 	ResponseID   string               `json:"response_id"`
 	Model        string               `json:"model"`
 	ItemID       string               `json:"item_id"`
-	OutputIndex  int                  `json:"output_index"`
+	OutputIndex  int                  `json:"-"`
+	RawOutput    *int                 `json:"output_index"`
 	ContentIndex int                  `json:"content_index"`
 	SummaryIndex int                  `json:"summary_index"`
 	Delta        string               `json:"delta"`
@@ -131,6 +132,9 @@ type responsesStreamParser struct {
 	toolCalls           map[int]*streamblocks.ToolCall
 	customToolCalls     map[int]*responsesCustomToolCall
 	toolItemIDs         map[int]string
+	addedOutputItems    int
+	currentOutput       int
+	outputItemIndexes   map[string]int
 	responseID          string
 	providerModel       string
 	responseServiceTier string
@@ -295,6 +299,7 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 	if parsed.Type == "" {
 		parsed.Type = eventName
 	}
+	parsed.OutputIndex = p.outputIndex(parsed)
 	p.captureEventMetadata(parsed)
 	switch parsed.Type {
 	case "response.created", "response.in_progress":
@@ -454,6 +459,36 @@ func openAIResponsesIncompleteError(model sigma.Model, reason string) *sigma.Pro
 	})
 }
 
+// outputIndex resolves the output slot of an event. Servers such as llama.cpp
+// omit output_index: their items take sequential slots in the order they are
+// added, matching the terminal output array, and later events belong to the
+// item they name or else to the most recently added item.
+func (p *responsesStreamParser) outputIndex(event responsesEvent) int {
+	index := p.currentOutput
+	itemID := firstNonEmpty(event.ItemID, event.Item.ID)
+	switch {
+	case event.RawOutput != nil:
+		index = *event.RawOutput
+	case event.Type == "response.output_item.added":
+		index = p.addedOutputItems
+	default:
+		if mapped, ok := p.outputItemIndexes[itemID]; ok && itemID != "" {
+			index = mapped
+		}
+	}
+	if event.Type == "response.output_item.added" {
+		p.addedOutputItems++
+		p.currentOutput = index
+		if itemID != "" {
+			if p.outputItemIndexes == nil {
+				p.outputItemIndexes = make(map[string]int)
+			}
+			p.outputItemIndexes[itemID] = index
+		}
+	}
+	return index
+}
+
 func (p *responsesStreamParser) captureEventMetadata(event responsesEvent) {
 	if event.ResponseID != "" {
 		p.responseID = event.ResponseID
@@ -607,6 +642,13 @@ func (p *responsesStreamParser) handleOutputItemAdded(ctx context.Context, event
 		}
 		p.captureOutputItem(event.OutputIndex, event.Item)
 		return nil
+	}
+	if existing := p.toolCalls[event.OutputIndex]; existing != nil && existing.ID() != "" &&
+		existing.ID() != firstNonEmpty(event.Item.CallID, event.Item.ID) {
+		return openAIResponsesStreamProviderError(p.model, &responsesError{
+			Code:    "invalid_stream",
+			Message: fmt.Sprintf("tool call %q reuses output index %d of tool call %q", firstNonEmpty(event.Item.CallID, event.Item.ID), event.OutputIndex, existing.ID()),
+		})
 	}
 	if event.Item.ID != "" {
 		p.toolItemIDs[event.OutputIndex] = event.Item.ID

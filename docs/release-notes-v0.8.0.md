@@ -7,6 +7,12 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses streams that omit `output_index`, such as llama.cpp, keep each output
+item separate. Previously every event mapped to the first slot, so parallel tool
+calls could return with another call's ID, name, or arguments. A tool call that
+reuses another call's output index now ends the stream with a typed provider
+error instead of overwriting it.
+
 Anthropic message-anchored tool loading now places `tool_reference` blocks
 inside the content of the `tool_result` that loads them, as the Messages API
 requires. The tool's original output follows every tool result as sibling

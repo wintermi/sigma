@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Keep Responses output items separate when a server omits `output_index`, as
+  llama.cpp does. Items take sequential slots in the order they are added, and
+  later events follow their `item_id` or the current item, so parallel tool calls
+  no longer swap identities and arguments. A tool call that reuses another call's
+  output index now fails with a typed provider error.
 - Send Anthropic deferred-tool `tool_reference` blocks as the content of the
   loading `tool_result`, with the original tool output as sibling blocks after
   every tool result. References were previously top-level user content and could
