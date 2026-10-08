@@ -140,8 +140,10 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 	case provider == sigma.ProviderOpenRouter || strings.Contains(host, "openrouter.ai"):
 		compat.supportsStreamingUsage = true
 		compat.supportsSessionAffinity = true
+		// OpenRouter caches non-Anthropic models automatically; only Anthropic
+		// routes accept explicit cache_control breakpoints.
 		compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlMessage
-		compat.supportsMessageCacheControl = true
+		compat.supportsMessageCacheControl = false
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningObject
 		if strings.HasPrefix(string(model.ID), "anthropic/") {
 			compat.cacheControlFormat = sigma.OpenAICompletionsCacheControlAnthropic

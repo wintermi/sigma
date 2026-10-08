@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenRouter requests for non-Anthropic models no longer carry message-level `cache_control`. Long retention previously sent `{"type":"persistent"}`, which OpenRouter does not define. Anthropic routes keep their explicit breakpoints, and an explicit `CacheControlFormat` compat override still opts in.
+
 Chat Completions compat detection matches xAI and Z.ai base URLs by domain or subdomain instead of by substring. Custom endpoints on hosts that merely end in `x.ai` or `z.ai` now get the default compat settings.
 
 Chat Completions history skips assistant turns that contain only reasoning, as pi does. Previously, such a turn (for example, an aborted DeepSeek response) was replayed with `reasoning_content` and no `content`, which compatible servers reject.

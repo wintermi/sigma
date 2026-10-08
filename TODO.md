@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Stop sending message-level cache_control to OpenRouter non-Anthropic models.
 - [x] - [x] Match xAI and Z.ai compat hosts by domain instead of substring.
 - [x] - [x] Skip thinking-only assistant turns when replaying Chat Completions history.
 - [x] - [x] Newline-join Chat Completions tool-result text and fill empty results with a placeholder.

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenRouter requests for non-Anthropic models no longer attach message-level `cache_control` (including the unsupported `"persistent"` type); OpenRouter caches those models automatically.
 - Chat Completions compat detection now matches `x.ai` and `z.ai` base URLs by domain, so look-alike hosts such as `fox.ai` or `fizz.ai` no longer pick up xAI or Z.ai settings.
 - Chat Completions history no longer replays assistant turns that hold only reasoning, which DeepSeek and other compatible servers rejected for missing `content`.
 - Chat Completions tool results now join text blocks with newlines and send `(no tool output)` instead of an empty string when a result has no content.
