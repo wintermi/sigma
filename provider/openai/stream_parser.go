@@ -118,6 +118,7 @@ type completionStreamParser struct {
 	thinking         *streamblocks.Thinking
 	reasoningField   string
 	toolCalls        map[string]*streamblocks.ToolCall
+	toolCallAliases  map[string]string
 	providerIDKeys   map[string]struct{}
 	customToolCalls  map[*streamblocks.ToolCall]*completionCustomToolCall
 	grammarTools     map[string]string
@@ -143,6 +144,7 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 		writer:          writer,
 		model:           model,
 		toolCalls:       make(map[string]*streamblocks.ToolCall),
+		toolCallAliases: make(map[string]string),
 		providerIDKeys:  make(map[string]struct{}),
 		customToolCalls: make(map[*streamblocks.ToolCall]*completionCustomToolCall),
 		grammarTools:    grammarTools,
@@ -292,8 +294,8 @@ func (p *completionStreamParser) handleDelta(ctx context.Context, delta streamDe
 			"endIndex":                annotation.URLCitation.EndIndex,
 		})
 	}
-	for order, toolCall := range delta.ToolCalls {
-		if err := p.emitToolCall(ctx, p.toolCallKey(order, toolCall), toolCall); err != nil {
+	for _, toolCall := range delta.ToolCalls {
+		if err := p.emitToolCall(ctx, p.toolCallKey(toolCall), toolCall); err != nil {
 			return err
 		}
 	}
@@ -375,20 +377,38 @@ func (p *completionStreamParser) emitThinking(ctx context.Context, delta string)
 	})
 }
 
-func (p *completionStreamParser) toolCallKey(order int, delta streamToolCallDelta) string {
+// toolCallKey resolves a delta to its tool call by stream index, then by
+// provider id, so a call stays whole when providers send the index and the id
+// on different deltas.
+func (p *completionStreamParser) toolCallKey(delta streamToolCallDelta) string {
+	var aliases []string
 	if delta.Index != nil {
-		return fmt.Sprintf("index:%d", *delta.Index)
+		aliases = append(aliases, fmt.Sprintf("index:%d", *delta.Index))
 	}
 	if delta.ID != "" {
-		return "id:" + delta.ID
+		aliases = append(aliases, "id:"+delta.ID)
 	}
-	// An index-less, id-less delta with no tool name is an argument
-	// continuation of the most recent tool call (providers that send the id
-	// only on the first delta).
-	if delta.Function.Name == "" && delta.Custom.Name == "" && p.lastToolCallKey != "" {
-		return p.lastToolCallKey
+	key := ""
+	for _, alias := range aliases {
+		if key = p.toolCallAliases[alias]; key != "" {
+			break
+		}
 	}
-	return fmt.Sprintf("order:%d", order)
+	if key == "" {
+		// An index-less, id-less delta with no tool name is an argument
+		// continuation of the most recent tool call (providers that send the
+		// id only on the first delta). Anything else starts a new call.
+		if len(aliases) == 0 && delta.Function.Name == "" && delta.Custom.Name == "" && p.lastToolCallKey != "" {
+			return p.lastToolCallKey
+		}
+		key = fmt.Sprintf("call:%d", len(p.toolCalls))
+	}
+	for _, alias := range aliases {
+		if _, ok := p.toolCallAliases[alias]; !ok {
+			p.toolCallAliases[alias] = key
+		}
+	}
+	return key
 }
 
 func (p *completionStreamParser) emitToolCall(ctx context.Context, key string, delta streamToolCallDelta) error {

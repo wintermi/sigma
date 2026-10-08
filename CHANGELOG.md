@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Chat Completions streaming now resolves tool-call deltas by index and then by id, so index-less named calls no longer merge into one and calls whose index and id arrive on different deltas no longer split in two.
 - Native Vertex Gemini text requests that use an API key without a project now route through Vertex express mode instead of failing with a missing-project error.
 - Replay thinking from other models to Google and Vertex Gemini as plain text
   instead of wrapping it in `<thinking>` tags, which Gemini imitates in its
