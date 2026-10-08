@@ -69,6 +69,11 @@ func (p *CodexResponsesProvider) API() sigma.API {
 // Stream sends req to the Codex Responses endpoint and emits sigma events as
 // SSE chunks arrive.
 func (p *CodexResponsesProvider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
+	if opts.CacheRetention == sigma.CacheRetentionNone {
+		// Opting out of caching also drops session affinity: no session
+		// headers, prompt cache key, or reused WebSocket continuation.
+		opts.SessionID = ""
+	}
 	ctx, stream, writer, cleanup := streamlifecycle.NewTextStream(ctx, model, opts)
 	go func() {
 		defer cleanup()

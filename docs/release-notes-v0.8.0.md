@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Codex requests with `CacheRetentionNone` now drop session affinity entirely,
+omitting session headers and the prompt cache key and skipping cached WebSocket
+continuation, matching the direct Responses adapter and the reference
+implementation.
+
 Codex requests with `WithReasoningLevel(ThinkingLevelOff)` now send the model's
 off effort (`none` for GPT-6 Luna and Sol) rather than omitting reasoning, which
 ran the request at Codex's default effort.

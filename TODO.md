@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Drop Codex session affinity under `CacheRetentionNone`.
 - [x] Send Codex Off reasoning effort explicitly.
 - [x] Update the Claude Code identity version to 2.1.280.
 - [x] Estimate text at 3.5 characters per token.

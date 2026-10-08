@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Honor `CacheRetentionNone` for Codex session affinity: requests no longer send
+  session headers or a prompt cache key, or reuse a cached WebSocket
+  continuation, when caching is turned off.
 - Send Codex `reasoning.effort` for an explicit `ThinkingLevelOff`, using the
   model's off value or `none`, instead of omitting reasoning and letting Codex
   apply its default effort.
