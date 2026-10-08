@@ -140,10 +140,14 @@ for _, call := range calls {
 ```
 
 `ValidateToolCall` supports the common subset providers emit for tool schemas:
-`type`, `properties`, `required`, `enum`, `items`, `additionalProperties`,
-`minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `not`, `anyOf`,
-`oneOf`, `allOf`, `const`, and `if`/`then`/`else`. It resolves local JSON
-Pointer `$ref` values, including `$defs`/`definitions` and recursive schemas.
+`type`, `properties`, `patternProperties`, `required`, `enum`, `items`
+(including array-form tuple items with `additionalItems`),
+`additionalProperties`, `minimum`, `maximum`, `minLength`, `maxLength`,
+`pattern`, `not`, `anyOf`, `oneOf`, `allOf`, `const`, and `if`/`then`/`else`.
+It resolves local JSON Pointer `$ref` values, including `$defs`/`definitions`
+and recursive schemas. Patterns run on Go's RE2 engine with ECMAScript `\uXXXX`
+escapes translated; lookaround and backreferences, which RE2 cannot express, are
+treated as annotations rather than failing validation.
 It strictly evaluates `date`, `time`, `date-time`, `email`, `uri`, `uuid`,
 `hostname`, `ipv4`, and `ipv6` formats; unknown formats remain annotations.
 External, file, and network references are rejected locally. Other unsupported

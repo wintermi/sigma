@@ -188,6 +188,12 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Accept common generated tool schemas in `ValidateToolCall`: ECMAScript
+  `\uXXXX` pattern escapes are translated, lookaround and backreference patterns
+  are treated as annotations, array-form tuple `items` and `additionalItems` are
+  validated by position, and `patternProperties` keys are validated and no
+  longer rejected by `additionalProperties: false`. Invalid regexes and
+  malformed schemas are still rejected.
 - Repair invalid escapes and raw control characters in final streamed tool-call
   arguments for every adapter, not only Anthropic, so arguments such as
   `{"pattern":"\d+"}` decode to objects instead of raw strings. Truncated

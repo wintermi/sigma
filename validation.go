@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"regexp/syntax"
 	"sort"
 	"strconv"
 	"strings"
@@ -993,7 +994,55 @@ func (context *validationContext) validateObject(schema map[string]any, object m
 		}
 	}
 
-	return context.validateAdditionalProperties(schema, properties, object, path, toolName)
+	patterns, err := schemaPatternProperties(schema)
+	if err != nil {
+		return toolValidationError(toolName, path, "patternProperties object", schema["patternProperties"], "schema is malformed", err)
+	}
+	for _, name := range sortedKeys(object) {
+		for _, pattern := range patterns {
+			if !pattern.re.MatchString(name) {
+				continue
+			}
+			if err := context.validateValue(pattern.schema, object[name], joinPath(path, name), toolName); err != nil {
+				return err
+			}
+		}
+	}
+
+	return context.validateAdditionalProperties(schema, properties, patterns, object, path, toolName)
+}
+
+type schemaPatternProperty struct {
+	re     *regexp.Regexp
+	schema map[string]any
+}
+
+// schemaPatternProperties returns the patternProperties sigma can evaluate.
+// Patterns using constructs RE2 lacks are skipped like unsupported keywords.
+func schemaPatternProperties(schema map[string]any) ([]schemaPatternProperty, error) {
+	raw, ok := schema["patternProperties"]
+	if !ok {
+		return nil, nil
+	}
+	rawPatterns, ok := raw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("patternProperties must be an object")
+	}
+	patterns := make([]schemaPatternProperty, 0, len(rawPatterns))
+	for _, pattern := range sortedKeys(rawPatterns) {
+		patternSchema, ok := rawPatterns[pattern].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("patternProperties %q schema must be an object", pattern)
+		}
+		re, err := compileSchemaPattern(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("patternProperties %q: %w", pattern, err)
+		}
+		if re != nil {
+			patterns = append(patterns, schemaPatternProperty{re: re, schema: patternSchema})
+		}
+	}
+	return patterns, nil
 }
 
 func schemaProperties(schema map[string]any) (map[string]map[string]any, error) {
@@ -1036,10 +1085,21 @@ func schemaRequired(schema map[string]any) ([]string, error) {
 	return required, nil
 }
 
-func (context *validationContext) validateAdditionalProperties(schema map[string]any, properties map[string]map[string]any, object map[string]any, path string, toolName string) error {
+func (context *validationContext) validateAdditionalProperties(schema map[string]any, properties map[string]map[string]any, patterns []schemaPatternProperty, object map[string]any, path string, toolName string) error {
 	raw, declared := schema["additionalProperties"]
 	if !declared {
 		return nil
+	}
+	declaredProperty := func(name string) bool {
+		if _, ok := properties[name]; ok {
+			return true
+		}
+		for _, pattern := range patterns {
+			if pattern.re.MatchString(name) {
+				return true
+			}
+		}
+		return false
 	}
 
 	switch v := raw.(type) {
@@ -1048,14 +1108,14 @@ func (context *validationContext) validateAdditionalProperties(schema map[string
 			return nil
 		}
 		for _, name := range sortedKeys(object) {
-			if _, ok := properties[name]; !ok {
+			if !declaredProperty(name) {
 				return toolValidationError(toolName, joinPath(path, name), "declared property", object[name], "additional property is not allowed", nil)
 			}
 		}
 		return nil
 	case map[string]any:
 		for _, name := range sortedKeys(object) {
-			if _, ok := properties[name]; ok {
+			if declaredProperty(name) {
 				continue
 			}
 			if err := context.validateValue(v, object[name], joinPath(path, name), toolName); err != nil {
@@ -1073,6 +1133,9 @@ func (context *validationContext) validateArray(schema map[string]any, array []a
 	if !ok {
 		return nil
 	}
+	if tuple, ok := raw.([]any); ok && len(tuple) > 0 {
+		return context.validateTuple(schema, tuple, array, path, toolName)
+	}
 	itemSchema, ok := raw.(map[string]any)
 	if !ok {
 		return toolValidationError(toolName, path, "items schema object", raw, "schema is malformed", nil)
@@ -1080,6 +1143,35 @@ func (context *validationContext) validateArray(schema map[string]any, array []a
 	for i, item := range array {
 		if err := context.validateValue(itemSchema, item, fmt.Sprintf("%s[%d]", path, i), toolName); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// validateTuple applies array-form items by position and additionalItems to
+// the remaining elements, as draft-07 tuple schemas do.
+func (context *validationContext) validateTuple(schema map[string]any, tuple []any, array []any, path string, toolName string) error {
+	for i, item := range array {
+		itemPath := fmt.Sprintf("%s[%d]", path, i)
+		if i < len(tuple) {
+			itemSchema, ok := tuple[i].(map[string]any)
+			if !ok {
+				return toolValidationError(toolName, path, "items schema object", tuple[i], "schema is malformed", nil)
+			}
+			if err := context.validateValue(itemSchema, item, itemPath, toolName); err != nil {
+				return err
+			}
+			continue
+		}
+		switch additional := schema["additionalItems"].(type) {
+		case bool:
+			if !additional {
+				return toolValidationError(toolName, itemPath, fmt.Sprintf("at most %d items", len(tuple)), item, "additional item is not allowed", nil)
+			}
+		case map[string]any:
+			if err := context.validateValue(additional, item, itemPath, toolName); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -1215,14 +1307,56 @@ func validateStringPattern(schema map[string]any, text string, path string, tool
 	if !ok {
 		return toolValidationError(toolName, path, "pattern string", raw, "schema is malformed", nil)
 	}
-	matched, err := regexp.MatchString(pattern, text)
+	re, err := compileSchemaPattern(pattern)
 	if err != nil {
 		return toolValidationError(toolName, path, "valid regex pattern", raw, "schema is malformed", err)
 	}
-	if !matched {
+	if re == nil {
+		return nil
+	}
+	if !re.MatchString(text) {
 		return toolValidationError(toolName, path, "match pattern "+pattern, text, "pattern violation", nil)
 	}
 	return nil
+}
+
+// compileSchemaPattern compiles an ECMAScript schema pattern with Go's RE2
+// engine, translating \uXXXX escapes. Constructs RE2 cannot express, such as
+// lookaround or backreferences, return a nil regexp so callers treat the
+// pattern as an annotation; other compile errors mean the pattern is malformed.
+func compileSchemaPattern(pattern string) (*regexp.Regexp, error) {
+	var translated strings.Builder
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] != '\\' || i+1 >= len(pattern) {
+			translated.WriteByte(pattern[i])
+			continue
+		}
+		if pattern[i+1] == 'u' && i+6 <= len(pattern) && isHexDigits(pattern[i+2:i+6]) {
+			translated.WriteString(`\x{` + pattern[i+2:i+6] + `}`)
+			i += 5
+			continue
+		}
+		translated.WriteString(pattern[i : i+2])
+		i++
+	}
+	re, err := regexp.Compile(translated.String())
+	var syntaxErr *syntax.Error
+	if errors.As(err, &syntaxErr) && (syntaxErr.Code == syntax.ErrInvalidPerlOp || syntaxErr.Code == syntax.ErrInvalidEscape) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("compile pattern: %w", err)
+	}
+	return re, nil
+}
+
+func isHexDigits(text string) bool {
+	for _, r := range text {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", r) {
+			return false
+		}
+	}
+	return true
 }
 
 func validateNumber(schema map[string]any, value any, path string, toolName string) error {

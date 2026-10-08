@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Validate ECMAScript patterns, tuple items, and patternProperties in tool schemas.
 - [x] Repair invalid escapes in final tool-call arguments across all adapters.
 - [x] Send Mistral tool-result images as image chunks and mark failed or empty tool results.
 - [x] Report unrecognised Anthropic stop reasons as typed errors, with context-window stops as overflow.

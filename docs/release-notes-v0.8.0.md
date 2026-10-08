@@ -7,6 +7,14 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`ValidateToolCall` accepts schema shapes common in zod, Pydantic, and MCP tool
+definitions. ECMAScript `\uXXXX` pattern escapes are translated for Go's RE2
+engine, lookaround and backreference patterns are treated as annotations,
+array-form tuple `items` with `additionalItems` are validated by position, and
+`patternProperties` keys are validated and allowed under
+`additionalProperties: false`. These shapes previously rejected every call as a
+malformed schema; invalid regexes are still rejected.
+
 Final streamed tool-call arguments containing invalid escapes or raw control
 characters inside strings are now repaired for every adapter, matching the
 existing Anthropic behavior. They previously reached callers as raw strings and
