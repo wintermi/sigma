@@ -245,9 +245,20 @@ func (p *Producer[T, F]) abort(err error, active *request[T, F]) {
 	if active != nil {
 		active.reply <- ErrClosed
 	}
+	// The producer is the only sender, so a full buffer holds a stale event a
+	// slow consumer has not read; replace it so the consumer still sees the
+	// terminal event.
 	select {
 	case p.events <- terminal.Event:
 	default:
+		select {
+		case <-p.events:
+		default:
+		}
+		select {
+		case p.events <- terminal.Event:
+		default:
+		}
 	}
 }
 

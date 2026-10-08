@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Deliver synthesized cancellation terminals when the event buffer is full.
 - [x] Report elapsed `WithTimeout` as a transient stream error, not an abort.
 - [x] Retire cached Codex WebSocket connections before the backend limit.
 - [x] Drop Codex session affinity under `CacheRetentionNone`.

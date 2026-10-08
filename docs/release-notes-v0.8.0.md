@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Cancelled streams now always deliver their synthesized terminal event. When a
+slow consumer had left an earlier event unread, the terminal event was dropped
+and the channel closed without one; the stale event is now replaced instead.
+
 When sigma's own `WithTimeout` elapses during a text stream, the stream now ends
 with `StopReasonError` and a transient error that still matches
 `context.DeadlineExceeded`, so retry and route-fallback advice apply. Caller

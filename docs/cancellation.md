@@ -15,7 +15,9 @@ event or when the incoming context is already canceled. The terminal event,
 `Final`, `Collect`, and `GenerationError.Final` agree on that identity. Initial
 pending snapshots remain empty; standalone `NewStream` calls have no inferred
 identity. Partial content and provider thinking level are retained, but usage
-is not reconstructed during cancellation.
+is not reconstructed during cancellation. A consumer that ranges over `Events`
+always receives the synthesized terminal event, even when it had stopped
+reading; an older undelivered event is dropped to make room for it.
 
 ```go
 ctx, cancel := context.WithCancel(context.Background())

@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Deliver the synthesized cancellation terminal event to consumers that range
+  over `Events` even when an unread event still fills the buffer, so the channel
+  no longer closes without a `done` or `error` event.
 - Report an elapsed `WithTimeout` on text streams as a transient, retryable
   `StopReasonError` that matches `context.DeadlineExceeded`, instead of a user
   abort. Caller cancellation and caller deadlines still end as aborted.
