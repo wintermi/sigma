@@ -200,6 +200,14 @@ func (p *ResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (str
 		return endpoint, nil
 	}
 
+	baseURL, err := p.baseURL(model, opts)
+	if err != nil {
+		return "", err
+	}
+	return baseURL + "/responses", nil
+}
+
+func (p *ResponsesProvider) baseURL(model sigma.Model, opts sigma.Options) (string, error) {
 	baseURL := p.base.baseURLForModel(model, opts)
 	resolved, err := resolveCloudflareBaseURL(model.Provider, baseURL, opts)
 	if err != nil {
@@ -210,7 +218,7 @@ func (p *ResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (str
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", fmt.Errorf("openai responses: invalid base URL %q", baseURL)
 	}
-	return baseURL + "/responses", nil
+	return baseURL, nil
 }
 
 func responsesResponseError(resp *http.Response, model sigma.Model) *sigma.ProviderError {

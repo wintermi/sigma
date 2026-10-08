@@ -8,6 +8,8 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Route OpenAI Codex requests to the ChatGPT `/codex/responses` endpoint.
+
 - [x] Preserve signed empty Google text blocks and exact-provenance replay.
 - [x] Keep stream-wrapped credential and network failures correctly classified.
 - [x] Validate final-payload embedding dimensions and batch/cache consistency;

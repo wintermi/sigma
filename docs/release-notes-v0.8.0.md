@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI Codex requests now use the ChatGPT Codex Responses endpoint over SSE and
+WebSocket. Generated Codex models previously posted to `/backend-api/responses`;
+base URLs ending in the backend root, `/codex`, or `/codex/responses` now all
+resolve to `/codex/responses`. Explicit `endpoint` provider options are unchanged.
+
 Google streams preserve explicitly empty signed text after thinking or tool
 calls, so Gemini and Vertex replay signatures on their original blocks. Exact
 provenance rules and caller-owned histories are unchanged. Generic stream error

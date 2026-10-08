@@ -63,7 +63,11 @@ func TestAstraCatalogReasoningAndToolReplay(t *testing.T) {
 					request := receiveRequest(t, requests)
 					assertAdditionalToolsPayload(t, request.Body)
 					payload := decodeResponsesPayload(t, request.Body)
-					if request.Path != "/responses" || payload["model"] != "gpt-6-astra" {
+					wantPath := "/responses"
+					if provider == sigma.ProviderOpenAICodex {
+						wantPath = "/codex/responses"
+					}
+					if request.Path != wantPath || payload["model"] != "gpt-6-astra" {
 						t.Fatalf("wrong route/model: %s, %v", request.Path, payload["model"])
 					}
 					if payload["reasoning"].(map[string]any)["effort"] != string(level) {

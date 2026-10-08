@@ -76,7 +76,7 @@ func TestRegistryRefreshCodexReasoning(t *testing.T) {
 				}
 				request := receiveRequest(t, requests)
 				payload := decodeResponsesPayload(t, request.Body)
-				if request.Path != "/responses" || payload["model"] != string(id) {
+				if request.Path != "/codex/responses" || payload["model"] != string(id) {
 					t.Fatalf("wrong Codex route: %s %v", request.Path, payload["model"])
 				}
 				if tt.level == sigma.ThinkingLevelOff {

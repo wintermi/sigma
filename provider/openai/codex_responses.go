@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/sse"
@@ -331,12 +332,28 @@ func codexAccountIDFromCredential(credential sigma.Credential) (string, error) {
 }
 
 func (p *CodexResponsesProvider) endpoint(model sigma.Model, opts sigma.Options) (string, error) {
+	if endpoint, ok := stringOption(providerOptions(opts, model.Provider), providerOptionEndpoint); ok {
+		return endpoint, nil
+	}
 	responses := ResponsesProvider{base: p.base}
-	endpoint, err := responses.endpoint(model, opts)
+	baseURL, err := responses.baseURL(model, opts)
 	if err != nil {
 		return "", fmt.Errorf("openai codex responses: %w", err)
 	}
-	return endpoint, nil
+	return codexResponsesURL(baseURL), nil
+}
+
+// codexResponsesURL appends the Codex Responses path to a ChatGPT backend base
+// URL, accepting bases that already end in /codex or /codex/responses.
+func codexResponsesURL(baseURL string) string {
+	switch {
+	case strings.HasSuffix(baseURL, "/codex/responses"):
+		return baseURL
+	case strings.HasSuffix(baseURL, "/codex"):
+		return baseURL + "/responses"
+	default:
+		return baseURL + "/codex/responses"
+	}
 }
 
 func codexResponsesOAuthTokenProvider(provider sigma.ProviderID, opts sigma.Options) sigma.OAuthTokenProvider {

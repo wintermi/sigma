@@ -81,7 +81,7 @@ func TestCodexResponsesInjectsBearerTokenAndUsesCodexModelName(t *testing.T) {
 	}
 
 	request := receiveRequest(t, requests)
-	if got, want := request.Path, "/responses"; got != want {
+	if got, want := request.Path, "/codex/responses"; got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer codex-oauth-token")
@@ -595,7 +595,7 @@ func TestCodexResponsesWebSocketStreamsAndSendsRequest(t *testing.T) {
 	}
 
 	request := receiveCodexWebSocketRequest(t, requests)
-	if got, want := request.Path, "/responses"; got != want {
+	if got, want := request.Path, "/codex/responses"; got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer codex-oauth-token")

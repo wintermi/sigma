@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send OpenAI Codex requests to the ChatGPT Codex Responses endpoint. Base URLs
+  ending in the backend root, `/codex`, or `/codex/responses` all resolve to
+  `/codex/responses`, so generated Codex models no longer post to
+  `/backend-api/responses`. Explicit `endpoint` provider options are unchanged.
 - Preserve signed empty Google text parts as separate blocks after thinking or
   tool calls, retaining each signature for exact-provenance Gemini/Vertex replay.
 - Preserve authentication and transient network classifications through stream
