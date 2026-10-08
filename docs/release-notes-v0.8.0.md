@@ -7,6 +7,13 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses replay sends a thinking block as a reasoning item only when OpenAI can
+resolve it: with same-model encrypted content, or by its provider item ID when
+the request sets the `store` provider option. Reasoning models used without a
+reasoning level, foreign thinking, and blocks without IDs previously produced
+reasoning items that `store: false` requests reject. Saved histories are
+unchanged.
+
 Responses streams that omit `output_index`, such as llama.cpp, keep each output
 item separate. Previously every event mapped to the first slot, so parallel tool
 calls could return with another call's ID, name, or arguments. A tool call that

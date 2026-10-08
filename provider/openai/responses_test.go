@@ -889,10 +889,13 @@ func TestResponsesNormalizesProviderTextInPayload(t *testing.T) {
 				{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text("developer" + invalid)}},
 				sigma.UserText("user" + invalid),
 				{
-					Role: sigma.RoleAssistant,
+					Role:     sigma.RoleAssistant,
+					Provider: model.Provider,
+					API:      model.API,
+					Model:    model.ID,
 					Content: []sigma.ContentBlock{
 						sigma.Text("assistant" + invalid),
-						sigma.Thinking("thinking"+invalid, ""),
+						encryptedThinking("thinking"+invalid, "enc_thinking"),
 						sigma.ToolCallBlock("call_invalid", "lookup", map[string]any{"query": "weather"}),
 					},
 				},
@@ -1559,7 +1562,9 @@ func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
 
 	assertResponsesID(t, messageID, "msg_")
 	assertResponsesID(t, textPartID, "text_")
-	assertResponsesID(t, reasoningID, "rs_")
+	if reasoningID != "" {
+		t.Fatalf("unsigned reasoning without provenance was replayed as %q", reasoningID)
+	}
 	assertResponsesID(t, functionItemID, "fc_")
 	if got, want := functionCallID, "call_foreign"; got != want {
 		t.Fatalf("function call_id = %q, want %q", got, want)
@@ -3720,6 +3725,14 @@ func assertAdditionalToolsPayload(t *testing.T, body []byte) {
 	if got, want := additionalCount, 1; got != want {
 		t.Fatalf("additional tool items = %d, want %d", got, want)
 	}
+}
+
+// encryptedThinking returns a reasoning block that Responses can replay without
+// stored items.
+func encryptedThinking(text string, encrypted string) sigma.ContentBlock {
+	block := sigma.Thinking(text, "")
+	block.ProviderSignature = encrypted
+	return block
 }
 
 func decodeResponsesPayload(t *testing.T, body []byte) map[string]any {

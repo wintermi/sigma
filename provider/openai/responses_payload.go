@@ -51,7 +51,7 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if err != nil {
 		return nil, err
 	}
-	input, err := responsesInput(model, cleaned, deferredToolsMode, deferredTools.Deferred, grammarToolInputProperties)
+	input, err := responsesInput(model, cleaned, deferredToolsMode, deferredTools.Deferred, grammarToolInputProperties, responsesStoresItems(model, opts))
 	if err != nil {
 		return nil, err
 	}
@@ -289,13 +289,23 @@ func responsesSupportsMaxOutputTokens(model sigma.Model) bool {
 		model.OpenAIResponsesCompat.SupportsMaxOutputTokens != sigma.OpenAICompatUnsupported
 }
 
-func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+// responsesStoresItems reports whether the request asks the provider to store
+// response items, letting replay reference them by ID. Codex never stores.
+func responsesStoresItems(model sigma.Model, opts sigma.Options) bool {
+	if model.API == sigma.APIOpenAICodexResponses {
+		return false
+	}
+	stored, ok := boolOption(providerOptions(opts, model.Provider), providerOptionStore)
+	return ok && stored
+}
+
+func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string, storedItems bool) ([]map[string]any, error) {
 	items := make([]map[string]any, 0, len(req.Messages)+1)
 	loadedToolNames := make(map[string]struct{})
 	ids := newResponsesIDs(req.Messages)
 	toolNamesByCallID := responsesToolNamesByCallID(req.Messages, ids)
 	for index, message := range req.Messages {
-		converted, err := responsesMessage(model, message, index, ids, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties)
+		converted, err := responsesMessage(model, message, index, ids, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties, storedItems)
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +335,7 @@ func responsesToolNamesByCallID(messages []sigma.Message, ids *responsesIDs) map
 	return names
 }
 
-func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredToolsMode responsesDeferredToolsMode, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, toolNamesByCallID map[string]string, grammarToolInputProperties map[string]string, storedItems bool) ([]map[string]any, error) {
 	switch message.Role {
 	case sigma.RoleUser, sigma.RoleDeveloper:
 		content, err := responsesInputContent(model, message)
@@ -337,7 +347,7 @@ func responsesMessage(model sigma.Model, message sigma.Message, messageIndex int
 			"content":          content,
 		}}, nil
 	case sigma.RoleAssistant:
-		return responsesAssistantItems(model, message, messageIndex, ids, deferredTools, grammarToolInputProperties)
+		return responsesAssistantItems(model, message, messageIndex, ids, deferredTools, grammarToolInputProperties, storedItems)
 	case sigma.RoleTool:
 		output, err := responsesToolOutput(model, message)
 		if err != nil {
@@ -414,7 +424,7 @@ func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
 	return file, nil
 }
 
-func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string) ([]map[string]any, error) {
+func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string, storedItems bool) ([]map[string]any, error) {
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
@@ -472,6 +482,13 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			}
 		case sigma.ContentBlockThinking:
 			flushMessage()
+			// A reasoning item resolves only through its encrypted content, or
+			// through its provider ID when the provider stores response items.
+			encrypted := replaySignatures && block.ProviderSignature != ""
+			stored := storedItems && replaySignatures && providerID(block.ProviderMetadata) != ""
+			if !encrypted && !stored {
+				continue
+			}
 			item := map[string]any{
 				providerToolOptionTypeKey: "reasoning",
 				"summary": []map[string]any{{

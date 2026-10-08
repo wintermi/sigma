@@ -159,7 +159,7 @@ func TestResponsesReplayIDsPreserveCallResultIdentity(t *testing.T) {
 	}
 	before, _ := json.Marshal(req)
 	run := func() []map[string]any {
-		items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"})
+		items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"}, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -204,8 +204,18 @@ func TestResponsesGeneratedItemIDsReserveNativeIDs(t *testing.T) {
 	for i := range native {
 		native[i].ProviderMetadata = map[string]any{"id": nativeIDs[i]}
 	}
-	req := sigma.Request{Messages: []sigma.Message{{Role: sigma.RoleAssistant, Content: blocks}, {Role: sigma.RoleAssistant, Content: native}}}
-	items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"})
+	for _, content := range [][]sigma.ContentBlock{blocks, native} {
+		for i := range content {
+			if content[i].Type == sigma.ContentBlockThinking {
+				content[i].ProviderSignature = "encrypted"
+			}
+		}
+	}
+	assistant := func(content []sigma.ContentBlock) sigma.Message {
+		return sigma.Message{Role: sigma.RoleAssistant, Content: content, Provider: model.Provider, API: model.API, Model: model.ID}
+	}
+	req := sigma.Request{Messages: []sigma.Message{assistant(blocks), assistant(native)}}
+	items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +260,7 @@ func TestResponsesSignatureReplayRequiresExactProvenance(t *testing.T) {
 			}
 			req := sigma.Request{Messages: []sigma.Message{message}}
 			before, _ := json.Marshal(req)
-			items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"})
+			items, err := responsesInput(model, req, responsesDeferredToolsAdditional, nil, map[string]string{"grammar": "input"}, false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -289,7 +299,7 @@ func TestResponsesDeferredIDsAvoidHistoryCollisions(t *testing.T) {
 	result.AddedToolNames = []string{"late"}
 	req := sigma.Request{Messages: []sigma.Message{{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock(raw, "lookup", nil), sigma.ToolCallBlock(reserved, "other", nil)}}, result, sigma.ToolResult(reserved, "ok")}}
 	tools := map[string]sigma.Tool{"late": {Name: "late", InputSchema: sigma.Schema{"type": "object"}}}
-	items, err := responsesInput(model, req, responsesDeferredToolsSearch, tools, nil)
+	items, err := responsesInput(model, req, responsesDeferredToolsSearch, tools, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

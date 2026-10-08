@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Replay Responses reasoning items only when OpenAI can resolve them: with
+  same-model encrypted content, or by provider item ID when the request sets the
+  `store` provider option. Unsigned or fabricated reasoning items previously
+  failed `store: false` follow-up turns; saved blocks are unchanged.
 - Keep Responses output items separate when a server omits `output_index`, as
   llama.cpp does. Items take sequential slots in the order they are added, and
   later events follow their `item_id` or the current item, so parallel tool calls
