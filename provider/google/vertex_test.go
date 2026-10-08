@@ -740,6 +740,7 @@ func TestVertexFunctionCallsRespectExplicitFinishReasons(t *testing.T) {
 		{finishReason: "STOP", want: sigma.StopReasonToolCalls},
 		{finishReason: "MAX_TOKENS", want: sigma.StopReasonMaxTokens},
 		{finishReason: "MALFORMED_FUNCTION_CALL", want: sigma.StopReasonError},
+		{finishReason: "TOO_MANY_TOOL_CALLS", want: sigma.StopReasonError},
 		{finishReason: "UNEXPECTED_TOOL_CALL", want: sigma.StopReasonError},
 		{finishReason: "FUTURE_REASON", want: sigma.StopReasonUnknown},
 	}

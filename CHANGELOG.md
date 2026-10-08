@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Treat the Gemini `TOO_MANY_TOOL_CALLS` finish reason as a typed error, like
+  `MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL`, instead of a successful
+  `unknown` stop carrying partial tool calls.
 - Classify Cerebras's bodyless HTTP 400 as a context overflow, which is how
   Cerebras reports an oversized prompt. Other bodyless 400 responses remain
   invalid requests, and HTTP 413 keeps its split-recoverable overflow class.

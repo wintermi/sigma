@@ -533,7 +533,7 @@ func googleStopReason(reason string) sigma.StopReason {
 		"IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER",
 		"LANGUAGE", "NO_IMAGE":
 		return sigma.StopReasonContentFilter
-	case "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL":
+	case "MALFORMED_FUNCTION_CALL", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS":
 		return sigma.StopReasonError
 	default:
 		return sigma.StopReasonUnknown

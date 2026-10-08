@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Google and Vertex responses that finish with `TOO_MANY_TOOL_CALLS` now end with
+a typed error, matching the other tool-call failure reasons, rather than a
+successful completion whose partial tool calls a caller might execute.
+
 Cerebras context overflows, which arrive as an HTTP 400 with no body, now
 classify as context overflow with split-recoverable advice. HTTP 413 keeps its
 existing overflow classification, which embedding batch splitting relies on.
