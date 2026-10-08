@@ -188,6 +188,8 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Report Claude Code 2.1.280 in the Anthropic OAuth identity `User-Agent`
+  instead of the outdated 2.1.75.
 - Estimate text at 3.5 characters per token instead of 4, so context-based output
   limits from `MaxTokensForContext` and related helpers leave room for denser
   tokenizers and avoid context-limit failures.

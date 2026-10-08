@@ -7,6 +7,9 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic subscription requests now identify as Claude Code 2.1.280 rather than
+the outdated 2.1.75.
+
 Token estimates now use 3.5 characters per token instead of 4, matching the
 reference implementation. Context-based output limits are slightly more
 conservative, reducing context-limit request failures.

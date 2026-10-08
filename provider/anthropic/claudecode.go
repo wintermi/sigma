@@ -19,7 +19,7 @@ const (
 	claudeCodeIdentityPrompt  = "You are Claude Code, Anthropic's official CLI for Claude."
 	claudeCodeBetaHeader      = "claude-code-20250219"
 	claudeCodeOAuthBeta       = "oauth-2025-04-20"
-	claudeCodeVersion         = "2.1.75"
+	claudeCodeVersion         = "2.1.280"
 	claudeCodeUserAgent       = "claude-cli/" + claudeCodeVersion
 	anthropicOAuthTokenMark   = "sk-ant-oat"
 	anthropicAuthTokenSource  = "env:ANTHROPIC_AUTH_TOKEN"

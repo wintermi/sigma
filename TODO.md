@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Update the Claude Code identity version to 2.1.280.
 - [x] Estimate text at 3.5 characters per token.
 - [x] Default generated Azure rows to the v1 api-version.
 - [x] Redact credentials from surface-probe HTTP error bodies.

@@ -1168,7 +1168,7 @@ func TestOAuthCredentialUsesClaudeCodeIdentity(t *testing.T) {
 	if !strings.Contains(beta, "claude-code-20250219") || !strings.Contains(beta, "oauth-2025-04-20") {
 		t.Fatalf("Anthropic-Beta = %q, want Claude Code identity betas", beta)
 	}
-	if got, want := request.Headers.Get("User-Agent"), "claude-cli/2.1.75"; got != want {
+	if got, want := request.Headers.Get("User-Agent"), "claude-cli/2.1.280"; got != want {
 		t.Fatalf("User-Agent = %q, want %q", got, want)
 	}
 	if got, want := request.Headers.Get("X-App"), "cli"; got != want {
