@@ -7,6 +7,13 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Context-overflow messages reported under generic invalid-request codes, such as
+Anthropic `prompt is too long` and Bedrock `Input is too long for requested
+model`, now classify as context overflow with split-recoverable advice.
+`IsContextOverflow` applies the same precedence to final-message diagnostics and
+recognizes overflow already detected by provider adapters. Other invalid-request
+errors keep their existing classification.
+
 A started OAuth refresh now completes and persists its result even when the
 requesting caller is canceled. Stored-credential refresh and the Codex,
 Anthropic, GitHub Copilot, Kimi, xAI, and Radius token providers bound the

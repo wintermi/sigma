@@ -5,7 +5,11 @@
 
 package sigma
 
-import "github.com/wintermi/sigma/internal/redact"
+import (
+	"errors"
+
+	"github.com/wintermi/sigma/internal/redact"
+)
 
 // Diagnostic is safe-to-log provider/runtime context that may be attached to an
 // AssistantMessage. It must contain metadata and redacted previews only, never
@@ -48,6 +52,9 @@ func (e *ProviderError) Diagnostic() Diagnostic {
 	}
 	if e.Err != nil {
 		diagnostic.UnderlyingMessage = redact.String(e.Err.Error())
+	}
+	if errors.Is(e, ErrContextOverflow) {
+		diagnostic.Kind = string(ErrorContextOverflow)
 	}
 	return diagnostic
 }

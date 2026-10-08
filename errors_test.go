@@ -430,6 +430,26 @@ func TestClassifyError(t *testing.T) {
 			class: ErrorClassBilling,
 			code:  "usage_not_included",
 		},
+		{
+			name:  "overflow message behind generic invalid request code",
+			err:   NewProviderError(ProviderAnthropic, APIAnthropicMessages, "claude-test", 400, "", 0, []byte(`{"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 213462 tokens > 200000 maximum"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+			code:  "invalid_request_error",
+		},
+		{
+			name:  "overflow message behind bedrock validation exception",
+			err:   &ProviderError{Provider: ProviderAmazonBedrock, StatusCode: 400, ProviderCode: "ValidationException", ProviderMessage: "Input is too long for requested model.", Err: ErrProviderResponse},
+			class: ErrorClassContextOverflow,
+			split: true,
+			code:  "ValidationException",
+		},
+		{
+			name:  "generic invalid request code without overflow message",
+			err:   NewProviderError(ProviderAnthropic, APIAnthropicMessages, "claude-test", 400, "", 0, []byte(`{"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content: field required"}}`), ErrProviderResponse),
+			class: ErrorClassInvalidRequest,
+			code:  "invalid_request_error",
+		},
 	}
 
 	for _, tt := range tests {
@@ -638,6 +658,43 @@ func TestIsContextOverflow(t *testing.T) {
 				Diagnostics: []Diagnostic{{
 					StatusCode:      429,
 					ProviderMessage: "Too many requests. Please slow down.",
+				}},
+			},
+		},
+		{
+			name: "overflow message behind generic invalid request code",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{{
+					StatusCode:      400,
+					ProviderCode:    "invalid_request_error",
+					ProviderMessage: "prompt is too long: 213462 tokens > 200000 maximum",
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "provider-detected overflow behind generic invalid request code",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{(&ProviderError{
+					Provider:        ProviderAnthropic,
+					StatusCode:      400,
+					ProviderCode:    "invalid_request_error",
+					ProviderMessage: "request rejected",
+					Err:             ErrContextOverflow,
+				}).Diagnostic()},
+			},
+			want: true,
+		},
+		{
+			name: "generic invalid request diagnostic without overflow",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{{
+					StatusCode:      400,
+					ProviderCode:    "invalid_request_error",
+					ProviderMessage: "messages.0.content: field required",
 				}},
 			},
 		},

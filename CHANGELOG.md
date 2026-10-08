@@ -184,6 +184,11 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Classify context-overflow messages reported under generic invalid-request
+  codes, such as Anthropic `prompt is too long` and Bedrock `Input is too long`,
+  as context overflow. `IsContextOverflow` now agrees with `ClassifyError`,
+  including overflow the provider adapter already detected; other
+  invalid-request errors are unchanged.
 - Complete and persist a started OAuth refresh when the caller cancels. Stored
   credential refresh and the Codex, Anthropic, GitHub Copilot, Kimi, xAI, and
   Radius token providers now run the refresh request and persistence callback

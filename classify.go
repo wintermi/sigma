@@ -147,12 +147,8 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 	}
 
 	code := normalizedErrorText(providerErr.ProviderCode)
-	if class, ok := classForProviderCode(code); ok {
-		return class
-	}
-
 	message := normalizedErrorText(firstNonEmpty(providerErr.ProviderMessage, providerErr.BodyPreview, err.Error()))
-	if class, ok := classForMessage(message); ok {
+	if class, ok := classForCodeAndMessage(code, message); ok {
 		return class
 	}
 	if class, ok := classForStatus(providerErr.StatusCode); ok {
@@ -162,6 +158,19 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 		return ErrorClassProvider
 	}
 	return ErrorClassUnknown
+}
+
+// classForCodeAndMessage prefers a structured provider code, except that a
+// generic invalid-request code defers to a context-overflow message: Anthropic
+// and Bedrock report overflow under their generic validation codes.
+func classForCodeAndMessage(code string, message string) (ErrorClass, bool) {
+	if class, ok := classForProviderCode(code); ok {
+		if class == ErrorClassInvalidRequest && messageIndicatesContextOverflow(message) {
+			return ErrorClassContextOverflow, true
+		}
+		return class, true
+	}
+	return classForMessage(message)
 }
 
 func classForProviderCode(code string) (ErrorClass, bool) {
@@ -271,18 +280,17 @@ func IsRecoverableMaxTokens(message AssistantMessage, desiredMaxOutput int) bool
 }
 
 func diagnosticClass(diagnostic Diagnostic) ErrorClass {
-	code := normalizedErrorText(diagnostic.ProviderCode)
-	if class, ok := classForProviderCode(code); ok {
-		return class
+	if diagnostic.Kind == string(ErrorContextOverflow) {
+		return ErrorClassContextOverflow
 	}
-
+	code := normalizedErrorText(diagnostic.ProviderCode)
 	message := normalizedErrorText(firstNonEmpty(
 		diagnostic.ProviderMessage,
 		diagnostic.BodyPreview,
 		diagnostic.UnderlyingMessage,
 		diagnostic.Message,
 	))
-	if class, ok := classForMessage(message); ok {
+	if class, ok := classForCodeAndMessage(code, message); ok {
 		return class
 	}
 	if class, ok := classForStatus(diagnostic.StatusCode); ok {

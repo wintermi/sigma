@@ -61,6 +61,13 @@ case sigma.ErrorClassAuth, sigma.ErrorClassQuota, sigma.ErrorClassBilling:
 }
 ```
 
+Structured provider codes take precedence over message text, except that a
+generic invalid-request code, such as Anthropic `invalid_request_error` or
+Bedrock `ValidationException`, is classified as context overflow when its
+message reports an oversized prompt. `IsContextOverflow` applies the same rules
+to the diagnostics on a final message, including overflow already detected by
+the provider adapter.
+
 The classifier unwraps `*sigma.GenerationError`, `*sigma.Error`, and
 `*sigma.ProviderError`. It preserves the ordinary Go inspection path, so callers
 can combine it with sentinel and typed-error checks:
