@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Classify temporary provider capacity errors as transient and retryable:
+  `server_busy`, "servers are currently busy", "Selected model is at capacity",
+  and Azure "currently experiencing high demand" peak-load rejections, including
+  those reported under a generic invalid-request code.
 - Request only image output from image-only OpenRouter models. Generated
   OpenRouter image metadata now records `outputModalities`, and requests send
   `modalities: ["image"]` unless the model also produces text, so FLUX,

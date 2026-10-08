@@ -161,12 +161,16 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 }
 
 // classForCodeAndMessage prefers a structured provider code, except that a
-// generic invalid-request code defers to a context-overflow message: Anthropic
-// and Bedrock report overflow under their generic validation codes.
+// generic invalid-request code defers to a context-overflow or capacity
+// message: Anthropic and Bedrock report overflow, and Azure reports peak-load
+// rejection, under their generic validation codes.
 func classForCodeAndMessage(code string, message string) (ErrorClass, bool) {
 	if class, ok := classForProviderCode(code); ok {
 		if class == ErrorClassInvalidRequest && messageIndicatesContextOverflow(message) {
 			return ErrorClassContextOverflow, true
+		}
+		if class == ErrorClassInvalidRequest && messageIndicatesCapacity(message) {
+			return ErrorClassTransient, true
 		}
 		return class, true
 	}
@@ -185,7 +189,7 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 		return ErrorClassBilling, true
 	case "rate_limit_error", "rate_limit_exceeded", "rate_limited", "too_many_requests", "throttlingexception":
 		return ErrorClassRateLimited, true
-	case "server_error", "internal_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
+	case "server_error", "server_busy", "internal_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
 		return ErrorClassTransient, true
 	case "invalid_request_error", "invalid_prompt", "validationexception":
 		return ErrorClassInvalidRequest, true
@@ -328,7 +332,8 @@ func messageIndicatesRateLimit(message string) bool {
 }
 
 func messageIndicatesTransient(message string) bool {
-	return strings.Contains(message, "overloaded") ||
+	return messageIndicatesCapacity(message) ||
+		strings.Contains(message, "overloaded") ||
 		strings.Contains(message, "service unavailable") ||
 		strings.Contains(message, "server error") ||
 		strings.Contains(message, "internal error") ||
@@ -352,6 +357,14 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "please retry your request") ||
 		strings.Contains(message, "resourceexhausted") ||
 		messageIndicatesPrematureProviderStreamTermination(message)
+}
+
+// messageIndicatesCapacity reports temporary provider load that clears on retry.
+func messageIndicatesCapacity(message string) bool {
+	return strings.Contains(message, "server_busy") ||
+		strings.Contains(message, "servers are currently busy") ||
+		strings.Contains(message, "currently experiencing high demand") ||
+		strings.Contains(message, "model is at capacity")
 }
 
 func messageIndicatesPrematureProviderStreamTermination(message string) bool {

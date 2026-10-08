@@ -64,7 +64,10 @@ case sigma.ErrorClassAuth, sigma.ErrorClassQuota, sigma.ErrorClassBilling:
 Structured provider codes take precedence over message text, except that a
 generic invalid-request code, such as Anthropic `invalid_request_error` or
 Bedrock `ValidationException`, is classified as context overflow when its
-message reports an oversized prompt. `IsContextOverflow` applies the same rules
+message reports an oversized prompt, and as transient when it reports temporary
+provider capacity such as Azure peak-load rejection. `server_busy`, "servers are
+currently busy", and "model is at capacity" errors are transient and retryable.
+`IsContextOverflow` applies the same rules
 to the diagnostics on a final message, including overflow already detected by
 the provider adapter.
 

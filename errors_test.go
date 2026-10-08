@@ -445,6 +445,32 @@ func TestClassifyError(t *testing.T) {
 			code:  "ValidationException",
 		},
 		{
+			name:      "server busy code",
+			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 0, "", 0, []byte(`{"error":{"code":"server_busy","message":"busy"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+			code:      "server_busy",
+		},
+		{
+			name:      "servers are currently busy",
+			err:       NewProviderError(ProviderDeepSeek, APIOpenAICompletions, "deepseek-test", 0, "", 0, []byte(`{"error":{"message":"Our servers are currently busy, please try again later."}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "selected model is at capacity",
+			err:       NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "router-test", 400, "", 0, []byte(`{"error":{"message":"Selected model is at capacity. Please try a different model."}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "azure peak load behind generic invalid request code",
+			err:       NewProviderError(ProviderAzureOpenAIResponses, APIAzureOpenAIResponses, "gpt-test", 400, "", 0, []byte(`{"error":{"code":"invalid_request_error","message":"The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load."}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+			code:      "invalid_request_error",
+		},
+		{
 			name:  "generic invalid request code without overflow message",
 			err:   NewProviderError(ProviderAnthropic, APIAnthropicMessages, "claude-test", 400, "", 0, []byte(`{"type":"error","error":{"type":"invalid_request_error","message":"messages.0.content: field required"}}`), ErrProviderResponse),
 			class: ErrorClassInvalidRequest,

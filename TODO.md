@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Classify server-busy, model-capacity, and Azure peak-load errors as transient.
 - [x] Request image-only output from image-only OpenRouter models using catalog output modalities.
 - [x] Correct Azure and Bedrock GPT-5.6 pricing and Bedrock AU Opus 4.6 pricing.
 - [x] Replay Responses reasoning items only with encrypted content or stored provider IDs.
