@@ -61,6 +61,10 @@ func TestOAuthOwnershipCancellation(t *testing.T) {
 						<-release
 					}
 					if failure == "refresh" && n == 1 {
+						// Kimi retries transport errors, so it needs a terminal rejection.
+						if name == "kimi" {
+							return &http.Response{StatusCode: http.StatusBadRequest, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"error":"invalid_grant"}`))}, nil
+						}
 						return nil, errors.New("refresh failed")
 					}
 					body := fmt.Sprintf(`{"access_token":%q,"token":%q,"refresh_token":"rotated","expires_in":7200,"expires_at":%d}`, token, token, time.Now().Add(2*time.Hour).Unix())

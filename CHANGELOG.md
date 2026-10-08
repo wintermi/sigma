@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Kimi Coding OAuth refresh now retries transport errors, 429, and 5xx responses up to three times with 1s, 2s, and 4s backoff. Rejected refresh tokens still fail immediately.
 - GitHub Copilot device login now adopts the `interval` that GitHub returns with `slow_down`, rather than always adding five seconds.
 - Bedrock now rejects a plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` that targets a host other than loopback or the ECS/EKS credential addresses, so the container authorization token is not sent in clear text to an arbitrary host.
 - `StoredCredential`, the provider OAuth credential structs, Bedrock `StaticCredentials`, and `openai.AzureAccessToken` now print redacted descriptions under `fmt` verbs instead of exposing tokens and keys.

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Kimi Coding token refresh retries transient failures (transport errors, rate limits, and server errors) up to three times with exponential backoff, as pi does. Other rejections, such as `invalid_grant` or 401, still fail immediately so the caller can prompt for a new login.
+
 GitHub Copilot device login follows the poll interval GitHub sends with a `slow_down` response, as pi does. The fixed five-second increment remains the fallback when the server omits an interval. This avoids polling early repeatedly and timing out.
 
 Bedrock applies the AWS SDK host rule to `AWS_CONTAINER_CREDENTIALS_FULL_URI`. HTTPS endpoints may use any host. Plain HTTP endpoints must be loopback, `169.254.170.2`, `169.254.170.23`, or `fd00:ec2::23`; any other value is reported as a container credential error instead of being fetched.

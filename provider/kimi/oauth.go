@@ -33,6 +33,10 @@ const (
 	kimiCodingOAuthDefaultRefreshBefore   = time.Minute
 )
 
+// kimiCodingRefreshMaxRetries retries transient refresh failures with 1s, 2s,
+// and 4s backoff.
+const kimiCodingRefreshMaxRetries = 3
+
 // KimiCodingOAuthCredentials carries Kimi Coding subscription OAuth tokens.
 // Callers own persistence; Sigma never stores these credentials.
 type KimiCodingOAuthCredentials struct {
@@ -168,18 +172,36 @@ func RefreshKimiCodingToken(ctx context.Context, refreshToken string, opts KimiC
 	if refreshToken == "" {
 		return KimiCodingOAuthCredentials{}, &sigma.CredentialUnavailableError{Sources: []string{"kimi-coding-refresh-token"}}
 	}
-	body, status, err := postKimiCodingForm(ctx, opts.HTTPClient, kimiCodingOAuthTokenURL, url.Values{
-		"client_id":     {kimiCodingOAuthClientID},
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshToken},
-	})
-	if err != nil {
-		return KimiCodingOAuthCredentials{}, err
+	var lastErr error
+	for attempt := 0; attempt <= kimiCodingRefreshMaxRetries; attempt++ {
+		if attempt > 0 {
+			if err := kimiCodingSleepContext(ctx, time.Second<<(attempt-1)); err != nil {
+				return KimiCodingOAuthCredentials{}, err
+			}
+		}
+		body, status, err := postKimiCodingForm(ctx, opts.HTTPClient, kimiCodingOAuthTokenURL, url.Values{
+			"client_id":     {kimiCodingOAuthClientID},
+			"grant_type":    {"refresh_token"},
+			"refresh_token": {refreshToken},
+		})
+		if err != nil {
+			if ctx.Err() != nil {
+				return KimiCodingOAuthCredentials{}, err
+			}
+			lastErr = err
+			continue
+		}
+		if status >= http.StatusOK && status < http.StatusMultipleChoices {
+			return kimiCodingCredentialsFromTokenResponse(body, time.Now())
+		}
+		lastErr = kimiCodingOAuthResponseError("refresh", status, body)
+		// Only rate limits and server errors are transient; a rejected refresh
+		// token needs a new login.
+		if status != http.StatusTooManyRequests && status < http.StatusInternalServerError {
+			return KimiCodingOAuthCredentials{}, lastErr
+		}
 	}
-	if status < http.StatusOK || status >= http.StatusMultipleChoices {
-		return KimiCodingOAuthCredentials{}, kimiCodingOAuthResponseError("refresh", status, body)
-	}
-	return kimiCodingCredentialsFromTokenResponse(body, time.Now())
+	return KimiCodingOAuthCredentials{}, lastErr
 }
 
 // NewKimiCodingOAuthTokenProvider adapts caller-managed Kimi Coding OAuth
