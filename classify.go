@@ -126,6 +126,9 @@ func classifySigmaError(err error, sigmaErr *Error) ErrorClass {
 		if messageIndicatesPrematureProviderStreamTermination(sigmaErr.Message) {
 			return ErrorClassTransient
 		}
+		if class, ok := classForMessage(normalizedErrorText(err.Error())); ok {
+			return class
+		}
 		return ErrorClassProvider
 	case ErrorContextOverflow:
 		return ErrorClassContextOverflow
@@ -352,6 +355,8 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "enotfound") ||
 		strings.Contains(message, "eai_again") ||
 		strings.Contains(message, "http2 request did not get a response") ||
+		strings.Contains(message, "stream error: stream id") ||
+		strings.Contains(message, "server sent goaway") ||
 		strings.Contains(message, "you can retry your request") ||
 		strings.Contains(message, "try your request again") ||
 		strings.Contains(message, "please retry your request") ||

@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Stream failures without a typed network cause are now classified from their
+message. HTTP/2 stream resets and GOAWAY closures while reading a response body
+are transient with retry advice instead of non-retryable provider errors.
+
 Context-overflow classification recognizes z.ai CN "Prompt exceeds max length",
 DashScope/Qwen "Range of input length should be", DS4 "configured context size",
 and generic "too many tokens" errors. Rate-limit wording such as Bedrock

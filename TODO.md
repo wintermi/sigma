@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Classify mid-body HTTP/2 resets and other untyped stream failures by message.
 - [x] Recognize z.ai CN, Qwen, DS4, and generic too-many-tokens overflow messages.
 - [x] Classify server-busy, model-capacity, and Azure peak-load errors as transient.
 - [x] Request image-only output from image-only OpenRouter models using catalog output modalities.

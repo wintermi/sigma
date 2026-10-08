@@ -90,7 +90,9 @@ if errors.As(err, &providerErr) {
 
 Generic stream wrappers preserve authentication classification for
 `ErrCredentialUnavailable` and transient classification for retryable network
-causes such as connection resets and unexpected EOF. `RoutePolicy.Fallback`
+causes such as connection resets and unexpected EOF. Other stream failures are
+classified from their message, so HTTP/2 stream resets and GOAWAY closures
+while reading a response body are transient. `RoutePolicy.Fallback`
 therefore advises retrying the same model for transient failures; authentication
 failures retain fallback-or-abort advice. Classification adds no automatic replay.
 Typed provider errors, context overflow, cancellation, invalid options, and debug

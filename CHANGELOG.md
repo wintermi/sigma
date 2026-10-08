@@ -184,6 +184,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Classify stream failures from their message when no typed cause applies, so
+  HTTP/2 stream resets (`INTERNAL_ERROR`) and GOAWAY closures while reading a
+  response body are transient and retryable instead of non-retryable provider
+  errors.
 - Recognize more context-overflow messages: z.ai CN "Prompt exceeds max length",
   DashScope/Qwen "Range of input length should be", DS4 "configured context
   size", and generic "too many tokens". Rate-limit wording such as Bedrock
