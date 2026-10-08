@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Ignore empty Chat Completions content deltas instead of starting empty text blocks.
 - [x] Classify overflow messages behind generic invalid-request codes and align `IsContextOverflow`.
 - [x] Persist started OAuth refreshes despite caller cancellation, bounded by a timeout.
 - [x] Route OpenAI Codex requests to the ChatGPT `/codex/responses` endpoint.

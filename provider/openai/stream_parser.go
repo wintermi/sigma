@@ -320,6 +320,9 @@ func (p *completionStreamParser) emitStart(ctx context.Context) error {
 
 func (p *completionStreamParser) emitText(ctx context.Context, delta string) error {
 	delta = providerText(delta)
+	if delta == "" {
+		return nil
+	}
 	if p.text == nil {
 		p.text = &streamblocks.Text{ContentIndex: p.nextContentIndex()}
 		if err := p.writer.Emit(ctx, sigma.Event{
@@ -329,9 +332,6 @@ func (p *completionStreamParser) emitText(ctx context.Context, delta string) err
 			return err
 		}
 		p.text.Started = true
-	}
-	if delta == "" {
-		return nil
 	}
 	text := p.text.Append(delta)
 	return p.writer.Emit(ctx, sigma.Event{

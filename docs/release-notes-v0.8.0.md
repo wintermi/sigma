@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Chat Completions streams no longer start a text block for an empty `content`
+delta. Servers such as vLLM and OpenRouter open with `{"content":""}`, which
+previously left an empty text block that made tool-only turns fail persistence
+validation and placed reasoning after the answer.
+
 Context-overflow messages reported under generic invalid-request codes, such as
 Anthropic `prompt is too long` and Bedrock `Input is too long for requested
 model`, now classify as context overflow with split-recoverable advice.

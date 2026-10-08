@@ -184,6 +184,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Ignore empty Chat Completions `content` deltas instead of starting an empty
+  text block. Streams that open with `{"content":""}` no longer return tool-only
+  turns that persistence rejects or place thinking after the answer.
 - Classify context-overflow messages reported under generic invalid-request
   codes, such as Anthropic `prompt is too long` and Bedrock `Input is too long`,
   as context overflow. `IsContextOverflow` now agrees with `ClassifyError`,
