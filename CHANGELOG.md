@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Repair invalid escapes and raw control characters in final streamed tool-call
+  arguments for every adapter, not only Anthropic, so arguments such as
+  `{"pattern":"\d+"}` decode to objects instead of raw strings. Truncated
+  arguments are not completed.
 - Send Mistral tool-result images as `image_url` chunks in a user entry after the
   consecutive function results, instead of inlining base64 data as result text.
   Failed tool results are prefixed with `[tool error]`, and empty results send

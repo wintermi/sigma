@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Final streamed tool-call arguments containing invalid escapes or raw control
+characters inside strings are now repaired for every adapter, matching the
+existing Anthropic behavior. They previously reached callers as raw strings and
+failed tool validation. Truncated arguments remain unrepaired text.
+
 Mistral tool results keep their string `function.result` shape, but images now
 follow the consecutive results as `image_url` chunks in a user entry rather than
 inlined base64 text that the model could not see and that inflated the prompt.

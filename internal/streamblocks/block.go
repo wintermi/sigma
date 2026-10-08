@@ -209,6 +209,7 @@ func (c *ToolCall) ArgumentsValue() any {
 
 // DecodeArguments decodes accumulated arguments only when callers need the
 // structured value, caching the result until the argument text changes.
+// Invalid escapes and raw control characters inside strings are repaired.
 func (c *ToolCall) DecodeArguments() (any, bool) {
 	arguments := c.ArgumentsText()
 	if arguments == "" {
@@ -219,6 +220,14 @@ func (c *ToolCall) DecodeArguments() (any, bool) {
 	}
 	var decoded any
 	err := jsonutil.Decode([]byte(arguments), &decoded)
+	if err != nil {
+		// Repair invalid escapes and raw control characters inside strings
+		// without completing truncated JSON.
+		if repaired := repairJSON(arguments); repaired != arguments {
+			decoded = nil
+			err = jsonutil.Decode([]byte(repaired), &decoded)
+		}
+	}
 	c.decodedText = arguments
 	c.decoded = decoded
 	c.decodedOK = err == nil
