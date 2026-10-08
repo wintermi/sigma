@@ -4776,6 +4776,9 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion: 0.69,
 		CostCurrency:         "USD",
 		DefaultTransport:     Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning_effort"),
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"CEREBRAS_API_KEY"},
 			"baseURL":             "https://api.cerebras.ai/v1",
@@ -5313,6 +5316,7 @@ var builtinTextModels = []Model{
 		CostCurrency:         "USD",
 		DefaultTransport:     Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("reasoning_effort"),
 			SupportsSessionAffinity: OpenAICompatSupport("supported"),
 		},
 		ProviderMetadata: map[string]any{
@@ -5337,6 +5341,7 @@ var builtinTextModels = []Model{
 		CostCurrency:         "USD",
 		DefaultTransport:     Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("reasoning_effort"),
 			SupportsSessionAffinity: OpenAICompatSupport("supported"),
 		},
 		ProviderMetadata: map[string]any{
@@ -8570,6 +8575,9 @@ var builtinTextModels = []Model{
 		CacheReadInputCostPerMillion: 0.075,
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning_effort"),
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GROQ_API_KEY"},
 			"baseURL":             "https://api.groq.com/openai/v1",
@@ -8592,6 +8600,9 @@ var builtinTextModels = []Model{
 		CacheReadInputCostPerMillion: 0.0375,
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning_effort"),
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GROQ_API_KEY"},
 			"baseURL":             "https://api.groq.com/openai/v1",
@@ -8614,6 +8625,9 @@ var builtinTextModels = []Model{
 		CacheReadInputCostPerMillion: 0.037,
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
+		OpenAICompletionsCompat: &OpenAICompletionsCompat{
+			ReasoningFormat: OpenAICompletionsReasoningFormat("reasoning_effort"),
+		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"GROQ_API_KEY"},
 			"baseURL":             "https://api.groq.com/openai/v1",
@@ -15705,7 +15719,7 @@ var builtinTextModels = []Model{
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
 			SupportsStore:           OpenAICompatSupport("unsupported"),
 			SupportsDeveloperRole:   OpenAICompatSupport("unsupported"),
-			ReasoningFormat:         OpenAICompletionsReasoningFormat("openai"),
+			ReasoningFormat:         OpenAICompletionsReasoningFormat("reasoning_effort"),
 			SupportsReasoningEffort: OpenAICompatSupport("supported"),
 			SupportsStrictTools:     OpenAICompatSupport("unsupported"),
 			MaxTokensField:          OpenAICompletionsMaxTokensField("max_tokens"),

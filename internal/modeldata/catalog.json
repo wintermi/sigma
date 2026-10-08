@@ -6393,6 +6393,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "gpt"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
       }
     },
     {
@@ -7091,6 +7094,7 @@
         "modelFamily": "gpt"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
         "supportsSessionAffinity": "supported"
       }
     },
@@ -7121,6 +7125,7 @@
         "modelFamily": "gpt"
       },
       "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
         "supportsSessionAffinity": "supported"
       }
     },
@@ -11536,6 +11541,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
       }
     },
     {
@@ -11564,6 +11572,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
       }
     },
     {
@@ -11592,6 +11603,9 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "o-series"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
       }
     },
     {
@@ -20944,7 +20958,7 @@
         "supportsDeveloperRole": "unsupported",
         "supportsReasoningEffort": "supported",
         "maxTokensField": "max_tokens",
-        "reasoningFormat": "openai",
+        "reasoningFormat": "reasoning_effort",
         "supportsStrictTools": "unsupported"
       },
       "unsupportedThinkingLevels": [

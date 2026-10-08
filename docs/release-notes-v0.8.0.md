@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+gpt-oss requests on Groq, Cerebras, Cloudflare Workers AI, and Together now send
+`reasoning_effort` for the requested level instead of silently dropping it.
+Catalog validation rejects unknown Chat Completions reasoning formats, such as
+the `openai` value that disabled reasoning on the Together row.
+
 Bedrock Converse now sends reasoning effort to OpenAI models: gpt-oss receives
 `reasoning_effort` clamped to low through high, other GPT models nested
 `reasoning.effort`, and `minimal` is sent as low. Levels were previously

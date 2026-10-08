@@ -398,7 +398,17 @@ func validateTextModel(model TextModel) error {
 	if err := validateCost(model.Cost); err != nil {
 		return err
 	}
+	if compat := model.OpenAICompletionsCompat; compat != nil && !knownReasoningFormats[compat.ReasoningFormat] {
+		return fmt.Errorf("openAICompletionsCompat.reasoningFormat %q is not a known reasoning format", compat.ReasoningFormat)
+	}
 	return nil
+}
+
+// knownReasoningFormats mirrors sigma's OpenAICompletionsReasoningFormat values.
+var knownReasoningFormats = map[string]bool{
+	"": true, "unsupported": true, "reasoning_effort": true, "reasoning": true, "fireworks": true,
+	"deepseek": true, "string-thinking": true, "together": true, "baseten": true, "qwen": true,
+	"zai": true, "ant-ling": true,
 }
 
 func validateImageModel(model ImageModel) error {

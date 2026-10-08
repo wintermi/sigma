@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send gpt-oss reasoning effort on Groq, Cerebras, Cloudflare, and Together; validate reasoning formats.
 - [x] Send reasoning effort to OpenAI models on Bedrock Converse.
 - [x] Send Bedrock Claude thinking block binding for supporting families outside GovCloud.
 - [x] Gate Anthropic and Bedrock `xhigh` adaptive effort on native support or explicit mappings.

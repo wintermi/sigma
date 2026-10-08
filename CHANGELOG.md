@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send `reasoning_effort` for gpt-oss on Groq, Cerebras, Cloudflare Workers AI,
+  and Together. Requested levels were silently dropped because these rows
+  resolved to an unsupported format, or, for Together, carried the unknown
+  format `openai`. Catalog validation now rejects unknown reasoning formats.
 - Send reasoning effort to OpenAI models on Bedrock Converse: gpt-oss receives
   `reasoning_effort` clamped to low through high, other GPT models nested
   `reasoning.effort`, with `minimal` sent as low. Reasoning levels were

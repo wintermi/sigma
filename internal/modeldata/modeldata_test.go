@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "08419f0c4f5ec5f9957d58955f0395ae16577b7014d03e935feaa9d7df7512eb"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "75a8c075d2e0532b1754e5d00b4a38f033ce0852e0f6ab8e190de7cde85aa27f"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -391,5 +391,25 @@ func TestWriteValidatesAndOrdersCatalog(t *testing.T) {
 	}
 	if got, want := []string{loaded.TextModels[0].ID, loaded.TextModels[1].ID}, []string{"a-model", "z-model"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("text model order = %#v, want %#v", got, want)
+	}
+}
+
+func TestCatalogValidationRejectsUnknownReasoningFormat(t *testing.T) {
+	t.Parallel()
+
+	catalog, err := Load("catalog.json")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	for index := range catalog.TextModels {
+		model := &catalog.TextModels[index]
+		if model.OpenAICompletionsCompat != nil {
+			model.OpenAICompletionsCompat.ReasoningFormat = "openai"
+			break
+		}
+	}
+	err = catalog.Validate()
+	if err == nil || !strings.Contains(err.Error(), "reasoningFormat") {
+		t.Fatalf("Validate error = %v, want unknown reasoningFormat rejected", err)
 	}
 }
