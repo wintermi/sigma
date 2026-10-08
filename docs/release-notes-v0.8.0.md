@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenRouter routing options now apply only to requests sent to OpenRouter,
+including custom provider IDs that use an OpenRouter base URL. A client-wide
+OpenRouter routing default previously added an OpenRouter `provider` field to
+every Chat Completions request, which providers such as OpenAI reject.
+
 gpt-oss requests on Groq, Cerebras, Cloudflare Workers AI, and Together now send
 `reasoning_effort` for the requested level instead of silently dropping it.
 Catalog validation rejects unknown Chat Completions reasoning formats, such as

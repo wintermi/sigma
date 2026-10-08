@@ -458,6 +458,9 @@ final, err := client.Complete(
 )
 ```
 
+OpenRouter routing applies only to requests sent to OpenRouter, including custom
+provider IDs whose base URL is OpenRouter; other providers never receive it.
+
 For OpenAI-compatible custom endpoints, compatibility is model metadata:
 
 ```go

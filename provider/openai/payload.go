@@ -1353,8 +1353,11 @@ func repairMessages(messages []map[string]any, compat completionsCompat) []map[s
 }
 
 func addRouting(payload map[string]any, opts sigma.Options, provider sigma.ProviderID, compat completionsCompat) {
-	if routing := mergedRoutingMap(routingMap(compat.openRouterRouting), requestOpenRouterRouting(opts, provider)); len(routing) > 0 {
-		payload["provider"] = routing
+	// The provider field is OpenRouter's; other routes reject or misread it.
+	if compat.openRouterRouting != nil {
+		if routing := mergedRoutingMap(routingMap(compat.openRouterRouting), requestOpenRouterRouting(opts, provider)); len(routing) > 0 {
+			payload["provider"] = routing
+		}
 	}
 	if routing := routingMap(compat.vercelAIGatewayRouting); len(routing) > 0 {
 		payload["providerOptions"] = map[string]any{"gateway": routing}

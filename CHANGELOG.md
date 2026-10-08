@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Apply OpenRouter `routing`/`provider` options only to requests sent to
+  OpenRouter. A client-wide OpenRouter routing default no longer adds a
+  `provider` field to Groq, OpenAI, and other Chat Completions requests.
 - Send `reasoning_effort` for gpt-oss on Groq, Cerebras, Cloudflare Workers AI,
   and Together. Requested levels were silently dropped because these rows
   resolved to an unsupported format, or, for Together, carried the unknown
