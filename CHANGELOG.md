@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Return `ErrInvalidOptions` before dispatch when an `EmbedBatch` input exceeds
+  the batch byte limit and `SplitOversized` is not set, instead of silently
+  splitting it and returning an averaged synthetic vector.
 - Apply `EmbeddingRequest.Dimensions` to Bedrock Nova, Titan image, and
   variable-size Cohere embeddings, and send Nova queries with the
   `GENERIC_RETRIEVAL` purpose. Nova previously always returned 3072-dimension

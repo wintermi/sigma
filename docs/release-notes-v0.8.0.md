@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`EmbedBatch` splits and averages an input larger than the batch byte limit only
+when `SplitOversized` is set. Without it, the call now fails with
+`ErrInvalidOptions` before any provider request instead of returning a lossy
+averaged vector the caller did not ask for.
+
 Bedrock Nova, Titan image, and variable-size Cohere embeddings now honor
 `EmbeddingRequest.Dimensions`, and Nova query embeddings use the
 `GENERIC_RETRIEVAL` purpose. Explicit provider options still take precedence,

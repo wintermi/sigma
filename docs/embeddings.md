@@ -215,6 +215,9 @@ controls HTTP retry behaviour inside provider adapters.
 
 `MaxBatchInputs` and `MaxBatchBytes` split provider-bound work before dispatch.
 When left at zero, Sigma uses the selected `EmbeddingModel` limits when known.
+A single input larger than the byte limit is split and averaged only when
+`SplitOversized` is set; otherwise `EmbedBatch` returns `ErrInvalidOptions`
+before any provider call.
 Byte limits count UTF-8 input bytes, not JSON payload bytes. Token-budget
 estimates remain caller-owned because provider tokenizers vary.
 

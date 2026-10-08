@@ -407,6 +407,9 @@ func (c *Client) EmbedBatch(ctx context.Context, model EmbeddingModel, req Embed
 	}
 
 	jobs, reused, err := batcher.jobs(req.Inputs)
+	if err == nil {
+		err = batcher.rejectUnsplitOversizedJobs(jobs)
+	}
 	if err != nil {
 		return EmbeddingBatchResult{
 			Embeddings: Embeddings{Model: model.ID, Provider: model.Provider},
@@ -892,6 +895,23 @@ func (b *embeddingBatcher) embedLimitSplitBatches(groups [][]embeddingBatchJob, 
 		})
 	}
 	return b.runEmbeddingWork(work)
+}
+
+// rejectUnsplitOversizedJobs fails before dispatch when an input exceeds the
+// batch byte limit and the caller has not opted into splitting, which would
+// average part vectors into a lossy synthetic embedding.
+func (b *embeddingBatcher) rejectUnsplitOversizedJobs(jobs []embeddingBatchJob) error {
+	if b.config.SplitOversized {
+		return nil
+	}
+	for _, job := range jobs {
+		if b.jobExceedsMaxBatchBytes(job) {
+			return invalidEmbeddingOptionsError(b.model, fmt.Sprintf(
+				"embedding input %d exceeds the %d-byte batch limit; enable SplitOversized to split and average it",
+				job.indexes[0], b.maxBatchBytes()))
+		}
+	}
+	return nil
 }
 
 func (b *embeddingBatcher) jobExceedsMaxBatchBytes(job embeddingBatchJob) bool {
