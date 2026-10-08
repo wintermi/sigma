@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Codex requests with `WithReasoningLevel(ThinkingLevelOff)` now send the model's
+off effort (`none` for GPT-6 Luna and Sol) rather than omitting reasoning, which
+ran the request at Codex's default effort.
+
 Anthropic subscription requests now identify as Claude Code 2.1.280 rather than
 the outdated 2.1.75.
 

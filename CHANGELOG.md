@@ -188,6 +188,9 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Send Codex `reasoning.effort` for an explicit `ThinkingLevelOff`, using the
+  model's off value or `none`, instead of omitting reasoning and letting Codex
+  apply its default effort.
 - Report Claude Code 2.1.280 in the Anthropic OAuth identity `User-Agent`
   instead of the outdated 2.1.75.
 - Estimate text at 3.5 characters per token instead of 4, so context-based output

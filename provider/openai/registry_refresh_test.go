@@ -69,7 +69,7 @@ func TestRegistryRefreshCodexReasoning(t *testing.T) {
 			for _, tt := range []struct {
 				level  sigma.ThinkingLevel
 				effort string
-			}{{sigma.ThinkingLevelOff, ""}, {sigma.ThinkingLevelMinimal, "low"}, {sigma.ThinkingLevel("max"), "max"}} {
+			}{{sigma.ThinkingLevelOff, "none"}, {sigma.ThinkingLevelMinimal, "low"}, {sigma.ThinkingLevel("max"), "max"}} {
 				_, err := client.Complete(context.Background(), model, deferredToolsRequest(), sigma.WithReasoningLevel(tt.level))
 				if err != nil {
 					t.Fatal(err)
@@ -79,11 +79,9 @@ func TestRegistryRefreshCodexReasoning(t *testing.T) {
 				if request.Path != "/codex/responses" || payload["model"] != string(id) {
 					t.Fatalf("wrong Codex route: %s %v", request.Path, payload["model"])
 				}
-				if tt.level == sigma.ThinkingLevelOff {
-					if payload["reasoning"] != nil {
-						t.Fatalf("off should omit reasoning, got %v", payload["reasoning"])
-					}
-				} else if payload["reasoning"].(map[string]any)["effort"] != tt.effort {
+				// Codex applies its own default effort when reasoning is omitted, so
+				// Off must be sent explicitly.
+				if reasoning, _ := payload["reasoning"].(map[string]any); reasoning["effort"] != tt.effort {
 					t.Fatalf("reasoning=%v", payload["reasoning"])
 				}
 				assertAdditionalToolsPayload(t, request.Body)
