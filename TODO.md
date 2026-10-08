@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Cost Radius finals and replay Radius text and tool-call signatures.
 - [x] Price Responses fast service tier like priority.
 - [x] Advertise image input on Mistral vision-capable rows.
 - [x] Correct MiniMax-M3, Mistral cached-input, and regional Bedrock Claude pricing.

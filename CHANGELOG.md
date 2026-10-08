@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Set `Cost` on Radius final messages from catalog pricing, and replay Radius
+  text signatures (`textSignature`) and tool-call thought signatures
+  (`thoughtSignature`), which were dropped. Gemini-backed Radius tool loops need
+  the thought signatures on replay.
 - Price Responses `service_tier: "fast"` like priority processing. GPT-6 Fast
   mode responses were costed at the standard rate, under-reporting cost by half.
 - Advertise image input on 14 Mistral rows (current Large, Medium, Small,

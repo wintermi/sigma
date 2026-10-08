@@ -656,7 +656,11 @@ func contentPayload(blocks []sigma.ContentBlock) ([]map[string]any, error) {
 	for _, block := range blocks {
 		switch block.Type {
 		case sigma.ContentBlockText:
-			content = append(content, map[string]any{"type": "text", "text": block.Text})
+			entry := map[string]any{"type": "text", "text": block.Text}
+			if block.Signature != "" {
+				entry["textSignature"] = block.Signature
+			}
+			content = append(content, entry)
 		case sigma.ContentBlockThinking:
 			entry := map[string]any{"type": "thinking", "thinking": block.ThinkingText}
 			if block.Signature != "" {
@@ -675,12 +679,16 @@ func contentPayload(blocks []sigma.ContentBlock) ([]map[string]any, error) {
 			}
 			content = append(content, map[string]any{"type": "image", "data": block.Data, "mimeType": block.MIMEType})
 		case sigma.ContentBlockToolCall:
-			content = append(content, map[string]any{
+			entry := map[string]any{
 				"type":      "toolCall",
 				"id":        block.ToolCallID,
 				"name":      block.ToolName,
 				"arguments": block.ToolArguments,
-			})
+			}
+			if block.ProviderSignature != "" {
+				entry["thoughtSignature"] = block.ProviderSignature
+			}
+			content = append(content, entry)
 		case sigma.ContentBlockDocument:
 			return nil, &sigma.Error{Code: sigma.ErrorUnsupported, Message: "radius messages: document content is not supported"}
 		default:
@@ -711,9 +719,10 @@ type radiusEvent struct {
 }
 
 type radiusToolCall struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Arguments any    `json:"arguments"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Arguments        any    `json:"arguments"`
+	ThoughtSignature string `json:"thoughtSignature"`
 }
 
 type radiusUsage struct {
@@ -839,6 +848,7 @@ func (accumulator *radiusAccumulator) apply(ctx context.Context, writer sigma.St
 			block.ToolCallID = event.ToolCall.ID
 			block.ToolName = event.ToolCall.Name
 			block.ToolArguments = event.ToolCall.Arguments
+			block.ProviderSignature = event.ToolCall.ThoughtSignature
 		} else {
 			block.ToolArguments = decodeToolArguments(accumulator.toolArgs[index])
 		}
@@ -892,6 +902,11 @@ func (accumulator *radiusAccumulator) final(model sigma.Model, event radiusEvent
 		Provider:   model.Provider,
 		StopReason: stopReason(event.Reason),
 		Usage:      usage(event.Usage, model),
+	}
+	if final.Usage != nil {
+		accounted, cost := sigma.AccountUsage(model, *final.Usage, sigma.WithRawUsage(*event.Usage))
+		final.Usage = &accounted
+		final.Cost = &cost
 	}
 	if event.ResponseID != "" {
 		final.ProviderMetadata = map[string]any{"response_id": event.ResponseID}

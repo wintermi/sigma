@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Radius final messages now carry a cost estimate from the gateway catalog's
+pricing, as other adapters do. Radius also keeps text and tool-call thought
+signatures from the stream and replays them, so tool loops on Gemini-backed
+gateway models no longer lose the signatures those models require.
+
 Responses that report `service_tier: "fast"`, as GPT-6 Fast mode does, are now
 priced like priority processing instead of at the standard rate.
 
