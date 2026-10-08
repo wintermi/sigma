@@ -7,6 +7,11 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Generated Azure OpenAI Responses models now send `api-version=v1`, the default
+of the `/openai/v1` API they call. The previous `2025-04-01-preview` value is a
+legacy-route version outside the v1 API's accepted values (`v1`, `preview`).
+`azure.WithAPIVersion` still overrides the value per request.
+
 `sigma-surface-probe` now redacts the request credential and recognized secret
 shapes from provider error bodies it reports during model discovery and
 Fireworks capability lookups, matching the redaction applied elsewhere.

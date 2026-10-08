@@ -3473,7 +3473,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:     Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3499,7 +3499,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:     Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4-turbo",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3526,7 +3526,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4.1",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3553,7 +3553,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4.1-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3580,7 +3580,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4.1-nano",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3607,7 +3607,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4o",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3633,7 +3633,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:     Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4o-2024-05-13",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3660,7 +3660,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4o-2024-08-06",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3687,7 +3687,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4o-2024-11-20",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3714,7 +3714,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-4o-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3743,7 +3743,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3771,7 +3771,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5-chat-latest",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3800,7 +3800,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3829,7 +3829,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5-nano",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3857,7 +3857,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:          Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3886,7 +3886,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.1",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3918,7 +3918,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.2",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3950,7 +3950,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.2-chat-latest",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -3981,7 +3981,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:          Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.2-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4012,7 +4012,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.3-chat-latest",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4044,7 +4044,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.3-codex",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4076,7 +4076,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.3-codex-spark",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4108,7 +4108,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4140,7 +4140,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4172,7 +4172,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4-nano",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4203,7 +4203,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:          Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4235,7 +4235,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.5",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4266,7 +4266,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:          Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.5-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4300,7 +4300,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-luna",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4334,7 +4334,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-sol",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4368,7 +4368,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-terra",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4414,7 +4414,7 @@ var builtinTextModels = []Model{
 		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-6-astra",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4461,7 +4461,7 @@ var builtinTextModels = []Model{
 		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-6-luna",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4508,7 +4508,7 @@ var builtinTextModels = []Model{
 		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-6-sol",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4536,7 +4536,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o1",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4563,7 +4563,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:     Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o1-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4591,7 +4591,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o3",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4619,7 +4619,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o3-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4646,7 +4646,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:     Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o3-pro",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},
@@ -4674,7 +4674,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "o4-mini",
-			APIVersion:       "2025-04-01-preview",
+			APIVersion:       "v1",
 			APIKeyEnvVar:     "AZURE_OPENAI_API_KEY",
 			CredentialSource: "api-key",
 		},

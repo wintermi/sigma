@@ -211,6 +211,9 @@ include `AzureOpenAIResponsesConfig`, or requests should
 set endpoint, deployment, API version, and credential source with the Azure
 option helpers. Use `openai.RegisterAzureResponses` when registering a custom
 provider ID instead of the built-in Azure OpenAI Responses provider ID.
+Requests use Azure's `/openai/v1/responses` path, whose `api-version` accepts
+`v1` (the generated default) or `preview`; dated versions such as
+`2025-04-01-preview` belong to the legacy route.
 
 ### OpenAI-Compatible Sampling Parameters
 

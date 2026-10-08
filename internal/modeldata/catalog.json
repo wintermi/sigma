@@ -4728,7 +4728,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4762,7 +4762,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4-turbo",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4797,7 +4797,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4.1",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4832,7 +4832,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4.1-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4867,7 +4867,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4.1-nano",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4902,7 +4902,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4o",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4936,7 +4936,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4o-2024-05-13",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -4971,7 +4971,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4o-2024-08-06",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5006,7 +5006,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4o-2024-11-20",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5041,7 +5041,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-4o-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5079,7 +5079,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5117,7 +5117,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5-chat-latest",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5155,7 +5155,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5193,7 +5193,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5-nano",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5230,7 +5230,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5268,7 +5268,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.1",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5309,7 +5309,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.2",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5350,7 +5350,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.2-chat-latest",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5390,7 +5390,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.2-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5431,7 +5431,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.3-chat-latest",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5472,7 +5472,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.3-codex",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5513,7 +5513,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.3-codex-spark",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5554,7 +5554,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.4",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5595,7 +5595,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.4-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5636,7 +5636,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.4-nano",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5676,7 +5676,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.4-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5717,7 +5717,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.5",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5759,7 +5759,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.5-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5802,7 +5802,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.6-luna",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5845,7 +5845,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.6-sol",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5888,7 +5888,7 @@
       ],
       "azureOpenAIResponses": {
         "deployment": "gpt-5.6-terra",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -5933,7 +5933,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-6-astra",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       },
@@ -5989,7 +5989,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-6-luna",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       },
@@ -6045,7 +6045,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "gpt-6-sol",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       },
@@ -6091,7 +6091,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o1",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -6125,7 +6125,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o1-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -6160,7 +6160,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o3",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -6194,7 +6194,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o3-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -6228,7 +6228,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o3-pro",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }
@@ -6263,7 +6263,7 @@
       },
       "azureOpenAIResponses": {
         "deployment": "o4-mini",
-        "apiVersion": "2025-04-01-preview",
+        "apiVersion": "v1",
         "apiKeyEnvVar": "AZURE_OPENAI_API_KEY",
         "credentialSource": "api-key"
       }

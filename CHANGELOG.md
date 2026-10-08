@@ -188,6 +188,10 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Default generated Azure OpenAI Responses rows to `api-version=v1`. Requests use
+  the `/openai/v1/responses` path, whose published API accepts only `v1` or
+  `preview`; the previous `2025-04-01-preview` default belongs to the legacy
+  route. `azure.WithAPIVersion` still overrides it.
 - Redact credentials from provider error bodies that `sigma-surface-probe`
   reports for model discovery and Fireworks capability lookups. These raw bodies
   previously reached stdout, stderr, and handoff output unredacted.
