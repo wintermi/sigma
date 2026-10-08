@@ -34,6 +34,8 @@ Each primary case and repair attempt receives its own `-case-timeout`, bounded
 by the overall `-timeout`. Set `-case-timeout=0` to use only the overall
 deadline. Retryable HTTP 5xx and connection-reset failures are retried twice
 with the identical request before they are reported as upstream availability.
+Image probes apply the same retries, and also retry responses that contain no
+image.
 
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.

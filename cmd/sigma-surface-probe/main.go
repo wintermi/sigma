@@ -1119,6 +1119,7 @@ func runImageCase(ctx context.Context, route imageRouteSpec, testCase imageProbe
 	if err != nil {
 		result.Outcome = classifyImageFailure(route, model, err)
 		result.Error = err.Error()
+		result.cause = err
 		return result
 	}
 	if testCase.RequireImage && !hasGeneratedImage(images) {
@@ -1158,7 +1159,8 @@ func runImageCaseWithRetries(ctx context.Context, route imageRouteSpec, testCase
 			}
 			return result
 		}
-		if retry >= maxTransientRetries || !errors.Is(result.cause, errImageProbeMissingOutput) || ctx.Err() != nil {
+		retryable := errors.Is(result.cause, errImageProbeMissingOutput) || isRetryableTransportFailure(result.cause)
+		if retry >= maxTransientRetries || !retryable || ctx.Err() != nil {
 			if len(failed) > 0 {
 				result.OriginalError = failed[0].Error
 				result.FailedAttempts = failed
@@ -1193,6 +1195,7 @@ func runResponsesImageToolCase(ctx context.Context, imageRoute imageRouteSpec, t
 	if err != nil {
 		result.Outcome = classifyFailure(textRoute, model, err)
 		result.Error = err.Error()
+		result.cause = err
 		return result
 	}
 	if testCase.RequireToolOutput && !hasImageOutputBlock(final) {

@@ -1779,6 +1779,41 @@ func TestImageProbeRetriesMissingOutput(t *testing.T) {
 	}
 }
 
+func TestImageProbeRetriesServerErrors(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxImageProvider(
+		sigmatest.ImageScript{Err: &sigma.ProviderError{Provider: sigmatest.ProviderID, StatusCode: http.StatusServiceUnavailable}},
+		sigmatest.ImageScript{Response: sigma.AssistantImages{Images: []sigma.ImageInput{sigma.ImageOutputData("image/png", "aW1hZ2U=")}}},
+	)
+	model := sigmatest.ImageModel()
+	route := imageRouteSpec{
+		Name:     "sigmatest",
+		Provider: model.Provider,
+		RegisterProvider: func(registry *sigma.Registry, _ imageRouteSpec) error {
+			return sigmatest.RegisterImages(registry, provider, model)
+		},
+		Model: func(_ imageRouteSpec, _ string) sigma.ImageModel { return model },
+	}
+	testCase := imageProbeCase{
+		Name:         "generate",
+		ModelID:      string(model.ID),
+		Request:      sigma.ImageRequest{Prompt: "Create an icon.", Count: 1},
+		RequireImage: true,
+	}
+
+	result := runImageCaseWithTimeout(context.Background(), 10*time.Second, route, testCase, routeCredential{})
+	if result.Outcome != "ok" {
+		t.Fatalf("result = %+v, want recovery after a 5xx retry", result)
+	}
+	if got, want := len(result.FailedAttempts), 1; got != want {
+		t.Fatalf("failed attempts = %#v, want %d server-error attempt", result.FailedAttempts, want)
+	}
+	if got, want := len(provider.Requests()), 2; got != want {
+		t.Fatalf("requests = %d, want %d", got, want)
+	}
+}
+
 func TestImageProbeReportsPersistentMissingOutput(t *testing.T) {
 	t.Parallel()
 

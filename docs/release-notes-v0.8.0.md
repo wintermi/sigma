@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The surface probe's image cases retry transient HTTP 5xx and connection-reset failures twice with the identical request, as text cases already did and the README describes. Previously, a single image-route 5xx was reported straight away as upstream availability.
+
 `DotProduct`, `CosineSimilarity`, `NormalizeEmbeddingVector`, `CombineEmbeddingVectors`, and `RankEmbeddingsByCosine` reject vectors containing NaN or infinity with the new `ErrEmbeddingVectorNonFinite` sentinel. Previously, such values passed through as NaN scores, which also left rankings in an arbitrary order.
 
 `Client.Embed` checks that a provider returns one vector per input on every call, not only inside the batcher. A short or long response now returns an `ErrorProviderResponse` error with no vectors, so callers cannot pair vectors with the wrong inputs.
