@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Chat Completions tool results join multiple text blocks with newlines instead of concatenating them. Empty results send `(no tool output)`, since some compatible servers reject empty tool content.
+
 Chat Completions tool-call streaming now matches deltas by stream index and then by provider id, as pi does. Separate index-less calls stay separate, and a call whose continuation carries only its id stays whole.
 
 Vertex express mode is supported for native Gemini text. When an API key is supplied without a project ID, requests go to the global `publishers/google/models/{model}` route instead of failing locally. OAuth credentials still require a project and location.

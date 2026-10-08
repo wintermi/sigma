@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Newline-join Chat Completions tool-result text and fill empty results with a placeholder.
 - [x] - [x] Resolve Chat Completions tool-call deltas by index, then id, without merging index-less named calls.
 - [x] - [x] Route API-key Vertex Gemini text requests without a project through express mode.
 - [x] Replay foreign thinking to Gemini without delimiter tags.

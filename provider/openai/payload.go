@@ -419,6 +419,9 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		if content == "" && hasDocumentContent(message.Content) {
 			content = "(see attached document)"
 		}
+		if content == "" {
+			content = "(no tool output)"
+		}
 		converted := map[string]any{
 			"role":         "tool",
 			"tool_call_id": message.ToolCallID,
@@ -785,13 +788,13 @@ func appendContent(builder *strings.Builder, text string) {
 }
 
 func textContent(blocks []sigma.ContentBlock) string {
-	var text strings.Builder
+	var texts []string
 	for _, block := range blocks {
 		if block.Type == sigma.ContentBlockText {
-			text.WriteString(providerText(block.Text))
+			texts = append(texts, providerText(block.Text))
 		}
 	}
-	return text.String()
+	return strings.Join(texts, "\n")
 }
 
 func hasImageContent(blocks []sigma.ContentBlock) bool {
