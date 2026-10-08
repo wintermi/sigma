@@ -22,6 +22,9 @@ const (
 )
 
 // EmbeddingScript describes one deterministic embedding provider response.
+//
+// Each call to FauxEmbeddingProvider.Embed consumes one script and fails when
+// none is queued.
 type EmbeddingScript struct {
 	Response      sigma.Embeddings
 	Err           error
@@ -118,7 +121,7 @@ func (p *FauxEmbeddingProvider) nextEmbeddingScript(model sigma.EmbeddingModel, 
 	})
 
 	if len(p.scripts) == 0 {
-		return EmbeddingScript{}
+		return EmbeddingScript{Err: errScriptExhausted}
 	}
 	script := p.scripts[0]
 	p.scripts = p.scripts[1:]

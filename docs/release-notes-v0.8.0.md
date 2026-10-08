@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The `sigmatest` faux image and embedding providers fail when called with no queued script, matching the faux text provider. Tests that make more calls than they scripted now fail loudly instead of passing on an empty result.
+
 Gemini image requests turn the portrait and landscape sizes `1024x1536` and `1536x1024` into the `2:3` and `3:2` aspect ratios. Previously, they were dropped and the model default was used. Imagen has no such ratios, so those sizes still leave its aspect ratio unset.
 
 OpenAI image edits that upload more than one image name the file parts `image[]`, matching the documented multi-image form and the OpenAI SDKs. Single-image edits and variations still send `image`.

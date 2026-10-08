@@ -22,9 +22,9 @@ const (
 
 // ImageScript describes one deterministic image provider response.
 //
-// Each call to FauxImageProvider.Generate consumes one script. Delay waits
-// before the terminal result. WaitForCancel makes the script block until the
-// request context is canceled.
+// Each call to FauxImageProvider.Generate consumes one script and fails when
+// none is queued. Delay waits before the terminal result. WaitForCancel makes
+// the script block until the request context is canceled.
 type ImageScript struct {
 	Response      sigma.AssistantImages
 	Err           error
@@ -121,7 +121,7 @@ func (p *FauxImageProvider) nextImageScript(model sigma.ImageModel, req sigma.Im
 	})
 
 	if len(p.scripts) == 0 {
-		return ImageScript{}
+		return ImageScript{Err: errScriptExhausted}
 	}
 	script := p.scripts[0]
 	p.scripts = p.scripts[1:]
