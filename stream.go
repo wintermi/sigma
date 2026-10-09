@@ -176,6 +176,14 @@ func (w *streamWriter) Error(ctx context.Context, err error, final AssistantMess
 	if final.StopReason == "" {
 		final.StopReason = StopReasonError
 	}
+	// IsContextOverflow and stored transcripts read diagnostics, which several
+	// adapters attach only for HTTP status errors, not mid-stream errors.
+	if final.StopReason == StopReasonError && len(final.Diagnostics) == 0 {
+		var providerErr *ProviderError
+		if stderrors.As(err, &providerErr) {
+			final.Diagnostics = []Diagnostic{providerErr.Diagnostic()}
+		}
+	}
 	code := ErrorStream
 	if final.StopReason == StopReasonAborted {
 		code = ErrorAborted

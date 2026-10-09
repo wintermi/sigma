@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`IsContextOverflow` now detects overflow reported mid-stream. It reads the diagnostics on the final message, but the OpenAI, Anthropic, Google, Vertex, Azure, and Codex adapters attached diagnostics only for HTTP status errors, so a `response.failed` with `context_length_exceeded` or an Anthropic `model_context_window_exceeded` stop classified as overflow through `ClassifyError` while the stored message did not. The stream writer now attaches the provider diagnostic when an error final message has none.
+
 Partial-message accumulation is linear for providers that send only `DeltaText`, such as Radius and custom `NewStream` providers. Text, thinking, and tool-argument deltas were appended with string concatenation, copying the whole block on every event, so 2 MiB streamed in 16-byte deltas took about 18 seconds; blocks now use a builder.
 
 Long streamed tool arguments no longer slow streaming quadratically. Every delta re-parsed, repaired, and completed the whole accumulated argument text to refresh `PartialToolCall.ProviderMetadata["arguments"]`, so a tool call writing a 256 KiB file in 32-byte deltas spent about 13 seconds parsing. Partial arguments are still decoded on every delta up to 16 KiB; beyond that the decoded value is refreshed each time the text grows by an eighth. `argumentsText`, `ArgumentsDelta`, and final arguments are unchanged.
