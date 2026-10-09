@@ -452,6 +452,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 	}
 
 	omitToolItemID := sameProviderDifferentModel(model, message)
+	// A tool item ID paired with a reasoning item that is not replayed fails
+	// OpenAI's reasoning-pairing validation, so the ID is omitted with it.
+	reasoningDropped := false
 	replaySignatures := message.Provider != "" && message.API != "" && message.Model != "" &&
 		message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 	for blockIndex, block := range message.Content {
@@ -487,8 +490,10 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			encrypted := replaySignatures && block.ProviderSignature != ""
 			stored := storedItems && replaySignatures && providerID(block.ProviderMetadata) != ""
 			if !encrypted && !stored {
+				reasoningDropped = true
 				continue
 			}
+			reasoningDropped = false
 			item := map[string]any{
 				providerToolOptionTypeKey: "reasoning",
 				"summary": []map[string]any{{
@@ -519,7 +524,9 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 					"name":                    block.ToolName,
 					"input":                   input,
 				}
-				item["id"] = itemID
+				if !reasoningDropped {
+					item["id"] = itemID
+				}
 				if replaySignatures && block.ProviderSignature != "" {
 					item["encrypted_content"] = block.ProviderSignature
 				}
@@ -540,7 +547,7 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 				"name":                    block.ToolName,
 				"arguments":               arguments,
 			}
-			if !omitToolItemID {
+			if !omitToolItemID && !reasoningDropped {
 				item["id"] = itemID
 			}
 			if replaySignatures && block.ProviderSignature != "" {

@@ -1565,7 +1565,9 @@ func TestResponsesReplayNormalizesMissingAndForeignIDs(t *testing.T) {
 	if reasoningID != "" {
 		t.Fatalf("unsigned reasoning without provenance was replayed as %q", reasoningID)
 	}
-	assertResponsesID(t, functionItemID, "fc_")
+	if functionItemID != "" {
+		t.Fatalf("function call item ID %q replayed without its dropped reasoning item", functionItemID)
+	}
 	if got, want := functionCallID, "call_foreign"; got != want {
 		t.Fatalf("function call_id = %q, want %q", got, want)
 	}
