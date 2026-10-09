@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Find retrieval separator positions without a linear scan per chunk.
 - [x] - [x] Split retrieval text with invalid UTF-8 without panicking.
 - [x] - [x] Replay OpenCode history recorded with the catalog API as same-model history.
 - [x] - [x] Omit Responses tool item IDs whose reasoning item is not replayed.

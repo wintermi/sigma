@@ -364,12 +364,9 @@ func (s retrievalSplitter) preferredEndRune(text string, startRune, maxEndRune i
 }
 
 func (s retrievalSplitter) runeIndexAtByte(byteIndex int) int {
-	for index, span := range s.spans {
-		if span.start >= byteIndex {
-			return index
-		}
-	}
-	return len(s.spans)
+	return sort.Search(len(s.spans), func(index int) bool {
+		return s.spans[index].start >= byteIndex
+	})
 }
 
 func retrievalRuneSpans(text string) []retrievalRuneSpan {

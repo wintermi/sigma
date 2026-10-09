@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Splitting large documents for retrieval no longer slows quadratically: each chunk looked up its separator position by scanning every rune from the start of the text, and now uses a binary search.
+
 The retrieval splitter handles invalid UTF-8. It measured each rune with `utf8.RuneLen`, which is 3 for the replacement rune although an invalid byte occupies 1, so text ending in a bad byte panicked with a slice-bounds error and a bad byte mid-text produced overlapping, duplicated chunks. Spans now follow the bytes actually decoded.
 
 OpenCode keeps same-model replay state across turns. The wrapper rewrites `Model.API` to the routed wire API, but callers persist the catalog `Model.API`, so every recorded turn failed the adapters' exact provenance check and lost its encrypted reasoning, signatures, and tool item IDs. History from the same OpenCode model is now replayed under the routed API.
