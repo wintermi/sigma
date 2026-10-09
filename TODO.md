@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Keep empty tool-schema objects when adapters copy tool definitions.
 - [x] - [x] Allow explicit eval artifact directories outside a Go module.
 - [x] - [x] Apply `-case-timeout` to surface-probe handoff source and replay requests.
 - [x] - [x] Document when the surface probe emits `no_working_attempt`.

@@ -8,6 +8,7 @@ package transform
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -473,12 +474,21 @@ func cloneProviderDefinedOption(value any) any {
 	}
 }
 
+// cloneAny deep-copies JSON-compatible values. Empty maps stay empty objects
+// because tool schemas use {} for "any value" and no-argument properties.
 func cloneAny(value any) any {
 	switch v := value.(type) {
 	case nil:
 		return nil
 	case map[string]any:
-		return cloneStringAnyMap(v)
+		if v == nil {
+			return v
+		}
+		cloned := make(map[string]any, len(v))
+		for key, value := range v {
+			cloned[key] = cloneAny(value)
+		}
+		return cloned
 	case sigma.Schema:
 		cloned := make(sigma.Schema, len(v))
 		for key, value := range v {
@@ -498,6 +508,41 @@ func cloneAny(value any) any {
 	case json.RawMessage:
 		return append(json.RawMessage(nil), v...)
 	default:
-		return v
+		return cloneContainer(reflect.ValueOf(value)).Interface()
+	}
+}
+
+// cloneContainer copies typed maps and slices such as map[string]sigma.Schema.
+// Other values, including pointers and callbacks, remain caller-owned.
+func cloneContainer(value reflect.Value) reflect.Value {
+	switch value.Kind() {
+	case reflect.Interface:
+		if value.IsNil() {
+			return value
+		}
+		result := reflect.New(value.Type()).Elem()
+		result.Set(reflect.ValueOf(cloneAny(value.Elem().Interface())))
+		return result
+	case reflect.Map:
+		if value.IsNil() {
+			return value
+		}
+		result := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			result.SetMapIndex(iter.Key(), cloneContainer(iter.Value()))
+		}
+		return result
+	case reflect.Slice:
+		if value.IsNil() {
+			return value
+		}
+		result := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := range value.Len() {
+			result.Index(i).Set(cloneContainer(value.Index(i)))
+		}
+		return result
+	default:
+		return value
 	}
 }
