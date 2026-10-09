@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Direct OpenAI Chat Completions requests now send `max_completion_tokens`. The OpenAI compatibility profile selected `max_tokens`, which OpenAI rejects for o-series and GPT-5 reasoning models, so any request with a max-token limit on those models failed. Compatible providers that require `max_tokens` keep it.
+
 Gemini models before Gemini 3 now receive parallel tool results in one turn. These models take tool-result images as a separate "Tool result image:" user turn, which was inserted directly after its function response, so later responses landed in another turn and Gemini rejected the request because function response parts no longer matched the function calls. Image turns are now emitted once the run of tool results ends.
 
 Splitting large documents for retrieval no longer slows quadratically: each chunk looked up its separator position by scanning every rune from the start of the text, and now uses a binary search.

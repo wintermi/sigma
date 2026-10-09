@@ -132,7 +132,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 			supportsRequiredToolChoice:       true,
 			supportsFinishReason:             true,
 			supportsJSONSchemaResponseFormat: true,
-			maxTokensField:                   sigma.OpenAICompletionsMaxTokens,
+			maxTokensField:                   sigma.OpenAICompletionsMaxCompletionTokens,
 			cacheControlFormat:               sigma.OpenAICompletionsCacheControlMessage,
 			supportsMessageCacheControl:      false,
 			supportsLongCacheRetention:       true,
