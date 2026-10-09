@@ -991,7 +991,20 @@ func (context *validationContext) validateObject(schema map[string]any, object m
 		}
 	}
 
-	for _, name := range slices.Sorted(maps.Keys(properties)) {
+	names := slices.Sorted(maps.Keys(properties))
+	// Check every property's own type, enum, and const before descending into
+	// any of them, so a union branch with the wrong discriminator fails without
+	// validating its nested values. Recursive unions otherwise cost 2^depth.
+	for _, name := range names {
+		value, ok := object[name]
+		if !ok {
+			continue
+		}
+		if err := validateShallow(properties[name], value, joinPath(path, name), toolName); err != nil {
+			return err
+		}
+	}
+	for _, name := range names {
 		value, ok := object[name]
 		if !ok {
 			continue
@@ -1017,6 +1030,21 @@ func (context *validationContext) validateObject(schema map[string]any, object m
 	}
 
 	return context.validateAdditionalProperties(schema, properties, patterns, object, path, toolName)
+}
+
+// validateShallow applies the non-recursive checks validateValue starts with.
+// Referenced and malformed schemas are left to the full validation pass.
+func validateShallow(schema map[string]any, value any, path string, toolName string) error {
+	if _, ok := schema["$ref"]; ok {
+		return nil
+	}
+	if types, err := schemaTypes(schema); err == nil && len(types) > 0 && !valueMatchesAnyType(value, types) {
+		return toolValidationError(toolName, path, strings.Join(types, " or "), value, "wrong primitive type", nil)
+	}
+	if err := validateEnum(schema, value, path, toolName); err != nil {
+		return err
+	}
+	return validateConst(schema, value, path, toolName)
 }
 
 type schemaPatternProperty struct {

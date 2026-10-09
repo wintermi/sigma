@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool-call validation of recursive unions no longer takes exponential time. Object properties were validated in name order, so a union branch with the wrong discriminator, such as `op: "and"` when the value is `"or"`, still validated its nested `args` before failing on `op`; with a recursive filter schema this doubled the time per nesting level, and 454 bytes of model-supplied arguments at depth 20 took several seconds. Each property's own type, enum, and const are now checked before any nested value is validated.
+
 Bedrock Claude responses are no longer truncated at 4,096 tokens. The adapter only sent `inferenceConfig.maxTokens` for an explicit `MaxTokens` or manual thinking, and Bedrock applies a 4,096-token default otherwise, cutting off long answers and adaptive thinking. Claude requests now default to the model's output limit; other Bedrock model families keep the provider default.
 
 Direct OpenAI Chat Completions requests now send `max_completion_tokens`. The OpenAI compatibility profile selected `max_tokens`, which OpenAI rejects for o-series and GPT-5 reasoning models, so any request with a max-token limit on those models failed. Compatible providers that require `max_tokens` keep it.
