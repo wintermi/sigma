@@ -26,10 +26,11 @@ func TestToolPartialAccumulationPrecedence(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			block := partialBlock{kind: ContentBlockToolCall, arguments: `{"n":`}
+			block := partialBlock{kind: ContentBlockToolCall}
+			block.arguments.set(`{"n":`)
 			block.applyToolPartial(&PartialToolCall{ID: "id", Name: "tool", ArgumentsDelta: tc.delta, ProviderMetadata: tc.metadata})
-			if block.arguments != tc.want {
-				t.Fatalf("arguments=%q; want %q", block.arguments, tc.want)
+			if got := block.arguments.String(); got != tc.want {
+				t.Fatalf("arguments=%q; want %q", got, tc.want)
 			}
 			final := block.contentBlock(true)
 			if final.ToolCallID != "id" || final.ToolName != "tool" || !block.hasContent {

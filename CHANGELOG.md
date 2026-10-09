@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Stream partial snapshots accumulate delta-only text, thinking, and tool-argument events (as sent by Radius and custom `NewStream` providers) without re-copying the block on every event.
 - Streaming long tool-call arguments is no longer quadratic: decoded partial arguments are refreshed on every delta up to 16 KiB and then each time the text grows by an eighth, so a 256 KiB argument streamed in 32-byte deltas parses in about 0.1 s instead of 13 s.
 - `ValidateToolCall` checks each object property's type, enum, and const before validating nested values, so recursive discriminated `anyOf`/`oneOf` schemas validate in time linear in argument depth instead of doubling with each nesting level.
 - Bedrock Claude requests without `MaxTokens` send the model's output limit as `inferenceConfig.maxTokens`, so plain and adaptive-thinking responses are no longer cut off at Bedrock's 4,096-token default.

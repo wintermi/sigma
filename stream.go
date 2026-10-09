@@ -9,6 +9,7 @@ import (
 	"context"
 	stderrors "errors"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/wintermi/sigma/internal/streamstate"
@@ -235,15 +236,33 @@ type partialAccumulator struct {
 
 type partialBlock struct {
 	kind       ContentBlockType
-	text       string
-	thinking   string
+	text       accumulatedText
+	thinking   accumulatedText
 	image      *ContentBlock
 	toolID     string
 	toolName   string
-	arguments  string
+	arguments  accumulatedText
 	argument   any
 	hasArg     bool
 	hasContent bool
+}
+
+// accumulatedText appends delta-only events without re-copying the block.
+type accumulatedText struct {
+	builder strings.Builder
+}
+
+func (t *accumulatedText) set(text string) {
+	t.builder.Reset()
+	t.builder.WriteString(text)
+}
+
+func (t *accumulatedText) append(delta string) {
+	t.builder.WriteString(delta)
+}
+
+func (t *accumulatedText) String() string {
+	return t.builder.String()
 }
 
 func newPartialAccumulator() *partialAccumulator {
@@ -264,15 +283,15 @@ func (a *partialAccumulator) apply(event Event) {
 	case EventKindTextDelta:
 		block := a.block(index, ContentBlockText)
 		if event.Text != "" {
-			block.text = event.Text
+			block.text.set(event.Text)
 		} else {
-			block.text += event.DeltaText
+			block.text.append(event.DeltaText)
 		}
-		block.hasContent = block.hasContent || block.text != ""
+		block.hasContent = block.hasContent || block.text.String() != ""
 	case EventKindTextEnd:
 		block := a.block(index, ContentBlockText)
 		if event.Text != "" {
-			block.text = event.Text
+			block.text.set(event.Text)
 			block.hasContent = true
 		}
 	case EventKindThinkingStart:
@@ -280,15 +299,15 @@ func (a *partialAccumulator) apply(event Event) {
 	case EventKindThinkingDelta:
 		block := a.block(index, ContentBlockThinking)
 		if event.Thinking != "" {
-			block.thinking = event.Thinking
+			block.thinking.set(event.Thinking)
 		} else {
-			block.thinking += event.DeltaText
+			block.thinking.append(event.DeltaText)
 		}
-		block.hasContent = block.hasContent || block.thinking != ""
+		block.hasContent = block.hasContent || block.thinking.String() != ""
 	case EventKindThinkingEnd:
 		block := a.block(index, ContentBlockThinking)
 		if event.Thinking != "" {
-			block.thinking = event.Thinking
+			block.thinking.set(event.Thinking)
 			block.hasContent = true
 		}
 	case EventKindToolCallStart, EventKindToolCallDelta:
@@ -398,15 +417,15 @@ func (b *partialBlock) applyToolPartial(partial *PartialToolCall) {
 		b.toolName = partial.Name
 	}
 	if argumentsText, ok := partial.ProviderMetadata["argumentsText"].(string); ok {
-		b.arguments = argumentsText
+		b.arguments.set(argumentsText)
 	} else if partial.ArgumentsDelta != "" {
-		b.arguments += partial.ArgumentsDelta
+		b.arguments.append(partial.ArgumentsDelta)
 	}
 	if arguments, ok := partial.ProviderMetadata["arguments"]; ok {
 		b.argument = arguments
 		b.hasArg = true
 	}
-	b.hasContent = b.hasContent || b.toolID != "" || b.toolName != "" || b.arguments != "" || b.hasArg
+	b.hasContent = b.hasContent || b.toolID != "" || b.toolName != "" || b.arguments.String() != "" || b.hasArg
 }
 
 // include reports whether the block belongs in a snapshot; membership in the
@@ -418,7 +437,7 @@ func (b *partialBlock) include(includeStarted bool) bool {
 func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 	switch b.kind {
 	case ContentBlockThinking:
-		return Thinking(b.thinking, "")
+		return Thinking(b.thinking.String(), "")
 	case ContentBlockImage:
 		if b.image != nil {
 			// Deep-clone so consumers mutating the snapshot cannot corrupt
@@ -429,7 +448,7 @@ func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 	case ContentBlockToolCall:
 		return ToolCallBlock(b.toolID, b.toolName, b.toolArguments(decodeArguments))
 	default:
-		return Text(b.text)
+		return Text(b.text.String())
 	}
 }
 
@@ -437,7 +456,8 @@ func (b *partialBlock) toolArguments(decode bool) any {
 	if b.hasArg {
 		return cloneJSONValue(b.argument, cloneProviderOptions)
 	}
-	if b.arguments == "" {
+	arguments := b.arguments.String()
+	if arguments == "" {
 		return map[string]any{}
 	}
 	// Per-event snapshots return the accumulated arguments text as-is;
@@ -446,11 +466,11 @@ func (b *partialBlock) toolArguments(decode bool) any {
 	// message still carries structured arguments.
 	if decode {
 		var decoded any
-		if err := decodeUseNumber([]byte(b.arguments), &decoded); err == nil {
+		if err := decodeUseNumber([]byte(arguments), &decoded); err == nil {
 			return decoded
 		}
 	}
-	return b.arguments
+	return arguments
 }
 
 func finalEvent(kind EventKind, final AssistantMessage, message string) Event {
