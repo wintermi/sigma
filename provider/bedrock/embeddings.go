@@ -517,7 +517,7 @@ func bedrockEmbeddingsResponseError(resp *http.Response, model sigma.EmbeddingMo
 }
 
 func bedrockEmbeddingsProviderError(resp *http.Response, model sigma.EmbeddingModel, body []byte, err error) *sigma.ProviderError {
-	return sigma.NewProviderError(
+	providerErr := sigma.NewProviderError(
 		model.Provider,
 		sigma.API(sigma.EmbeddingAPIBedrockEmbeddings),
 		model.ID,
@@ -527,6 +527,8 @@ func bedrockEmbeddingsProviderError(resp *http.Response, model sigma.EmbeddingMo
 		body,
 		err,
 	)
+	applyBedrockErrorType(providerErr, resp.Header)
+	return providerErr
 }
 
 func bedrockEmbeddingAttemptsFromHTTP(model sigma.EmbeddingModel, attempts []sigma.HTTPAttempt) []sigma.EmbeddingAttempt {

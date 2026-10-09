@@ -67,6 +67,11 @@ Bedrock `ValidationException`, is classified as context overflow when its
 message reports an oversized prompt, and as transient when it reports temporary
 provider capacity such as Azure peak-load rejection. `server_busy`, "servers are
 currently busy", and "model is at capacity" errors are transient and retryable.
+Rate-limit and transient wording, such as "rate limit", "throttling", or an
+upstream "context deadline exceeded", is never read as overflow, and an HTTP
+`429` without a structured code is rate limited even when its text mentions
+tokens. Bedrock's `X-Amzn-Errortype` header supplies the provider code, so
+`ThrottlingException` is rate limited.
 `IsContextOverflow` applies the same rules
 to the diagnostics on a final message, including overflow already detected by
 the provider adapter.

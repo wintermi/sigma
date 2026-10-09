@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock throttling (`429` with `X-Amzn-Errortype: ThrottlingException` and "Too many tokens, please wait") and rate-limit or gateway-timeout bodies that mention "context" are no longer classified as context overflow, so they stay retryable and `errors.Is(err, sigma.ErrContextOverflow)` is false for them.
 - Provider adapters no longer send empty tool-schema objects such as `"properties":{}` or `"items":{}` as `null` when the schema is built from `map[string]any` values, and typed schema containers such as `map[string]sigma.Schema` are copied instead of shared with the caller.
 - The eval runner no longer requires a Go module when `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` names the artifact directory; only the default `.eval/` location needs the module root.
 - `sigma-surface-probe -handoff` now applies `-case-timeout` to each source context and target replay, so one stalled route no longer consumes the whole run.

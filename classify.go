@@ -155,6 +155,11 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 	code := normalizedErrorText(providerErr.ProviderCode)
 	message := normalizedErrorText(firstNonEmpty(providerErr.ProviderMessage, providerErr.BodyPreview, err.Error()))
 	if class, ok := classForCodeAndMessage(code, message); ok {
+		// Without a structured code, a 429 is throttling even when its text
+		// reads like overflow ("Too many tokens, please wait").
+		if class == ErrorClassContextOverflow && code == "" && providerErr.StatusCode == http.StatusTooManyRequests {
+			return ErrorClassRateLimited
+		}
 		return class
 	}
 	if bodylessCerebrasOverflow(providerErr.Provider, providerErr.StatusCode, providerErr.ProviderCode, providerErr.ProviderMessage, providerErr.BodyPreview) {
@@ -355,6 +360,7 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "overloaded") ||
 		strings.Contains(message, "service unavailable") ||
 		strings.Contains(message, "server error") ||
+		strings.Contains(message, "deadline exceeded") ||
 		strings.Contains(message, "internal error") ||
 		strings.Contains(message, "provider returned error") ||
 		strings.Contains(message, "exceeded request buffer limit while retrying upstream") ||

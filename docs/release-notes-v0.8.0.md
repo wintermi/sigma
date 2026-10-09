@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Throttling is no longer mistaken for context overflow. Bedrock puts the exception type in the `X-Amzn-Errortype` header, which the adapter now records as the provider code, so a `429` reading "Too many tokens, please wait before trying again." is rate limited. Adapters that flag overflow from loose body text keep `ErrContextOverflow` only when the classifier agrees, so a `rate_limit_exceeded` code or an upstream "context deadline exceeded" stays retryable, and a `429` without a structured code is rate limited.
+
 Tool schemas keep their empty objects on the wire. The shared request transform copied an empty `map[string]any` as a nil map, so a no-argument tool built from decoded JSON was sent with `"properties":null` (and `"items":{}` or an any-typed `{}` became `null`), which providers reject. Typed containers such as `map[string]sigma.Schema` were also shared with the caller; they are now deep-copied.
 
 `sigma-evals-runner` accepts an explicit `-artifact-dir` or `SIGMA_EVAL_ARTIFACT_DIR` outside a Go module. The module root is only used to shorten recorded caller paths, so those paths stay absolute when no module is found. The default `.eval/` location still requires running inside the module.

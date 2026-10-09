@@ -445,7 +445,7 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 			return httpReq, nil
 		},
 		func(resp *http.Response) *sigma.ProviderError {
-			return sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), nil, sigma.ErrProviderResponse)
+			return bedrockHTTPProviderError(resp, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), nil, sigma.ErrProviderResponse)
 		},
 		sigma.TextResponseDebugHTTPHook(ctx, c.opts, sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID)),
 	)
@@ -455,9 +455,26 @@ func (c httpConverseClient) ConverseStream(ctx context.Context, req ConverseRequ
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
-		return nil, withDataRetentionHint(sigma.NewProviderError(sigma.ProviderAmazonBedrock, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), respBody, sigma.ErrProviderResponse))
+		return nil, withDataRetentionHint(bedrockHTTPProviderError(resp, sigma.APIBedrockConverseStream, sigma.ModelID(req.ModelID), respBody, sigma.ErrProviderResponse))
 	}
 	return newHTTPConverseStream(resp.Body, sigma.ModelID(req.ModelID), resp.Header.Get("x-amzn-requestid")), nil
+}
+
+// bedrockHTTPProviderError builds a provider error from a Bedrock REST
+// response. Bedrock reports the exception type, such as ThrottlingException,
+// in X-Amzn-Errortype rather than in the {"message":...} body.
+func bedrockHTTPProviderError(resp *http.Response, api sigma.API, model sigma.ModelID, body []byte, err error) *sigma.ProviderError {
+	providerErr := sigma.NewProviderError(sigma.ProviderAmazonBedrock, api, model, resp.StatusCode, resp.Header.Get("x-amzn-requestid"), sigma.RetryAfter(resp.Header), body, err)
+	applyBedrockErrorType(providerErr, resp.Header)
+	return providerErr
+}
+
+func applyBedrockErrorType(providerErr *sigma.ProviderError, header http.Header) {
+	if providerErr.ProviderCode != "" {
+		return
+	}
+	errorType, _, _ := strings.Cut(header.Get("X-Amzn-Errortype"), ":")
+	providerErr.ProviderCode = strings.TrimSpace(errorType)
 }
 
 func reservedBedrockHeader(key string) bool {

@@ -119,7 +119,7 @@ type ProviderError struct {
 // NewProviderError builds a provider response error with a redacted body preview.
 func NewProviderError(provider ProviderID, api API, model ModelID, statusCode int, requestID string, retryAfter time.Duration, body []byte, err error) *ProviderError {
 	code, message := providerErrorDetails(body)
-	return &ProviderError{
+	providerErr := &ProviderError{
 		Provider:        provider,
 		API:             api,
 		Model:           model,
@@ -131,6 +131,16 @@ func NewProviderError(provider ProviderID, api API, model ModelID, statusCode in
 		BodyPreview:     redact.Preview(string(body), 2048),
 		Err:             err,
 	}
+	if err == ErrContextOverflow {
+		// Adapters flag overflow from loose body text. Keep the cause only when
+		// the classifier agrees, so rate limits and gateway timeouts that
+		// mention "context" stay retryable.
+		providerErr.Err = ErrProviderResponse
+		if classifyProviderError(providerErr, providerErr) == ErrorClassContextOverflow {
+			providerErr.Err = ErrContextOverflow
+		}
+	}
+	return providerErr
 }
 
 func (e *ProviderError) Error() string {
