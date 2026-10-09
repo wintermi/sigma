@@ -96,6 +96,10 @@ type ToolCall struct {
 	decodedText string
 	decoded     any
 	decodedOK   bool
+
+	partialLen int
+	partial    any
+	partialOK  bool
 }
 
 // SetID replaces the tool-call id when value is non-empty.
@@ -140,6 +144,9 @@ func (c *ToolCall) SetArguments(arguments string) {
 	c.decodedText = ""
 	c.decoded = nil
 	c.decodedOK = false
+	c.partialLen = 0
+	c.partial = nil
+	c.partialOK = false
 }
 
 // ArgumentsText returns the accumulated raw argument text.
@@ -234,13 +241,26 @@ func (c *ToolCall) DecodeArguments() (any, bool) {
 	return decoded, err == nil
 }
 
+// partialDecodeEagerLimit is the argument size up to which streaming metadata
+// is decoded on every delta. Each decode re-parses the accumulated text, so
+// longer arguments refresh it after growing by an eighth, keeping the total
+// work linear instead of quadratic.
+const partialDecodeEagerLimit = 16 << 10
+
 // DecodePartialArguments decodes valid JSON arguments, or a conservative
-// completion of an object/array fragment for streaming metadata.
+// completion of an object/array fragment for streaming metadata. Beyond
+// partialDecodeEagerLimit the result may lag the latest deltas.
 func (c *ToolCall) DecodePartialArguments() (any, bool) {
-	if decoded, ok := c.DecodeArguments(); ok {
-		return decoded, true
+	arguments := c.ArgumentsText()
+	if length := len(arguments); length > partialDecodeEagerLimit && c.partialLen > 0 && length-c.partialLen < c.partialLen/8 {
+		return c.partial, c.partialOK
 	}
-	return decodePartialJSON(c.ArgumentsText())
+	decoded, ok := c.DecodeArguments()
+	if !ok {
+		decoded, ok = decodePartialJSON(arguments)
+	}
+	c.partialLen, c.partial, c.partialOK = len(arguments), decoded, ok
+	return decoded, ok
 }
 
 func decodePartialJSON(input string) (any, bool) {

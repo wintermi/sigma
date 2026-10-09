@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Long streamed tool arguments no longer slow streaming quadratically. Every delta re-parsed, repaired, and completed the whole accumulated argument text to refresh `PartialToolCall.ProviderMetadata["arguments"]`, so a tool call writing a 256 KiB file in 32-byte deltas spent about 13 seconds parsing. Partial arguments are still decoded on every delta up to 16 KiB; beyond that the decoded value is refreshed each time the text grows by an eighth. `argumentsText`, `ArgumentsDelta`, and final arguments are unchanged.
+
 Tool-call validation of recursive unions no longer takes exponential time. Object properties were validated in name order, so a union branch with the wrong discriminator, such as `op: "and"` when the value is `"or"`, still validated its nested `args` before failing on `op`; with a recursive filter schema this doubled the time per nesting level, and 454 bytes of model-supplied arguments at depth 20 took several seconds. Each property's own type, enum, and const are now checked before any nested value is validated.
 
 Bedrock Claude responses are no longer truncated at 4,096 tokens. The adapter only sent `inferenceConfig.maxTokens` for an explicit `MaxTokens` or manual thinking, and Bedrock applies a 4,096-token default otherwise, cutting off long answers and adaptive thinking. Claude requests now default to the model's output limit; other Bedrock model families keep the provider default.

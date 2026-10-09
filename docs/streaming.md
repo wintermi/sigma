@@ -85,6 +85,12 @@ state, or successful/aborted final arguments. Empty argument objects remain
 objects. Opaque Go objects remain caller-owned; terminal `FinalMessage` and
 `Stream.Final` continue to refer to the same recorded result.
 
+Built-in adapters decode partial tool arguments into
+`PartialToolCall.ProviderMetadata["arguments"]` on every delta up to 16 KiB of
+argument text. Beyond that, the decoded value is refreshed each time the text
+grows by an eighth, so it may lag the latest deltas; `argumentsText`,
+`ArgumentsDelta`, and the final tool-call arguments are always exact.
+
 Every non-terminal event carries `PartialMessage`. Its stop reason defaults to
 `StopReasonPending` while generation remains in progress; the initial `start`
 event carries an empty pending snapshot before any content blocks arrive. A

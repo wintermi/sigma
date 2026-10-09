@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Keep streamed partial tool-argument decoding linear for long arguments.
 - [x] - [x] Validate recursive discriminated unions in linear time.
 - [x] - [x] Default Bedrock Claude maxTokens to the model output limit.
 - [x] - [x] Send max_completion_tokens to direct OpenAI Chat Completions.
