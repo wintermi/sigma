@@ -97,16 +97,36 @@ func generativePayload(model sigma.Model, req sigma.Request, opts sigma.Options)
 func googleContents(model sigma.Model, req sigma.Request) ([]map[string]any, error) {
 	contents := make([]map[string]any, 0, len(req.Messages))
 	ids := newGoogleToolCallIDNormalizer(model)
+	// Tool-result image turns wait until the run of tool results ends: one
+	// between function responses would split them from their function calls.
+	var sidecarParts []map[string]any
+	flushSidecars := func() {
+		if len(sidecarParts) > 0 {
+			contents = append(contents, map[string]any{"role": "user", "parts": sidecarParts})
+			sidecarParts = nil
+		}
+	}
 	for _, message := range req.Messages {
+		if message.Role != sigma.RoleTool {
+			flushSidecars()
+		}
 		converted, err := googleContent(model, message, ids)
 		if err != nil {
 			return nil, err
+		}
+		if message.Role == sigma.RoleTool && len(converted) > 1 {
+			for _, sidecar := range converted[1:] {
+				parts, _ := sidecar["parts"].([]map[string]any)
+				sidecarParts = append(sidecarParts, parts...)
+			}
+			converted = converted[:1]
 		}
 		if len(converted) > 0 && len(contents) > 0 && mergeFunctionResponseContent(contents[len(contents)-1], converted[0]) {
 			converted = converted[1:]
 		}
 		contents = append(contents, converted...)
 	}
+	flushSidecars()
 	return contents, nil
 }
 

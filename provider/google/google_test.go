@@ -719,7 +719,7 @@ func TestToolResultsMergeAndRouteImagesByGeminiVersion(t *testing.T) {
 		wantSidecar   bool
 		wantResponses int
 	}{
-		{name: "gemini 2 sidecar", modelID: "gemini-2.5-flash", wantContents: 5, wantSidecar: true, wantResponses: 2},
+		{name: "gemini 2 sidecar", modelID: "gemini-2.5-flash", wantContents: 4, wantSidecar: true, wantResponses: 3},
 		{name: "gemini 3 nested", modelID: "gemini-3-pro", wantContents: 3, wantNested: true, wantResponses: 3},
 	}
 	for _, tt := range tests {

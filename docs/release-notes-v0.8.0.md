@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Gemini models before Gemini 3 now receive parallel tool results in one turn. These models take tool-result images as a separate "Tool result image:" user turn, which was inserted directly after its function response, so later responses landed in another turn and Gemini rejected the request because function response parts no longer matched the function calls. Image turns are now emitted once the run of tool results ends.
+
 Splitting large documents for retrieval no longer slows quadratically: each chunk looked up its separator position by scanning every rune from the start of the text, and now uses a binary search.
 
 The retrieval splitter handles invalid UTF-8. It measured each rune with `utf8.RuneLen`, which is 3 for the replacement rune although an invalid byte occupies 1, so text ending in a bad byte panicked with a slice-bounds error and a bad byte mid-text produced overlapping, duplicated chunks. Spans now follow the bytes actually decoded.

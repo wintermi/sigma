@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Gemini models before Gemini 3 (direct and Vertex) keep all function responses for one assistant turn in a single user turn when a tool result contains images; the image turn now follows the whole run of tool results instead of splitting it.
 - The retrieval splitter finds separator positions with a binary search, so splitting a large document is no longer quadratic in its length.
 - `SplitRetrievalText`, `SplitRetrievalDocuments`, and `InMemoryRetrievalIndex.AddDocuments` no longer panic or emit overlapping byte ranges for text containing invalid UTF-8.
 - OpenCode models routed to Responses, Anthropic Messages, or Gemini now replay their own history recorded with the catalog `Model.API`, keeping encrypted reasoning, signatures, and tool item IDs instead of treating the turn as foreign.
