@@ -42,3 +42,26 @@ func TestSplitRetrievalTextHandlesSeparatorNearWindowStart(t *testing.T) {
 		t.Fatalf("chunks cover %d of %d bytes", covered, len(text))
 	}
 }
+
+// Invalid UTF-8 bytes decode as one-byte runes; spans must follow the bytes
+// actually consumed rather than the width of utf8.RuneError.
+func TestSplitRetrievalTextHandlesInvalidUTF8(t *testing.T) {
+	t.Parallel()
+
+	for _, text := range []string{"abc\xff", "ab\xffcdefgh", "\xff\xfe x \xff"} {
+		chunks, err := sigma.SplitRetrievalText(text, sigma.RetrievalSplitterConfig{ChunkSize: 3, ChunkOverlap: 0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		end := 0
+		for _, chunk := range chunks {
+			if chunk.StartByte < end || chunk.EndByte > len(text) || chunk.Text != text[chunk.StartByte:chunk.EndByte] {
+				t.Fatalf("%q: chunk %+v overlaps or leaves the input; chunks %q", text, chunk, chunkTexts(chunks))
+			}
+			end = chunk.EndByte
+		}
+		if end != len(text) {
+			t.Fatalf("%q: chunks end at byte %d, want %d", text, end, len(text))
+		}
+	}
+}

@@ -374,8 +374,12 @@ func (s retrievalSplitter) runeIndexAtByte(byteIndex int) int {
 
 func retrievalRuneSpans(text string) []retrievalRuneSpan {
 	spans := make([]retrievalRuneSpan, 0, len(text))
-	for start, r := range text {
-		spans = append(spans, retrievalRuneSpan{start: start, end: start + utf8.RuneLen(r)})
+	for start := 0; start < len(text); {
+		// DecodeRuneInString reports the bytes consumed, which is 1 for an
+		// invalid byte even though utf8.RuneError itself encodes as 3.
+		_, size := utf8.DecodeRuneInString(text[start:])
+		spans = append(spans, retrievalRuneSpan{start: start, end: start + size})
+		start += size
 	}
 	return spans
 }

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `SplitRetrievalText`, `SplitRetrievalDocuments`, and `InMemoryRetrievalIndex.AddDocuments` no longer panic or emit overlapping byte ranges for text containing invalid UTF-8.
 - OpenCode models routed to Responses, Anthropic Messages, or Gemini now replay their own history recorded with the catalog `Model.API`, keeping encrypted reasoning, signatures, and tool item IDs instead of treating the turn as foreign.
 - OpenAI Responses replay omits a `function_call` or `custom_tool_call` item ID when the reasoning item before it is not replayed, avoiding the "function_call was provided without its required reasoning item" rejection for reasoning without encrypted content and for history from another OpenAI-family provider.
 - Bedrock throttling (`429` with `X-Amzn-Errortype: ThrottlingException` and "Too many tokens, please wait") and rate-limit or gateway-timeout bodies that mention "context" are no longer classified as context overflow, so they stay retryable and `errors.Is(err, sigma.ErrContextOverflow)` is false for them.

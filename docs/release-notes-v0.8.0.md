@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The retrieval splitter handles invalid UTF-8. It measured each rune with `utf8.RuneLen`, which is 3 for the replacement rune although an invalid byte occupies 1, so text ending in a bad byte panicked with a slice-bounds error and a bad byte mid-text produced overlapping, duplicated chunks. Spans now follow the bytes actually decoded.
+
 OpenCode keeps same-model replay state across turns. The wrapper rewrites `Model.API` to the routed wire API, but callers persist the catalog `Model.API`, so every recorded turn failed the adapters' exact provenance check and lost its encrypted reasoning, signatures, and tool item IDs. History from the same OpenCode model is now replayed under the routed API.
 
 OpenAI Responses replay no longer sends a tool call's item ID after dropping the reasoning item it was paired with. A reasoning item is only replayable with encrypted content (or stored items), so reasoning from a request without `reasoning.encrypted_content`, or from another OpenAI-family provider such as Codex, was dropped while its `fc_` ID was kept, and OpenAI rejected the turn. Tool calls after a dropped reasoning item now omit `id`, as calls from a different model already did; calls after a replayed reasoning item keep it.
