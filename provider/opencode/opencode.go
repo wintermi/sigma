@@ -141,6 +141,7 @@ func (p *Provider) API() sigma.API {
 // Stream dispatches the request to the adapter matching the model metadata.
 func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options) *sigma.Stream {
 	api := OpenCodeAPI(model)
+	req.Messages = routedHistory(req.Messages, model, api)
 	model.API = api
 	modelHeaders := model.ProviderMetadata["headers"]
 	if api == sigma.APIOpenAICompletions || api == sigma.APIOpenAIResponses {
@@ -162,6 +163,29 @@ func (p *Provider) Stream(ctx context.Context, model sigma.Model, req sigma.Requ
 	default:
 		return p.chat.Stream(ctx, model, req, opts)
 	}
+}
+
+// routedHistory records this model's own history under the routed wire API.
+// Callers persist Model.API, the catalog API, which would otherwise fail the
+// adapters' exact provenance check and drop signatures and encrypted reasoning.
+func routedHistory(messages []sigma.Message, model sigma.Model, api sigma.API) []sigma.Message {
+	if api == model.API {
+		return messages
+	}
+	var routed []sigma.Message
+	for index, message := range messages {
+		if message.Provider != model.Provider || message.Model != model.ID || message.API != model.API {
+			continue
+		}
+		if routed == nil {
+			routed = append([]sigma.Message(nil), messages...)
+		}
+		routed[index].API = api
+	}
+	if routed == nil {
+		return messages
+	}
+	return routed
 }
 
 func hasSessionHeader(raw any) bool {

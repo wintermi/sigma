@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenCode keeps same-model replay state across turns. The wrapper rewrites `Model.API` to the routed wire API, but callers persist the catalog `Model.API`, so every recorded turn failed the adapters' exact provenance check and lost its encrypted reasoning, signatures, and tool item IDs. History from the same OpenCode model is now replayed under the routed API.
+
 OpenAI Responses replay no longer sends a tool call's item ID after dropping the reasoning item it was paired with. A reasoning item is only replayable with encrypted content (or stored items), so reasoning from a request without `reasoning.encrypted_content`, or from another OpenAI-family provider such as Codex, was dropped while its `fc_` ID was kept, and OpenAI rejected the turn. Tool calls after a dropped reasoning item now omit `id`, as calls from a different model already did; calls after a replayed reasoning item keep it.
 
 Throttling is no longer mistaken for context overflow. Bedrock puts the exception type in the `X-Amzn-Errortype` header, which the adapter now records as the provider code, so a `429` reading "Too many tokens, please wait before trying again." is rate limited. Adapters that flag overflow from loose body text keep `ErrContextOverflow` only when the classifier agrees, so a `rate_limit_exceeded` code or an upstream "context deadline exceeded" stays retryable, and a `429` without a structured code is rate limited.
