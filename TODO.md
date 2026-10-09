@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] - [x] Default Bedrock Claude maxTokens to the model output limit.
 - [x] - [x] Send max_completion_tokens to direct OpenAI Chat Completions.
 - [x] - [x] Keep Gemini 2 parallel function responses together around tool-result images.
 - [x] - [x] Find retrieval separator positions without a linear scan per chunk.

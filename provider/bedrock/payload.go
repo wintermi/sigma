@@ -181,6 +181,14 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	if payload.ModelID == "" {
 		return ConverseRequest{}, unsupportedError(model, "bedrock converse stream: model id is required")
 	}
+	// Bedrock caps Claude output at 4096 tokens unless maxTokens is sent.
+	if opts.MaxTokens == nil && model.MaxOutputTokens > 0 && isClaudeBedrockModel(model) {
+		if payload.InferenceConfig == nil {
+			payload.InferenceConfig = &ConverseInferenceConfig{}
+		}
+		maxTokens := model.MaxOutputTokens
+		payload.InferenceConfig.MaxTokens = &maxTokens
+	}
 	if transformed.SystemPrompt != "" {
 		payload.System = append(payload.System, ConverseContentBlock{Type: converseBlockText, Text: providertext.Clean(transformed.SystemPrompt)})
 	}

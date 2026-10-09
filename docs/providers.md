@@ -690,6 +690,10 @@ Request headers from `sigma.WithHeader` and `sigma.WithHeaders` are applied
 before SigV4 signing; `authorization`, `host`, and `x-amz-*` headers remain
 owned by the adapter.
 
+Claude requests without `MaxTokens` send the model's output limit as
+`inferenceConfig.maxTokens`; Bedrock otherwise caps Claude output at 4,096
+tokens. Other model families keep Bedrock's default.
+
 Manual Claude thinking reserves 1,024 tokens for output within the effective
 `MaxTokens` cap and clamps the thinking budget to the remaining space. If fewer
 than 1,024 thinking tokens fit, thinking is disabled. With no supplied cap,

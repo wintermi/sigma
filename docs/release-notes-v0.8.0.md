@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock Claude responses are no longer truncated at 4,096 tokens. The adapter only sent `inferenceConfig.maxTokens` for an explicit `MaxTokens` or manual thinking, and Bedrock applies a 4,096-token default otherwise, cutting off long answers and adaptive thinking. Claude requests now default to the model's output limit; other Bedrock model families keep the provider default.
+
 Direct OpenAI Chat Completions requests now send `max_completion_tokens`. The OpenAI compatibility profile selected `max_tokens`, which OpenAI rejects for o-series and GPT-5 reasoning models, so any request with a max-token limit on those models failed. Compatible providers that require `max_tokens` keep it.
 
 Gemini models before Gemini 3 now receive parallel tool results in one turn. These models take tool-result images as a separate "Tool result image:" user turn, which was inserted directly after its function response, so later responses landed in another turn and Gemini rejected the request because function response parts no longer matched the function calls. Image turns are now emitted once the run of tool results ends.
