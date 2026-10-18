@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Stop falling back to environment keys after a stored OAuth credential fails.
 - [x] Send only the thinking on/off toggle to Xiaomi MiMo.
 - [x] Send error tool-result images after the tool results for Anthropic and Bedrock Claude.
 - [x] Stop sending `reasoning.budget_tokens` on Responses requests.

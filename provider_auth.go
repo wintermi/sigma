@@ -210,7 +210,7 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 		}
 		post, ok, err := r.refreshStoredOAuth(ctx, model.Provider, oauth, credential, now, refreshBefore, opts.OAuthMinimumValidity)
 		if err != nil {
-			return Credential{}, fmt.Errorf("provider oauth: refresh %s: %w", model.Provider, err)
+			return Credential{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s: %w", model.Provider, err)}
 		}
 		if !ok || post.Type != CredentialTypeOAuthToken {
 			return Credential{}, unavailableCredential(model, "credential-store:"+string(model.Provider))
@@ -219,7 +219,7 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 		// The default window only triggers a refresh; an explicit minimum is a
 		// requirement the refreshed token must meet.
 		if opts.OAuthMinimumValidity != nil && oauthvalidity.NeedsRefresh(now(), credential.Expiry, refreshBefore, opts.OAuthMinimumValidity) {
-			return Credential{}, fmt.Errorf("provider oauth: refresh %s returned a token that expires too soon for the requested minimum validity: %w", model.Provider, ErrCredentialUnavailable)
+			return Credential{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s returned a token that expires too soon for the requested minimum validity: %w", model.Provider, ErrCredentialUnavailable)}
 		}
 	}
 	if oauth.Credential == nil {
@@ -227,7 +227,7 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 	}
 	resolved, err := oauth.Credential(ctx, model, opts, credential)
 	if err != nil {
-		return Credential{}, err
+		return Credential{}, &storedOAuthError{err}
 	}
 	if resolved.Source == "" {
 		resolved.Source = "credential-store:" + string(model.Provider)
@@ -349,6 +349,22 @@ func valueOrDefaultOAuth(oauth *OAuthAuth) OAuthAuth {
 		return OAuthAuth{}
 	}
 	return *oauth
+}
+
+// storedOAuthError marks a failure of a stored OAuth credential. The stored
+// credential owns its provider, so ChainAuthResolver reports the failure
+// instead of falling back to environment credentials. It still matches the
+// errors it wraps, such as ErrCredentialUnavailable.
+type storedOAuthError struct {
+	err error
+}
+
+func (e *storedOAuthError) Error() string {
+	return e.err.Error()
+}
+
+func (e *storedOAuthError) Unwrap() error {
+	return e.err
 }
 
 func storedCredentialUnsupported(model Model, typ CredentialType) error {

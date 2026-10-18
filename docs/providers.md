@@ -157,7 +157,9 @@ rotations through their existing callbacks. Negative durations fail locally
 before provider dispatch. If a refreshed token still expires within an explicit
 minimum, the rotation is persisted and the request fails with an error wrapping
 `ErrCredentialUnavailable` rather than dispatching a shorter-lived token; choose
-a minimum within the provider's token lifetime.
+a minimum within the provider's token lifetime. A stored OAuth credential owns
+its provider: when its refresh or token derivation fails, the request fails
+instead of falling back to environment API keys or default provider callbacks.
 
 ## Setup Snippets
 

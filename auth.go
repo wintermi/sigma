@@ -402,7 +402,7 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 		if err == nil {
 			return resolution, nil
 		}
-		if !errors.Is(err, ErrCredentialUnavailable) {
+		if !chainCanContinue(err) {
 			return AuthResolution{}, err
 		}
 		sources = append(sources, credentialErrorSources(err)...)
@@ -413,7 +413,7 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 		if err == nil {
 			return resolution, nil
 		}
-		if !errors.Is(err, ErrCredentialUnavailable) {
+		if !chainCanContinue(err) {
 			return AuthResolution{}, err
 		}
 		sources = append(sources, credentialErrorSources(err)...)
@@ -427,7 +427,7 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 	if err == nil {
 		return resolution, nil
 	}
-	if !errors.Is(err, ErrCredentialUnavailable) {
+	if !chainCanContinue(err) {
 		return AuthResolution{}, err
 	}
 	sources = append(sources, credentialErrorSources(err)...)
@@ -437,13 +437,21 @@ func (r ChainAuthResolver) ResolveAuthResolution(ctx context.Context, model Mode
 		if err == nil {
 			return resolution, nil
 		}
-		if !errors.Is(err, ErrCredentialUnavailable) {
+		if !chainCanContinue(err) {
 			return AuthResolution{}, err
 		}
 		sources = append(sources, credentialErrorSources(err)...)
 	}
 
 	return AuthResolution{}, unavailableCredential(model, sources...)
+}
+
+// chainCanContinue reports whether the chain may try its next source after
+// err. A failed stored OAuth credential owns its provider, so it stops the
+// chain even though it wraps ErrCredentialUnavailable.
+func chainCanContinue(err error) bool {
+	var stored *storedOAuthError
+	return errors.Is(err, ErrCredentialUnavailable) && !errors.As(err, &stored)
 }
 
 func unavailableCredential(model Model, sources ...string) error {
