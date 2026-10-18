@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Stop sending `reasoning.budget_tokens` on Responses requests.
 - [x] Coerce recursive discriminated unions in polynomial time.
 - [x] - [x] Attach provider diagnostics to mid-stream error final messages.
 - [x] - [x] Accumulate delta-only stream events without quadratic string copies.

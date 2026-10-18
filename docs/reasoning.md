@@ -42,9 +42,11 @@ that is not provider-neutral:
 - `sigma.WithAnthropicOptions(sigma.AnthropicOptions{ThinkingBudgetTokens: ...})`
 - `sigma.WithGoogleOptions(sigma.GoogleOptions{ThinkingBudgetTokens: ...})`
 
-Provider packages translate supported controls to their wire formats. If a
-model does not advertise the requested thinking level, `Client.Stream` returns a
-local invalid-options error before dispatch. Turning thinking off on a Google or
+Provider packages translate supported controls to their wire formats. OpenAI
+Responses, Azure, and Codex requests use effort only and ignore
+`WithThinkingBudgetTokens`. If a model does not advertise the requested
+thinking level, `Client.Stream` returns a local invalid-options error before
+dispatch. Turning thinking off on a Google or
 Vertex Gemini model whose metadata marks `off` unsupported requests the model's
 lowest supported level instead, such as `LOW` for Gemini 3.8 Flash or the minimal
 budget for Gemini 2.5 Pro. Anthropic and Bedrock Claude adaptive thinking sends

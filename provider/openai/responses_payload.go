@@ -737,9 +737,6 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	if effort := reasoningEffort(model, opts); effort != "" {
 		reasoning["effort"] = effort
 	}
-	if opts.ThinkingBudgetTokens != nil {
-		reasoning["budget_tokens"] = *opts.ThinkingBudgetTokens
-	}
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningSummary != "" {
 		reasoning["summary"] = opts.OpenAIOptions.ReasoningSummary
 	} else if len(reasoning) > 0 {
@@ -757,11 +754,10 @@ func addResponsesReasoningInclude(payload map[string]any, model sigma.Model, opt
 	payload["include"] = []string{"reasoning.encrypted_content"}
 }
 
+// responsesReasoningEnabled ignores ThinkingBudgetTokens: the Responses API
+// has no reasoning token budget, only effort.
 func responsesReasoningEnabled(model sigma.Model, opts sigma.Options) bool {
-	if reasoningEffort(model, opts) != "" {
-		return true
-	}
-	return opts.ThinkingBudgetTokens != nil
+	return reasoningEffort(model, opts) != ""
 }
 
 func responsesIncludeConfigured(provider sigma.ProviderID, opts sigma.Options) bool {

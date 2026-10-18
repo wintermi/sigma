@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI Responses requests no longer send a thinking budget. The provider-neutral `ThinkingBudgetTokens`, which `WithReasoningBudgetForContext` sets, was copied into `reasoning.budget_tokens`, a field the Responses API does not define, so OpenAI, Azure, and Codex reasoning requests built with the budget helper sent an unknown parameter; a budget alone also turned on `reasoning` and the encrypted-reasoning include for models without a level. Responses now uses effort only.
+
 Tool-call coercion of recursive unions no longer takes exponential time. With `CoercePrimitives`, arguments that fail validation are coerced branch by branch, and every union branch was coerced into, including its nested values, before its discriminator was checked; with a recursive filter schema each nesting level doubled the work, so model-supplied arguments nested 18 levels deep took about 16 seconds whether or not coercion could fix them. Branches whose own or property type, enum, or const cannot match even after coercion are now skipped first.
 
 `IsContextOverflow` now detects overflow reported mid-stream. It reads the diagnostics on the final message, but the OpenAI, Anthropic, Google, Vertex, Azure, and Codex adapters attached diagnostics only for HTTP status errors, so a `response.failed` with `context_length_exceeded` or an Anthropic `model_context_window_exceeded` stop classified as overflow through `ClassifyError` while the stored message did not. The stream writer now attaches the provider diagnostic when an error final message has none.

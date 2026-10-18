@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Responses, Azure, and Codex requests no longer send `reasoning.budget_tokens`, which the Responses API does not accept, when `ThinkingBudgetTokens` is set (for example by `WithReasoningBudgetForContext`); a budget without a reasoning level no longer enables reasoning or the encrypted-reasoning include.
 - `ValidateToolCallWithOptions` with `CoercePrimitives` skips union branches whose own or property type, enum, or const cannot match even after coercion before coercing their nested values, so arguments for recursive discriminated `anyOf`/`oneOf` schemas that fail validation no longer take time doubling with each nesting level.
 - Final messages for provider errors raised mid-stream (for example an OpenAI Responses `response.failed` with `context_length_exceeded` or an Anthropic `model_context_window_exceeded` stop) now carry the provider diagnostic, so `IsContextOverflow(final, 0)` agrees with `ClassifyError`.
 - Stream partial snapshots accumulate delta-only text, thinking, and tool-argument events (as sent by Radius and custom `NewStream` providers) without re-copying the block on every event.

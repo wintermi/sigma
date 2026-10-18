@@ -3446,6 +3446,71 @@ func TestResponsesDefaultsStoreAndReasoningReplayInclude(t *testing.T) {
 	}
 }
 
+// The Responses API has no reasoning token budget, so the provider-neutral
+// budget must neither reach the payload nor enable reasoning on its own.
+func TestResponsesIgnoresNeutralThinkingBudget(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		opts          []sigma.Option
+		wantReasoning any
+	}{
+		{
+			name: "budget with level sends only the effort",
+			opts: []sigma.Option{
+				sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+				sigma.WithThinkingBudgetTokens(16384),
+			},
+			wantReasoning: map[string]any{"effort": "high", "summary": "auto"},
+		},
+		{
+			name: "budget alone sends no reasoning",
+			opts: []sigma.Option{sigma.WithThinkingBudgetTokens(16384)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("responses-budget-test")
+			model := responsesTestModel(providerID)
+			client := responsesTestClient(t, providerID, model, server.URL)
+
+			_, err := client.Complete(
+				context.Background(),
+				model,
+				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
+				tt.opts...,
+			)
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if !reflect.DeepEqual(payload["reasoning"], tt.wantReasoning) {
+				t.Fatalf("reasoning = %#v, want %#v", payload["reasoning"], tt.wantReasoning)
+			}
+			if tt.wantReasoning == nil {
+				if include, ok := payload["include"]; ok {
+					t.Fatalf("include = %#v, want absent", include)
+				}
+			}
+		})
+	}
+}
+
 func responsesTestClient(t *testing.T, providerID sigma.ProviderID, model sigma.Model, baseURL string, opts ...openai.ProviderOption) *sigma.Client {
 	t.Helper()
 
