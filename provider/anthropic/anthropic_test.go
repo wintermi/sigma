@@ -2292,6 +2292,87 @@ func TestToolResultsAreGroupedAndEmptyThinkingSignatureFallsBackToText(t *testin
 	goldentest.AssertJSON(t, request.Body, "provider/anthropic/messages/grouped_tool_results_empty_signature_payload.json")
 }
 
+// Anthropic rejects error tool results containing images, so their images
+// follow all of the turn's tool results while successful results keep theirs.
+func TestErrorToolResultImagesFollowToolResults(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeMessagesSSE(t, w, completedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("anthropic-error-tool-image-test")
+	model := anthropicTestModel(providerID)
+	client := anthropicTestClient(t, providerID, model, server.URL)
+
+	_, err := client.Complete(
+		context.Background(),
+		model,
+		sigma.Request{Messages: []sigma.Message{
+			sigma.UserText("capture both"),
+			{
+				Role: sigma.RoleAssistant,
+				Content: []sigma.ContentBlock{
+					sigma.ToolCallBlock("toolu_1", "screenshot", map[string]any{}),
+					sigma.ToolCallBlock("toolu_2", "screenshot", map[string]any{}),
+				},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "toolu_1",
+				ToolName:   "screenshot",
+				IsError:    true,
+				Content:    []sigma.ContentBlock{sigma.Text("render failed"), sigma.ImageBase64("image/png", "ZXJyb3I=")},
+			},
+			{
+				Role:       sigma.RoleTool,
+				ToolCallID: "toolu_2",
+				ToolName:   "screenshot",
+				Content:    []sigma.ContentBlock{sigma.ImageBase64("image/png", "b2s=")},
+			},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	var payload struct {
+		Messages []struct {
+			Role    string           `json:"role"`
+			Content []map[string]any `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal([]byte(receiveRequest(t, requests).Body), &payload); err != nil {
+		t.Fatalf("Unmarshal request body returned error: %v", err)
+	}
+	last := payload.Messages[len(payload.Messages)-1]
+	var types []string
+	for _, block := range last.Content {
+		types = append(types, block["type"].(string))
+	}
+	if want := []string{"tool_result", "tool_result", "text", "image"}; !reflect.DeepEqual(types, want) {
+		t.Fatalf("tool turn block types = %v, want %v", types, want)
+	}
+	for _, block := range last.Content[0]["content"].([]any) {
+		if blockType := block.(map[string]any)["type"]; blockType != "text" {
+			t.Fatalf("error tool result block type = %v, want text only", blockType)
+		}
+	}
+	successContent := last.Content[1]["content"].([]any)
+	if blockType := successContent[0].(map[string]any)["type"]; blockType != "image" {
+		t.Fatalf("successful tool result block type = %v, want image kept in place", blockType)
+	}
+	if caption := last.Content[2]["text"]; !strings.Contains(caption.(string), "toolu_1") {
+		t.Fatalf("caption = %q, want it to name toolu_1", caption)
+	}
+	if data := last.Content[3]["source"].(map[string]any)["data"]; data != "ZXJyb3I=" {
+		t.Fatalf("trailing image data = %v, want the error result image", data)
+	}
+}
+
 func TestToolCallIDsAreNormalizedForReplay(t *testing.T) {
 	t.Parallel()
 

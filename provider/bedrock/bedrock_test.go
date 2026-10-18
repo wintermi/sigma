@@ -705,6 +705,78 @@ func TestToolResultsGroupAndPreserveImages(t *testing.T) {
 	}
 }
 
+// Claude on Bedrock rejects error tool results containing images, so for
+// Claude their images follow the turn's tool results; other models keep them.
+func TestErrorToolResultImagesFollowToolResultsForClaude(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		modelID       sigma.ModelID
+		wantTrailing  bool
+		wantImageKept bool
+	}{
+		{name: "claude", modelID: "anthropic.claude-sonnet-4-5-20250929-v1:0", wantTrailing: true},
+		{name: "other model", modelID: "amazon.nova-pro-v1:0", wantImageKept: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+			model.ID = tt.modelID
+			payload, err := conversePayload(
+				model,
+				sigma.Request{Messages: []sigma.Message{
+					{
+						Role:       sigma.RoleTool,
+						ToolCallID: "tool_a",
+						ToolName:   "screenshot",
+						IsError:    true,
+						Content:    []sigma.ContentBlock{sigma.Text("render failed"), sigma.ImageBase64("image/png", "aW1hZ2U=")},
+					},
+					{
+						Role:       sigma.RoleTool,
+						ToolCallID: "tool_b",
+						Content:    []sigma.ContentBlock{sigma.Text("done")},
+					},
+				}},
+				sigma.Options{},
+				Config{ModelID: string(tt.modelID)},
+			)
+			if err != nil {
+				t.Fatalf("conversePayload returned error: %v", err)
+			}
+
+			content := payload.Messages[0].Content
+			var types []string
+			for _, block := range content {
+				if block.Type != converseBlockCachePoint {
+					types = append(types, block.Type)
+				}
+			}
+			errorResult := content[0].ToolResult
+			hasImage := false
+			for _, block := range errorResult.Content {
+				hasImage = hasImage || block.Type == converseBlockImage
+			}
+			if hasImage != tt.wantImageKept {
+				t.Fatalf("error tool result has image = %v, want %v", hasImage, tt.wantImageKept)
+			}
+			want := []string{converseBlockToolResult, converseBlockToolResult}
+			if tt.wantTrailing {
+				want = append(want, converseBlockText, converseBlockImage)
+			}
+			if !reflect.DeepEqual(types, want) {
+				t.Fatalf("tool turn block types = %v, want %v", types, want)
+			}
+			if tt.wantTrailing && !strings.Contains(content[2].Text, "tool_a") {
+				t.Fatalf("caption = %q, want it to name tool_a", content[2].Text)
+			}
+		})
+	}
+}
+
 func TestToolCallIDsAreNormalizedForReplay(t *testing.T) {
 	t.Parallel()
 

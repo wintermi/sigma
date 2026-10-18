@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic and Bedrock Claude conversations no longer fail after a tool returns an error with an image. Both APIs reject error tool results that contain anything but text, so once a failed screenshot or render tool result was in the history every later request was rejected. The images of error tool results now follow all of the turn's tool results in the same user message, introduced by a caption naming the tool call, and the result itself keeps a text placeholder. Successful tool results, and error results for non-Claude Bedrock models, keep their images in place.
+
 OpenAI Responses requests no longer send a thinking budget. The provider-neutral `ThinkingBudgetTokens`, which `WithReasoningBudgetForContext` sets, was copied into `reasoning.budget_tokens`, a field the Responses API does not define, so OpenAI, Azure, and Codex reasoning requests built with the budget helper sent an unknown parameter; a budget alone also turned on `reasoning` and the encrypted-reasoning include for models without a level. Responses now uses effort only.
 
 Tool-call coercion of recursive unions no longer takes exponential time. With `CoercePrimitives`, arguments that fail validation are coerced branch by branch, and every union branch was coerced into, including its nested values, before its discriminator was checked; with a recursive filter schema each nesting level doubled the work, so model-supplied arguments nested 18 levels deep took about 16 seconds whether or not coercion could fix them. Branches whose own or property type, enum, or const cannot match even after coercion are now skipped first.

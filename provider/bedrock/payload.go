@@ -361,7 +361,7 @@ func converseMessages(model sigma.Model, req sigma.Request) ([]ConverseMessage, 
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
-			converted, next, err := converseToolResults(req.Messages, index)
+			converted, next, err := converseToolResults(model, req.Messages, index)
 			if err != nil {
 				return nil, err
 			}
@@ -393,25 +393,41 @@ func converseMessage(model sigma.Model, message sigma.Message) (ConverseMessage,
 		content, err := converseAssistantContent(model, message.Content)
 		return ConverseMessage{Role: "assistant", Content: content}, err
 	case sigma.RoleTool:
-		converted, _, err := converseToolResults([]sigma.Message{message}, 0)
+		converted, _, err := converseToolResults(model, []sigma.Message{message}, 0)
 		return converted, err
 	default:
 		return ConverseMessage{}, fmt.Errorf("bedrock converse stream: unsupported message role %q", message.Role)
 	}
 }
 
-func converseToolResults(messages []sigma.Message, start int) (ConverseMessage, int, error) {
+func converseToolResults(model sigma.Model, messages []sigma.Message, start int) (ConverseMessage, int, error) {
 	content := []ConverseContentBlock{}
+	var errorImages []ConverseContentBlock
 	index := start
 	for index < len(messages) && messages[index].Role == sigma.RoleTool {
-		block, err := converseToolResult(messages[index])
+		message := messages[index]
+		// Claude rejects error tool results containing anything but text, so
+		// for Claude their images follow the turn's tool results.
+		split, hasErrorImages := transform.SplitErrorToolResultImages(message)
+		hasErrorImages = hasErrorImages && isClaudeBedrockModel(model)
+		if hasErrorImages {
+			message.Content = split.Content
+		}
+		block, err := converseToolResult(message)
 		if err != nil {
 			return ConverseMessage{}, index, err
 		}
 		content = append(content, block)
+		if hasErrorImages {
+			images, err := converseInputContent(append([]sigma.ContentBlock{sigma.Text(split.Caption)}, split.Images...))
+			if err != nil {
+				return ConverseMessage{}, index, err
+			}
+			errorImages = append(errorImages, images...)
+		}
 		index++
 	}
-	return ConverseMessage{Role: "user", Content: content}, index, nil
+	return ConverseMessage{Role: "user", Content: append(content, errorImages...)}, index, nil
 }
 
 func converseToolResult(message sigma.Message) (ConverseContentBlock, error) {

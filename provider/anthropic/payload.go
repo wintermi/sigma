@@ -163,20 +163,12 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 	for index := 0; index < len(req.Messages); index++ {
 		message := req.Messages[index]
 		if message.Role == sigma.RoleTool {
-			blocks := make([]map[string]any, 0, 1)
-			var displaced []map[string]any
-			for index < len(req.Messages) && req.Messages[index].Role == sigma.RoleTool {
-				block, output, err := anthropicToolResultWithReferences(model, req.Messages[index], deferredTools, loadedToolNames, normalizeToolName)
-				if err != nil {
-					return nil, err
-				}
-				blocks = append(blocks, block)
-				displaced = append(displaced, output...)
-				index++
+			converted, next, err := anthropicToolResultsMessage(model, req.Messages, index, deferredTools, loadedToolNames, normalizeToolName)
+			if err != nil {
+				return nil, err
 			}
-			index--
-			// Output displaced by tool references must follow every tool_result block.
-			messages = append(messages, map[string]any{"role": "user", "content": append(blocks, displaced...)})
+			messages = append(messages, converted)
+			index = next - 1
 			continue
 		}
 		converted, err := anthropicMessage(model, message, compat)
@@ -565,6 +557,40 @@ func anthropicToolInputSchema(tool sigma.Tool, strict bool) (any, error) {
 		inputSchema = map[string]any{"type": "object"}
 	}
 	return inputSchema, nil
+}
+
+// anthropicToolResultsMessage converts the run of tool results starting at
+// start into one user message and returns the index after the run.
+func anthropicToolResultsMessage(model sigma.Model, messages []sigma.Message, start int, deferredTools map[string]sigma.Tool, loadedToolNames map[string]struct{}, normalizeToolName func(string) string) (map[string]any, int, error) {
+	blocks := make([]map[string]any, 0, 1)
+	var displaced, errorImages []map[string]any
+	index := start
+	for ; index < len(messages) && messages[index].Role == sigma.RoleTool; index++ {
+		message := messages[index]
+		// Anthropic rejects error tool results containing anything but text,
+		// so their images follow the turn's tool results.
+		split, hasErrorImages := transform.SplitErrorToolResultImages(message)
+		if hasErrorImages {
+			message.Content = split.Content
+		}
+		block, output, err := anthropicToolResultWithReferences(model, message, deferredTools, loadedToolNames, normalizeToolName)
+		if err != nil {
+			return nil, index, err
+		}
+		blocks = append(blocks, block)
+		displaced = append(displaced, output...)
+		if hasErrorImages {
+			images, err := anthropicInputContent(model, append([]sigma.ContentBlock{sigma.Text(split.Caption)}, split.Images...), false)
+			if err != nil {
+				return nil, index, err
+			}
+			errorImages = append(errorImages, images...)
+		}
+	}
+	// Output displaced by tool references must follow every tool_result block.
+	blocks = append(blocks, displaced...)
+	blocks = append(blocks, errorImages...)
+	return map[string]any{"role": "user", "content": blocks}, index, nil
 }
 
 // anthropicToolResultWithReferences converts a tool result that may load

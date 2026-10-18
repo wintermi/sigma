@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send error tool-result images after the tool results for Anthropic and Bedrock Claude.
 - [x] Stop sending `reasoning.budget_tokens` on Responses requests.
 - [x] Coerce recursive discriminated unions in polynomial time.
 - [x] - [x] Attach provider diagnostics to mid-stream error final messages.
