@@ -553,6 +553,9 @@ metadata includes `mimo-v2.5`, `mimo-v2.5-pro`, and
 `mimo-v2.5-pro-ultraspeed` for API billing. Each CN, AMS, and SGP token-plan
 route includes `mimo-v2.5` and `mimo-v2.5-pro`; use `RegisterTokenPlanCN`,
 `RegisterTokenPlanAMS`, or `RegisterTokenPlanSGP` for the respective region.
+MiMo documents only a thinking on/off toggle, so these models accept the `off`
+and `high` reasoning levels and send `thinking.type` without
+`reasoning_effort`.
 
 ### Google Generative AI
 

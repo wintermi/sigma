@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Xiaomi MiMo API-billing and token-plan models send only the `thinking` on/off toggle instead of also sending `reasoning_effort`, which MiMo rejects for values such as `minimal`, and accept only the `off` and `high` reasoning levels.
 - Anthropic Messages and Bedrock Claude requests move the images of error tool results (`IsError`) after all of the turn's tool results, captioned with the tool call, and leave a text placeholder in the result, because both APIs reject error tool results containing images. Successful tool results and other Bedrock models keep images in place.
 - OpenAI Responses, Azure, and Codex requests no longer send `reasoning.budget_tokens`, which the Responses API does not accept, when `ThinkingBudgetTokens` is set (for example by `WithReasoningBudgetForContext`); a budget without a reasoning level no longer enables reasoning or the encrypted-reasoning include.
 - `ValidateToolCallWithOptions` with `CoercePrimitives` skips union branches whose own or property type, enum, or const cannot match even after coercion before coercing their nested values, so arguments for recursive discriminated `anyOf`/`oneOf` schemas that fail validation no longer take time doubling with each nesting level.

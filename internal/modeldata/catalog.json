@@ -21604,7 +21604,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21636,7 +21645,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21668,7 +21686,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21701,7 +21728,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21733,7 +21769,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21766,7 +21811,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21798,7 +21852,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21831,7 +21894,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }
@@ -21863,7 +21935,16 @@
       "providerMetadata": {
         "modelFamily": "mimo"
       },
+      "thinkingLevelMap": {
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ],
       "openAICompletionsCompat": {
+        "supportsReasoningEffort": "unsupported",
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported"
       }

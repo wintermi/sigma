@@ -7,6 +7,8 @@ package xiaomi_test
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +23,7 @@ type capturedRequest struct {
 	Method  string
 	Path    string
 	Headers http.Header
+	Body    []byte
 }
 
 func TestRegistersReportOpenAICompletionsAPI(t *testing.T) {
@@ -154,6 +157,81 @@ func TestRegistersCatalogModels(t *testing.T) {
 	}
 }
 
+// MiMo documents only the thinking on/off toggle and rejects reasoning_effort
+// values such as "minimal", so catalog models expose only off and high and
+// never send reasoning_effort.
+func TestCatalogModelsSendOnlyThinkingToggle(t *testing.T) {
+	t.Parallel()
+
+	providers := []sigma.ProviderID{
+		sigma.ProviderXiaomi,
+		sigma.ProviderXiaomiTokenPlanCN,
+		sigma.ProviderXiaomiTokenPlanAMS,
+		sigma.ProviderXiaomiTokenPlanSGP,
+	}
+	for _, provider := range providers {
+		t.Run(string(provider), func(t *testing.T) {
+			t.Parallel()
+
+			requests := make(chan capturedRequest, 2)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeCompleted(t, w)
+			}))
+			t.Cleanup(server.Close)
+
+			model, ok := sigma.DefaultRegistry().Model(provider, "mimo-v2.5-pro")
+			if !ok {
+				t.Fatalf("default registry missing %s mimo-v2.5-pro", provider)
+			}
+			// Catalog rows carry their endpoint, which overrides the provider's.
+			model.ProviderMetadata["baseURL"] = server.URL + "/v1"
+			registry := sigma.NewRegistry()
+			if err := registry.RegisterTextProvider(provider, xiaomi.NewProvider(xiaomi.WithBaseURL(server.URL+"/v1"))); err != nil {
+				t.Fatalf("RegisterTextProvider returned error: %v", err)
+			}
+			if err := registry.RegisterModel(model); err != nil {
+				t.Fatalf("RegisterModel returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			request := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}
+
+			for level, wantThinking := range map[sigma.ThinkingLevel]string{
+				sigma.ThinkingLevelHigh: "enabled",
+				sigma.ThinkingLevelOff:  "disabled",
+			} {
+				if _, err := client.Complete(context.Background(), model, request, sigma.WithAPIKey("key"), sigma.WithReasoningLevel(level)); err != nil {
+					t.Fatalf("Complete(%s) returned error: %v", level, err)
+				}
+				var payload map[string]any
+				if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+					t.Fatalf("Unmarshal request body returned error: %v", err)
+				}
+				if got := payload["thinking"]; !jsonEqual(got, map[string]any{"type": wantThinking}) {
+					t.Fatalf("thinking for %s = %#v, want type %q", level, got, wantThinking)
+				}
+				if effort, ok := payload["reasoning_effort"]; ok {
+					t.Fatalf("reasoning_effort for %s = %#v, want absent", level, effort)
+				}
+			}
+
+			for _, level := range []sigma.ThinkingLevel{sigma.ThinkingLevelMinimal, sigma.ThinkingLevelMedium, sigma.ThinkingLevelXHigh} {
+				_, err := client.Complete(context.Background(), model, request, sigma.WithAPIKey("key"), sigma.WithReasoningLevel(level))
+				var sigmaErr *sigma.Error
+				if !errors.As(err, &sigmaErr) || sigmaErr.Code != sigma.ErrorInvalidOptions {
+					t.Fatalf("Complete(%s) error = %v, want invalid options", level, err)
+				}
+			}
+		})
+	}
+}
+
+func jsonEqual(got any, want map[string]any) bool {
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	return string(gotJSON) == string(wantJSON)
+}
+
 func xiaomiTestModel(provider sigma.ProviderID) sigma.Model {
 	return sigma.Model{
 		ID:              "mimo-v2.5-pro",
@@ -168,11 +246,12 @@ func xiaomiTestModel(provider sigma.ProviderID) sigma.Model {
 func captureRequest(t *testing.T, ch chan<- capturedRequest, r *http.Request) {
 	t.Helper()
 
-	_, _ = io.Copy(io.Discard, r.Body)
+	body, _ := io.ReadAll(r.Body)
 	ch <- capturedRequest{
 		Method:  r.Method,
 		Path:    r.URL.Path,
 		Headers: r.Header.Clone(),
+		Body:    body,
 	}
 }
 
