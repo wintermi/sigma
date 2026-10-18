@@ -13,12 +13,7 @@ import (
 	"github.com/wintermi/sigma"
 )
 
-// A recursive discriminated union must validate in time linear in the
-// model-controlled nesting depth. Before the fix, depth 20 took seconds and
-// each extra level doubled the time.
-func TestValidateToolCallRecursiveAnyOfIsNotExponential(t *testing.T) {
-	t.Parallel()
-
+func recursiveFilterTools() []sigma.Tool {
 	schema := sigma.Schema{
 		"type":       "object",
 		"properties": map[string]any{"filter": map[string]any{"$ref": "#/$defs/filter"}},
@@ -37,11 +32,25 @@ func TestValidateToolCallRecursiveAnyOfIsNotExponential(t *testing.T) {
 			}},
 		}}},
 	}
-	filter := `{"op":"eq","field":"x"}`
-	for range 24 {
+	return []sigma.Tool{{Name: "search", InputSchema: schema}}
+}
+
+func nestedOrFilter(leaf string, depth int) string {
+	filter := leaf
+	for range depth {
 		filter = `{"op":"or","args":[` + filter + `]}`
 	}
-	tools := []sigma.Tool{{Name: "search", InputSchema: schema}}
+	return filter
+}
+
+// A recursive discriminated union must validate in time linear in the
+// model-controlled nesting depth. Before the fix, depth 20 took seconds and
+// each extra level doubled the time.
+func TestValidateToolCallRecursiveAnyOfIsNotExponential(t *testing.T) {
+	t.Parallel()
+
+	tools := recursiveFilterTools()
+	filter := nestedOrFilter(`{"op":"eq","field":"x"}`, 24)
 	call := sigma.ToolCall{Name: "search", Arguments: `{"filter":` + filter + `}`}
 
 	for _, options := range []sigma.ToolValidationOptions{{}, {CoercePrimitives: true}} {
@@ -61,5 +70,52 @@ func TestValidateToolCallRecursiveAnyOfIsNotExponential(t *testing.T) {
 	}
 	if elapsed := time.Since(start); elapsed > 2*time.Second {
 		t.Fatalf("rejecting the invalid filter took %s", elapsed)
+	}
+}
+
+// Coercion runs only when the arguments fail validation, so it must also stay
+// polynomial for a recursive union whose deepest leaf needs coercing or cannot
+// be coerced at all. Before the fix every branch was coerced into before its
+// discriminator was checked, doubling the time per nesting level.
+func TestCoerceToolCallRecursiveAnyOfIsNotExponential(t *testing.T) {
+	t.Parallel()
+
+	tools := recursiveFilterTools()
+	options := sigma.ToolValidationOptions{CoercePrimitives: true}
+	tests := []struct {
+		name      string
+		leaf      string
+		wantError bool
+	}{
+		{name: "coercible leaf", leaf: `{"op":"eq","field":1}`},
+		{name: "uncoercible leaf", leaf: `{"op":"eq","field":{}}`, wantError: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			call := sigma.ToolCall{Name: "search", Arguments: `{"filter":` + nestedOrFilter(tt.leaf, 24) + `}`}
+			start := time.Now()
+			args, err := sigma.ValidateToolCallWithOptions(tools, call, options)
+			if elapsed := time.Since(start); elapsed > 2*time.Second {
+				t.Fatalf("ValidateToolCallWithOptions took %s for nesting depth 24", elapsed)
+			}
+			if tt.wantError {
+				if err == nil {
+					t.Fatal("ValidateToolCallWithOptions accepted an object field")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ValidateToolCallWithOptions returned error: %v", err)
+			}
+			node := args["filter"]
+			for range 24 {
+				node = node.(map[string]any)["args"].([]any)[0]
+			}
+			if field := node.(map[string]any)["field"]; field != "1" {
+				t.Fatalf("leaf field = %#v, want coerced string %q", field, "1")
+			}
+		})
 	}
 }

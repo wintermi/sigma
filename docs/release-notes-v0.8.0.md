@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool-call coercion of recursive unions no longer takes exponential time. With `CoercePrimitives`, arguments that fail validation are coerced branch by branch, and every union branch was coerced into, including its nested values, before its discriminator was checked; with a recursive filter schema each nesting level doubled the work, so model-supplied arguments nested 18 levels deep took about 16 seconds whether or not coercion could fix them. Branches whose own or property type, enum, or const cannot match even after coercion are now skipped first.
+
 `IsContextOverflow` now detects overflow reported mid-stream. It reads the diagnostics on the final message, but the OpenAI, Anthropic, Google, Vertex, Azure, and Codex adapters attached diagnostics only for HTTP status errors, so a `response.failed` with `context_length_exceeded` or an Anthropic `model_context_window_exceeded` stop classified as overflow through `ClassifyError` while the stored message did not. The stream writer now attaches the provider diagnostic when an error final message has none.
 
 Partial-message accumulation is linear for providers that send only `DeltaText`, such as Radius and custom `NewStream` providers. Text, thinking, and tool-argument deltas were appended with string concatenation, copying the whole block on every event, so 2 MiB streamed in 16-byte deltas took about 18 seconds; blocks now use a builder.

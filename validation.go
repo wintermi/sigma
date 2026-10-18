@@ -242,6 +242,9 @@ func (context *validationContext) coerceAnyOf(schema map[string]any, value any, 
 		return nil, false, err
 	}
 	for _, branch := range branches {
+		if !coercedShallowMayMatch(branch, value) {
+			continue
+		}
 		candidate := cloneJSONValue(value, cloneContent)
 		coerced, err := context.coerceValue(branch, candidate, path, toolName)
 		if err != nil {
@@ -270,6 +273,9 @@ func (context *validationContext) coerceOneOf(schema map[string]any, value any, 
 		return nil, false, err
 	}
 	for _, branch := range branches {
+		if !coercedShallowMayMatch(branch, value) {
+			continue
+		}
 		candidate := cloneJSONValue(value, cloneContent)
 		coerced, err := context.coerceValue(branch, candidate, path, toolName)
 		if err != nil {
@@ -1045,6 +1051,61 @@ func validateShallow(schema map[string]any, value any, path string, toolName str
 		return err
 	}
 	return validateConst(schema, value, path, toolName)
+}
+
+// coercedShallowMayMatch reports whether coercion could make value pass the
+// type, enum, and const of schema and of its properties. Union coercion skips
+// branches that fail it, such as one with the wrong discriminator, before
+// coercing their nested values; recursive unions otherwise cost 2^depth.
+// Schemas it cannot judge cheaply are assumed to match.
+func coercedShallowMayMatch(schema map[string]any, value any) bool {
+	if !coercedPrimitiveMayMatch(schema, value) {
+		return false
+	}
+	object, ok := value.(map[string]any)
+	if !ok {
+		return true
+	}
+	properties, err := schemaProperties(schema)
+	if err != nil {
+		return true
+	}
+	for name, property := range properties {
+		if propertyValue, ok := object[name]; ok && !coercedPrimitiveMayMatch(property, propertyValue) {
+			return false
+		}
+	}
+	return true
+}
+
+func coercedPrimitiveMayMatch(schema map[string]any, value any) bool {
+	for _, keyword := range []string{"$ref", "allOf", "anyOf", "oneOf"} {
+		if _, ok := schema[keyword]; ok {
+			return true
+		}
+	}
+	types, err := schemaTypes(schema)
+	if err != nil {
+		return true
+	}
+	if len(types) > 0 && !valueMatchesAnyType(value, types) {
+		coerced := false
+		for _, typ := range types {
+			if next, changed := coercePrimitiveByType(value, typ); changed {
+				value, coerced = next, true
+				break
+			}
+		}
+		if !coerced {
+			return false
+		}
+	}
+	for _, err := range []error{validateEnum(schema, value, "", ""), validateConst(schema, value, "", "")} {
+		if err != nil && !isMalformedSchemaError(err) {
+			return false
+		}
+	}
+	return true
 }
 
 type schemaPatternProperty struct {

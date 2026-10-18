@@ -567,6 +567,42 @@ func TestValidateToolCallWithOptionsPreservesValidUnionValues(t *testing.T) {
 	}
 }
 
+// Union coercion skips branches whose discriminator cannot match, so a
+// discriminator that only matches after coercion must still select its branch.
+func TestValidateToolCallWithOptionsCoercesUnionDiscriminator(t *testing.T) {
+	t.Parallel()
+
+	branch := func(version int, payloadType string) map[string]any {
+		return map[string]any{
+			"type":     "object",
+			"required": []any{"version", "payload"},
+			"properties": map[string]any{
+				"version": map[string]any{"type": "integer", "const": version},
+				"payload": map[string]any{"type": payloadType},
+			},
+		}
+	}
+	schema := sigma.Schema{
+		"type":       "object",
+		"properties": map[string]any{"message": map[string]any{"anyOf": []any{branch(1, "boolean"), branch(2, "integer")}}},
+		"required":   []any{"message"},
+	}
+
+	decoded, err := sigma.ValidateToolCallWithOptions(
+		[]sigma.Tool{{Name: "send", InputSchema: schema}},
+		sigma.ToolCall{Name: "send", Arguments: `{"message":{"version":"2","payload":"7"}}`},
+		sigma.ToolValidationOptions{CoercePrimitives: true},
+	)
+	if err != nil {
+		t.Fatalf("ValidateToolCallWithOptions returned error: %v", err)
+	}
+
+	want := map[string]any{"message": map[string]any{"version": 2, "payload": 7}}
+	if gotJSON, wantJSON := mustJSON(t, decoded), mustJSON(t, want); gotJSON != wantJSON {
+		t.Fatalf("decoded arguments = %s, want %s", gotJSON, wantJSON)
+	}
+}
+
 func TestValidateToolCallWithOptionsCoercionRejectsMalformedUnionBranches(t *testing.T) {
 	t.Parallel()
 
