@@ -296,7 +296,10 @@ Anthropic-compatible adapters. Use `Register` for Chat Completions models,
 `RegisterResponses` for Responses models, and `RegisterAnthropic` for
 Anthropic Messages models. The wrapper applies the Copilot base URL, the
 Copilot dynamic initiator/intent/vision headers, static model headers from
-metadata, and bearer-token auth.
+metadata, and bearer-token auth. Stored Copilot OAuth credentials and
+`GitHubCopilotOAuthTokenProvider` route business, enterprise, and data-residency
+accounts to the host in the token's `proxy-ep` field instead of the individual
+endpoint; an explicit request `base_url` provider option still wins.
 
 ### Cloudflare AI Gateway
 

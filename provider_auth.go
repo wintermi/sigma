@@ -52,10 +52,18 @@ type OAuthAuth struct {
 	RefreshBefore  time.Duration
 	Refresh        OAuthRefreshFunc
 	Credential     OAuthCredentialFunc
+	// BaseURL optionally returns the endpoint a stored credential serves model
+	// from, such as a per-account host, as AuthResolution.BaseURL. An explicit
+	// request base_url provider option still takes precedence.
+	BaseURL OAuthBaseURLFunc
 }
 
 // OAuthRefreshFunc refreshes stored OAuth credentials.
 type OAuthRefreshFunc func(context.Context, StoredCredential) (StoredCredential, error)
+
+// OAuthBaseURLFunc returns the base URL for model and a stored OAuth
+// credential, or "" to keep the model's endpoint.
+type OAuthBaseURLFunc func(Model, StoredCredential) string
 
 // OAuthCredentialFunc converts stored OAuth credentials into request credentials.
 type OAuthCredentialFunc func(context.Context, Model, Options, StoredCredential) (Credential, error)
@@ -178,11 +186,11 @@ func (r StoredCredentialAuthResolver) resolveStored(
 		if !hasAuth || auth.OAuth == nil {
 			return AuthResolution{}, false, nil
 		}
-		credential, err := r.resolveStoredOAuth(ctx, model, opts, *auth.OAuth, stored)
+		resolution, err := r.resolveStoredOAuth(ctx, model, opts, *auth.OAuth, stored)
 		if err != nil {
 			return AuthResolution{}, false, err
 		}
-		return AuthResolution{Credential: credential, Source: credential.Source}, true, nil
+		return resolution, true, nil
 	default:
 		return AuthResolution{}, false, nil
 	}
@@ -194,7 +202,7 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 	opts Options,
 	oauth OAuthAuth,
 	stored StoredCredential,
-) (Credential, error) {
+) (AuthResolution, error) {
 	credential := stored
 	refreshBefore := oauth.RefreshBefore
 	if refreshBefore == 0 {
@@ -206,33 +214,37 @@ func (r StoredCredentialAuthResolver) resolveStoredOAuth(
 	}
 	if oauthvalidity.NeedsRefresh(now(), credential.Expiry, refreshBefore, opts.OAuthMinimumValidity) {
 		if oauth.Refresh == nil {
-			return Credential{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)
+			return AuthResolution{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)
 		}
 		post, ok, err := r.refreshStoredOAuth(ctx, model.Provider, oauth, credential, now, refreshBefore, opts.OAuthMinimumValidity)
 		if err != nil {
-			return Credential{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s: %w", model.Provider, err)}
+			return AuthResolution{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s: %w", model.Provider, err)}
 		}
 		if !ok || post.Type != CredentialTypeOAuthToken {
-			return Credential{}, unavailableCredential(model, "credential-store:"+string(model.Provider))
+			return AuthResolution{}, unavailableCredential(model, "credential-store:"+string(model.Provider))
 		}
 		credential = post
 		// The default window only triggers a refresh; an explicit minimum is a
 		// requirement the refreshed token must meet.
 		if opts.OAuthMinimumValidity != nil && oauthvalidity.NeedsRefresh(now(), credential.Expiry, refreshBefore, opts.OAuthMinimumValidity) {
-			return Credential{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s returned a token that expires too soon for the requested minimum validity: %w", model.Provider, ErrCredentialUnavailable)}
+			return AuthResolution{}, &storedOAuthError{fmt.Errorf("provider oauth: refresh %s returned a token that expires too soon for the requested minimum validity: %w", model.Provider, ErrCredentialUnavailable)}
 		}
 	}
 	if oauth.Credential == nil {
-		return Credential{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)
+		return AuthResolution{}, storedCredentialUnsupported(model, CredentialTypeOAuthToken)
 	}
 	resolved, err := oauth.Credential(ctx, model, opts, credential)
 	if err != nil {
-		return Credential{}, &storedOAuthError{err}
+		return AuthResolution{}, &storedOAuthError{err}
 	}
 	if resolved.Source == "" {
 		resolved.Source = "credential-store:" + string(model.Provider)
 	}
-	return resolved, nil
+	resolution := AuthResolution{Credential: resolved, Source: resolved.Source}
+	if oauth.BaseURL != nil {
+		resolution.BaseURL = oauth.BaseURL(model, credential)
+	}
+	return resolution, nil
 }
 
 func (r StoredCredentialAuthResolver) refreshStoredOAuth(
@@ -322,11 +334,11 @@ func ResolveProviderAuth(ctx context.Context, model Model, opts Options, auth Pr
 			return resolveAPIKeyAuth(ctx, model, opts, *auth.APIKey, stored, true)
 		case CredentialTypeOAuthToken:
 			resolver := StoredCredentialAuthResolver{Store: store, Registry: NewRegistry()}
-			credential, err := resolver.resolveStoredOAuth(ctx, model, opts, valueOrDefaultOAuth(auth.OAuth), stored)
+			resolution, err := resolver.resolveStoredOAuth(ctx, model, opts, valueOrDefaultOAuth(auth.OAuth), stored)
 			if err != nil {
 				return AuthResolution{}, false, err
 			}
-			return AuthResolution{Credential: credential, Source: credential.Source}, true, nil
+			return resolution, true, nil
 		default:
 			return AuthResolution{}, false, storedCredentialUnsupported(model, stored.Type)
 		}

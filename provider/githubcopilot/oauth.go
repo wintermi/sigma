@@ -141,8 +141,33 @@ func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAut
 					Metadata: metadata,
 				}, nil
 			},
+			BaseURL: func(model sigma.Model, stored sigma.StoredCredential) string {
+				enterpriseDomain := stringMetadata(stored.Metadata, "enterpriseDomain")
+				if enterpriseDomain == "" {
+					enterpriseDomain = opts.EnterpriseDomain
+				}
+				return githubCopilotRequestBaseURL(model, stringMetadata(stored.Metadata, "baseURL"), stored.Value, enterpriseDomain)
+			},
 		},
 	}
+}
+
+// githubCopilotRequestBaseURL returns the account's Copilot endpoint for
+// model's API, or "" for the individual endpoint that model metadata already
+// targets. Business, enterprise, and data-residency accounts are served from
+// the token's proxy-ep host.
+func githubCopilotRequestBaseURL(model sigma.Model, accountBaseURL, token, enterpriseDomain string) string {
+	if accountBaseURL == "" {
+		accountBaseURL = GitHubCopilotBaseURL(token, enterpriseDomain)
+	}
+	accountBaseURL = strings.TrimRight(accountBaseURL, "/")
+	if accountBaseURL == "" || accountBaseURL == DefaultBaseURL {
+		return ""
+	}
+	if model.API == sigma.APIAnthropicMessages {
+		return accountBaseURL + "/v1"
+	}
+	return accountBaseURL
 }
 
 // RegisterAuth registers GitHub Copilot auth descriptors on registry.
@@ -423,6 +448,21 @@ func stringMetadata(metadata map[string]any, key string) string {
 		return value
 	}
 	return ""
+}
+
+// ResolveAuthResolution implements sigma.AuthResolutionResolver and routes
+// requests to the account's Copilot endpoint.
+func (p *GitHubCopilotOAuthTokenProvider) ResolveAuthResolution(ctx context.Context, model sigma.Model, opts sigma.Options) (sigma.AuthResolution, error) {
+	credential, err := p.Token(ctx, model, opts)
+	if err != nil {
+		return sigma.AuthResolution{}, err
+	}
+	enterpriseDomain := stringMetadata(credential.Metadata, "enterpriseDomain")
+	return sigma.AuthResolution{
+		Credential: credential,
+		Source:     credential.Source,
+		BaseURL:    githubCopilotRequestBaseURL(model, stringMetadata(credential.Metadata, "baseURL"), credential.Value, enterpriseDomain),
+	}, nil
 }
 
 // Resolve implements sigma.AuthResolver.

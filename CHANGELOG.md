@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- GitHub Copilot business, enterprise, and data-residency accounts are routed to the endpoint in their token's `proxy-ep` field for Chat Completions, Responses, and Anthropic Messages models, whether the token comes from a stored credential or `GitHubCopilotOAuthTokenProvider`; requests previously always went to the individual endpoint. `OAuthAuth.BaseURL` lets stored OAuth descriptors supply such a per-credential endpoint.
 - A stored OAuth credential whose refresh fails, whose refreshed token misses `WithOAuthMinimumValidity`, or whose token derivation fails now fails the request instead of falling back to environment API keys or default provider callbacks. The error still wraps `ErrCredentialUnavailable` where it did before.
 - Xiaomi MiMo API-billing and token-plan models send only the `thinking` on/off toggle instead of also sending `reasoning_effort`, which MiMo rejects for values such as `minimal`, and accept only the `off` and `high` reasoning levels.
 - Anthropic Messages and Bedrock Claude requests move the images of error tool results (`IsError`) after all of the turn's tool results, captioned with the tool call, and leave a text placeholder in the result, because both APIs reject error tool results containing images. Successful tool results and other Bedrock models keep images in place.
