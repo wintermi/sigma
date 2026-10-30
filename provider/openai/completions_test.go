@@ -3371,12 +3371,17 @@ func TestStreamingMapsFinishReasonEndToEndTurn(t *testing.T) {
 	}
 }
 
-func TestStreamingPreservesUnknownFinishReason(t *testing.T) {
+// Unrecognised finish reasons such as DeepSeek's insufficient_system_resource
+// mark an interrupted generation, so they fail the turn while keeping the
+// partial output and the usage reported after them.
+func TestStreamingUnknownFinishReasonIsProviderError(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_unknown","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"provider_custom"}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_unknown","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":"insufficient_system_resource"}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_unknown","choices":[],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
 	t.Cleanup(server.Close)
 
@@ -3385,13 +3390,20 @@ func TestStreamingPreservesUnknownFinishReason(t *testing.T) {
 	client := openAITestClient(t, providerID, model, server.URL)
 
 	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
+	var providerErr *sigma.ProviderError
+	if !errors.As(err, &providerErr) {
+		t.Fatalf("Complete error = %v, want provider error", err)
 	}
-	if got, want := final.StopReason, sigma.StopReasonUnknown; got != want {
-		t.Fatalf("stop reason = %q, want %q", got, want)
+	if !strings.Contains(err.Error(), "insufficient_system_resource") {
+		t.Fatalf("error = %q, want it to name the finish reason", err)
 	}
-	if got, want := final.ProviderMetadata["finish_reason"], "provider_custom"; got != want {
+	if len(final.Content) != 1 || final.Content[0].Text != "partial" {
+		t.Fatalf("final content = %#v, want the partial text", final.Content)
+	}
+	if final.Usage == nil || final.Usage.OutputTokens != 2 {
+		t.Fatalf("final usage = %#v, want the reported usage", final.Usage)
+	}
+	if got, want := final.ProviderMetadata["finish_reason"], "insufficient_system_resource"; got != want {
 		t.Fatalf("finish reason = %v, want %v", got, want)
 	}
 }

@@ -167,6 +167,9 @@ func parseCompletionsStream(ctx context.Context, r io.Reader, writer sigma.Strea
 	if !parser.sawFinishReason && (supportsFinishReason || !sawDone) {
 		return parser.finalize(ctx), errors.New("openai completions: stream ended without finish_reason")
 	}
+	if parser.finishReason == sigma.StopReasonUnknown {
+		return parser.finalize(ctx), finishReasonError(model, parser.rawFinishReason)
+	}
 	return parser.finalize(ctx), nil
 }
 
@@ -821,14 +824,18 @@ func stopReason(reason string) sigma.StopReason {
 func providerFinishReasonError(model sigma.Model, reason string) error {
 	switch reason {
 	case "network_error", "model_context_window_exceeded":
-		return openAIStreamProviderError(model, sigma.APIOpenAICompletions, &streamError{
-			Message: "Provider finish_reason: " + reason,
-			Type:    reason,
-			Code:    reason,
-		})
+		return finishReasonError(model, reason)
 	default:
 		return nil
 	}
+}
+
+func finishReasonError(model sigma.Model, reason string) error {
+	return openAIStreamProviderError(model, sigma.APIOpenAICompletions, &streamError{
+		Message: "Provider finish_reason: " + reason,
+		Type:    reason,
+		Code:    reason,
+	})
 }
 
 func intPtr(value int) *int {

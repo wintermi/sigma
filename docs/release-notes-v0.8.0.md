@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI Chat Completions turns that end with an unrecognised `finish_reason` now fail. Providers use such reasons for interrupted generations, for example DeepSeek's `insufficient_system_resource`, but sigma finished them as successful turns with an `unknown` stop reason, so truncated answers looked complete. They now return a typed provider error naming the reason, while the final message keeps the partial output, usage, and raw `finish_reason`; the recognised reasons, including `content_filter`, are unchanged.
+
 Codex Responses no longer reports failed responses as successful turns. Codex can end a stream with `response.done` whatever the outcome, and sigma treated every `response.done` as completion, so a `failed` or `cancelled` response finished as an ordinary end turn with whatever content had streamed, an `incomplete` response finished with an unknown stop reason, and on the WebSocket transport the failed response was cached as the next turn's `previous_response_id`. The response status now decides: failed and cancelled responses return errors, incomplete responses follow `response.incomplete` handling, and only completed responses finish successfully.
 
 Bedrock one-hour prompt caching now uses the Converse wire value. With `CacheRetentionLong` or `CacheRetentionPersistent`, Claude cache points carried `ttl: "ONE_HOUR"`, the AWS SDK enum name, rather than its value `"1h"`, and usage parsing looked for the same name, so one-hour cache writes reported by Bedrock were counted as five-minute writes and priced at the five-minute rate. Requests now send `"1h"`, and `LongCacheWriteInputTokens` counts the `cacheDetails` entries Bedrock reports with that TTL.

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Return typed errors for unrecognised Chat Completions finish reasons.
 - [x] Return errors for Codex `response.done` with a failed, cancelled, or incomplete status.
 - [x] Send and read Bedrock one-hour cache TTLs as `1h`.
 - [x] Route GitHub Copilot business and enterprise accounts to their `proxy-ep` endpoint.
