@@ -746,7 +746,9 @@ func TestVertexFunctionCallsRespectExplicitFinishReasons(t *testing.T) {
 		{finishReason: "MALFORMED_FUNCTION_CALL", want: sigma.StopReasonError},
 		{finishReason: "TOO_MANY_TOOL_CALLS", want: sigma.StopReasonError},
 		{finishReason: "UNEXPECTED_TOOL_CALL", want: sigma.StopReasonError},
-		{finishReason: "FUTURE_REASON", want: sigma.StopReasonUnknown},
+		{finishReason: "OTHER", want: sigma.StopReasonError},
+		{finishReason: "FINISH_REASON_UNSPECIFIED", want: sigma.StopReasonError},
+		{finishReason: "FUTURE_REASON", want: sigma.StopReasonError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.finishReason, func(t *testing.T) {

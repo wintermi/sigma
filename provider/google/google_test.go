@@ -1214,7 +1214,9 @@ func TestCompleteFunctionCallPreservesExplicitNonSuccessFinishReason(t *testing.
 		{finishReason: "MALFORMED_FUNCTION_CALL", want: sigma.StopReasonError},
 		{finishReason: "TOO_MANY_TOOL_CALLS", want: sigma.StopReasonError},
 		{finishReason: "UNEXPECTED_TOOL_CALL", want: sigma.StopReasonError},
-		{finishReason: "FUTURE_REASON", want: sigma.StopReasonUnknown},
+		{finishReason: "OTHER", want: sigma.StopReasonError},
+		{finishReason: "FINISH_REASON_UNSPECIFIED", want: sigma.StopReasonError},
+		{finishReason: "FUTURE_REASON", want: sigma.StopReasonError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.finishReason, func(t *testing.T) {
@@ -1481,6 +1483,32 @@ func TestMalformedFunctionCallFinishReasonMapsToErrorWithoutToolCalls(t *testing
 	}
 	if got, want := final.ProviderMetadata["finishReason"], "MALFORMED_FUNCTION_CALL"; got != want {
 		t.Fatalf("raw finish reason = %v, want %v", got, want)
+	}
+}
+
+func TestOtherFinishReasonIsProviderError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeGoogleSSE(t, w, `data: {"candidates":[{"content":{"role":"model","parts":[{"text":"the answer is"}]},"finishReason":"OTHER"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":3,"totalTokenCount":4}}
+`)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("google-other-finish-reason-test")
+	model := googleTestModel(providerID)
+	client := googleTestClient(t, providerID, model, server.URL)
+
+	final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	var providerErr *sigma.ProviderError
+	if !errors.As(err, &providerErr) || !errors.Is(err, sigma.ErrProviderResponse) {
+		t.Fatalf("Complete error = %v, want provider response error", err)
+	}
+	if message := err.Error(); !strings.Contains(message, "OTHER") || strings.Contains(message, "tool call") {
+		t.Fatalf("error = %q, want it to name the OTHER finish reason only", message)
+	}
+	if len(final.Content) != 1 || final.Content[0].Text != "the answer is" {
+		t.Fatalf("final content = %#v, want the partial text", final.Content)
 	}
 }
 

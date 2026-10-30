@@ -384,7 +384,7 @@ func TestGoogleTerminalContracts(t *testing.T) {
 			{name: "unexpected", response: `"candidates":[{"content":{"parts":[{"text":"partial"}]},"finishReason":"UNEXPECTED_TOOL_CALL"}]`, stop: sigma.StopReasonError, failure: true},
 			{name: "premature EOF", response: `"candidates":[{"content":{"parts":[{"text":"partial"}]}}]`, stop: sigma.StopReasonError, failure: true, transient: true},
 			{name: "max tokens", response: `"candidates":[{"content":{"parts":[{"text":"partial"}]},"finishReason":"MAX_TOKENS"}]`, stop: sigma.StopReasonMaxTokens},
-			{name: "unknown", response: `"candidates":[{"content":{"parts":[{"text":"partial"}]},"finishReason":"FUTURE"}]`, stop: sigma.StopReasonUnknown},
+			{name: "unknown", response: `"candidates":[{"content":{"parts":[{"text":"partial"}]},"finishReason":"FUTURE"}]`, stop: sigma.StopReasonError, failure: true},
 		} {
 			t.Run(route+"/"+tc.name, func(t *testing.T) {
 				t.Parallel()

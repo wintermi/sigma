@@ -171,7 +171,8 @@ Cancellation is controlled by `context.Context`; see [Errors](errors.md) and
 
 Google and Vertex text streams blocked at the prompt level finish with `done`
 and `StopReasonContentFilter`, retaining prompt feedback and usage. Candidate
-finish reasons `MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL` finish with
+finish reasons `MALFORMED_FUNCTION_CALL` and `UNEXPECTED_TOOL_CALL`, as well as
+`OTHER`, `FINISH_REASON_UNSPECIFIED`, and unrecognised reasons, finish with
 `error` and `StopReasonError`; `Complete` and `CompleteText` return a
 `ProviderError` wrapping `ErrProviderResponse`. These failures are non-retryable
 and retain partial output, usage, and the raw finish reason. A stream with no

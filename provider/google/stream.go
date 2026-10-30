@@ -122,11 +122,19 @@ func parseGenerativeStream(ctx context.Context, r io.Reader, writer sigma.Stream
 		return parser.finalize(ctx), fmt.Errorf("google generative ai: stream ended before finish reason")
 	}
 	final := parser.finalize(ctx)
-	if parser.stopReason == sigma.StopReasonError {
-		body, _ := json.Marshal(map[string]any{"error": map[string]any{"code": parser.rawStopReason, "message": "Google rejected the generated tool call: " + parser.rawStopReason}})
-		return final, sigma.NewProviderError(model.Provider, model.API, model.ID, http.StatusOK, parser.responseID, 0, body, sigma.ErrProviderResponse)
+	var message string
+	switch parser.stopReason {
+	case sigma.StopReasonError:
+		message = "Google rejected the generated tool call: " + parser.rawStopReason
+	case sigma.StopReasonUnknown:
+		// OTHER, FINISH_REASON_UNSPECIFIED, and unrecognised reasons end the
+		// generation without a successful stop.
+		message = "Google stopped with finish reason " + parser.rawStopReason
+	default:
+		return final, nil
 	}
-	return final, nil
+	body, _ := json.Marshal(map[string]any{"error": map[string]any{"code": parser.rawStopReason, "message": message}})
+	return final, sigma.NewProviderError(model.Provider, model.API, model.ID, http.StatusOK, parser.responseID, 0, body, sigma.ErrProviderResponse)
 }
 
 func (p *streamParser) handleEvent(ctx context.Context, event sse.Event) error {
