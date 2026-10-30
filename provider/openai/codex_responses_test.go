@@ -1091,6 +1091,53 @@ func TestCodexResponsesWebSocketRetriesConnectionLimitBeforeFallback(t *testing.
 	}
 }
 
+func TestCodexResponsesWebSocketFailedDoneIsNotContinued(t *testing.T) {
+	openai.CloseCodexResponsesWebSocketSessions()
+	openai.ResetCodexResponsesWebSocketStatsAll()
+	t.Cleanup(openai.CloseCodexResponsesWebSocketSessions)
+	t.Cleanup(openai.ResetCodexResponsesWebSocketStatsAll)
+
+	var served atomic.Int32
+	requests := make(chan map[string]any, 2)
+	server := newCodexWebSocketTestServer(t, func(_ *http.Request, ws *codexWebSocketTestConn) {
+		for {
+			request, err := ws.readJSONError()
+			if err != nil {
+				return
+			}
+			requests <- request
+			if served.Add(1) == 1 {
+				ws.writeJSON(t, map[string]any{
+					"type":     "response.done",
+					"response": map[string]any{"id": "resp_failed", "status": "failed", "error": map[string]any{"code": "server_error", "message": "boom"}},
+				})
+				continue
+			}
+			writeCodexWebSocketTextResponse(t, ws, "resp_2", "msg_2", "txt_2", "Second")
+		}
+	})
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("codex-responses-ws-failed-done-test")
+	model := codexResponsesTestModel(providerID)
+	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+	sessionID := "failed-done-session"
+
+	request := sigma.Request{Messages: []sigma.Message{sigma.UserText("first")}}
+	if _, err := client.Complete(context.Background(), model, request, sigma.WithTransport(sigma.TransportWebSocket), sigma.WithSessionID(sessionID)); err == nil {
+		t.Fatal("first Complete succeeded, want failed response error")
+	}
+	if _, err := client.Complete(context.Background(), model, request, sigma.WithTransport(sigma.TransportWebSocket), sigma.WithSessionID(sessionID)); err != nil {
+		t.Fatalf("second Complete returned error: %v", err)
+	}
+
+	_ = receiveMap(t, requests)
+	second := receiveMap(t, requests)
+	if got, ok := second["previous_response_id"]; ok {
+		t.Fatalf("previous response id = %v, want none after a failed response", got)
+	}
+}
+
 func TestCodexResponsesWebSocketRetriesMissingContinuationBeforeFallback(t *testing.T) {
 	openai.CloseCodexResponsesWebSocketSessions()
 	openai.ResetCodexResponsesWebSocketStatsAll()
@@ -1639,6 +1686,59 @@ func TestCodexResponsesDoneTerminalPreservesOptionalEndTurn(t *testing.T) {
 			gotEndTurn, present := final.ProviderMetadata["end_turn"]
 			if present != tt.wantPresent || gotEndTurn != tt.wantEndTurn {
 				t.Fatalf("end_turn = %v, present %v; want %v, present %v", gotEndTurn, present, tt.wantEndTurn, tt.wantPresent)
+			}
+		})
+	}
+}
+
+// Codex can end a stream with response.done whatever the response status, so
+// the status decides between a final message and an error.
+func TestCodexResponsesDoneTerminalStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		response     string
+		wantErr      bool
+		wantProvider bool
+		wantStop     sigma.StopReason
+	}{
+		{name: "failed", response: `"status":"failed","error":{"code":"server_error","message":"boom"}`, wantErr: true, wantProvider: true},
+		{name: "failed without error", response: `"status":"failed"`, wantErr: true},
+		{name: "cancelled", response: `"status":"cancelled"`, wantErr: true},
+		{name: "incomplete", response: `"status":"incomplete","incomplete_details":{"reason":"interrupted"}`, wantErr: true, wantProvider: true},
+		{name: "max output tokens", response: `"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}`, wantStop: sigma.StopReasonMaxTokens},
+		{name: "completed", response: `"status":"completed"`, wantStop: sigma.StopReasonEndTurn},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				writeResponsesSSE(t, w, `data: {"type":"response.done","response":{"id":"codex_done",`+tt.response+`,"output":[{"type":"message","id":"msg_done","role":"assistant","content":[{"type":"output_text","text":"partial"}]}]}}
+`)
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("codex-done-status-" + strings.ReplaceAll(tt.name, " ", "-"))
+			model := codexResponsesTestModel(providerID)
+			client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if !tt.wantErr {
+				if err != nil {
+					t.Fatalf("Complete returned error: %v", err)
+				}
+				if final.StopReason != tt.wantStop {
+					t.Fatalf("stop reason = %q, want %q", final.StopReason, tt.wantStop)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("Complete succeeded with stop reason %q, want error", final.StopReason)
+			}
+			var providerErr *sigma.ProviderError
+			if got := errors.As(err, &providerErr); got != tt.wantProvider {
+				t.Fatalf("error %v is provider error = %v, want %v", err, got, tt.wantProvider)
 			}
 		})
 	}

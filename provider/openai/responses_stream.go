@@ -301,6 +301,9 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 	if parsed.Type == "" {
 		parsed.Type = eventName
 	}
+	if parsed.Type == "response.done" && p.options.codexTerminalSignals {
+		parsed.Type = codexDoneEventType(parsed.Response.Status)
+	}
 	parsed.OutputIndex = p.outputIndex(parsed)
 	p.captureEventMetadata(parsed)
 	switch parsed.Type {
@@ -312,12 +315,8 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		p.captureTerminalResponse(parsed.Response)
 		return true, p.emitStart(ctx)
 	case "response.done":
-		if !p.options.codexTerminalSignals {
-			return false, nil
-		}
-		p.terminalResponse = true
-		p.captureTerminalResponse(parsed.Response)
-		return true, p.emitStart(ctx)
+		// Only Codex ends a stream with response.done; it is mapped above.
+		return false, nil
 	case "response.incomplete":
 		p.terminalResponse = true
 		p.captureTerminalResponse(parsed.Response)
@@ -428,6 +427,20 @@ func (p *responsesStreamParser) handleEventData(ctx context.Context, eventName s
 		// The Responses API emits lifecycle, content-part, refusal, and tool
 		// progress events that carry no additional public sigma content.
 		return false, nil
+	}
+}
+
+// codexDoneEventType maps a Codex response.done to the terminal event its
+// status implies, because Codex sends response.done for failed, cancelled, and
+// incomplete responses as well as completed ones.
+func codexDoneEventType(status string) string {
+	switch status {
+	case "failed", "cancelled":
+		return "response.failed"
+	case "incomplete":
+		return "response.incomplete"
+	default:
+		return "response.completed"
 	}
 }
 
