@@ -777,6 +777,53 @@ func TestErrorToolResultImagesFollowToolResultsForClaude(t *testing.T) {
 	}
 }
 
+// Bedrock's CacheTTL enum values are "5m" and "1h"; the enum member names are
+// not accepted on the wire.
+func TestCachePointTTLUsesBedrockWireValue(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		retention sigma.CacheRetention
+		wantTTL   string
+	}{
+		{name: "short", retention: sigma.CacheRetentionShort, wantTTL: ""},
+		{name: "long", retention: sigma.CacheRetentionLong, wantTTL: "1h"},
+		{name: "persistent", retention: sigma.CacheRetentionPersistent, wantTTL: "1h"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+			model.ID = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+			payload, err := conversePayload(
+				model,
+				sigma.Request{
+					SystemPrompt: "Be brief.",
+					Messages:     []sigma.Message{sigma.UserText("hello")},
+				},
+				sigma.Options{CacheRetention: tt.retention},
+				Config{ModelID: string(model.ID)},
+			)
+			if err != nil {
+				t.Fatalf("conversePayload returned error: %v", err)
+			}
+
+			userContent := payload.Messages[len(payload.Messages)-1].Content
+			for name, blocks := range map[string][]ConverseContentBlock{"system": payload.System, "message": userContent} {
+				last := blocks[len(blocks)-1]
+				if last.Type != converseBlockCachePoint {
+					t.Fatalf("%s last block = %q, want cache point", name, last.Type)
+				}
+				if got, _ := awsCachePoint(last.CachePoint)["ttl"].(string); got != tt.wantTTL {
+					t.Fatalf("%s cache point ttl = %q, want %q", name, got, tt.wantTTL)
+				}
+			}
+		})
+	}
+}
+
 func TestToolCallIDsAreNormalizedForReplay(t *testing.T) {
 	t.Parallel()
 

@@ -23,9 +23,9 @@ func TestConverseCacheDurationAccounting(t *testing.T) {
 		name, details string
 		long          int
 	}{
-		{"one hour", `[{"ttl":"ONE_HOUR","inputTokens":1000}]`, 1000},
-		{"mixed", `[{"ttl":"FIVE_MINUTES","inputTokens":750},{"ttl":"ONE_HOUR","inputTokens":250}]`, 250},
-		{"multiple long entries", `[{"ttl":"ONE_HOUR","inputTokens":200},{"ttl":"ONE_HOUR","inputTokens":300},{"ttl":"ONE_HOUR"},{"ttl":"FIVE_MINUTES","inputTokens":500}]`, 500},
+		{"one hour", `[{"ttl":"1h","inputTokens":1000}]`, 1000},
+		{"mixed", `[{"ttl":"5m","inputTokens":750},{"ttl":"1h","inputTokens":250}]`, 250},
+		{"multiple long entries", `[{"ttl":"1h","inputTokens":200},{"ttl":"1h","inputTokens":300},{"ttl":"1h"},{"ttl":"5m","inputTokens":500}]`, 500},
 		{"absent", `null`, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock Claude requests with `CacheRetentionLong` or `CacheRetentionPersistent` now send cache points with `ttl: "1h"`, the Converse wire value, instead of the enum name `ONE_HOUR`, and Converse usage counts `cacheDetails` entries with `ttl: "1h"` as one-hour cache writes, so `LongCacheWriteInputTokens` and one-hour cache write cost are no longer zero.
 - GitHub Copilot business, enterprise, and data-residency accounts are routed to the endpoint in their token's `proxy-ep` field for Chat Completions, Responses, and Anthropic Messages models, whether the token comes from a stored credential or `GitHubCopilotOAuthTokenProvider`; requests previously always went to the individual endpoint. `OAuthAuth.BaseURL` lets stored OAuth descriptors supply such a per-credential endpoint.
 - A stored OAuth credential whose refresh fails, whose refreshed token misses `WithOAuthMinimumValidity`, or whose token derivation fails now fails the request instead of falling back to environment API keys or default provider callbacks. The error still wraps `ErrCredentialUnavailable` where it did before.
 - Xiaomi MiMo API-billing and token-plan models send only the `thinking` on/off toggle instead of also sending `reasoning_effort`, which MiMo rejects for values such as `minimal`, and accept only the `off` and `high` reasoning levels.

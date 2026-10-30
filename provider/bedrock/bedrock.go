@@ -911,7 +911,7 @@ func usageFromPayload(payload map[string]any) *ConverseUsage {
 	longCacheWriteTokens := 0
 	if details, ok := usage["cacheDetails"].([]any); ok {
 		for _, value := range details {
-			if detail, ok := value.(map[string]any); ok && stringValue(detail, "ttl") == "ONE_HOUR" {
+			if detail, ok := value.(map[string]any); ok && stringValue(detail, "ttl") == "1h" {
 				longCacheWriteTokens += intValue(detail, "inputTokens")
 			}
 		}

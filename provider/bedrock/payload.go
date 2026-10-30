@@ -1023,7 +1023,7 @@ func cachePointBlock(retention sigma.CacheRetention) ConverseContentBlock {
 		CachePoint: &ConverseCachePointBlock{},
 	}
 	if retention == sigma.CacheRetentionLong || retention == sigma.CacheRetentionPersistent {
-		block.CachePoint.TTL = "ONE_HOUR"
+		block.CachePoint.TTL = "1h"
 	}
 	return block
 }
