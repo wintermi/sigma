@@ -74,6 +74,7 @@ linters:
         - RegisterDefaultTextProvider
         - RegisterDefaultImageProvider
         - DoHTTPWithRetry(
+        - NewProviderError(
         - RunTextPayloadDebugHooks(
         - RunImagePayloadDebugHooks(
         - Transform(
