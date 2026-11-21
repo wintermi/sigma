@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send the off effort for explicit `ThinkingLevelOff` on OpenAI Responses, Azure, and Chat Completions.
 - [x] Drop thinking from other models when replaying history.
 - [x] Send `strict: false` for non-strict Responses function tools.
 - [x] Send adaptive thinking to Bedrock adaptive Claude models when a thinking budget is set.

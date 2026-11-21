@@ -723,15 +723,14 @@ func responsesToolSearchCallID(toolCallID string, names []string) string {
 }
 
 func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
-	if model.API == sigma.APIOpenAICodexResponses && requestedReasoningLevel(opts) == sigma.ThinkingLevelOff {
-		// Codex applies its own default effort when reasoning is omitted, so
-		// Off is sent as the model's off value.
-		effort := model.ThinkingLevelMap[sigma.ThinkingLevelOff]
-		if effort == "" {
-			effort = "none"
+	// Responses models apply their own default effort when reasoning is
+	// omitted, so an explicit Off is sent as the model's off value, or "none".
+	// GitHub Copilot does not accept an off effort.
+	if model.Provider != sigma.ProviderGitHubCopilot {
+		if effort := explicitOffEffort(model, opts, "none"); effort != "" {
+			payload["reasoning"] = map[string]any{"effort": effort}
+			return
 		}
-		payload["reasoning"] = map[string]any{"effort": effort}
-		return
 	}
 	reasoning := make(map[string]any)
 	if effort := reasoningEffort(model, opts); effort != "" {

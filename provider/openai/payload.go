@@ -1000,6 +1000,19 @@ func reasoningEffort(model sigma.Model, opts sigma.Options) string {
 	return ""
 }
 
+// explicitOffEffort returns the effort sent when the caller explicitly turns
+// reasoning off on a reasoning model: the model's mapped off value, otherwise
+// fallback. It returns "" for any other level.
+func explicitOffEffort(model sigma.Model, opts sigma.Options, fallback string) string {
+	if requestedReasoningLevel(opts) != sigma.ThinkingLevelOff || !model.SupportsReasoning() {
+		return ""
+	}
+	if value := model.ThinkingLevelMap[sigma.ThinkingLevelOff]; value != "" {
+		return value
+	}
+	return fallback
+}
+
 func requestedReasoningLevel(opts sigma.Options) sigma.ThinkingLevel {
 	level := opts.ReasoningLevel
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningEffort != "" {
@@ -1046,6 +1059,11 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 	//nolint:exhaustive
 	switch compat.reasoningFormat {
 	case sigma.OpenAICompletionsReasoningEffort:
+		if effort == "" {
+			// An explicit Off sends the model's mapped off value; without
+			// one, the provider applies its default effort.
+			effort = explicitOffEffort(model, opts, "")
+		}
 		if effort == "" {
 			return
 		}

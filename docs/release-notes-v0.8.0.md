@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Turning reasoning off on OpenAI Responses, Azure, and Chat Completions reasoning models now reaches the provider. Off previously sent no reasoning field, which these models treat as "use the default effort", so they kept reasoning and billing reasoning tokens. Responses and Azure now send the model's mapped off effort or `none`, as Codex already did, and Chat Completions `reasoning_effort` routes send the mapped off value when the model has one. GitHub Copilot, which rejects an off effort, and requests without a level are unchanged.
+
 Thinking recorded by a different provider, API, or model is no longer replayed to the next model. Anthropic, Bedrock, and Mistral received it as assistant text inside `<thinking>` tags and Gemini as bare text, so the new model saw another model's reasoning as part of its own replies and could start writing its reasoning into the visible answer; Chat Completions routes that require `reasoning_content`, such as DeepSeek, received it as the model's own chain of thought. These blocks are now dropped, while text and tool calls are kept. Messages without provenance are still treated as the target's own, and `TransformRequestForModel` still converts thinking to text when called explicitly.
 
 Responses function tools without strict metadata now send `strict: false`. The Responses API, and GitHub Copilot in particular, treats an omitted `strict` as `true`, so these tools ran in strict mode on their original schema: every optional property became a required string, and models filled them with empty strings or invented values. Tools marked strict are unchanged.

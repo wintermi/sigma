@@ -44,7 +44,10 @@ that is not provider-neutral:
 
 Provider packages translate supported controls to their wire formats. OpenAI
 Responses, Azure, and Codex requests use effort only and ignore
-`WithThinkingBudgetTokens`. If a model does not advertise the requested
+`WithThinkingBudgetTokens`. An explicit `ThinkingLevelOff` on a reasoning model
+sends the model's mapped off effort, or `none` on Responses routes other than
+GitHub Copilot; Chat Completions `reasoning_effort` routes send only a mapped off
+value. Leaving the level unset keeps the provider's default effort. If a model does not advertise the requested
 thinking level, `Client.Stream` returns a local invalid-options error before
 dispatch. Turning thinking off on a Google or
 Vertex Gemini model whose metadata marks `off` unsupported requests the model's
