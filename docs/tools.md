@@ -251,5 +251,10 @@ strict schemas, partial JSON, or provider signatures. Check
 [provider parity](provider-parity.md) before relying on provider-specific tool
 behavior.
 
+Anthropic Messages rejects root `anyOf`, `oneOf`, and `allOf` in tool schemas,
+so non-strict Anthropic tools are sent as a root object schema with only
+`properties`, `required`, `additionalProperties`, `$defs`, and `definitions`.
+Other root keywords, such as a root `description`, are omitted.
+
 The runnable [tools example](../examples/tools/main.go) demonstrates validation,
 tool errors, and retry through the next model turn.

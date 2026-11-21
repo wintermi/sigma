@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic requests no longer fail because one tool schema has a root `anyOf`, `oneOf`, or `allOf`, or no root `type`, as some MCP and generated schemas do. sigma forwarded tool schemas unchanged and Anthropic rejected the whole request with a 400. Non-strict tool schemas are now rebuilt as a root object with their properties, required list, additional-properties setting, and shared definitions.
+
 Claude Opus 5, Opus 5.5, and Fable 5.1 requests now work for organizations that cap effort below `high`. These models take their effort from per-message markers, and sigma also sent a fixed top-level `output_config.effort` of `high`, which capped organizations reject at any requested level. The fixed top-level value is now `low`; the markers still set the effort for each reply, and the cached prompt prefix is unchanged between requests.
 
 Turning reasoning off on Mistral Small 2603 and Medium 3.5 now reaches Mistral as `reasoning_effort: "none"`. sigma sent no effort for off, so these adjustable-reasoning models kept their default effort. Requests that leave the level unset still use the provider default.

@@ -556,10 +556,25 @@ func anthropicToolInputSchema(tool sigma.Tool, strict bool) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("anthropic messages: tool %q schema: %w", tool.Name, err)
 	}
-	if inputSchema == nil {
-		inputSchema = map[string]any{"type": "object"}
+	return anthropicObjectSchema(inputSchema), nil
+}
+
+// anthropicObjectSchema rebuilds a tool input schema as a root object schema.
+// Anthropic rejects root anyOf, oneOf, and allOf with a 400, so other root
+// keywords are dropped; shared definitions stay so property $refs resolve.
+func anthropicObjectSchema(schema any) map[string]any {
+	root, _ := schema.(map[string]any)
+	properties, ok := root["properties"]
+	if !ok {
+		properties = map[string]any{}
 	}
-	return inputSchema, nil
+	out := map[string]any{"type": "object", "properties": properties}
+	for _, key := range []string{"required", "additionalProperties", "$defs", "definitions"} {
+		if value, ok := root[key]; ok {
+			out[key] = value
+		}
+	}
+	return out
 }
 
 // anthropicToolResultsMessage converts the run of tool results starting at

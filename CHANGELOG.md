@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Anthropic Messages tool schemas are now sent as a root object schema keeping `properties`, `required`, `additionalProperties`, `$defs`, and `definitions`. Schemas with a root `anyOf`, `oneOf`, or `allOf`, or without a root `type`, were forwarded unchanged and Anthropic rejected the whole request with a 400. Strict tools are unchanged.
 - Anthropic models with mid-conversation effort (Claude Opus 5, Opus 5.5, and Fable 5.1) now send a fixed top-level `output_config.effort` of `low` instead of `high`. Organizations that cap effort reject requests containing any level above the cap, so every request failed under a cap below `high`; the per-message effort markers still carry the requested level.
 - Mistral adjustable-reasoning models (Mistral Small 2603 and Medium 3.5) now send `reasoning_effort: "none"`, or the model's mapped off value, for an explicit `ThinkingLevelOff`. Off previously sent nothing, leaving the model at its default effort. An unset level is unchanged.
 - Direct Claude Opus 5 now accepts `ThinkingLevelOff`: it sends `thinking: {type: "disabled"}` with no top-level effort, effort markers, or mid-conversation effort beta. Off was rejected locally on every mid-conversation effort model; models that cannot disable thinking, such as Opus 5.5 and Fable 5.1, still reject it from metadata.
