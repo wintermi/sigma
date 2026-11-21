@@ -256,5 +256,9 @@ so non-strict Anthropic tools are sent as a root object schema with only
 `properties`, `required`, `additionalProperties`, `$defs`, and `definitions`.
 Other root keywords, such as a root `description`, are omitted.
 
+Gemini ignores `const` in `parametersJsonSchema`, so Google and Vertex send
+string and number `const` values as single-value `enum`s. Literal data such as
+`default` and `examples` is left unchanged.
+
 The runnable [tools example](../examples/tools/main.go) demonstrates validation,
 tool errors, and retry through the next model turn.

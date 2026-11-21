@@ -382,7 +382,7 @@ func googleTools(provider sigma.ProviderID, tools []sigma.Tool, opts sigma.Optio
 		if useParameters {
 			declaration["parameters"] = sanitizeForOpenAPI(parameters)
 		} else {
-			declaration["parametersJsonSchema"] = parameters
+			declaration["parametersJsonSchema"] = rewriteConstAsEnum(parameters, false)
 		}
 		declarations = append(declarations, declaration)
 	}
@@ -683,6 +683,69 @@ func sanitizeForOpenAPI(value any) any {
 		return out
 	default:
 		return value
+	}
+}
+
+// rewriteConstAsEnum rewrites string and number const values as single-value
+// enums, which Gemini honors in parametersJsonSchema while ignoring const. It
+// recurses only into subschema keywords and name maps such as properties, so
+// literal data such as default and examples is left alone. isNameMap marks a
+// map whose keys are names rather than schema keywords.
+func rewriteConstAsEnum(value any, isNameMap bool) any {
+	switch v := value.(type) {
+	case []any:
+		out := make([]any, len(v))
+		for index, nested := range v {
+			out[index] = rewriteConstAsEnum(nested, false)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, nested := range v {
+			switch {
+			case isNameMap || jsonSchemaSubschemaKeyword(key):
+				out[key] = rewriteConstAsEnum(nested, false)
+			case jsonSchemaNameMapKeyword(key):
+				out[key] = rewriteConstAsEnum(nested, true)
+			default:
+				out[key] = nested
+			}
+		}
+		if isNameMap {
+			return out
+		}
+		if constant, ok := out["const"]; ok {
+			if _, hasEnum := out["enum"]; !hasEnum {
+				switch constant.(type) {
+				case string, json.Number, float64, int, int64:
+					delete(out, "const")
+					out["enum"] = []any{constant}
+				}
+			}
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func jsonSchemaNameMapKeyword(key string) bool {
+	switch key {
+	case "properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependencies":
+		return true
+	default:
+		return false
+	}
+}
+
+func jsonSchemaSubschemaKeyword(key string) bool {
+	switch key {
+	case "additionalProperties", "unevaluatedProperties", "propertyNames", "items", "prefixItems",
+		"additionalItems", "unevaluatedItems", "contains", "allOf", "anyOf", "oneOf", "not",
+		"if", "then", "else", "contentSchema":
+		return true
+	default:
+		return false
 	}
 }
 
