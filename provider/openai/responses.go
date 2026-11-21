@@ -189,7 +189,9 @@ func (p *ResponsesProvider) addProviderHeaders(req *http.Request, model sigma.Mo
 	}
 	if model.OpenAIResponsesCompat == nil ||
 		model.OpenAIResponsesCompat.SessionAffinityFormat != sigma.OpenAIResponsesSessionAffinityOpenAINoSession {
-		req.Header.Set("session_id", opts.SessionID)
+		// OpenAI documents session-id; proxies such as nginx drop header
+		// names containing underscores.
+		req.Header.Set("session-id", opts.SessionID)
 	}
 	req.Header.Set("x-client-request-id", opts.SessionID)
 }

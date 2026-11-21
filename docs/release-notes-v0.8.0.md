@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses session affinity now uses the `session-id` header that OpenAI documents, as Codex requests already did. sigma sent `session_id`, which nginx-style proxies silently drop because the name contains an underscore, so cached sessions lost routing affinity and their prompt-cache hit rate fell. `x-client-request-id` and the custom session header option are unchanged.
+
 Anthropic's internal `api_error`, which arrives as a stream error event once a response has started and so carries no HTTP status, is now classified as transient and retryable instead of unknown. Routing and retry logic built on `ClassifyError` previously gave up on it, although Anthropic's own message asks the client to try again. Gateway failures worded as "connection closed", "stream was interrupted", "service is temporarily unavailable", or "returned an empty response", among others, are now transient too, and underscored `rate_limit` wording counts as rate limiting.
 
 Opt-in HTTP retries now survive ordinary rate limits. The default maximum retry delay was 2 seconds, so a 429 asking the client to wait 5 seconds, which OpenAI and Anthropic commonly send, failed at once with `ErrRetryAfterExceedsMaxDelay`, and responses without `Retry-After` were retried after 100ms and 200ms. The default cap is now 60 seconds, and backoff starts at 500ms and doubles up to 8 seconds with up to 25% jitter, matching the OpenAI and Anthropic SDK retry policies. `WithMaxRetryDelay` still overrides the cap, and retries remain off unless `WithMaxRetries` is set.

@@ -576,7 +576,7 @@ func TestResponsesExplicitNoCacheMode(t *testing.T) {
 	}
 	goldentest.AssertNoJSONPath(t, payload, "prompt_cache_key")
 	goldentest.AssertNoJSONPath(t, payload, "prompt_cache_retention")
-	assertHeaderAbsent(t, request.Headers, "session_id")
+	assertHeaderAbsent(t, request.Headers, "session-id")
 	assertHeaderAbsent(t, request.Headers, "x-client-request-id")
 }
 
@@ -1261,7 +1261,8 @@ func TestResponsesSessionAffinityHeaders(t *testing.T) {
 	}
 
 	headers := receiveRequest(t, requests).Headers
-	assertHeader(t, headers, "session_id", "responses-session")
+	assertHeader(t, headers, "session-id", "responses-session")
+	assertHeaderAbsent(t, headers, "session_id")
 	assertHeader(t, headers, "x-client-request-id", "responses-session")
 }
 
@@ -1294,6 +1295,7 @@ func TestResponsesOmitsSessionIDForNoSessionAffinityFormat(t *testing.T) {
 	}
 
 	headers := receiveRequest(t, requests).Headers
+	assertHeaderAbsent(t, headers, "session-id")
 	assertHeaderAbsent(t, headers, "session_id")
 	assertHeader(t, headers, "x-client-request-id", "responses-session")
 }
@@ -1360,7 +1362,7 @@ func TestResponsesOmitsSessionAffinityHeadersWhenCacheDisabled(t *testing.T) {
 	}
 
 	headers := receiveRequest(t, requests).Headers
-	assertHeaderAbsent(t, headers, "session_id")
+	assertHeaderAbsent(t, headers, "session-id")
 	assertHeaderAbsent(t, headers, "x-client-request-id")
 }
 

@@ -85,7 +85,7 @@ func TestCompleteSendsGrok45ResponsesRequest(t *testing.T) {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
 	assertHeader(t, request.Headers, "Authorization", "Bearer xai-test-token")
-	assertHeader(t, request.Headers, "session_id", "xai-session")
+	assertHeader(t, request.Headers, "session-id", "xai-session")
 	assertJSONPath(t, request.Body, []string{"store"}, false)
 	assertJSONPath(t, request.Body, []string{"prompt_cache_key"}, "xai-session")
 	assertNoJSONPath(t, request.Body, []string{"prompt_cache_retention"})
