@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The Anthropic browser login can no longer be intercepted through the IPv6 loopback address. The callback server listened only on `127.0.0.1`, but the redirect URI uses `localhost`, which browsers may resolve to `::1` first. Another local process listening on `[::1]` at the same port could therefore receive the authorization code, and since Anthropic's flow uses the PKCE verifier as the state value, it would hold everything needed to redeem the token. The login now listens on both loopback addresses and moves to another port when the IPv6 side is already taken.
+
 Bedrock credential lookups from the ECS container endpoint and EC2 instance metadata service no longer go through `HTTP_PROXY`. Go skips environment proxies only for loopback addresses, not the link-local metadata addresses, so on hosts with a proxy configured and no matching `NO_PROXY`, the metadata session token, the EKS Pod Identity token, and the returned AWS keys passed through the proxy, and a forward proxy could even reply with credentials for its own role. These requests now connect directly unless the caller supplies an HTTP client; STS web-identity requests still honour the proxy.
 
 Direct Anthropic models with budget thinking, such as Claude Sonnet 4.5, now get the same default budgets as Bedrock Claude: 8,192 tokens at `medium` and 16,384 at `high` and `xhigh`. The direct adapter used half those budgets for `medium` and `high`, so the same reasoning level produced shallower thinking than on Bedrock and less than sigma's own token estimates assumed. Budgets still clamp to leave 1,024 output tokens within `max_tokens`, and explicit budgets are unchanged.

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Claim the IPv6 loopback port for the Anthropic OAuth callback.
 - [x] Fetch Bedrock ECS and IMDS credentials without the environment proxy.
 - [x] Use the shared default thinking budgets for direct Anthropic budget thinking.
 - [x] Replace Responses message IDs whose reasoning item is not replayed.

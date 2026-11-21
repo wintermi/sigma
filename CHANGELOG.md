@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- The Anthropic browser OAuth login now also listens on `[::1]` at its callback port and treats a port already held there as unavailable. It listened only on `127.0.0.1` while redirecting to `localhost`, so a local process listening on `[::1]` at the same port could receive the callback, and because Anthropic uses the PKCE verifier as the state, redeem the login.
 - Bedrock ECS container and EC2 instance metadata credential requests now connect directly instead of through `HTTP_PROXY` when no custom HTTP client is configured. Go bypasses environment proxies only for loopback hosts, so on proxied hosts the IMDS session token, the container authorization token, and the returned AWS credentials crossed the proxy, and a forward proxy could answer with its own credentials.
 - Direct Anthropic budget thinking now uses default budgets of 8,192 tokens for `medium` and 16,384 for `high` and `xhigh`, matching Bedrock Claude and `MaxTokensForContext` estimates. It sent half those budgets (4,096 and 8,192) for `medium` and `high`, so the same reasoning level thought less on the direct API than on Bedrock. Explicit budgets and model-mapped values are unchanged.
 - Responses replay now gives an assistant message a generated `msg_` ID when its reasoning item is not replayed or the message was recorded by a different provider, API, or model, as tool items already did. The original ID was always sent, which OpenAI can reject as a message provided without its required reasoning item.

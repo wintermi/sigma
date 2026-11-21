@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/wintermi/sigma"
@@ -372,6 +373,15 @@ func startAnthropicBrowserCallbackServer(listenAddr string, state string) (*anth
 	if err != nil {
 		return nil, fmt.Errorf("anthropic oauth: start callback server: %w", err)
 	}
+	// The redirect URI names localhost, which browsers may resolve to ::1.
+	// Another local process listening on [::1] at the same port would receive
+	// the code, and with the verifier as state it could redeem the login, so
+	// the IPv6 loopback port is claimed too.
+	listenerV6, err := listenIPv6Loopback(&listenConfig, listener)
+	if err != nil {
+		_ = listener.Close()
+		return nil, fmt.Errorf("anthropic oauth: start callback server: %w", err)
+	}
 	result := make(chan anthropicBrowserCallbackResult, 1)
 	serverInfo := &anthropicBrowserCallbackServer{
 		done:        result,
@@ -411,12 +421,34 @@ func startAnthropicBrowserCallbackServer(listenAddr string, state string) (*anth
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	serverInfo.server = server
-	go func() {
+	serve := func(listener net.Listener) {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverInfo.finish(anthropicBrowserCallbackResult{err: fmt.Errorf("anthropic oauth: callback server failed: %w", err)})
 		}
-	}()
+	}
+	go serve(listener)
+	if listenerV6 != nil {
+		go serve(listenerV6)
+	}
 	return serverInfo, nil
+}
+
+// listenIPv6Loopback listens on [::1] at the IPv4 listener's port. It returns
+// nil without error when the host has no IPv6 loopback, and an error when the
+// port is already taken there.
+func listenIPv6Loopback(listenConfig *net.ListenConfig, ipv4 net.Listener) (net.Listener, error) {
+	_, port, err := net.SplitHostPort(ipv4.Addr().String())
+	if err != nil {
+		return nil, fmt.Errorf("read callback port: %w", err)
+	}
+	listener, err := listenConfig.Listen(context.Background(), "tcp", net.JoinHostPort("::1", port))
+	if err == nil {
+		return listener, nil
+	}
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return nil, fmt.Errorf("IPv6 loopback callback port is in use: %w", err)
+	}
+	return nil, nil
 }
 
 func (s *anthropicBrowserCallbackServer) finish(result anthropicBrowserCallbackResult) {

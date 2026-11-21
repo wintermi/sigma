@@ -72,6 +72,10 @@ callback. Only a GET request carrying the login's PKCE state can complete or
 fail the login; requests with a missing or different state, other methods, or no
 authorization code receive an error page while the login keeps waiting, so a
 stale tab or a cross-site request cannot abort it.
+Because the Anthropic redirect URI names `localhost`, which browsers may
+resolve to `::1`, the Anthropic login also listens on the IPv6 loopback at the
+same port, and moves to another port when a different process already holds it
+there.
 
 ## Persistence
 
