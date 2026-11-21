@@ -13,9 +13,9 @@ import (
 	"github.com/wintermi/sigma"
 )
 
-// Thinking from another model is replayed as plain text; delimiter tags teach
-// Gemini to imitate them in visible output.
-func TestGoogleReplaysForeignThinkingWithoutTags(t *testing.T) {
+// Thinking from another model is dropped; replayed as text, Gemini imitates it
+// in visible output.
+func TestGoogleDropsForeignThinking(t *testing.T) {
 	t.Parallel()
 
 	model := sigma.Model{ID: "gemini-test", Provider: sigma.ProviderGoogle, API: sigma.APIGoogleGenerativeAI, SupportsThinking: true}
@@ -31,10 +31,10 @@ func TestGoogleReplaysForeignThinkingWithoutTags(t *testing.T) {
 		t.Fatal(err)
 	}
 	encoded := fmt.Sprint(payload["contents"])
-	if strings.Contains(encoded, "<thinking>") {
-		t.Fatalf("contents = %s, want foreign thinking without tags", encoded)
+	if strings.Contains(encoded, "plan the answer") {
+		t.Fatalf("contents = %s, want foreign thinking dropped", encoded)
 	}
-	if !strings.Contains(encoded, "plan the answer") {
-		t.Fatalf("contents = %s, want foreign thinking kept as text", encoded)
+	if !strings.Contains(encoded, "answer") {
+		t.Fatalf("contents = %s, want the assistant text kept", encoded)
 	}
 }

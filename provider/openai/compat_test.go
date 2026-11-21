@@ -1875,6 +1875,44 @@ func TestOpenAICompletionsCompatReplaysReasoningContent(t *testing.T) {
 	goldentest.AssertJSON(t, payload, "provider/openai/compat/replays_reasoning_content.json")
 }
 
+func TestOpenAICompletionsCompatSendsEmptyReasoningContentForOtherModels(t *testing.T) {
+	t.Parallel()
+
+	model := compatTestModel(sigma.OpenAICompletionsCompat{
+		RequiresReasoningContentOnAssistantMessages: sigma.OpenAICompatSupported,
+	})
+	for _, tt := range []struct {
+		name    string
+		message sigma.Message
+		want    string
+	}{
+		{name: "same model", message: sigma.Message{Provider: model.Provider, API: model.API, Model: model.ID}, want: "inspect state"},
+		{name: "no provenance", want: "inspect state"},
+		{name: "other provider", message: sigma.Message{Provider: sigma.ProviderAnthropic, API: sigma.APIAnthropicMessages, Model: "claude-test"}},
+		{name: "other model", message: sigma.Message{Provider: model.Provider, API: model.API, Model: "other-model"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			message := tt.message
+			message.Role = sigma.RoleAssistant
+			message.Content = []sigma.ContentBlock{sigma.Thinking("inspect state", ""), sigma.Text("done")}
+			payload, err := chatCompletionsPayload(
+				model,
+				sigma.Request{Messages: []sigma.Message{message}},
+				sigma.Options{},
+				openAICompletionsCompat(model, "https://opencode.ai/zen/go/v1"),
+			)
+			if err != nil {
+				t.Fatalf("chatCompletionsPayload returned error: %v", err)
+			}
+			assistant := payload["messages"].([]map[string]any)[0]
+			if got, ok := assistant["reasoning_content"]; !ok || got != tt.want {
+				t.Fatalf("reasoning_content = %#v (present %v), want %q", got, ok, tt.want)
+			}
+		})
+	}
+}
+
 func TestOpenAICompletionsCompatKeepsToolsEagerWithoutKimiMarker(t *testing.T) {
 	t.Parallel()
 

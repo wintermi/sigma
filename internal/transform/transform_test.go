@@ -157,7 +157,7 @@ func TestTransformClonesProviderDefinedToolOptions(t *testing.T) {
 	}
 }
 
-func TestTransformConvertsAnthropicThinkingForOpenAIHandoff(t *testing.T) {
+func TestTransformDropsAnthropicThinkingForOpenAIHandoff(t *testing.T) {
 	t.Parallel()
 
 	transformed, err := Transform(Input{
@@ -186,16 +186,13 @@ func TestTransformConvertsAnthropicThinkingForOpenAIHandoff(t *testing.T) {
 	}
 
 	blocks := transformed.Messages[0].Content
-	if got, want := blocks[0].Type, sigma.ContentBlockText; got != want {
-		t.Fatalf("converted thinking type = %q, want %q", got, want)
+	if got, want := len(blocks), 2; got != want {
+		t.Fatalf("block count = %d, want %d (thinking dropped): %#v", got, want, blocks)
 	}
-	if got, want := blocks[0].Text, "<thinking>\nchecking constraints\n</thinking>"; got != want {
-		t.Fatalf("converted thinking text = %q, want %q", got, want)
-	}
-	if got, want := blocks[1].Text, "I will call the tool."; got != want {
+	if got, want := blocks[0].Text, "I will call the tool."; got != want {
 		t.Fatalf("assistant text = %q, want %q", got, want)
 	}
-	toolCall := blocks[2]
+	toolCall := blocks[1]
 	if got, want := toolCall.ToolCallID, "call_weather"; got != want {
 		t.Fatalf("tool call id = %q, want %q", got, want)
 	}
@@ -207,7 +204,7 @@ func TestTransformConvertsAnthropicThinkingForOpenAIHandoff(t *testing.T) {
 	}
 }
 
-func TestTransformConvertsOpenAIThinkingForGoogleHandoff(t *testing.T) {
+func TestTransformDropsOpenAIThinkingForGoogleHandoff(t *testing.T) {
 	t.Parallel()
 
 	transformed, err := Transform(Input{
@@ -239,11 +236,8 @@ func TestTransformConvertsOpenAIThinkingForGoogleHandoff(t *testing.T) {
 	if got, want := blocks[0].Text, "Known facts."; got != want {
 		t.Fatalf("assistant text = %q, want %q", got, want)
 	}
-	if got, want := blocks[1].Type, sigma.ContentBlockText; got != want {
-		t.Fatalf("foreign thinking type = %q, want %q", got, want)
-	}
-	if got, want := blocks[1].Text, "<thinking>\nprivate reasoning\n</thinking>"; got != want {
-		t.Fatalf("foreign thinking text = %q, want %q", got, want)
+	if got, want := len(blocks), 1; got != want {
+		t.Fatalf("block count = %d, want %d (thinking dropped): %#v", got, want, blocks)
 	}
 }
 
@@ -487,36 +481,53 @@ func TestTransformSynthesizesTrailingUnansweredToolCalls(t *testing.T) {
 	}
 }
 
-func TestTransformConvertsSameProviderDifferentModelThinking(t *testing.T) {
+func TestTransformDropsDifferentModelThinking(t *testing.T) {
+	t.Parallel()
+
+	target := sigma.Model{
+		ID:               "claude-opus",
+		Provider:         sigma.ProviderAnthropic,
+		API:              sigma.APIAnthropicMessages,
+		SupportsThinking: true,
+	}
+	for _, tt := range []struct {
+		name    string
+		message sigma.Message
+	}{
+		{name: "same provider different model", message: sigma.Message{Provider: sigma.ProviderAnthropic, API: sigma.APIAnthropicMessages, Model: "claude-sonnet"}},
+		{name: "different provider", message: sigma.Message{Provider: sigma.ProviderOpenAI, API: sigma.APIOpenAIResponses, Model: "gpt-test"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			message := tt.message
+			message.Role = sigma.RoleAssistant
+			message.Content = []sigma.ContentBlock{sigma.Thinking("private model state", "sig"), sigma.Text("answer")}
+			transformed, err := Transform(Input{TargetModel: target, Request: sigma.Request{Messages: []sigma.Message{message}}})
+			if err != nil {
+				t.Fatalf("Transform returned error: %v", err)
+			}
+			if got, want := transformed.Messages[0].Content, []sigma.ContentBlock{sigma.Text("answer")}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("content = %#v, want only the text block", got)
+			}
+		})
+	}
+}
+
+func TestTransformKeepsThinkingWithoutProvenance(t *testing.T) {
 	t.Parallel()
 
 	transformed, err := Transform(Input{
-		TargetModel: sigma.Model{
-			ID:               "claude-opus",
-			Provider:         sigma.ProviderAnthropic,
-			API:              sigma.APIAnthropicMessages,
-			SupportsThinking: true,
-		},
-		Request: sigma.Request{
-			Messages: []sigma.Message{{
-				Role:     sigma.RoleAssistant,
-				Provider: sigma.ProviderAnthropic,
-				API:      sigma.APIAnthropicMessages,
-				Model:    "claude-sonnet",
-				Content:  []sigma.ContentBlock{sigma.Thinking("private model state", "sig")},
-			}},
-		},
+		TargetModel: sigma.Model{ID: "claude-opus", Provider: sigma.ProviderAnthropic, API: sigma.APIAnthropicMessages, SupportsThinking: true},
+		Request: sigma.Request{Messages: []sigma.Message{{
+			Role:    sigma.RoleAssistant,
+			Content: []sigma.ContentBlock{sigma.Thinking("caller-built history", "sig")},
+		}}},
 	})
 	if err != nil {
 		t.Fatalf("Transform returned error: %v", err)
 	}
-
-	block := transformed.Messages[0].Content[0]
-	if got, want := block.Type, sigma.ContentBlockText; got != want {
-		t.Fatalf("converted thinking type = %q, want %q", got, want)
-	}
-	if got, want := block.Text, "<thinking>\nprivate model state\n</thinking>"; got != want {
-		t.Fatalf("converted thinking text = %q, want %q", got, want)
+	if got := transformed.Messages[0].Content[0].Type; got != sigma.ContentBlockThinking {
+		t.Fatalf("block type = %q, want thinking", got)
 	}
 }
 

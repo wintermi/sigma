@@ -55,9 +55,7 @@ func TestReasoningReplayUsesTargetModel(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []map[string]any{{"text": "before"}}
-			if tt.incompatible {
-				want = append(want, map[string]any{"text": "<thinking>\nreasoning\n</thinking>"})
-			} else {
+			if !tt.incompatible {
 				middle := map[string]any{"text": "reasoning"}
 				if !tt.wantText {
 					reasoning := map[string]any{"text": "reasoning"}

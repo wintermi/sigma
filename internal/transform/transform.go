@@ -278,7 +278,13 @@ func transformMessage(message sigma.Message, ctx messageContext) (sigma.Message,
 			return sigma.Message{}, err
 		}
 		_, hostedAnchor := block.ProviderMetadata["anthropic_hosted_replay"]
-		if transformed.Role == sigma.RoleAssistant && block.Type == sigma.ContentBlockThinking && !hostedAnchor && shouldConvertThinking(message, ctx) {
+		if transformed.Role == sigma.RoleAssistant && block.Type == sigma.ContentBlockThinking && !hostedAnchor && fromDifferentModel(message, ctx.target) {
+			// Thinking from another model is dropped: its signatures are only
+			// valid for that model, and replayed as text the new model treats it
+			// as part of its visible reply and starts writing reasoning there.
+			continue
+		}
+		if transformed.Role == sigma.RoleAssistant && block.Type == sigma.ContentBlockThinking && !hostedAnchor && shouldConvertThinking(ctx) {
 			if strings.TrimSpace(block.ThinkingText) == "" || block.Redacted {
 				continue
 			}
@@ -307,20 +313,21 @@ func transformMessage(message sigma.Message, ctx messageContext) (sigma.Message,
 	return transformed, nil
 }
 
-func shouldConvertThinking(message sigma.Message, ctx messageContext) bool {
-	if ctx.compat.ThinkingAsText {
+func shouldConvertThinking(ctx messageContext) bool {
+	return ctx.compat.ThinkingAsText || !ctx.target.SupportsReasoning()
+}
+
+// fromDifferentModel reports whether message records a provider, API, or model
+// that differs from target. Messages without provenance are treated as the
+// target's own.
+func fromDifferentModel(message sigma.Message, target sigma.Model) bool {
+	if message.Provider != "" && message.Provider != target.Provider {
 		return true
 	}
-	if !ctx.target.SupportsReasoning() {
+	if message.API != "" && target.API != "" && message.API != target.API {
 		return true
 	}
-	if message.Provider != "" && message.Provider != ctx.target.Provider {
-		return true
-	}
-	if message.API != "" && ctx.target.API != "" && message.API != ctx.target.API {
-		return true
-	}
-	return message.Model != "" && ctx.target.ID != "" && message.Model != ctx.target.ID
+	return message.Model != "" && target.ID != "" && message.Model != target.ID
 }
 
 func validateImageSupport(block sigma.ContentBlock, ctx messageContext) error {

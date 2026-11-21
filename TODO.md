@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Drop thinking from other models when replaying history.
 - [x] Send `strict: false` for non-strict Responses function tools.
 - [x] Send adaptive thinking to Bedrock adaptive Claude models when a thinking budget is set.
 - [x] Return typed errors for Gemini `OTHER`, unspecified, and unrecognised finish reasons.

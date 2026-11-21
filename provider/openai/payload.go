@@ -395,6 +395,10 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		}
 		if compat.requiresReasoningContentOnAssistantMessages &&
 			(compat.reasoningFormat != sigma.OpenAICompletionsReasoningZAI || sameOpenAICompletionsProvenance(model, message)) {
+			// Another model's thinking is not replayed as this model's reasoning.
+			if differentOpenAICompletionsProvenance(model, message) {
+				reasoningContent = ""
+			}
 			converted["reasoning_content"] = reasoningContent
 		} else if len(reasoningDetails) == 0 && sameOpenAICompletionsProvenance(model, message) {
 			if field, reasoning := sourceFieldReasoning(model, message.Content); field != "" {
@@ -702,6 +706,14 @@ func sourceFieldReasoning(model sigma.Model, blocks []sigma.ContentBlock) (strin
 		field = reasoningFieldContent
 	}
 	return field, strings.Join(reasoning, "\n")
+}
+
+// differentOpenAICompletionsProvenance reports whether message records a
+// provider, API, or model that differs from model.
+func differentOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {
+	return (message.Provider != "" && message.Provider != model.Provider) ||
+		(message.API != "" && message.API != model.API) ||
+		(message.Model != "" && message.Model != model.ID)
 }
 
 func sameOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {

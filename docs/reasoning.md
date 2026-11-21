@@ -77,6 +77,14 @@ carry text, an opaque provider signature, or redaction metadata. Persist opaque
 signatures if the provider needs them for continuation, but treat them as
 sensitive application data.
 
+When history is replayed to a different provider, API, or model, thinking blocks
+from assistant messages whose recorded provenance differs from the target are
+dropped; their text and tool calls are kept. Chat Completions routes that require
+`reasoning_content` on assistant messages send it empty for those turns. Messages
+without provenance are treated as the target model's own. The opt-in
+`sigma.TransformRequestForModel` helpers still convert thinking to text when
+called explicitly.
+
 ## Display Policy
 
 Sigma does not decide whether thinking should be visible to users. Many
