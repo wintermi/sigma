@@ -425,6 +425,12 @@ func responsesInputFile(block sigma.ContentBlock) (map[string]any, error) {
 }
 
 func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIndex int, ids *responsesIDs, deferredTools map[string]sigma.Tool, grammarToolInputProperties map[string]string, storedItems bool) ([]map[string]any, error) {
+	omitToolItemID := sameProviderDifferentModel(model, message)
+	// An item ID paired with a reasoning item that is not replayed fails
+	// OpenAI's reasoning-pairing validation, so the ID is omitted with it.
+	reasoningDropped := false
+	replaySignatures := message.Provider != "" && message.API != "" && message.Model != "" &&
+		message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 	var items []map[string]any
 	var content []map[string]any
 	var messageID string
@@ -440,6 +446,11 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 			providerOptionRole:        "assistant",
 			"content":                 content,
 		}
+		// A message ID from another model, or from a turn whose reasoning is
+		// not replayed, is replaced so it is not paired with missing reasoning.
+		if reasoningDropped || differentOpenAICompletionsProvenance(model, message) {
+			messageID = ""
+		}
 		item["id"] = ids.itemID("msg", messageID, fmt.Sprintf("msg_sigma_%d_%d", messageIndex, messageOrdinal))
 		if messagePhase != "" {
 			item["phase"] = messagePhase
@@ -451,12 +462,6 @@ func responsesAssistantItems(model sigma.Model, message sigma.Message, messageIn
 		messageOrdinal++
 	}
 
-	omitToolItemID := sameProviderDifferentModel(model, message)
-	// A tool item ID paired with a reasoning item that is not replayed fails
-	// OpenAI's reasoning-pairing validation, so the ID is omitted with it.
-	reasoningDropped := false
-	replaySignatures := message.Provider != "" && message.API != "" && message.Model != "" &&
-		message.Provider == model.Provider && message.API == model.API && message.Model == model.ID
 	for blockIndex, block := range message.Content {
 		switch block.Type {
 		case sigma.ContentBlockText:

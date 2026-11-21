@@ -95,3 +95,54 @@ func TestResponsesPayloadOmitsToolItemIDWhenReasoningIsDropped(t *testing.T) {
 		})
 	}
 }
+
+func TestResponsesPayloadReplacesMessageIDWithoutItsReasoning(t *testing.T) {
+	t.Parallel()
+
+	model, ok := sigma.GetModel(sigma.ProviderOpenAI, "o4-mini")
+	if !ok {
+		t.Fatal("o4-mini not in catalog")
+	}
+	reasoning := func(encrypted string) sigma.ContentBlock {
+		block := sigma.Thinking("", "")
+		block.ProviderSignature = encrypted
+		block.ProviderMetadata = map[string]any{"id": "rs_1"}
+		return block
+	}
+	text := sigma.Text("answer")
+	text.ProviderMetadata = map[string]any{"id": "msg_original"}
+
+	for _, tt := range []struct {
+		name     string
+		model    sigma.ModelID
+		content  []sigma.ContentBlock
+		wantKeep bool
+	}{
+		{name: "replayed reasoning keeps the message ID", model: model.ID, content: []sigma.ContentBlock{reasoning("enc"), text}, wantKeep: true},
+		{name: "no reasoning keeps the message ID", model: model.ID, content: []sigma.ContentBlock{text}, wantKeep: true},
+		{name: "dropped reasoning replaces the message ID", model: model.ID, content: []sigma.ContentBlock{reasoning(""), text}},
+		{name: "other model replaces the message ID", model: "gpt-other", content: []sigma.ContentBlock{reasoning("enc"), text}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assistant := sigma.Message{Role: sigma.RoleAssistant, Content: tt.content, Provider: model.Provider, API: model.API, Model: tt.model}
+			payload, err := responsesPayload(model, sigma.Request{Messages: []sigma.Message{sigma.UserText("q"), assistant}}, sigma.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			items, _ := payload["input"].([]map[string]any)
+			var id string
+			for _, item := range items {
+				if item["type"] == "message" && item["role"] == "assistant" {
+					id, _ = item["id"].(string)
+				}
+			}
+			if kept := id == "msg_original"; kept != tt.wantKeep {
+				t.Fatalf("message id = %q, want original kept %v (items %v)", id, tt.wantKeep, items)
+			}
+			if !strings.HasPrefix(id, "msg_") {
+				t.Fatalf("message id = %q, want a msg_ ID", id)
+			}
+		})
+	}
+}

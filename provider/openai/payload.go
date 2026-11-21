@@ -709,7 +709,8 @@ func sourceFieldReasoning(model sigma.Model, blocks []sigma.ContentBlock) (strin
 }
 
 // differentOpenAICompletionsProvenance reports whether message records a
-// provider, API, or model that differs from model.
+// provider, API, or model that differs from model. Responses replay uses it
+// too.
 func differentOpenAICompletionsProvenance(model sigma.Model, message sigma.Message) bool {
 	return (message.Provider != "" && message.Provider != model.Provider) ||
 		(message.API != "" && message.API != model.API) ||

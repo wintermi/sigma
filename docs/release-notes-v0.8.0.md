@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses history replay no longer sends an assistant message's original `msg_` ID when the reasoning item it belongs to is dropped, for example after switching between models or when the reasoning has no encrypted content. OpenAI ties such message IDs to their reasoning item and can reject the request when the reasoning is missing. These messages now get a generated ID, as tool call items already did, while same-model turns whose reasoning is replayed keep their IDs.
+
 Responses session affinity now uses the `session-id` header that OpenAI documents, as Codex requests already did. sigma sent `session_id`, which nginx-style proxies silently drop because the name contains an underscore, so cached sessions lost routing affinity and their prompt-cache hit rate fell. `x-client-request-id` and the custom session header option are unchanged.
 
 Anthropic's internal `api_error`, which arrives as a stream error event once a response has started and so carries no HTTP status, is now classified as transient and retryable instead of unknown. Routing and retry logic built on `ClassifyError` previously gave up on it, although Anthropic's own message asks the client to try again. Gateway failures worded as "connection closed", "stream was interrupted", "service is temporarily unavailable", or "returned an empty response", among others, are now transient too, and underscored `rate_limit` wording counts as rate limiting.

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Replace Responses message IDs whose reasoning item is not replayed.
 - [x] Send the Responses session affinity header as `session-id`.
 - [x] Classify Anthropic `api_error` and common gateway failures as retryable.
 - [x] Raise the default retry delay cap to 60s and back off exponentially with jitter.
