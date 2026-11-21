@@ -263,7 +263,9 @@ func openAICompatibleBaseURL(model sigma.Model, fallback string) string {
 
 func addOpenAICompatibleModelHeaders(req *http.Request, model sigma.Model) {
 	for key, value := range openAICompatibleModelHeaders(model) {
-		if unsafeCredentialHeader(key) {
+		// Empty catalog values, such as OpenRouter's placeholder attribution
+		// headers, must not replace headers configured on the provider.
+		if unsafeCredentialHeader(key) || value == "" {
 			continue
 		}
 		req.Header.Set(key, value)

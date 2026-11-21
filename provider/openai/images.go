@@ -669,7 +669,8 @@ func (p *ImagesProvider) baseURLForModel(model sigma.ImageModel, opts sigma.Opti
 
 func addImageModelHeaders(req *http.Request, model sigma.ImageModel) {
 	for key, value := range imageModelHeaders(model) {
-		if unsafeCredentialHeader(key) {
+		// Empty catalog values must not replace provider-configured headers.
+		if unsafeCredentialHeader(key) || value == "" {
 			continue
 		}
 		req.Header.Set(key, value)

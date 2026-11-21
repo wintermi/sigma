@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Keep provider headers when model metadata headers are empty.
 - [x] Report OpenRouter BYOK provider cost including the upstream inference cost.
 - [x] Treat rejected optional nulls as omission for every tool and wrap single values for arrays when coercing.
 - [x] Take the Bedrock region from any Bedrock model ARN.

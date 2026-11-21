@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenRouter app attribution configured on the provider is sent again. OpenRouter catalog models include empty `HTTP-Referer` and `X-Title` header placeholders, and sigma applied model headers after provider headers, so `openrouter.WithHeader("HTTP-Referer", ...)` was overwritten with an empty value on every catalog model. Empty model header values are now skipped for text and image requests; non-empty model headers keep their precedence.
+
 OpenRouter costs for bring-your-own-key requests are no longer understated. For these requests OpenRouter's `usage.cost` is only its own fee, often $0, while the inference itself is billed to the caller's provider account and reported in `cost_details`. sigma reported the fee as the provider cost and dropped `is_byok` and `cost_details` from `Usage.Raw`. The provider-reported cost now adds the upstream inference cost, is omitted when OpenRouter does not supply it, and the raw accounting fields are kept.
 
 `ValidateToolCall` now accepts two common model habits. A `null` in an optional property whose schema does not allow null, such as `{"limit": null}` for an optional integer, is treated as leaving the property out for every tool; sigma only did this for strict tools, so these calls failed with "expected integer, got null". With `CoercePrimitives`, a single value sent where an array is expected, such as `{"paths": "a.txt"}`, becomes a one-item array. Nullable properties keep explicit nulls, and required properties still reject null.

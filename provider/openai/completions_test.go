@@ -3233,6 +3233,37 @@ func TestStreamingReportsOpenRouterBYOKCost(t *testing.T) {
 	}
 }
 
+func TestEmptyModelHeadersKeepProviderHeaders(t *testing.T) {
+	t.Parallel()
+
+	headers := make(chan http.Header, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		headers <- r.Header.Clone()
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, `data: {"id":"gen","model":"m","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("openrouter-attribution-test")
+	model := openAITestModel(providerID)
+	// OpenRouter catalog rows carry empty attribution placeholders.
+	model.ProviderMetadata = map[string]any{"headers": map[string]string{"HTTP-Referer": "", "X-Title": "", "X-Model": "catalog"}}
+	client := openAITestClient(t, providerID, model, server.URL,
+		openai.WithHeader("HTTP-Referer", "https://app.example"),
+		openai.WithHeader("X-Title", "Example App"),
+	)
+	if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}); err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+	got := <-headers
+	for key, want := range map[string]string{"HTTP-Referer": "https://app.example", "X-Title": "Example App", "X-Model": "catalog"} {
+		if value := got.Get(key); value != want {
+			t.Fatalf("%s = %q, want %q", key, value, want)
+		}
+	}
+}
+
 func TestStreamingParsesChoiceUsage(t *testing.T) {
 	t.Parallel()
 

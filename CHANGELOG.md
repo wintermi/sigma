@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI-compatible text and image requests now skip empty model-metadata header values. Every OpenRouter catalog row carries empty `HTTP-Referer` and `X-Title` placeholders, which were applied after provider headers, so an app attribution configured with `openrouter.WithHeader` was replaced by an empty header.
 - OpenRouter requests made with the caller's own provider key (BYOK) now report `Cost.ProviderReportedCost` as OpenRouter's fee plus the upstream inference cost from `cost_details`, and report no provider cost when those details are incomplete. The fee alone was reported, often $0, and `is_byok` and `cost_details` were dropped from `Usage.Raw`.
 - `ValidateToolCall` now treats a `null` in an optional property whose schema rejects null as omission for every tool, not only strict tools, and `CoercePrimitives` wraps a single value sent for an `array` property in a one-item array. Calls such as `{"limit": null}` against an optional integer or `{"paths": "a.txt"}` against a string array previously failed validation.
 - Bedrock now takes the request region from any Bedrock ARN used as the model ID, including system inference profile, provisioned, imported, and foundation model ARNs and ARNs supplied through the `model_id` provider option. Only application inference profile ARNs were recognised, so other ARNs used `AWS_REGION` or failed with "region is required". An explicitly configured region still takes precedence.
