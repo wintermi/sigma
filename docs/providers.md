@@ -707,8 +707,10 @@ Manual Claude thinking reserves 1,024 tokens for output within the effective
 than 1,024 thinking tokens fit, thinking is disabled. With no supplied cap,
 enabled manual thinking sends the model's output limit, falling back to 1,024.
 Interleaved thinking with tools in the final request may exceed the output cap;
-its thinking budget must still be at least 1,024. Adaptive thinking and non-Claude
-reasoning retain their existing controls, except that OpenAI models take a
+its thinking budget must still be at least 1,024. Adaptive-thinking Claude
+models ignore a positive `ThinkingBudgetTokens` and use adaptive thinking with
+the reasoning level's effort; a zero or negative budget disables thinking.
+Adaptive thinking and non-Claude reasoning retain their existing controls, except that OpenAI models take a
 reasoning effort instead of a thinking budget: gpt-oss receives a flat
 `reasoning_effort` limited to low through high, other GPT models a nested
 `reasoning.effort`, and `minimal` is sent as low. Generated Bedrock gpt-oss and

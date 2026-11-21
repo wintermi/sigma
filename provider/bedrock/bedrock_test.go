@@ -485,6 +485,7 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 	t.Parallel()
 
 	disabled := false
+	enabled := true
 	tests := []struct {
 		name   string
 		model  sigma.Model
@@ -527,6 +528,39 @@ func TestBedrockThinkingPayloadVariants(t *testing.T) {
 				"output_config":  map[string]any{"effort": "xhigh"},
 				"anthropic_beta": []string{"thinking-binding-controls-2026-08-01"},
 			},
+		},
+		{
+			name: "adaptive claude ignores explicit budget",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "global.anthropic.claude-sonnet-5"
+				model.Name = "Claude Sonnet 5"
+				return model
+			}(),
+			opts: sigma.Options{
+				ReasoningLevel:       sigma.ThinkingLevelMedium,
+				ThinkingBudgetTokens: intPtr(8000),
+				BedrockOptions:       &sigma.BedrockOptions{InterleavedThinking: &enabled},
+			},
+			want: map[string]any{
+				"thinking": map[string]any{
+					"type": "adaptive", "display": "summarized",
+					"block_binding": map[string]any{"prefix_mismatch_behavior": "drop_block"},
+				},
+				"output_config":  map[string]any{"effort": "medium"},
+				"anthropic_beta": []string{"thinking-binding-controls-2026-08-01"},
+			},
+		},
+		{
+			name: "adaptive claude with zero budget disables thinking",
+			model: func() sigma.Model {
+				model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+				model.ID = "global.anthropic.claude-sonnet-5"
+				model.Name = "Claude Sonnet 5"
+				return model
+			}(),
+			opts: sigma.Options{ThinkingBudgetTokens: intPtr(0)},
+			want: map[string]any{"thinking": map[string]any{"type": "disabled"}},
 		},
 		{
 			name: "fixed budget claude",

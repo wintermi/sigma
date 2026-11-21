@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock requests to adaptive-thinking Claude models no longer switch to budget thinking when the caller sets `ThinkingBudgetTokens`. These models only accept adaptive thinking, so a request with an explicit budget sent `budget_tokens`, which they reject, and lost thinking block binding. The budget is now ignored for these models and the reasoning level selects the effort, as on the direct Anthropic adapter. A zero or negative budget still disables thinking.
+
 Gemini and Vertex text turns that end with `OTHER`, `FINISH_REASON_UNSPECIFIED`, or a finish reason sigma does not recognise now fail. Google uses these reasons when generation stops for reasons other than completion, token limits, or safety, but sigma finished them as successful turns with an `unknown` stop reason, so cut-off answers looked complete and agent loops neither retried nor reported them. They now end with `StopReasonError` and a `ProviderError` naming the reason, like rejected tool calls, while partial output, usage, and the raw finish reason are kept. Image generation responses are unchanged.
 
 OpenAI Chat Completions turns that end with an unrecognised `finish_reason` now fail. Providers use such reasons for interrupted generations, for example DeepSeek's `insufficient_system_resource`, but sigma finished them as successful turns with an `unknown` stop reason, so truncated answers looked complete. They now return a typed provider error naming the reason, while the final message keeps the partial output, usage, and raw `finish_reason`; the recognised reasons, including `content_filter`, are unchanged.

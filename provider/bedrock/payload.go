@@ -845,7 +845,9 @@ func bedrockThinkingFields(model sigma.Model, opts sigma.Options, config Config,
 	}
 
 	display := bedrockThinkingDisplay(model, opts, config)
-	if supportsAdaptiveThinking(model) && opts.ThinkingBudgetTokens == nil {
+	// Adaptive models reject budget thinking, so a positive budget still selects
+	// adaptive thinking; a zero or negative budget falls through to disabled.
+	if supportsAdaptiveThinking(model) && (opts.ThinkingBudgetTokens == nil || *opts.ThinkingBudgetTokens > 0) {
 		thinking := map[string]any{"type": "adaptive"}
 		if display != "" {
 			thinking["display"] = display

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send adaptive thinking to Bedrock adaptive Claude models when a thinking budget is set.
 - [x] Return typed errors for Gemini `OTHER`, unspecified, and unrecognised finish reasons.
 - [x] Return typed errors for unrecognised Chat Completions finish reasons.
 - [x] Return errors for Codex `response.done` with a failed, cancelled, or incomplete status.
