@@ -653,8 +653,9 @@ _ = bedrock.Register(registry, sigma.ProviderAmazonBedrock,
 
 The Bedrock adapter uses stdlib HTTP, SigV4 signing, and EventStream parsing; it
 does not import the AWS SDK. Configure the region with `bedrock.WithRegion` or
-provider options; if neither is set, it falls back to `AWS_REGION` and then
-`AWS_DEFAULT_REGION`. Bedrock first accepts a request-scoped bearer token, then
+provider options; if neither is set and the model ID sent is a Bedrock ARN, such
+as an inference profile, provisioned, or imported model ARN, the ARN's region is
+used; otherwise it falls back to `AWS_REGION` and then `AWS_DEFAULT_REGION`. Bedrock first accepts a request-scoped bearer token, then
 uses the configured credential source. The default `CredentialSourceAuto`
 source tries the auth resolver before the built-in default chain; resolver
 failures other than unavailable credentials stop resolution. The default chain

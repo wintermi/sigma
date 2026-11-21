@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock requests whose model ID is a system inference profile, provisioned model, imported model, or foundation model ARN now go to the region in the ARN. sigma only read the region from application inference profile ARNs, so other ARNs were signed for and sent to `AWS_REGION`, which fails for an ARN in another region, or failed with "region is required" when no region was set. ARNs passed through the `model_id` provider option are also recognised. An explicit `WithRegion` or region provider option still wins.
+
 Switching a conversation that contains thinking to a Mistral model without thinking support, such as Codestral or Devstral, no longer fails before sending. A capability check ran on the history before the replay transform and rejected every thinking block, even though the transform drops thinking from other models and converts the target model's own thinking to text.
 
 Gemini tool calls now respect constant parameters and discriminated-union tags. Gemini ignores `const` in `parametersJsonSchema` but honours `enum`, and sigma sent `const` unchanged, so the model could emit any value and `ValidateToolCall` then rejected the call or matched the wrong branch. String and number `const` values are now sent as one-value `enum`s, recursing only through subschemas so literal data such as `default` is left alone.

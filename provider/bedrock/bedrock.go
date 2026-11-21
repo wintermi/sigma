@@ -303,11 +303,10 @@ func effectiveConfig(base Config, model sigma.Model, opts sigma.Options) Config 
 		config.CredentialSource = CredentialSource(value)
 	}
 	if config.Region == "" {
-		if region := inferenceProfileARNRegion(config.InferenceProfileARN); region != "" {
-			config.Region = region
-		} else if region := inferenceProfileARNRegion(string(model.ID)); region != "" {
-			config.Region = region
-		}
+		// The region embedded in the ARN that is sent, whether an inference
+		// profile, provisioned, imported, or foundation model ARN, wins over
+		// request and environment regions set for other services.
+		config.Region = bedrockARNRegion(bedrockModelID(config, model))
 	}
 	if config.Region == "" {
 		if region, ok := stringOption(options, providerOptionRequestRegion); ok {
@@ -353,7 +352,7 @@ func regionalInferenceProfileRegion(modelID sigma.ModelID) string {
 	return ""
 }
 
-func inferenceProfileARNRegion(value string) string {
+func bedrockARNRegion(value string) string {
 	parts := strings.Split(value, ":")
 	if len(parts) < 6 {
 		return ""
@@ -362,9 +361,6 @@ func inferenceProfileARNRegion(value string) string {
 		return ""
 	}
 	if parts[1] != "aws" && !strings.HasPrefix(parts[1], "aws-") {
-		return ""
-	}
-	if !strings.HasPrefix(parts[5], "application-inference-profile/") {
 		return ""
 	}
 	return parts[3]
