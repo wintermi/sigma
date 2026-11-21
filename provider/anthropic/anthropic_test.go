@@ -1709,7 +1709,7 @@ func TestBudgetThinkingLevelFallbackAndMetadataFiltering(t *testing.T) {
 	if got, want := thinking["type"], "enabled"; got != want {
 		t.Fatalf("thinking type = %v, want %q", got, want)
 	}
-	if got, want := thinking["budget_tokens"], float64(4096); got != want {
+	if got, want := thinking["budget_tokens"], float64(8192); got != want {
 		t.Fatalf("budget_tokens = %v, want %v", got, want)
 	}
 	if got, want := payload["max_tokens"], float64(10000); got != want {

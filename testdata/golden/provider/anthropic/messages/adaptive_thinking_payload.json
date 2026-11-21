@@ -17,7 +17,7 @@
   "model": "compatible-claude-test",
   "stream": true,
   "thinking": {
-    "budget_tokens": 8192,
+    "budget_tokens": 8976,
     "display": "summarized",
     "type": "enabled"
   }

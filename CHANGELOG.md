@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Direct Anthropic budget thinking now uses default budgets of 8,192 tokens for `medium` and 16,384 for `high` and `xhigh`, matching Bedrock Claude and `MaxTokensForContext` estimates. It sent half those budgets (4,096 and 8,192) for `medium` and `high`, so the same reasoning level thought less on the direct API than on Bedrock. Explicit budgets and model-mapped values are unchanged.
 - Responses replay now gives an assistant message a generated `msg_` ID when its reasoning item is not replayed or the message was recorded by a different provider, API, or model, as tool items already did. The original ID was always sent, which OpenAI can reject as a message provided without its required reasoning item.
 - OpenAI Responses, Azure, and xAI Responses requests with a session ID and caching enabled now send the `session-id` affinity header instead of `session_id`. OpenAI documents `session-id`, and proxies such as nginx drop header names containing underscores, which lost session affinity and prompt-cache hits.
 - `ClassifyError` now classifies Anthropic `api_error` provider codes, which arrive as mid-stream error events without an HTTP status, as transient and retryable, along with gateway failures reported as "connection closed", "stream was interrupted", `upstream_stream_read_error`, "service is temporarily unavailable", "returned an empty response", and similar text, and treats `rate_limit` and `ratelimit` wording as rate limiting. These errors were classified as unknown and not retryable.

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Direct Anthropic models with budget thinking, such as Claude Sonnet 4.5, now get the same default budgets as Bedrock Claude: 8,192 tokens at `medium` and 16,384 at `high` and `xhigh`. The direct adapter used half those budgets for `medium` and `high`, so the same reasoning level produced shallower thinking than on Bedrock and less than sigma's own token estimates assumed. Budgets still clamp to leave 1,024 output tokens within `max_tokens`, and explicit budgets are unchanged.
+
 Responses history replay no longer sends an assistant message's original `msg_` ID when the reasoning item it belongs to is dropped, for example after switching between models or when the reasoning has no encrypted content. OpenAI ties such message IDs to their reasoning item and can reject the request when the reasoning is missing. These messages now get a generated ID, as tool call items already did, while same-model turns whose reasoning is replayed keep their IDs.
 
 Responses session affinity now uses the `session-id` header that OpenAI documents, as Codex requests already did. sigma sent `session_id`, which nginx-style proxies silently drop because the name contains an underscore, so cached sessions lost routing affinity and their prompt-cache hit rate fell. `x-client-request-id` and the custom session header option are unchanged.

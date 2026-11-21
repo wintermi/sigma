@@ -804,10 +804,9 @@ func thinkingBudget(model sigma.Model, opts sigma.Options) int {
 	case sigma.ThinkingLevelLow:
 		return 2048
 	case sigma.ThinkingLevelMedium:
-		return 4096
-	case sigma.ThinkingLevelHigh:
 		return 8192
-	case sigma.ThinkingLevelXHigh:
+	case sigma.ThinkingLevelHigh, sigma.ThinkingLevelXHigh:
+		// Budget thinking has no level above high, so xhigh uses its budget.
 		return 16384
 	default:
 		return 0

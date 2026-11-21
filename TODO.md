@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Use the shared default thinking budgets for direct Anthropic budget thinking.
 - [x] Replace Responses message IDs whose reasoning item is not replayed.
 - [x] Send the Responses session affinity header as `session-id`.
 - [x] Classify Anthropic `api_error` and common gateway failures as retryable.
