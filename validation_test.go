@@ -708,6 +708,71 @@ func TestValidateToolCallWithOptionsRejectsInvalidPrimitiveCoercions(t *testing.
 	}
 }
 
+func TestValidateToolCallTreatsRejectedOptionalNullsAsOmitted(t *testing.T) {
+	t.Parallel()
+
+	tools := []sigma.Tool{{
+		Name: "search",
+		InputSchema: sigma.Schema{
+			"type": "object",
+			"properties": map[string]any{
+				"query":    map[string]any{"type": "string"},
+				"limit":    map[string]any{"type": "integer"},
+				"cursor":   map[string]any{"type": []any{"string", "null"}},
+				"required": map[string]any{"type": "integer"},
+			},
+			"required": []any{"query", "required"},
+		},
+	}}
+	arguments := map[string]any{"query": "go", "limit": nil, "cursor": nil, "required": json.Number("1")}
+	args, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "search", Arguments: arguments})
+	if err != nil {
+		t.Fatalf("ValidateToolCall returned error: %v", err)
+	}
+	if _, ok := args["limit"]; ok {
+		t.Fatalf("args = %#v, want the rejected optional null omitted", args)
+	}
+	if value, ok := args["cursor"]; !ok || value != nil {
+		t.Fatalf("args = %#v, want the nullable cursor kept as null", args)
+	}
+	if _, ok := arguments["limit"]; !ok {
+		t.Fatal("ValidateToolCall mutated the caller's arguments")
+	}
+
+	if _, err := sigma.ValidateToolCall(tools, sigma.ToolCall{Name: "search", Arguments: map[string]any{"query": "go", "required": nil}}); err == nil {
+		t.Fatal("ValidateToolCall accepted null for a required integer")
+	}
+}
+
+func TestValidateToolCallWithOptionsWrapsSingleValuesForArrays(t *testing.T) {
+	t.Parallel()
+
+	tools := []sigma.Tool{{
+		Name: "read",
+		InputSchema: sigma.Schema{
+			"type": "object",
+			"properties": map[string]any{
+				"paths": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"ids":   map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
+			},
+		},
+	}}
+	call := sigma.ToolCall{Name: "read", Arguments: map[string]any{"paths": "a.txt", "ids": "7"}}
+	args, err := sigma.ValidateToolCallWithOptions(tools, call, sigma.ToolValidationOptions{CoercePrimitives: true})
+	if err != nil {
+		t.Fatalf("ValidateToolCallWithOptions returned error: %v", err)
+	}
+	if got, want := args["paths"], []any{"a.txt"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("paths = %#v, want %#v", got, want)
+	}
+	if got, want := args["ids"], []any{json.Number("7")}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ids = %#v, want %#v", got, want)
+	}
+	if _, err := sigma.ValidateToolCall(tools, call); err == nil {
+		t.Fatal("ValidateToolCall wrapped a single value without CoercePrimitives")
+	}
+}
+
 func TestValidateToolCallWithOptionsDoesNotCoerceNullIntoPrimitiveZeroValues(t *testing.T) {
 	t.Parallel()
 
@@ -731,6 +796,7 @@ func TestValidateToolCallWithOptionsDoesNotCoerceNullIntoPrimitiveZeroValues(t *
 					InputSchema: sigma.Schema{
 						"type":       "object",
 						"properties": map[string]any{"value": tt.schema},
+						"required":   []any{"value"},
 					},
 				}},
 				sigma.ToolCall{Name: "coerce", Arguments: map[string]any{"value": nil}},

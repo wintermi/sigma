@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `ValidateToolCall` now treats a `null` in an optional property whose schema rejects null as omission for every tool, not only strict tools, and `CoercePrimitives` wraps a single value sent for an `array` property in a one-item array. Calls such as `{"limit": null}` against an optional integer or `{"paths": "a.txt"}` against a string array previously failed validation.
 - Bedrock now takes the request region from any Bedrock ARN used as the model ID, including system inference profile, provisioned, imported, and foundation model ARNs and ARNs supplied through the `model_id` provider option. Only application inference profile ARNs were recognised, so other ARNs used `AWS_REGION` or failed with "region is required". An explicitly configured region still takes precedence.
 - Mistral Conversations no longer rejects requests whose history contains thinking when the target model has no thinking support. A capability check ran before the replay transform and returned `ErrorUnsupported` for any thinking block, including thinking from other models that the transform drops.
 - Google Gemini and Vertex tool schemas now send string and number `const` values as single-value `enum`s in `parametersJsonSchema`. Gemini ignores `const` there, so models could emit any value for a constant parameter or discriminator, and `ValidateToolCall` then rejected the call.

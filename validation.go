@@ -25,7 +25,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/wintermi/sigma/internal/redact"
-	"github.com/wintermi/sigma/internal/toolschema"
 )
 
 // ValidateModelRef validates the minimum fields needed to identify a model.
@@ -124,11 +123,11 @@ func ValidateToolCallWithOptions(tools []Tool, call ToolCall, options ToolValida
 	if err != nil {
 		return nil, toolValidationError(call.Name, "$", "JSON object arguments", call.Arguments, "arguments are malformed", err)
 	}
-	if toolschema.Enabled(tool.ProviderMetadata) {
-		context := validationContext{root: schema, active: make(map[string]struct{})}
-		if err := context.normalizeOptionalNulls(args, schema, "$", call.Name); err != nil {
-			return nil, err
-		}
+	// Models often send null for an optional property they mean to omit, so a
+	// null the property schema rejects is treated as omission.
+	nullContext := validationContext{root: schema, active: make(map[string]struct{})}
+	if err := nullContext.normalizeOptionalNulls(args, schema, "$", call.Name); err != nil {
+		return nil, err
 	}
 
 	if options.CoercePrimitives {
@@ -194,12 +193,18 @@ func (context *validationContext) coerceValue(schema map[string]any, value any, 
 		return context.coerceNestedValue(schema, value, path, toolName)
 	}
 	if len(types) > 0 && !valueMatchesAnyType(value, types) {
+		changed := false
 		for _, typ := range types {
-			coerced, changed := coercePrimitiveByType(value, typ)
+			var coerced any
+			coerced, changed = coercePrimitiveByType(value, typ)
 			if changed {
 				value = coerced
 				break
 			}
+		}
+		// A single value sent for an array becomes a one-item array.
+		if !changed && value != nil && slices.Contains(types, "array") {
+			value = []any{value}
 		}
 	}
 	return context.coerceNestedValue(schema, value, path, toolName)

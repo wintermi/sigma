@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`ValidateToolCall` now accepts two common model habits. A `null` in an optional property whose schema does not allow null, such as `{"limit": null}` for an optional integer, is treated as leaving the property out for every tool; sigma only did this for strict tools, so these calls failed with "expected integer, got null". With `CoercePrimitives`, a single value sent where an array is expected, such as `{"paths": "a.txt"}`, becomes a one-item array. Nullable properties keep explicit nulls, and required properties still reject null.
+
 Bedrock requests whose model ID is a system inference profile, provisioned model, imported model, or foundation model ARN now go to the region in the ARN. sigma only read the region from application inference profile ARNs, so other ARNs were signed for and sent to `AWS_REGION`, which fails for an ARN in another region, or failed with "region is required" when no region was set. ARNs passed through the `model_id` provider option are also recognised. An explicit `WithRegion` or region provider option still wins.
 
 Switching a conversation that contains thinking to a Mistral model without thinking support, such as Codestral or Devstral, no longer fails before sending. A capability check ran on the history before the replay transform and rejected every thinking block, even though the transform drops thinking from other models and converts the target model's own thinking to text.

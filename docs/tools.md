@@ -160,7 +160,7 @@ and `items` constrains array values without requiring a container type. For
 example, `anyOf` allowing a string or array alongside numeric `items` accepts a
 string or an array of numbers, but rejects invalid array elements. Nested
 coercion follows the actual container; explicit primitive coercion remains
-opt-in. Strict optional-null normalization also respects these semantics.
+opt-in. Optional-null normalization also respects these semantics.
 This includes numeric bounds and string length, pattern, and
 format constraints in `$ref` siblings and composed schemas. Previously accepted
 out-of-range arguments may therefore fail validation. Exact numeric comparisons
@@ -172,6 +172,14 @@ against the original schema root, including nested unions and recursive
 structures, preserves already-valid union values, and validates the result
 against the complete schema.
 Coercion does not mutate caller-owned schemas or arguments.
+
+Models often send `null` for an optional property they mean to omit. For every
+tool, `ValidateToolCall` treats a `null` in an optional property whose schema
+rejects null as omission, so `{"limit": null}` against an optional integer
+validates without `limit`; nullable properties keep their explicit `null`, and
+required properties still fail. With `CoercePrimitives`, a single value sent for
+an `array` property becomes a one-item array, so `{"paths": "a.txt"}` becomes
+`{"paths": ["a.txt"]}`.
 
 ## Strict Tool Schemas
 
@@ -196,8 +204,8 @@ tool := sigma.Tool{
 Sigma sends a derived schema copy with closed objects and every property
 required. Originally optional non-nullable properties become nullable on the
 wire, and `ValidateToolCall` maps provider-emitted `null` placeholders for
-those properties back to omission. The original schema and arguments are not
-mutated.
+those properties back to omission, as it does for every tool. The original
+schema and arguments are not mutated.
 
 Nullability respects the intersection of `type`, `enum`, `const`, and supported
 `anyOf` constraints; an unconstrained property accepts null. Local normalization
