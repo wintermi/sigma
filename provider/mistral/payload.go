@@ -117,17 +117,12 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 	if opts.ThinkingBudgetTokens != nil {
 		return unsupportedError(model, "mistral conversations does not support thinking options")
 	}
+	// Replayed thinking needs no check: the transform drops thinking from other
+	// models and converts it to text for targets without reasoning support.
 	for messageIndex, message := range req.Messages {
 		for _, block := range message.Content {
-			switch block.Type { //nolint:exhaustive
-			case sigma.ContentBlockImage:
-				if !model.SupportsImages() {
-					return unsupportedError(model, fmt.Sprintf("message %d: target model does not declare image input support", messageIndex))
-				}
-			case sigma.ContentBlockThinking:
-				if !model.SupportsThinking {
-					return unsupportedError(model, fmt.Sprintf("message %d: target model does not support thinking content", messageIndex))
-				}
+			if block.Type == sigma.ContentBlockImage && !model.SupportsImages() {
+				return unsupportedError(model, fmt.Sprintf("message %d: target model does not declare image input support", messageIndex))
 			}
 		}
 	}

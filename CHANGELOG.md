@@ -188,6 +188,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Mistral Conversations no longer rejects requests whose history contains thinking when the target model has no thinking support. A capability check ran before the replay transform and returned `ErrorUnsupported` for any thinking block, including thinking from other models that the transform drops.
 - Google Gemini and Vertex tool schemas now send string and number `const` values as single-value `enum`s in `parametersJsonSchema`. Gemini ignores `const` there, so models could emit any value for a constant parameter or discriminator, and `ValidateToolCall` then rejected the call.
 - Anthropic Messages tool schemas are now sent as a root object schema keeping `properties`, `required`, `additionalProperties`, `$defs`, and `definitions`. Schemas with a root `anyOf`, `oneOf`, or `allOf`, or without a root `type`, were forwarded unchanged and Anthropic rejected the whole request with a 400. Strict tools are unchanged.
 - Anthropic models with mid-conversation effort (Claude Opus 5, Opus 5.5, and Fable 5.1) now send a fixed top-level `output_config.effort` of `low` instead of `high`. Organizations that cap effort reject requests containing any level above the cap, so every request failed under a cap below `high`; the per-message effort markers still carry the requested level.

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Accept thinking history on Mistral models without thinking support.
 - [x] Send Gemini tool schema `const` values as single-value enums.
 - [x] Send Anthropic tool schemas as root object schemas.
 - [x] Send a fixed `low` top-level effort to mid-conversation effort Claude models.
