@@ -203,7 +203,7 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 		return ErrorClassBilling, true
 	case "rate_limit_error", "rate_limit_exceeded", "rate_limited", "too_many_requests", "throttlingexception":
 		return ErrorClassRateLimited, true
-	case "server_error", "server_busy", "internal_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
+	case "server_error", "server_busy", "internal_error", "api_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
 		return ErrorClassTransient, true
 	case "invalid_request_error", "invalid_prompt", "validationexception":
 		return ErrorClassInvalidRequest, true
@@ -351,6 +351,8 @@ func messageIndicatesQuota(message string) bool {
 func messageIndicatesRateLimit(message string) bool {
 	return strings.Contains(message, "rate limit") ||
 		strings.Contains(message, "rate limited") ||
+		strings.Contains(message, "rate_limit") ||
+		strings.Contains(message, "ratelimit") ||
 		strings.Contains(message, "too many requests") ||
 		strings.Contains(message, "throttling")
 }
@@ -383,6 +385,19 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "try your request again") ||
 		strings.Contains(message, "please retry your request") ||
 		strings.Contains(message, "resourceexhausted") ||
+		strings.Contains(message, "service is temporarily unavailable") ||
+		strings.Contains(message, "service temporarily unavailable") ||
+		strings.Contains(message, "provider is temporarily unavailable") ||
+		strings.Contains(message, "provider temporarily unavailable") ||
+		strings.Contains(message, "admission ceiling") ||
+		strings.Contains(message, "connection closed") ||
+		strings.Contains(message, "stream was interrupted") ||
+		strings.Contains(message, "upstream_stream_read_error") ||
+		strings.Contains(message, "unable to forward upstream") ||
+		strings.Contains(message, "upstream request failed") ||
+		strings.Contains(message, "provider finish_reason: error") ||
+		strings.Contains(message, "returned an empty response") ||
+		strings.Contains(message, "stopped before completing the response") ||
 		messageIndicatesPrematureProviderStreamTermination(message)
 }
 

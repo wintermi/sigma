@@ -457,6 +457,31 @@ func TestClassifyError(t *testing.T) {
 			code:  "ValidationException",
 		},
 		{
+			name:      "anthropic mid-stream api_error",
+			err:       &ProviderError{Provider: ProviderAnthropic, ProviderCode: "api_error", ProviderMessage: "Unable to complete this request right now. Please try again.", Err: ErrProviderResponse},
+			class:     ErrorClassTransient,
+			retryable: true,
+			code:      "api_error",
+		},
+		{
+			name:      "gateway connection closed",
+			err:       &ProviderError{Provider: ProviderOpenRouter, ProviderMessage: "Connection closed.", Err: ErrProviderResponse},
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "service temporarily unavailable",
+			err:       &ProviderError{Provider: ProviderOpenRouter, ProviderMessage: "The service is temporarily unavailable.", Err: ErrProviderResponse},
+			class:     ErrorClassTransient,
+			retryable: true,
+		},
+		{
+			name:      "underscored rate limit text",
+			err:       &ProviderError{Provider: ProviderOpenRouter, ProviderMessage: "upstream rate_limit reached", Err: ErrProviderResponse},
+			class:     ErrorClassRateLimited,
+			retryable: true,
+		},
+		{
 			name:      "server busy code",
 			err:       NewProviderError(ProviderOpenAI, APIOpenAIResponses, "gpt-test", 0, "", 0, []byte(`{"error":{"code":"server_busy","message":"busy"}}`), ErrProviderResponse),
 			class:     ErrorClassTransient,

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Classify Anthropic `api_error` and common gateway failures as retryable.
 - [x] Raise the default retry delay cap to 60s and back off exponentially with jitter.
 - [x] Keep provider headers when model metadata headers are empty.
 - [x] Report OpenRouter BYOK provider cost including the upstream inference cost.

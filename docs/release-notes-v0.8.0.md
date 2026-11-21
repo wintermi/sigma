@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic's internal `api_error`, which arrives as a stream error event once a response has started and so carries no HTTP status, is now classified as transient and retryable instead of unknown. Routing and retry logic built on `ClassifyError` previously gave up on it, although Anthropic's own message asks the client to try again. Gateway failures worded as "connection closed", "stream was interrupted", "service is temporarily unavailable", or "returned an empty response", among others, are now transient too, and underscored `rate_limit` wording counts as rate limiting.
+
 Opt-in HTTP retries now survive ordinary rate limits. The default maximum retry delay was 2 seconds, so a 429 asking the client to wait 5 seconds, which OpenAI and Anthropic commonly send, failed at once with `ErrRetryAfterExceedsMaxDelay`, and responses without `Retry-After` were retried after 100ms and 200ms. The default cap is now 60 seconds, and backoff starts at 500ms and doubles up to 8 seconds with up to 25% jitter, matching the OpenAI and Anthropic SDK retry policies. `WithMaxRetryDelay` still overrides the cap, and retries remain off unless `WithMaxRetries` is set.
 
 OpenRouter app attribution configured on the provider is sent again. OpenRouter catalog models include empty `HTTP-Referer` and `X-Title` header placeholders, and sigma applied model headers after provider headers, so `openrouter.WithHeader("HTTP-Referer", ...)` was overwritten with an empty value on every catalog model. Empty model header values are now skipped for text and image requests; non-empty model headers keep their precedence.
