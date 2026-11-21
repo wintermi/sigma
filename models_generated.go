@@ -3268,7 +3268,6 @@ var builtinTextModels = []Model{
 			ThinkingLevel("max"):   "max",
 			ThinkingLevel("xhigh"): "xhigh",
 		},
-		UnsupportedThinkingLevels:     []ThinkingLevel{ThinkingLevel("off")},
 		InputCostPerMillion:           5,
 		OutputCostPerMillion:          25,
 		CacheReadInputCostPerMillion:  0.5,

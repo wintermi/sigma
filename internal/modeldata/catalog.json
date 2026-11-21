@@ -4481,10 +4481,7 @@
       "thinkingLevelMap": {
         "xhigh": "xhigh",
         "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "off"
-      ]
+      }
     },
     {
       "id": "claude-opus-5-5",

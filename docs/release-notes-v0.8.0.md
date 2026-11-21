@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Claude Opus 5 can now run with thinking turned off. sigma rejected `ThinkingLevelOff` on every model with mid-conversation effort, but Opus 5 accepts disabled thinking. Off now sends `thinking: {type: "disabled"}` without effort markers, since effort cannot change while thinking is disabled. Opus 5.5 and Fable 5.1, which reject disabled thinking, keep off marked unsupported and still fail locally.
+
 Turning reasoning off on OpenAI Responses, Azure, and Chat Completions reasoning models now reaches the provider. Off previously sent no reasoning field, which these models treat as "use the default effort", so they kept reasoning and billing reasoning tokens. Responses and Azure now send the model's mapped off effort or `none`, as Codex already did, and Chat Completions `reasoning_effort` routes send the mapped off value when the model has one. GitHub Copilot, which rejects an off effort, and requests without a level are unchanged.
 
 Thinking recorded by a different provider, API, or model is no longer replayed to the next model. Anthropic, Bedrock, and Mistral received it as assistant text inside `<thinking>` tags and Gemini as bare text, so the new model saw another model's reasoning as part of its own replies and could start writing its reasoning into the visible answer; Chat Completions routes that require `reasoning_content`, such as DeepSeek, received it as the model's own chain of thought. These blocks are now dropped, while text and tool calls are kept. Messages without provenance are still treated as the target's own, and `TransformRequestForModel` still converts thinking to text when called explicitly.
@@ -870,7 +872,9 @@ selection remains available through existing provider-specific controls.
   records the resolved effort in `AssistantMessage.ProviderThinkingLevel` and
   persisted `Message` values, emits it on partial and terminal results, and
   inserts exact-provenance replay markers before matching assistant turns. An
-  omitted reasoning level defaults to `high`; explicit off is unsupported.
+  omitted reasoning level defaults to `high`. Explicit off disables thinking
+  without effort markers on Opus 5 and is rejected where metadata marks it
+  unsupported, such as Opus 5.5 and Fable 5.1.
 - `WithToolChoice` accepts `ToolChoiceAuto` or `ToolChoiceNone` across OpenAI
   Chat Completions, Responses, Azure Responses, Codex Responses, Anthropic
   Messages, Google Gemini and Vertex, Mistral Conversations, and Bedrock

@@ -496,7 +496,7 @@ func anthropicBeta(model sigma.Model, opts sigma.Options, compat messagesCompat,
 	if opts.AnthropicOptions != nil && opts.AnthropicOptions.EnableRefusalFallbacks {
 		betas = appendBetas(betas, serverSideFallbackBeta)
 	}
-	if compat.supportsMidConversationEffort {
+	if compat.supportsMidConversationEffort && opts.ReasoningLevel != sigma.ThinkingLevelOff {
 		betas = appendBetas(betas, midConversationEffortBeta)
 		betas = appendBetas(betas, thinkingBindingControlsBeta)
 	}

@@ -40,6 +40,21 @@ const (
 )
 
 func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat messagesCompat) (map[string]any, error) {
+	if compat.supportsMidConversationEffort && opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		// Some mid-conversation effort models cannot disable thinking.
+		if !model.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
+			return nil, &sigma.Error{
+				Code:     sigma.ErrorInvalidOptions,
+				Message:  fmt.Sprintf("thinking level %q is not supported by model metadata", opts.ReasoningLevel),
+				Provider: model.Provider,
+				Model:    model.ID,
+				Err:      sigma.ErrInvalidOptions,
+			}
+		}
+		// Off disables thinking, and effort cannot change between messages
+		// while thinking is disabled, so no effort markers are sent.
+		compat.supportsMidConversationEffort = false
+	}
 	transformed, err := transform.Transform(transform.Input{
 		TargetModel: model,
 		Request:     req,
@@ -69,10 +84,7 @@ func messagesPayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 		deferredTools.Deferred = nil
 	}
 
-	activeEffort, err := midConversationEffort(model, opts, compat)
-	if err != nil {
-		return nil, err
-	}
+	activeEffort := midConversationEffort(model, opts, compat)
 	messages, err := anthropicMessages(model, transformed, opts.CacheRetention, compat, deferredTools.Deferred, normalizeToolName, activeEffort)
 	if err != nil {
 		return nil, err
@@ -193,20 +205,11 @@ func anthropicMessages(model sigma.Model, req sigma.Request, retention sigma.Cac
 	return messages, nil
 }
 
-func midConversationEffort(model sigma.Model, opts sigma.Options, compat messagesCompat) (string, error) {
+func midConversationEffort(model sigma.Model, opts sigma.Options, compat messagesCompat) string {
 	if !compat.supportsMidConversationEffort {
-		return "", nil
+		return ""
 	}
-	if opts.ReasoningLevel == sigma.ThinkingLevelOff {
-		return "", &sigma.Error{
-			Code:     sigma.ErrorInvalidOptions,
-			Message:  fmt.Sprintf("thinking level %q is not supported by model metadata", opts.ReasoningLevel),
-			Provider: model.Provider,
-			Model:    model.ID,
-			Err:      sigma.ErrInvalidOptions,
-		}
-	}
-	return adaptiveEffort(model, opts), nil
+	return adaptiveEffort(model, opts)
 }
 
 func replayedMidConversationEffort(model sigma.Model, message sigma.Message, compat messagesCompat) (string, bool) {

@@ -311,8 +311,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	if got := opus5.AnthropicMessagesCompat.AllowedFallbackModels; len(got) != 0 {
 		t.Fatalf("Claude Opus 5 fallback metadata = %#v, want no incompatible fallback", got)
 	}
-	if opus5.SupportsThinkingLevel(ThinkingLevelOff) {
-		t.Fatal("Claude Opus 5 unexpectedly supports thinking off")
+	if !opus5.SupportsThinkingLevel(ThinkingLevelOff) {
+		t.Fatal("Claude Opus 5 does not support thinking off")
 	}
 	for level, want := range map[ThinkingLevel]string{ThinkingLevelXHigh: "xhigh", ThinkingLevel("max"): "max"} {
 		if got, ok := opus5.ProviderThinkingLevel(level); !ok || got != want {

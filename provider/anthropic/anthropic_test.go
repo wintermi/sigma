@@ -1661,6 +1661,7 @@ func TestMidConversationThinkingRejectsOff(t *testing.T) {
 	model.AnthropicMessagesCompat = &sigma.AnthropicMessagesCompat{
 		SupportsMidConversationEffort: sigma.AnthropicCompatSupported,
 	}
+	model.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelOff}
 	client := anthropicTestClient(t, providerID, model, "http://127.0.0.1:1")
 
 	_, err := client.Complete(
