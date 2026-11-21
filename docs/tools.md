@@ -217,6 +217,8 @@ cannot be converted safely, including references, composed object or array
 unions, tuples, conditionals, pattern properties, and schema-valued additional
 properties, before provider dispatch. Omitted or false strict metadata
 preserves the original schema, and other provider routes remain unchanged.
+Responses routes send `strict: false` for those tools, because the Responses
+API treats an omitted `strict` as `true`.
 
 ## Streaming Tool Calls
 

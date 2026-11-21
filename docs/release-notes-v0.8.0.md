@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Responses function tools without strict metadata now send `strict: false`. The Responses API, and GitHub Copilot in particular, treats an omitted `strict` as `true`, so these tools ran in strict mode on their original schema: every optional property became a required string, and models filled them with empty strings or invented values. Tools marked strict are unchanged.
+
 Bedrock requests to adaptive-thinking Claude models no longer switch to budget thinking when the caller sets `ThinkingBudgetTokens`. These models only accept adaptive thinking, so a request with an explicit budget sent `budget_tokens`, which they reject, and lost thinking block binding. The budget is now ignored for these models and the reasoning level selects the effort, as on the direct Anthropic adapter. A zero or negative budget still disables thinking.
 
 Gemini and Vertex text turns that end with `OTHER`, `FINISH_REASON_UNSPECIFIED`, or a finish reason sigma does not recognise now fail. Google uses these reasons when generation stops for reasons other than completion, token limits, or safety, but sigma finished them as successful turns with an `unknown` stop reason, so cut-off answers looked complete and agent loops neither retried nor reported them. They now end with `StopReasonError` and a `ProviderError` naming the reason, like rejected tool calls, while partial output, usage, and the raw finish reason are kept. Image generation responses are unchanged.

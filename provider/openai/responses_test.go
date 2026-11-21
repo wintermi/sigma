@@ -208,6 +208,44 @@ func TestResponsesDerivesStrictToolSchemaWithoutMutatingRequest(t *testing.T) {
 	}
 }
 
+func TestResponsesSendsStrictFalseForNonStrictTools(t *testing.T) {
+	t.Parallel()
+
+	requests := make(chan capturedRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captureRequest(t, requests, r)
+		writeResponsesSSE(t, w, responsesCompletedEvent)
+	}))
+	t.Cleanup(server.Close)
+
+	providerID := sigma.ProviderID("responses-non-strict-tool-test")
+	model := responsesTestModel(providerID)
+	client := responsesTestClient(t, providerID, model, server.URL)
+	schema := sigma.Schema{
+		"type":       "object",
+		"properties": map[string]any{"units": map[string]any{"type": "string"}},
+	}
+	_, err := client.Complete(context.Background(), model, sigma.Request{
+		Messages: []sigma.Message{sigma.UserText("Use the weather tool.")},
+		Tools:    []sigma.Tool{{Name: "weather", InputSchema: schema}},
+	})
+	if err != nil {
+		t.Fatalf("Complete returned error: %v", err)
+	}
+
+	payload := decodeResponsesPayload(t, receiveRequest(t, requests).Body)
+	tool := payload["tools"].([]any)[0].(map[string]any)
+	// An omitted strict defaults to true on the Responses API, which would make
+	// the optional units property required.
+	if got, ok := tool["strict"]; !ok || got != false {
+		t.Fatalf("strict = %#v (present %v), want false", got, ok)
+	}
+	parameters := tool["parameters"].(map[string]any)
+	if _, ok := parameters["required"]; ok {
+		t.Fatalf("parameters = %#v, want the original non-strict schema", parameters)
+	}
+}
+
 func TestResponsesRejectsUnsafeStrictSchemaBeforeRequest(t *testing.T) {
 	t.Parallel()
 

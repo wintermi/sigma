@@ -626,7 +626,9 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 			converted = append(converted, convertedTool)
 			continue
 		}
-		strict, hasStrict := tool.ProviderMetadata["strict"].(bool)
+		// The Responses API treats an omitted strict as true, which makes
+		// optional properties required, so non-strict tools send false.
+		strict, _ := tool.ProviderMetadata["strict"].(bool)
 		parameters, err := responsesToolParameters(tool, strict)
 		if err != nil {
 			return nil, err
@@ -636,9 +638,7 @@ func responsesTools(tools []sigma.Tool, deferLoading bool, grammarToolInputPrope
 			"name":                    tool.Name,
 			"description":             tool.Description,
 			"parameters":              parameters,
-		}
-		if hasStrict {
-			convertedTool["strict"] = strict
+			"strict":                  strict,
 		}
 		if deferLoading {
 			convertedTool["defer_loading"] = true
