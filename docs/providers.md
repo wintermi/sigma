@@ -663,6 +663,9 @@ checks request-scoped static credentials,
 `AWS_BEARER_TOKEN_BEDROCK`, static AWS environment credentials
 (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`),
 shared profiles, ECS credentials, web identity, and IMDS, in that order.
+Unless a custom HTTP client is configured, ECS and IMDS requests connect
+directly and ignore `HTTP_PROXY`, so metadata tokens and credentials never pass
+through a proxy.
 A configured ECS or web
 identity source reports fetch failures instead of falling through to IMDS.
 As in the AWS SDKs, `AWS_CONTAINER_CREDENTIALS_FULL_URI` may use HTTPS to any

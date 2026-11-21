@@ -189,10 +189,11 @@ func defaultChainCredential(ctx context.Context, model sigma.Model, opts sigma.O
 		return credentials, nil
 	}
 	client := bedrockHTTPClient(opts)
+	metadataClient := metadataHTTPClient(opts)
 	// A configured ECS or web-identity source is committed to once its
 	// environment variables are present: a fetch failure surfaces instead of
 	// silently falling through to IMDS and signing with the wrong role.
-	if credentials, configured, err := ecsCredentials(ctx, client); err != nil {
+	if credentials, configured, err := ecsCredentials(ctx, metadataClient); err != nil {
 		return CredentialInfo{}, credentialError("bedrock converse stream: fetch ECS container credentials", err, bedrockConfig, nil)
 	} else if configured {
 		defaultChainCredentialCache.put(fingerprint, credentials, now)
@@ -204,7 +205,7 @@ func defaultChainCredential(ctx context.Context, model sigma.Model, opts sigma.O
 		defaultChainCredentialCache.put(fingerprint, credentials, now)
 		return credentials, nil
 	}
-	if credentials, ok := imdsCredentials(ctx, client); ok {
+	if credentials, ok := imdsCredentials(ctx, metadataClient); ok {
 		defaultChainCredentialCache.put(fingerprint, credentials, now)
 		return credentials, nil
 	}
@@ -398,6 +399,31 @@ type awsCredentialPayload struct {
 	SecretAccessKey string `json:"SecretAccessKey"`
 	Token           string `json:"Token"`
 	Expiration      string `json:"Expiration"`
+}
+
+// directMetadataClient reaches instance and container metadata endpoints
+// without a proxy. Go's environment proxy settings bypass only loopback hosts,
+// so the default client would send the IMDS session token, the container
+// authorization token, and the returned credentials through HTTP_PROXY.
+var directMetadataClient = &http.Client{Transport: directMetadataTransport()}
+
+func directMetadataTransport() http.RoundTripper {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return http.DefaultTransport
+	}
+	direct := transport.Clone()
+	direct.Proxy = nil
+	return direct
+}
+
+// metadataHTTPClient returns the client for ECS and IMDS credential requests:
+// the caller's client when one is configured, otherwise a direct client.
+func metadataHTTPClient(opts sigma.Options) *http.Client {
+	if opts.HTTPClient != nil {
+		return opts.HTTPClient
+	}
+	return directMetadataClient
 }
 
 func ecsCredentials(ctx context.Context, client *http.Client) (CredentialInfo, bool, error) {
