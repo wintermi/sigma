@@ -5,7 +5,10 @@
 
 package sigma
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"math"
+)
 
 const defaultCostCurrency = "USD"
 
@@ -226,6 +229,9 @@ func providerReportedCostFromRaw(raw map[string]any) (float64, string, bool) {
 	if len(raw) == 0 {
 		return 0, "", false
 	}
+	if byok, _ := raw["is_byok"].(bool); byok {
+		return openRouterBYOKCost(raw)
+	}
 	for _, key := range []string{rawCostKey, "total_cost", "totalCost"} {
 		cost, ok := numericRawValue(raw[key])
 		if ok {
@@ -233,6 +239,36 @@ func providerReportedCostFromRaw(raw map[string]any) (float64, string, bool) {
 		}
 	}
 	return 0, "", false
+}
+
+// openRouterBYOKCost returns the total cost of an OpenRouter request made with
+// the caller's own provider key: OpenRouter's fee in cost plus the upstream
+// inference cost billed to the provider account. It reports no cost when the
+// upstream cost is missing, since the fee alone understates spend.
+func openRouterBYOKCost(raw map[string]any) (float64, string, bool) {
+	fee, ok := validRawCost(raw[rawCostKey])
+	if !ok {
+		return 0, "", false
+	}
+	details, _ := raw["cost_details"].(map[string]any)
+	upstream, ok := validRawCost(details["upstream_inference_cost"])
+	if !ok {
+		prompt, promptOK := validRawCost(details["upstream_inference_prompt_cost"])
+		completions, completionsOK := validRawCost(details["upstream_inference_completions_cost"])
+		if !promptOK || !completionsOK {
+			return 0, "", false
+		}
+		upstream = prompt + completions
+	}
+	return fee + upstream, rawCurrency(raw), true
+}
+
+func validRawCost(value any) (float64, bool) {
+	cost, ok := numericRawValue(value)
+	if !ok || math.IsNaN(cost) || math.IsInf(cost, 0) || cost < 0 {
+		return 0, false
+	}
+	return cost, true
 }
 
 func numericRawValue(value any) (float64, bool) {

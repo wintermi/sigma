@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -3177,6 +3178,58 @@ func TestStreamingAttachesIDlessReasoningDetailsToFirstToolCallOnly(t *testing.T
 	// onto every parallel tool call.
 	if _, ok := final.Content[1].ProviderMetadata["reasoning_details"]; ok {
 		t.Fatalf("second call reasoning_details = %#v, want none", final.Content[1].ProviderMetadata["reasoning_details"])
+	}
+}
+
+func costPtr(value float64) *float64 {
+	return &value
+}
+
+func TestStreamingReportsOpenRouterBYOKCost(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name  string
+		usage string
+		want  *float64
+	}{
+		{name: "upstream cost", usage: `"cost":0.01,"is_byok":true,"cost_details":{"upstream_inference_cost":0.5}`, want: costPtr(0.51)},
+		{name: "prompt and completion costs", usage: `"cost":0.01,"is_byok":true,"cost_details":{"upstream_inference_cost":null,"upstream_inference_prompt_cost":0.2,"upstream_inference_completions_cost":0.3}`, want: costPtr(0.51)},
+		{name: "incomplete details", usage: `"cost":0.01,"is_byok":true,"cost_details":null`},
+		{name: "not byok", usage: `"cost":0.25,"is_byok":false`, want: costPtr(0.25)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, `data: {"id":"gen","model":"m","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}`+"\n\n")
+				_, _ = io.WriteString(w, `data: {"id":"gen","model":"m","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15,`+tt.usage+`}}`+"\n\n")
+				_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			}))
+			t.Cleanup(server.Close)
+
+			providerID := sigma.ProviderID("openrouter-byok-cost-test")
+			model := openAITestModel(providerID)
+			client := openAITestClient(t, providerID, model, server.URL)
+			final, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+			if err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			if final.Cost == nil {
+				t.Fatal("final cost was nil")
+			}
+			got := final.Cost.ProviderReportedCost
+			switch {
+			case tt.want == nil && got != nil:
+				t.Fatalf("provider-reported cost = %v, want none", *got)
+			case tt.want != nil && (got == nil || math.Abs(*got-*tt.want) > 1e-12):
+				t.Fatalf("provider-reported cost = %v, want %v", got, *tt.want)
+			}
+			if _, ok := final.Usage.Raw["is_byok"]; !ok {
+				t.Fatalf("raw usage = %#v, want is_byok kept", final.Usage.Raw)
+			}
+		})
 	}
 }
 

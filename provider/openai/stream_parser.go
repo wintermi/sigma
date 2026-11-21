@@ -84,6 +84,10 @@ type openAIUsage struct {
 	CompletionTokensDetails *outputTokenDetails `json:"completion_tokens_details"`
 	Cost                    *float64            `json:"cost"`
 	Currency                string              `json:"currency"`
+	// OpenRouter BYOK accounting: cost is only OpenRouter's fee when is_byok
+	// is true, and cost_details carries the upstream inference cost.
+	IsBYOK      *bool          `json:"is_byok,omitempty"`
+	CostDetails map[string]any `json:"cost_details,omitempty"`
 }
 
 type promptTokenDetails struct {
