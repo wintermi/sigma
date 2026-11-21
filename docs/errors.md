@@ -159,9 +159,12 @@ HTTP providers share sigma's retry policy:
   caller deadlines still end as `StopReasonAborted`
 - retries only for transient network errors and HTTP `408`, `409`, `429`, and
   `5xx`, unless the provider's `x-should-retry` header says otherwise
+- without `Retry-After`, the first retry waits 500ms and each later retry
+  doubles the wait up to 8 seconds, less up to 25% random jitter
 - provider `Retry-After` and `Retry-After-Ms`, including fractional values, are
-  honored when they do not exceed `WithMaxRetryDelay`; a zero maximum retries
-  without backoff and fails any response that asks to wait
+  honored when they do not exceed `WithMaxRetryDelay`, which defaults to 60
+  seconds; a zero maximum retries without backoff and fails any response that
+  asks to wait
 - streaming responses are not retried after the response body has been handed to
   the stream parser
 

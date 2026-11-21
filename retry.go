@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"strconv"
@@ -23,11 +24,13 @@ const (
 	// DefaultMaxRetries is the default number of retries after the first HTTP
 	// request attempt.
 	DefaultMaxRetries = 0
-	// DefaultRetryBaseDelay is the base delay used between retries when a
-	// provider does not return Retry-After.
-	DefaultRetryBaseDelay = 100 * time.Millisecond
+	// DefaultRetryBaseDelay is the first retry delay when a provider does not
+	// return Retry-After. It doubles on each retry up to 8 seconds, less up to
+	// 25% random jitter.
+	DefaultRetryBaseDelay = 500 * time.Millisecond
 	// DefaultMaxRetryDelay caps retry waits, including Retry-After.
-	DefaultMaxRetryDelay = 2 * time.Second
+	DefaultMaxRetryDelay = 60 * time.Second
+	maxRetryBackoff      = 8 * time.Second
 	maxDuration          = time.Duration(1<<63 - 1)
 )
 
@@ -331,7 +334,16 @@ func (p retryPolicy) delay(attempt int, retryAfter time.Duration) time.Duration 
 	if retryAfter > 0 {
 		return retryAfter
 	}
-	delay := time.Duration(attempt+1) * p.baseDelay
+	delay := p.baseDelay
+	for range attempt {
+		if delay >= maxRetryBackoff {
+			break
+		}
+		delay *= 2
+	}
+	delay = min(delay, maxRetryBackoff)
+	// Jitter spreads retries from concurrent clients hitting the same limit.
+	delay -= time.Duration(rand.Float64() * 0.25 * float64(delay)) //nolint:gosec // Jitter needs no cryptographic randomness.
 	if p.maxRetryDelay < delay {
 		delay = p.maxRetryDelay
 	}
