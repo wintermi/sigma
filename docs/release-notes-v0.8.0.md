@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Claude Opus 5, Opus 5.5, and Fable 5.1 requests now work for organizations that cap effort below `high`. These models take their effort from per-message markers, and sigma also sent a fixed top-level `output_config.effort` of `high`, which capped organizations reject at any requested level. The fixed top-level value is now `low`; the markers still set the effort for each reply, and the cached prompt prefix is unchanged between requests.
+
 Turning reasoning off on Mistral Small 2603 and Medium 3.5 now reaches Mistral as `reasoning_effort: "none"`. sigma sent no effort for off, so these adjustable-reasoning models kept their default effort. Requests that leave the level unset still use the provider default.
 
 Claude Opus 5 can now run with thinking turned off. sigma rejected `ThinkingLevelOff` on every model with mid-conversation effort, but Opus 5 accepts disabled thinking. Off now sends `thinking: {type: "disabled"}` without effort markers, since effort cannot change while thinking is disabled. Opus 5.5 and Fable 5.1, which reject disabled thinking, keep off marked unsupported and still fail locally.

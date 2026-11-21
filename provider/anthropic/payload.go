@@ -657,7 +657,10 @@ func addThinking(payload map[string]any, model sigma.Model, opts sigma.Options, 
 				"prefix_mismatch_behavior": "drop_block",
 			},
 		}
-		payload["output_config"] = map[string]any{"effort": "high"}
+		// Effort markers set the level for every reply, and the top-level effort
+		// is part of the cached prompt, so it stays fixed. It is "low" because
+		// organizations can cap effort and reject any request above the cap.
+		payload["output_config"] = map[string]any{"effort": "low"}
 		return true
 	}
 	if thinkingFormat(model, compat) == sigma.AnthropicThinkingAdaptive && thinkingRequested(opts) {

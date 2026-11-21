@@ -1533,7 +1533,9 @@ func TestMidConversationThinkingEffortReplay(t *testing.T) {
 		t.Fatalf("Anthropic-Beta = %q, want %q", got, wantBeta)
 	}
 	payload := decodePayload(t, request.Body)
-	if got, want := payload["output_config"].(map[string]any)["effort"], "high"; got != want {
+	// The top-level effort stays at the lowest level, below any organization
+	// effort cap, while the marker carries the requested max.
+	if got, want := payload["output_config"].(map[string]any)["effort"], "low"; got != want {
 		t.Fatalf("top-level effort = %v, want %q", got, want)
 	}
 	thinking := payload["thinking"].(map[string]any)

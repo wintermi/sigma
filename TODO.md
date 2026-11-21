@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send a fixed `low` top-level effort to mid-conversation effort Claude models.
 - [x] Send `reasoning_effort: none` for explicit thinking off on Mistral adjustable-reasoning models.
 - [x] Allow thinking off on Claude Opus 5.
 - [x] Send the off effort for explicit `ThinkingLevelOff` on OpenAI Responses, Azure, and Chat Completions.
