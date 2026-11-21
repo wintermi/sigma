@@ -469,7 +469,7 @@ func completionArgs(model sigma.Model, opts sigma.Options) map[string]any {
 }
 
 func addMistralReasoningArgs(args map[string]any, model sigma.Model, opts sigma.Options) {
-	if opts.ReasoningLevel == "" || opts.ReasoningLevel == sigma.ThinkingLevelOff {
+	if opts.ReasoningLevel == "" {
 		return
 	}
 	mode, ok := mistralReasoningMode(model)
@@ -477,6 +477,16 @@ func addMistralReasoningArgs(args map[string]any, model sigma.Model, opts sigma.
 		return
 	}
 	if mode != providerOptionReasoningModeEffort {
+		return
+	}
+	if opts.ReasoningLevel == sigma.ThinkingLevelOff {
+		// Adjustable reasoning models apply their default effort when
+		// reasoning_effort is omitted, so off is sent explicitly.
+		value := model.ThinkingLevelMap[sigma.ThinkingLevelOff]
+		if value == "" {
+			value = "none"
+		}
+		args["reasoning_effort"] = value
 		return
 	}
 	value, ok := model.ProviderThinkingLevel(opts.ReasoningLevel)

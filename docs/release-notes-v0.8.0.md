@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Turning reasoning off on Mistral Small 2603 and Medium 3.5 now reaches Mistral as `reasoning_effort: "none"`. sigma sent no effort for off, so these adjustable-reasoning models kept their default effort. Requests that leave the level unset still use the provider default.
+
 Claude Opus 5 can now run with thinking turned off. sigma rejected `ThinkingLevelOff` on every model with mid-conversation effort, but Opus 5 accepts disabled thinking. Off now sends `thinking: {type: "disabled"}` without effort markers, since effort cannot change while thinking is disabled. Opus 5.5 and Fable 5.1, which reject disabled thinking, keep off marked unsupported and still fail locally.
 
 Turning reasoning off on OpenAI Responses, Azure, and Chat Completions reasoning models now reaches the provider. Off previously sent no reasoning field, which these models treat as "use the default effort", so they kept reasoning and billing reasoning tokens. Responses and Azure now send the model's mapped off effort or `none`, as Codex already did, and Chat Completions `reasoning_effort` routes send the mapped off value when the model has one. GitHub Copilot, which rejects an off effort, and requests without a level are unchanged.
