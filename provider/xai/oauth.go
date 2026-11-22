@@ -29,7 +29,7 @@ const (
 	xaiOAuthTokenURL              = "https://auth.x.ai/oauth2/token"
 	xaiOAuthDefaultPollInterval   = 5 * time.Second
 	xaiOAuthSlowDownPollIncrement = 5 * time.Second
-	xaiOAuthDefaultRefreshBefore  = time.Minute
+	xaiOAuthDefaultRefreshBefore  = 5 * time.Minute
 	xaiOAuthDefaultTokenLifetime  = time.Hour
 	xaiOAuthDeviceCodeGrantType   = "urn:ietf:params:oauth:grant-type:device_code"
 )

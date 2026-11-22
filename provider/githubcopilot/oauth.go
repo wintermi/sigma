@@ -28,7 +28,7 @@ const (
 	githubCopilotOAuthDefaultDomain         = "github.com"
 	githubCopilotOAuthDefaultPollInterval   = 5 * time.Second
 	githubCopilotOAuthSlowDownPollIncrement = 5 * time.Second
-	githubCopilotOAuthDefaultRefreshBefore  = time.Minute
+	githubCopilotOAuthDefaultRefreshBefore  = 5 * time.Minute
 	githubCopilotModelsAPIVersion           = "2026-06-01"
 	githubCopilotModelsMaxBodyBytes         = 1 << 20
 	githubCopilotModelsDefaultRetryAfter    = time.Second

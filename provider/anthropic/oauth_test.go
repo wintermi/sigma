@@ -346,6 +346,39 @@ func TestAnthropicOAuthTokenProviderSkipsRefreshBeforeExpiry(t *testing.T) {
 	}
 }
 
+// Tokens are refreshed five minutes before expiry, so a token with three
+// minutes left is not sent: a fast clock or slow request would see it expire.
+func TestAnthropicOAuthTokenProviderRefreshesWithinFiveMinutesOfExpiry(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	refreshed := false
+	provider := NewAnthropicOAuthTokenProvider(AnthropicOAuthCredentials{
+		AccessToken:  "sk-ant-oat01-expiring",
+		RefreshToken: "refresh-token",
+		Expiry:       now.Add(3 * time.Minute),
+	}, AnthropicOAuthTokenProviderOptions{
+		HTTPClient: anthropicOAuthTestClient(t, func(*http.Request) *http.Response {
+			refreshed = true
+			return anthropicOAuthJSONResponse(http.StatusOK, map[string]any{
+				"access_token":  "sk-ant-oat01-refreshed",
+				"refresh_token": "new-refresh-token",
+				"expires_in":    3600,
+			})
+		}),
+		Now: func() time.Time { return now },
+	})
+
+	model := sigma.Model{ID: "claude-test", Provider: sigma.ProviderAnthropic}
+	credential, err := provider.Token(context.Background(), model, sigma.Options{})
+	if err != nil {
+		t.Fatalf("Token returned error: %v", err)
+	}
+	if !refreshed || credential.Value != "sk-ant-oat01-refreshed" {
+		t.Fatalf("credential = %q, refreshed %v; want a refreshed token", credential.Value, refreshed)
+	}
+}
+
 func TestAnthropicOAuthTokenProviderMissingCredentials(t *testing.T) {
 	t.Parallel()
 

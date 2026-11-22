@@ -40,7 +40,7 @@ const (
 	codexOAuthDefaultPollInterval     = 5 * time.Second
 	codexOAuthMinimumPollInterval     = time.Second
 	codexOAuthSlowDownPollIncrement   = 5 * time.Second
-	codexOAuthDefaultRefreshBefore    = time.Minute
+	codexOAuthDefaultRefreshBefore    = 5 * time.Minute
 	codexOAuthCredentialAccountID     = "accountID"
 	codexOAuthCredentialChatGPTAcctID = "chatgpt_account_id"
 	codexOAuthJWTClaimPath            = "https://api.openai.com/auth"

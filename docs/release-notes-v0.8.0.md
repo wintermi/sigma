@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OAuth tokens are refreshed earlier. Sigma used a token until one minute before its recorded expiry, so a machine whose clock ran a minute or more fast, such as a VM or WSL host, or a request retried near the end of that minute, sent a token the provider already considered expired and got a 401. Stored credentials and every built-in OAuth token provider now refresh five minutes before expiry; `RefreshBefore` options still override it.
+
 Anthropic browser login refuses to start on Windows when another process holds the callback port on IPv6 loopback. The earlier fix checked only for the Unix "address in use" error, which Windows reports as a different Winsock code, so login continued on IPv4 alone. A browser that resolves `localhost` to `::1` then sent the code and PKCE state to the other process. Any IPv6 bind failure now stops login unless it means the host has no IPv6 loopback.
 
 Mistral no longer stores conversations by default. Sigma uses the Mistral Conversations API, which keeps each conversation on Mistral's side unless the request sets `store: false`, and sigma only sent it when the caller passed the `store` provider option. Every transcript was therefore retained by Mistral, although sigma sends the full history each turn and never continues a stored conversation. Requests now send `store: false` by default; set the `store` provider option to `true` to keep the previous behavior.

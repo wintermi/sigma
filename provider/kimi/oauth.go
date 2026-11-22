@@ -31,7 +31,7 @@ const (
 	kimiCodingOAuthDeviceCodeGrantType    = "urn:ietf:params:oauth:grant-type:device_code"
 	kimiCodingOAuthDefaultPollInterval    = 5 * time.Second
 	kimiCodingOAuthSlowDownIncrement      = 5 * time.Second
-	kimiCodingOAuthDefaultRefreshBefore   = time.Minute
+	kimiCodingOAuthDefaultRefreshBefore   = 5 * time.Minute
 )
 
 // kimiCodingRefreshMaxRetries retries transient refresh failures with 1s, 2s,

@@ -15,7 +15,9 @@ import (
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 )
 
-const defaultOAuthRefreshBefore = time.Minute
+// defaultOAuthRefreshBefore refreshes OAuth tokens five minutes before they
+// expire, so clock skew or a slow request does not send an expired token.
+const defaultOAuthRefreshBefore = 5 * time.Minute
 
 // AuthResolution is provider auth resolved for one model request.
 type AuthResolution struct {

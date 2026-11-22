@@ -34,7 +34,7 @@ const (
 	anthropicOAuthClientID             = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 	anthropicOAuthScope                = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"
 	anthropicOAuthCallbackPath         = "/callback"
-	anthropicOAuthDefaultRefreshBefore = time.Minute
+	anthropicOAuthDefaultRefreshBefore = 5 * time.Minute
 )
 
 var (

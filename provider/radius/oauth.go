@@ -33,7 +33,7 @@ import (
 const (
 	radiusOAuthDefaultPollInterval  = 5 * time.Second
 	radiusOAuthSlowDownIncrement    = 5 * time.Second
-	radiusOAuthDefaultRefreshBefore = time.Minute
+	radiusOAuthDefaultRefreshBefore = 5 * time.Minute
 	radiusOAuthMaxBodyBytes         = 1 << 20
 	radiusOAuthDeviceCodeGrantType  = "urn:ietf:params:oauth:grant-type:device_code"
 )
