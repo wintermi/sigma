@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock no longer signs as the wrong identity when `AWS_PROFILE` names a profile without static keys. An explicit profile already took precedence over environment keys when it had static keys, but an SSO, `credential_process`, or `role_arn` profile, which sigma cannot resolve, fell through to whatever `AWS_ACCESS_KEY_ID` was set and silently used that account. With `AWS_PROFILE` set, environment keys are now skipped, as the AWS SDKs do, and the chain continues to the container, web identity, and instance sources, or reports credentials as unavailable.
+
 GitHub Copilot device login enables models that need it. Copilot lists some models, such as Claude and Grok, with an "unconfigured" policy until the account enables them, and requests to them fail until then. Sigma's login returned credentials without enabling them, so these models failed after a successful login unless the caller called `EnableGitHubCopilotModels`. Login now enables the unconfigured models in sigma's Copilot catalog that the account offers. A failure there leaves login successful, and the models can still be enabled later.
 
 Browser logins stop the paste-the-code prompt once the browser finishes. Anthropic, OpenAI Codex, and Radius pass `OnManualCode` a context so a caller can read a pasted code while the browser callback is pending, but the context outlived the login. A terminal prompt reading stdin therefore stayed active and consumed the next line the user typed. The context is now cancelled when login completes either way, as OpenRouter's login already did.

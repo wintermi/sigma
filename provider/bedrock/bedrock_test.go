@@ -2893,6 +2893,7 @@ aws_secret_access_key = profile-secret
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", credentialsFile)
 	t.Setenv("AWS_ACCESS_KEY_ID", "AKIA_ENV")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "env-secret")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
 
 	for _, tt := range []struct {
 		profile string
@@ -2900,13 +2901,21 @@ aws_secret_access_key = profile-secret
 	}{
 		{profile: "dev", want: "AKIA_PROFILE"},
 		{profile: "", want: "AKIA_ENV"},
-		{profile: "missing", want: "AKIA_ENV"},
+		// A profile without static keys, such as SSO, must not fall back to
+		// the ambient keys and sign as another identity.
+		{profile: "missing"},
 	} {
 		t.Setenv("AWS_PROFILE", tt.profile)
 		info, err := (DefaultCredentialDetector{}).Detect(context.Background(), bedrockTestModel(sigma.ProviderAmazonBedrock), sigma.Options{}, Config{
 			Region:           "us-east-1",
 			CredentialSource: CredentialSourceDefaultChain,
 		})
+		if tt.want == "" {
+			if !errors.Is(err, sigma.ErrCredentialUnavailable) {
+				t.Fatalf("AWS_PROFILE=%q: Detect = %+v, %v; want credentials unavailable", tt.profile, info, err)
+			}
+			continue
+		}
 		if err != nil {
 			t.Fatalf("AWS_PROFILE=%q: Detect returned error: %v", tt.profile, err)
 		}

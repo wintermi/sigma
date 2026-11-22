@@ -170,14 +170,15 @@ func defaultChainCredential(ctx context.Context, model sigma.Model, opts sigma.O
 			BearerToken: bearer,
 		}, nil
 	}
-	// An explicit AWS_PROFILE wins over ambient static keys, matching the AWS
-	// SDK for JavaScript default chain.
+	// An explicit AWS_PROFILE replaces ambient static keys, as in the AWS SDK
+	// default chains: a profile without static keys, such as an SSO or
+	// credential_process profile, must not sign with whatever keys happen to
+	// be in the environment.
 	if os.Getenv("AWS_PROFILE") != "" {
 		if credentials, ok := profileAWSCredentials(); ok {
 			return credentials, nil
 		}
-	}
-	if credentials, ok := envAWSCredentials(); ok {
+	} else if credentials, ok := envAWSCredentials(); ok {
 		return credentials, nil
 	}
 	fingerprint := awsCredentialEnvFingerprint()

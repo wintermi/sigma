@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock's default credential chain no longer uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` when `AWS_PROFILE` is set explicitly, matching the AWS SDKs. A profile without static keys, such as an SSO, `credential_process`, or `role_arn` profile, fell back to the ambient keys and signed requests as a different identity; it now continues to the container, web identity, and instance sources.
 - `LoginGitHubCopilotDeviceCode` now enables the policy of built-in GitHub Copilot catalog models that the account offers but has not configured, such as Claude and Grok models. Those models were listed as available after login but failed until enabled through `EnableGitHubCopilotModels`. Enablement is best effort and does not fail the login.
 - Anthropic, OpenAI Codex, and Radius browser logins now cancel the context passed to `OnManualCode` when the browser callback completes first, as OpenRouter already did. The prompt kept running, so a caller reading stdin swallowed the next line the user typed.
 - Radius browser login no longer panics when the redirect URI's path is `/` or contains characters that are not valid in a `ServeMux` pattern, such as a space or braces. The callback path was registered as a pattern beside a `/` fallback, so these paths panicked after the listener had opened; the callback server now compares the request path directly.

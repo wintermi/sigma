@@ -679,8 +679,10 @@ host, but plain HTTP only to loopback or the ECS and EKS container credential
 addresses.
 
 Shared profile lookup uses `AWS_PROFILE` (or `default`). When `AWS_PROFILE` is
-set explicitly and that profile has static keys, it takes precedence over the
-static AWS environment credentials.
+set explicitly, the static AWS environment credentials are not used: a profile
+with static keys supplies them, and a profile without them, such as an SSO or
+`credential_process` profile, continues to the container, web identity, and
+instance sources rather than signing with the ambient keys.
 `AWS_SHARED_CREDENTIALS_FILE` and `AWS_CONFIG_FILE` each replace their respective
 home-directory default; the effective credentials file is checked before the
 effective config file. Missing files or profiles continue to remaining sources,

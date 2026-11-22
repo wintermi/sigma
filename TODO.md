@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Skip ambient AWS keys when an explicit `AWS_PROFILE` has no static keys.
 - [x] Enable unconfigured GitHub Copilot catalog models during device login.
 - [x] Cancel the manual-code prompt when the browser callback wins for Anthropic, Codex, and Radius.
 - [x] Stop Radius login panicking on redirect paths that are not valid ServeMux patterns.
@@ -284,8 +285,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Skip ambient AWS environment keys when an explicit `AWS_PROFILE` has no
-      static keys (`provider/bedrock/auth.go`).
 - [ ] Return the underlying error and retry persistence when `OnRefresh` fails for
       Kimi, xAI, and Radius.
 - [ ] Document that `CredentialStore.ModifyCredential` must persist a rotated token
