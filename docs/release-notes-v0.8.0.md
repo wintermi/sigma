@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Deferred OpenAI Responses calls now cap the response body at 64 MiB, the limit image responses already use. Submit, fetch, and cancel decoded the body with no limit, the only unbounded provider read left, so an endpoint or proxy returning an endless body kept the client reading; an oversized body now returns a provider response error.
+
 Radius gateway catalogs can no longer send model requests to another host. The catalog's `baseUrl` decides where model requests go, carrying the Radius credential, and any http(s) URL was accepted, including plain HTTP or an unrelated host. A catalog whose base URL is not on the gateway's scheme, host, and port is now rejected and leaves the registered models unchanged; a different path on the gateway origin still works.
 
 GitHub Copilot no longer sends its token to an arbitrary `proxy-ep` host. The token names the account's API host, and sigma used whatever it contained as the request host for every bearer-authenticated call. Only hosts under `githubcopilot.com`, `ghe.com`, or the configured enterprise domain are now used; other values, including ones with ports, paths, or userinfo, fall back to the enterprise or individual endpoint.

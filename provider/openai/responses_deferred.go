@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,6 +18,10 @@ import (
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/redact"
 )
+
+// maxDeferredResponseBytes caps a retrieved deferred response, matching the
+// limit on image responses, which also carry base64 image data.
+const maxDeferredResponseBytes = 64 << 20
 
 const (
 	deferredGrammarToolPropertiesKey = "grammar_tool_input_properties"
@@ -218,8 +223,15 @@ func (p *ResponsesProvider) decodeDeferredResponse(
 		return deferred, responsesResponseError(resp, model)
 	}
 
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxDeferredResponseBytes+1))
+	if err != nil {
+		return deferred, fmt.Errorf("openai responses: read deferred response: %w", err)
+	}
+	if len(body) > maxDeferredResponseBytes {
+		return deferred, deferredProviderResponseError(model, "deferred response exceeds 64 MiB")
+	}
 	var response responsesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	if err := json.Unmarshal(body, &response); err != nil {
 		return deferred, fmt.Errorf("openai responses: decode deferred response: %w", err)
 	}
 	if response.ID == "" {

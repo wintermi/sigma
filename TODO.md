@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Cap deferred Responses bodies at 64 MiB.
 - [x] Keep Radius catalog base URLs on the gateway origin that receives the credential.
 - [x] Validate the GitHub Copilot `proxy-ep` host before sending the bearer token to it.
 - [x] Keep provider credential headers off cross-origin redirects, and refuse HTTPS downgrades and cross-origin body resends.
