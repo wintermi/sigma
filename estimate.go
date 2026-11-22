@@ -15,6 +15,12 @@ const (
 	estimateImageTokens         = 1200
 	estimateDocumentTokens      = 1200
 	estimateContextSafetyTokens = 4096
+	// contextSafetyPercent is the input margin kept for providers that count
+	// input higher than the estimate.
+	contextSafetyPercent = 15
+	// contextRatioMarginMinOutput is the output the percentage margin must
+	// leave, and the cap applied when it cannot.
+	contextRatioMarginMinOutput = 32768
 )
 
 // TokenEstimate reports an approximate request token count.
@@ -105,7 +111,7 @@ func EstimateRequestTokens(req Request) TokenEstimate {
 // requestedMaxTokens is used when positive, clamped to model.MaxOutputTokens
 // when the catalog reports one; otherwise model.MaxOutputTokens is used. A
 // zero return means no usable output cap was available. The helper uses
-// EstimateRequestTokens and a fixed safety margin; it does not call provider
+// EstimateRequestTokens and an input safety margin; it does not call provider
 // tokenizers or affect dispatch unless the caller applies the returned value.
 func MaxTokensForContext(model Model, req Request, requestedMaxTokens int) int {
 	maxTokens := requestedMaxTokens
@@ -122,14 +128,25 @@ func MaxTokensForContext(model Model, req Request, requestedMaxTokens int) int {
 		return maxTokens
 	}
 
-	available := model.ContextWindow - EstimateRequestTokens(req).Tokens - estimateContextSafetyTokens
-	if available < 1 {
-		available = 1
-	}
-	if available < maxTokens {
+	if available := contextOutputRoom(model.ContextWindow, EstimateRequestTokens(req).Tokens); available < maxTokens {
 		return available
 	}
 	return maxTokens
+}
+
+// contextOutputRoom returns the output tokens that fit beside input tokens in
+// a context window. Providers and routers can count the input higher than the
+// estimate (OpenRouter by up to 12%), so the margin is 15% of the input, at
+// least estimateContextSafetyTokens, while that still leaves
+// contextRatioMarginMinOutput tokens of output. Otherwise only the fixed
+// margin is kept and output is capped at contextRatioMarginMinOutput.
+func contextOutputRoom(contextWindow int, input int) int {
+	margin := max(estimateContextSafetyTokens, (input*contextSafetyPercent+99)/100)
+	room := contextWindow - input - margin
+	if room < contextRatioMarginMinOutput {
+		room = min(contextRatioMarginMinOutput, contextWindow-input-estimateContextSafetyTokens)
+	}
+	return max(1, room)
 }
 
 // WithMaxTokensForContext configures MaxTokens from MaxTokensForContext.
@@ -150,7 +167,7 @@ func WithMaxTokensForContext(model Model, req Request, requestedMaxTokens int) O
 // positive; otherwise model.MaxOutputTokens is used. Non-off reasoning levels
 // reserve a thinking budget inside the final max token cap while preserving at
 // least 1024 visible output tokens when possible. The helper uses
-// EstimateRequestTokens and a fixed safety margin; it does not call provider
+// EstimateRequestTokens and an input safety margin; it does not call provider
 // tokenizers or affect dispatch unless the caller applies the returned values.
 func ReasoningBudgetForContext(model Model, req Request, level ThinkingLevel, requestedMaxTokens int) ReasoningBudget {
 	maxTokens := requestedMaxTokens
@@ -169,13 +186,7 @@ func ReasoningBudgetForContext(model Model, req Request, level ThinkingLevel, re
 		maxTokens = model.MaxOutputTokens
 	}
 	if model.ContextWindow > 0 {
-		available := model.ContextWindow - EstimateRequestTokens(req).Tokens - estimateContextSafetyTokens
-		if available < 1 {
-			available = 1
-		}
-		if available < maxTokens {
-			maxTokens = available
-		}
+		maxTokens = min(maxTokens, contextOutputRoom(model.ContextWindow, EstimateRequestTokens(req).Tokens))
 	}
 	if thinkingBudget > 0 {
 		thinkingBudget = minInt(thinkingBudget, maxInt(0, maxTokens-1024))

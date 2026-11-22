@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Keep a proportional input margin when clamping max tokens to the context window.
 - [x] Add compat options for empty assistant content and disabling `prompt_cache_key`.
 - [x] Send thinking budgets to unmapped pre-Gemini-3 models and detect prefixed Gemini versions.
 - [x] Make `MessagesCompat.AdaptiveThinking` select adaptive thinking.
@@ -313,8 +314,6 @@ reproduces the failure before it is checked off.
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).
-- [ ] Keep a 15% (minimum 4096-token) input margin and a 32768 output cap near a
-      full window when clamping max tokens for OpenRouter (`estimate.go`).
 
 ### Features and catalog
 

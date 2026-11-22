@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Context-aware max-token helpers leave room for input that providers count higher than sigma's estimate. OpenRouter counts prompts with its own tokenizer, up to 12% above other counts, and rejects input plus `max_tokens` above the window before routing; with a fixed 4,096-token margin, a large prompt near the window was rejected as context overflow and callers compacted unnecessarily. `MaxTokensForContext`, `ReasoningBudgetForContext`, and automatic clamping now reserve 15% of the estimated input while at least 32,768 output tokens remain, and otherwise keep the fixed margin with output capped at 32,768.
+
 Two new compatibility controls cover strict OpenAI-compatible servers. Some servers reject a replayed assistant turn that has tool calls but no `content` field; `OpenAICompletionsCompat.RequiresAssistantContent` now sends an empty string for those turns. Some proxies reject `prompt_cache_key`, which sigma sends whenever a session ID and caching are set; setting `SupportsPromptCacheKey` to unsupported on `OpenAICompletionsCompat` or `OpenAIResponsesCompat` omits it. Both default to the existing behavior.
 
 Custom Gemini models get the thinking control their generation accepts. A Gemini 2.x model registered without a thinking-level map sent `thinkingLevel: "HIGH"` for a reasoning level, which only Gemini 3 and later accept, so the request failed. These models now send a `thinkingBudget`: the documented Gemini 2.5 Pro, Flash, and Flash-Lite budgets for each level, or `-1` (dynamic) for other versions. Gemini version detection also finds the version in IDs a host has prefixed, such as `vendor-gemini-4-argon`, which previously lost the tool call IDs Gemini 3 and later require.
