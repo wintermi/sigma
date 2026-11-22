@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Anthropic, OpenAI Codex, and Radius browser logins now cancel the context passed to `OnManualCode` when the browser callback completes first, as OpenRouter already did. The prompt kept running, so a caller reading stdin swallowed the next line the user typed.
 - Radius browser login no longer panics when the redirect URI's path is `/` or contains characters that are not valid in a `ServeMux` pattern, such as a space or braces. The callback path was registered as a pattern beside a `/` fallback, so these paths panicked after the listener had opened; the callback server now compares the request path directly.
 - GitHub Copilot now re-validates a stored or supplied account base URL before sending the bearer token to it. The URL must be an `https` origin on a GitHub Copilot, GHE.com, or enterprise host, with no port, userinfo, or path; otherwise it is derived again from the token. An enterprise domain that includes a port now matches its hosts. Credentials stored before `proxy-ep` validation, or edited in a credential store, kept sending the token to any host until the next refresh.
 - OAuth tokens are now refreshed five minutes before they expire instead of one minute, for stored credentials and the Anthropic, Codex, GitHub Copilot, Kimi, Radius, and xAI token providers. A host clock running more than a minute fast, or a retry started in the last minute, sent an expired bearer token and got a 401. An explicit `RefreshBefore` still overrides the default.

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Browser logins stop the paste-the-code prompt once the browser finishes. Anthropic, OpenAI Codex, and Radius pass `OnManualCode` a context so a caller can read a pasted code while the browser callback is pending, but the context outlived the login. A terminal prompt reading stdin therefore stayed active and consumed the next line the user typed. The context is now cancelled when login completes either way, as OpenRouter's login already did.
+
 Radius browser login accepts any valid loopback redirect path. The callback server registered the caller's redirect path as an `http.ServeMux` pattern next to its own `/` fallback, so a redirect URI with path `/` registered the same pattern twice, and paths with spaces or braces failed pattern parsing. Both panicked the process after the callback port had been opened. The server now matches the path directly and answers other paths with a not-found page.
 
 GitHub Copilot validates stored account base URLs, not just newly derived ones. The `proxy-ep` host check applied only when a base URL was derived from a fresh token, so a URL already saved in a credential store, from before the check or edited there, kept receiving the Copilot bearer token until the token was refreshed. Stored and supplied base URLs now go through the same trusted-host check and fall back to the token's own host. Enterprise domains configured with a port, such as `ghe.example.com:8443`, now match their hosts.

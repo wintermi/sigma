@@ -485,10 +485,14 @@ func waitAnthropicBrowserAuthorizationCode(
 	server *anthropicBrowserCallbackServer,
 	manual func(context.Context, AnthropicBrowserManualPrompt) (string, error),
 ) (string, error) {
+	// The prompt's context ends when login does, so a caller reading the
+	// pasted code stops once the browser callback has completed instead.
+	manualCtx, cancelManual := context.WithCancel(ctx)
+	defer cancelManual()
 	manualResult := make(chan anthropicBrowserCallbackResult, 1)
 	if manual != nil {
 		go func() {
-			input, err := manual(ctx, AnthropicBrowserManualPrompt{
+			input, err := manual(manualCtx, AnthropicBrowserManualPrompt{
 				Message: "Paste the authorization code or full redirect URL:",
 			})
 			if err != nil {

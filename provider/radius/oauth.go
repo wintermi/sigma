@@ -786,10 +786,14 @@ func (server *radiusBrowserCallbackServer) close() {
 }
 
 func waitRadiusBrowserAuthorizationCode(ctx context.Context, state string, server *radiusBrowserCallbackServer, manual func(context.Context, RadiusBrowserManualPrompt) (string, error)) (string, error) {
+	// The prompt's context ends when login does, so a caller reading the
+	// pasted code stops once the browser callback has completed instead.
+	manualCtx, cancelManual := context.WithCancel(ctx)
+	defer cancelManual()
 	manualResult := make(chan radiusBrowserCallbackResult, 1)
 	if manual != nil {
 		go func() {
-			input, err := manual(ctx, RadiusBrowserManualPrompt{Message: "Paste the final redirect URL or authorization code."})
+			input, err := manual(manualCtx, RadiusBrowserManualPrompt{Message: "Paste the final redirect URL or authorization code."})
 			if err != nil {
 				manualResult <- radiusBrowserCallbackResult{err: err}
 				return
