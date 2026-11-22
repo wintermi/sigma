@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Build surface-probe requests from catalog model metadata.
 - [x] Limit surface-probe model selection to sigma's built-in catalog.
 - [x] Review the GitHub Copilot catalog against Copilot's current models.
 - [x] Add opt-in Anthropic message threads.

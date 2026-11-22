@@ -18,7 +18,7 @@ import (
 func TestXAIJSONObjectDiagnosticControls(t *testing.T) {
 	t.Parallel()
 	route := routes["xai"]
-	primary := findProbeCase(t, route.Cases(route, route.Model(route, "grok-4.6")), "json_object")
+	primary := findProbeCase(t, route.Cases(route, route.Model(route, "grok-4.3")), "json_object")
 	variants := repairVariants(route, primary)
 	if len(variants) != 7 {
 		t.Fatalf("variants=%d; want availability, three format controls, and three value controls", len(variants))
@@ -71,7 +71,7 @@ func TestXAIJSONObjectDiagnosticControls(t *testing.T) {
 
 func TestXAIJSONObjectControlsKeepSafetyFailure(t *testing.T) {
 	t.Parallel()
-	safetyErr := sigma.NewProviderError(sigma.ProviderXAI, sigma.APIOpenAICompletions, "grok-4.6", http.StatusForbidden, "safety-request", 0,
+	safetyErr := sigma.NewProviderError(sigma.ProviderXAI, sigma.APIOpenAICompletions, "grok-4.3", http.StatusForbidden, "safety-request", 0,
 		[]byte(`{"error":"Content violates usage guidelines. Failed check: SAFETY_CHECK_TYPE_BIO"}`), nil)
 	for _, allFail := range []bool{false, true} {
 		t.Run(map[bool]string{false: "controls succeed", true: "controls fail"}[allFail], func(t *testing.T) {
@@ -85,7 +85,7 @@ func TestXAIJSONObjectControlsKeepSafetyFailure(t *testing.T) {
 			// The fake provider remains registered under its own ID; the route name
 			// selects the real xAI diagnostic plan without accessing credentials.
 			route.Name = "xai"
-			results := collectProbeModel(context.Background(), route, "grok-4.6", routeCredential{apiKey: "fake"}, config{repair: true})
+			results := collectProbeModel(context.Background(), route, "grok-4.3", routeCredential{apiKey: "fake"}, config{repair: true})
 			if len(results) != 1 {
 				t.Fatalf("results=%+v", results)
 			}

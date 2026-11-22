@@ -67,7 +67,7 @@ func TestXAIJSONObjectSafetyRejectionPreservesEvidence(t *testing.T) {
 	route.Cases = func(route routeSpec, model sigma.Model) []probeCase {
 		return structuredOutputProbeCases(openAICompatibleProbeCases(route, model))
 	}
-	results := collectProbeModel(context.Background(), route, "grok-4.6", routeCredential{apiKey: "test-key"}, config{repair: true, caseTimeout: 2 * time.Second})
+	results := collectProbeModel(context.Background(), route, "grok-4.3", routeCredential{apiKey: "test-key"}, config{repair: true, caseTimeout: 2 * time.Second})
 	if len(results) != 2 {
 		t.Fatalf("results=%+v", results)
 	}
@@ -107,7 +107,7 @@ func TestXAIJSONObjectSafetyRejectionPreservesEvidence(t *testing.T) {
 		if i == 2 {
 			messageCount = 2
 		}
-		if body.Model != "grok-4.6" || body.ResponseFormat.Type != format || len(body.Messages) != messageCount || len(body.Tools) != 0 {
+		if body.Model != "grok-4.3" || body.ResponseFormat.Type != format || len(body.Messages) != messageCount || len(body.Tools) != 0 {
 			t.Fatalf("request contaminated or wrong capability: %+v", body)
 		}
 		if i == 2 && body.Messages[0].Role != "system" {

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface-probe results now test the catalog as shipped. Each probe uses the model's catalog row, including its API, input types, thinking levels, token limits, and compatibility settings, instead of optimistic per-route defaults. A failure points at either the provider or the catalog row. The Fireworks route no longer reads live model metadata. xAI rows served over Responses are probed through the Responses surface.
+
 The surface probe now checks only the models sigma ships. Each route probes its provider's catalog rows instead of every model the provider's live `/models` endpoint returns, so a run no longer reports failures for models sigma does not support. `-models` must name catalog IDs; other IDs are rejected before a request is sent. Routes with a fixed default model, such as OpenAI Codex, NVIDIA, and Vertex Claude, keep their defaults.
 
 The GitHub Copilot catalog matches the models Copilot currently serves. Nine models are added: Claude Fable 5.2 on the Messages route; Gemini 4 Hydrogen and Neon on Chat Completions; and GPT-6.1 Sol and Terra, GPT-6.2 Astra and Sol, and MAI Code 2 and 2 Flash on Responses. Eight rows Copilot has retired are removed: Claude Opus 4.7, Gemini 3.5, 3.6, and 3.7 Flash, GPT-5 Mini, GPT-5.4 Mini, Kimi K2.7 Code, and MAI-Code-1-Flash-Picker. Limits, prices, and reasoning levels come from the models.dev snapshot, and request settings from each model's closest Copilot sibling.

@@ -45,6 +45,11 @@ provider's live model list. `-models` must name catalog IDs for the route's
 provider; any other ID is rejected before a request is sent. To probe a new
 provider model, add it to the catalog first.
 
+Each probe sends requests with the catalog row itself: its API, input types,
+tool and thinking support, token limits, and compatibility settings choose the
+cases and shape the requests. A failure therefore points at either the provider
+or the catalog row, and a passing run confirms the row as shipped.
+
 ## Routes
 
 | Route | API shape | Credential | Default model behavior |
@@ -63,7 +68,7 @@ provider model, add it to the catalog first.
 | `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai` catalog model |
 | `moonshot-cn` | Moonshot AI CN OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai-cn` catalog model |
 | `nvidia` | NVIDIA NIM OpenAI-compatible Chat Completions | `NVIDIA_API_KEY` | Uses `nvidia/nemotron-3-super-120b-a12b` unless `-models` is set |
-| `xai` | xAI/Grok OpenAI-compatible Chat Completions | `XAI_API_KEY` | Uses every `xai` catalog model |
+| `xai` | xAI/Grok Responses or OpenAI-compatible Chat Completions, following each catalog row | `XAI_API_KEY` | Uses every `xai` catalog model |
 
 ## Examples
 
@@ -119,13 +124,6 @@ Use `accounts/fireworks/models/...` IDs with `fireworks-anthropic`; model IDs
 that Fireworks also serves through Chat Completions can be probed with
 `fireworks-openai`. `accounts/fireworks/routers/...` IDs are for
 `fireworks-openai`.
-
-For `accounts/.../models/...` IDs, the Fireworks OpenAI route reads the model's
-current state, `supportsImageInput`, `supportsTools`, and context-length
-metadata before choosing optional cases. Non-ready models are skipped. If that
-lookup fails and no generated registry entry is available, the probe uses
-text-only conservative defaults and emits an `optional_capabilities` skip
-instead of assuming support.
 
 Probe direct Moonshot K2.7 routes:
 
@@ -468,7 +466,7 @@ variant does not establish the cause of the original rejection.
 Run these focused checks from a terminal with `XAI_API_KEY` configured:
 
 ```bash
-mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.6 -structured-output -repair
+mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.3 -structured-output -repair
 ```
 
 Successful comparisons appear in `successfulControls`; failures retain their
@@ -485,7 +483,7 @@ only after a failed xAI JSON-object case; a passing primary case is unchanged.
 When the same prompt succeeds in plain-text mode, run the explicit fallback:
 
 ```bash
-mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.6 -json-text
+mise run go:run -- ./cmd/sigma-surface-probe -routes xai -models grok-4.3 -json-text
 ```
 
 `-json-text` runs only the `json_text` case on Chat Completions routes. It sends

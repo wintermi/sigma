@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"sort"
@@ -22,8 +23,6 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
-	"github.com/wintermi/sigma/internal/redact"
-	"github.com/wintermi/sigma/internal/safehttp"
 	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/fireworks"
 	"github.com/wintermi/sigma/provider/google"
@@ -35,14 +34,11 @@ import (
 )
 
 type routeSpec struct {
-	Name     string
-	Provider sigma.ProviderID
-	// CatalogProvider is the provider whose sigma catalog rows the route
-	// probes, when it differs from Provider.
-	CatalogProvider  sigma.ProviderID
+	Name             string
+	Provider         sigma.ProviderID
 	BaseURL          string
 	APIKeyEnv        string
-	RegisterProvider func(*sigma.Registry, routeSpec) error
+	RegisterProvider func(*sigma.Registry, routeSpec, sigma.API) error
 	Model            func(routeSpec, string) sigma.Model
 	Cases            func(routeSpec, sigma.Model) []probeCase
 }
@@ -166,17 +162,16 @@ var routes = map[string]routeSpec{
 		BaseURL:          openai.DefaultBaseURL,
 		APIKeyEnv:        "OPENAI_API_KEY",
 		RegisterProvider: registerOpenAIResponsesProvider,
-		Model:            discoveredOpenAIResponsesModel,
+		Model:            catalogProbeModel,
 		Cases:            openAIResponsesProbeCases,
 	},
 	"openai-codex": {
 		Name:             "openai-codex",
-		Provider:         sigma.ProviderOpenAI,
-		CatalogProvider:  sigma.ProviderOpenAICodex,
+		Provider:         sigma.ProviderOpenAICodex,
 		BaseURL:          "https://chatgpt.com/backend-api/codex",
 		APIKeyEnv:        "OPENAI_CODEX_ACCESS_TOKEN",
 		RegisterProvider: registerOpenAICodexProvider,
-		Model:            discoveredOpenAICodexModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICodexProbeCases,
 	},
 	"zen": {
@@ -185,7 +180,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          opencode.ZenBaseURL,
 		APIKeyEnv:        "OPENCODE_API_KEY",
 		RegisterProvider: registerOpenCodeProvider,
-		Model:            discoveredOpenCodeModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	"go": {
@@ -194,7 +189,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          opencode.GoBaseURL,
 		APIKeyEnv:        "OPENCODE_API_KEY",
 		RegisterProvider: registerOpenCodeProvider,
-		Model:            discoveredOpenCodeModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	routeGoogleVertex: {
@@ -202,7 +197,7 @@ var routes = map[string]routeSpec{
 		Provider:         sigma.ProviderGoogleVertex,
 		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
 		RegisterProvider: registerGoogleVertexProvider,
-		Model:            googleVertexProbeModel,
+		Model:            catalogProbeModel,
 		Cases:            googleVertexProbeCases,
 	},
 	"google-vertex-anthropic": {
@@ -210,7 +205,7 @@ var routes = map[string]routeSpec{
 		Provider:         sigma.ProviderGoogleVertexAnthropic,
 		APIKeyEnv:        "GOOGLE_CLOUD_API_KEY",
 		RegisterProvider: registerGoogleVertexAnthropicProvider,
-		Model:            googleVertexAnthropicProbeModel,
+		Model:            catalogProbeModel,
 		Cases:            anthropicCompatibleProbeCases,
 	},
 	"fireworks-openai": {
@@ -219,7 +214,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          fireworks.DefaultBaseURL,
 		APIKeyEnv:        "FIREWORKS_API_KEY",
 		RegisterProvider: registerFireworksOpenAIProvider,
-		Model:            discoveredFireworksOpenAIModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	"fireworks-anthropic": {
@@ -228,7 +223,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          fireworks.DefaultBaseURL,
 		APIKeyEnv:        "FIREWORKS_API_KEY",
 		RegisterProvider: registerFireworksAnthropicProvider,
-		Model:            discoveredFireworksAnthropicModel,
+		Model:            catalogProbeModel,
 		Cases:            anthropicCompatibleProbeCases,
 	},
 	"moonshot": {
@@ -237,7 +232,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          moonshot.DefaultBaseURL,
 		APIKeyEnv:        "MOONSHOT_API_KEY",
 		RegisterProvider: registerMoonshotProvider,
-		Model:            discoveredMoonshotModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	"moonshot-cn": {
@@ -246,7 +241,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          moonshot.DefaultCNBaseURL,
 		APIKeyEnv:        "MOONSHOT_API_KEY",
 		RegisterProvider: registerMoonshotProvider,
-		Model:            discoveredMoonshotModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	"nvidia": {
@@ -255,7 +250,7 @@ var routes = map[string]routeSpec{
 		BaseURL:          nvidia.DefaultBaseURL,
 		APIKeyEnv:        "NVIDIA_API_KEY",
 		RegisterProvider: registerNVIDIAProvider,
-		Model:            discoveredNVIDIAModel,
+		Model:            catalogProbeModel,
 		Cases:            openAICompatibleProbeCases,
 	},
 	"xai": {
@@ -264,8 +259,8 @@ var routes = map[string]routeSpec{
 		BaseURL:          xai.DefaultBaseURL,
 		APIKeyEnv:        "XAI_API_KEY",
 		RegisterProvider: registerXAIProvider,
-		Model:            discoveredXAIModel,
-		Cases:            openAICompatibleProbeCases,
+		Model:            catalogProbeModel,
+		Cases:            xaiProbeCases,
 	},
 }
 
@@ -566,8 +561,8 @@ func modelsForRoute(route routeSpec, selected map[string]bool) ([]string, error)
 					return nil, fmt.Errorf("model %q is not a built-in google-vertex-anthropic text model", modelID)
 				}
 			default:
-				if _, ok := sigma.GetModel(catalogProvider(route), sigma.ModelID(modelID)); !ok {
-					return nil, fmt.Errorf("model %q is not in sigma's %s catalog", modelID, catalogProvider(route))
+				if _, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID)); !ok {
+					return nil, fmt.Errorf("model %q is not in sigma's %s catalog", modelID, route.Provider)
 				}
 			}
 			models = append(models, modelID)
@@ -599,26 +594,17 @@ func modelsForRoute(route routeSpec, selected map[string]bool) ([]string, error)
 	}
 	models := catalogModels(route)
 	if len(models) == 0 {
-		return nil, fmt.Errorf("sigma's catalog has no %s models", catalogProvider(route))
+		return nil, fmt.Errorf("sigma's catalog has no %s models", route.Provider)
 	}
 	return models, nil
-}
-
-// catalogProvider returns the provider whose sigma catalog rows route probes.
-func catalogProvider(route routeSpec) sigma.ProviderID {
-	if route.CatalogProvider != "" {
-		return route.CatalogProvider
-	}
-	return route.Provider
 }
 
 // catalogModels lists the sigma catalog models the route probes, so a run
 // checks sigma's own model list rather than everything the provider serves.
 func catalogModels(route routeSpec) []string {
-	provider := catalogProvider(route)
 	models := make([]string, 0)
 	for _, model := range sigma.Models() {
-		if model.Provider == provider {
+		if model.Provider == route.Provider {
 			models = append(models, string(model.ID))
 		}
 	}
@@ -644,111 +630,6 @@ func isGoogleVertexRoute(route routeSpec) bool {
 	return route.Name == routeGoogleVertex || route.Name == "google-vertex-anthropic"
 }
 
-// redactedProbeBody prepares a provider error body for probe output, removing
-// the request credential and recognized secret shapes.
-func redactedProbeBody(body []byte, apiKey string) string {
-	text := strings.TrimSpace(string(body))
-	if apiKey != "" {
-		text = strings.ReplaceAll(text, apiKey, "[redacted]")
-	}
-	return redact.Preview(text, 2048)
-}
-
-type fireworksModelCapabilities struct {
-	State              string `json:"state"`
-	ContextLength      int    `json:"contextLength"`
-	SupportsImageInput bool   `json:"supportsImageInput"`
-	SupportsTools      bool   `json:"supportsTools"`
-}
-
-func resolveProbeModel(ctx context.Context, route routeSpec, modelID string, credential routeCredential) sigma.Model {
-	model := route.Model(route, modelID)
-	if route.Name != "fireworks-openai" || !isFireworksModelResource(modelID) {
-		return model
-	}
-
-	capabilities, err := fetchFireworksModelCapabilities(ctx, route.BaseURL, modelID, credential.apiKey)
-	if err != nil {
-		if registered, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID)); ok {
-			registered = annotateCapabilityMetadata(registered, "registry", "")
-			registered.ProviderMetadata["baseURL"] = route.BaseURL
-			return registered
-		}
-		model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
-		model.SupportsTools = false
-		model.SupportsThinking = false
-		model.ThinkingLevels = nil
-		return annotateCapabilityMetadata(model, "unavailable", err.Error())
-	}
-
-	model.SupportedInputs = []sigma.ContentBlockType{sigma.ContentBlockText}
-	if capabilities.SupportsImageInput {
-		model.SupportedInputs = append(model.SupportedInputs, sigma.ContentBlockImage)
-	}
-	model.SupportsTools = capabilities.SupportsTools
-	if capabilities.ContextLength > 0 {
-		model.ContextWindow = capabilities.ContextLength
-	}
-	model = annotateCapabilityMetadata(model, "fireworks_get_model", "")
-	model.ProviderMetadata["fireworksModelState"] = capabilities.State
-	return model
-}
-
-func fetchFireworksModelCapabilities(ctx context.Context, inferenceBaseURL string, modelID string, apiKey string) (fireworksModelCapabilities, error) {
-	baseURL := strings.TrimRight(inferenceBaseURL, "/")
-	baseURL = strings.TrimSuffix(baseURL, "/inference/v1") + "/v1"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/"+modelID, nil)
-	if err != nil {
-		return fireworksModelCapabilities{}, err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	resp, err := safehttp.Client(nil).Do(req)
-	if err != nil {
-		return fireworksModelCapabilities{}, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fireworksModelCapabilities{}, fmt.Errorf("GET Fireworks model metadata returned HTTP %d: %s", resp.StatusCode, redactedProbeBody(body, apiKey))
-	}
-
-	var capabilities fireworksModelCapabilities
-	if err := json.NewDecoder(resp.Body).Decode(&capabilities); err != nil {
-		return fireworksModelCapabilities{}, err
-	}
-	return capabilities, nil
-}
-
-func isFireworksModelResource(modelID string) bool {
-	parts := strings.Split(modelID, "/")
-	return len(parts) == 4 && parts[0] == "accounts" && parts[1] != "" && parts[2] == "models" && parts[3] != ""
-}
-
-func annotateCapabilityMetadata(model sigma.Model, source string, metadataErr string) sigma.Model {
-	metadata := make(map[string]any, len(model.ProviderMetadata)+2)
-	for key, value := range model.ProviderMetadata {
-		metadata[key] = value
-	}
-	metadata["probeCapabilitySource"] = source
-	if metadataErr != "" {
-		metadata["probeCapabilityError"] = metadataErr
-	}
-	model.ProviderMetadata = metadata
-	return model
-}
-
-func capabilityMetadataUnavailable(model sigma.Model) bool {
-	source, _ := model.ProviderMetadata["probeCapabilitySource"].(string)
-	return source == "unavailable"
-}
-
-func unavailableCapabilityMetadataState(model sigma.Model) (string, bool) {
-	source, _ := model.ProviderMetadata["probeCapabilitySource"].(string)
-	state, _ := model.ProviderMetadata["fireworksModelState"].(string)
-	return state, source == "fireworks_get_model" && state != "" && !strings.EqualFold(state, "READY")
-}
-
 func probeModelEach(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config, emit func(probeResult)) {
 	if !cfg.includeUnavailable && knownUnavailable(route.Name, modelID) {
 		emit(probeResult{
@@ -761,30 +642,7 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		return
 	}
 
-	model := resolveProbeModel(ctx, route, modelID, credential)
-	if capabilityMetadataUnavailable(model) {
-		errMessage, _ := model.ProviderMetadata["probeCapabilityError"].(string)
-		emit(probeResult{
-			Route:   route.Name,
-			Model:   modelID,
-			Case:    "optional_capabilities",
-			Attempt: "model_metadata",
-			Outcome: outcomeSkipped,
-			Error:   errMessage,
-			Hint:    "capability_metadata_unavailable",
-		})
-	}
-	if state, unavailable := unavailableCapabilityMetadataState(model); unavailable && !cfg.includeUnavailable {
-		emit(probeResult{
-			Route:   route.Name,
-			Model:   modelID,
-			Case:    "all",
-			Attempt: "skip_model_state",
-			Outcome: outcomeSkipped,
-			Error:   "provider model state is " + state,
-		})
-		return
-	}
+	model := route.Model(route, modelID)
 	if (cfg.structuredOutput || cfg.jsonText) && model.API != sigma.APIOpenAICompletions {
 		caseName := "structured_output"
 		if cfg.jsonText {
@@ -1261,7 +1119,7 @@ func imageProbeClient(route imageRouteSpec, modelID sigma.ModelID) *sigma.Client
 func generateHandoffSource(ctx context.Context, route routeSpec, modelID string, credential routeCredential, cfg config) (handoffSource, probeResult) {
 	ctx, cancel := withCaseTimeout(ctx, cfg.caseTimeout)
 	defer cancel()
-	model := resolveProbeModel(ctx, route, modelID, credential)
+	model := route.Model(route, modelID)
 	result := probeResult{
 		Route:   route.Name,
 		Model:   string(model.ID),
@@ -1399,7 +1257,7 @@ func assistantMessage(model sigma.Model, final sigma.AssistantMessage) sigma.Mes
 
 func probeClient(route routeSpec, model sigma.Model) *sigma.Client {
 	registry := sigma.NewRegistry()
-	_ = route.RegisterProvider(registry, route)
+	_ = route.RegisterProvider(registry, route, model.API)
 	_ = registry.RegisterModel(model)
 	opts := []sigma.ClientOption{sigma.WithRegistry(registry)}
 	if route.Name == "go" || route.Name == "zen" {
@@ -1408,7 +1266,7 @@ func probeClient(route routeSpec, model sigma.Model) *sigma.Client {
 	return sigma.NewClient(opts...)
 }
 
-func registerOpenAIResponsesProvider(registry *sigma.Registry, route routeSpec) error {
+func registerOpenAIResponsesProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	if err := openai.RegisterResponses(registry, route.Provider, openai.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register openai responses provider: %w", err)
 	}
@@ -1444,28 +1302,28 @@ func registerGoogleVertexImagesProvider(registry *sigma.Registry, route imageRou
 	return nil
 }
 
-func registerOpenAICodexProvider(registry *sigma.Registry, route routeSpec) error {
+func registerOpenAICodexProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	if err := openai.RegisterCodexResponses(registry, route.Provider, openai.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register openai codex responses provider: %w", err)
 	}
 	return nil
 }
 
-func registerOpenCodeProvider(registry *sigma.Registry, route routeSpec) error {
+func registerOpenCodeProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	switch route.Name {
 	case "go":
-		if err := opencode.RegisterGo(registry); err != nil {
+		if err := opencode.RegisterGo(registry, opencode.WithBaseURL(route.BaseURL)); err != nil {
 			return fmt.Errorf("register opencode go provider: %w", err)
 		}
 	default:
-		if err := opencode.RegisterZen(registry); err != nil {
+		if err := opencode.RegisterZen(registry, opencode.WithBaseURL(route.BaseURL)); err != nil {
 			return fmt.Errorf("register opencode zen provider: %w", err)
 		}
 	}
 	return nil
 }
 
-func registerGoogleVertexProvider(registry *sigma.Registry, route routeSpec) error {
+func registerGoogleVertexProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	options := make([]google.VertexProviderOption, 0, 1)
 	if route.BaseURL != "" {
 		options = append(options, google.WithVertexBaseURL(route.BaseURL))
@@ -1476,7 +1334,7 @@ func registerGoogleVertexProvider(registry *sigma.Registry, route routeSpec) err
 	return nil
 }
 
-func registerGoogleVertexAnthropicProvider(registry *sigma.Registry, route routeSpec) error {
+func registerGoogleVertexAnthropicProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	options := make([]anthropic.VertexProviderOption, 0, 1)
 	if route.BaseURL != "" {
 		options = append(options, anthropic.WithVertexBaseURL(route.BaseURL))
@@ -1487,21 +1345,21 @@ func registerGoogleVertexAnthropicProvider(registry *sigma.Registry, route route
 	return nil
 }
 
-func registerFireworksOpenAIProvider(registry *sigma.Registry, route routeSpec) error {
+func registerFireworksOpenAIProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	if err := fireworks.Register(registry, fireworks.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register fireworks openai-compatible provider: %w", err)
 	}
 	return nil
 }
 
-func registerFireworksAnthropicProvider(registry *sigma.Registry, route routeSpec) error {
+func registerFireworksAnthropicProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	if err := fireworks.RegisterAnthropic(registry, fireworks.WithAnthropicBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register fireworks anthropic-compatible provider: %w", err)
 	}
 	return nil
 }
 
-func registerMoonshotProvider(registry *sigma.Registry, route routeSpec) error {
+func registerMoonshotProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	switch route.Provider {
 	case sigma.ProviderMoonshotAICN:
 		if err := moonshot.RegisterCN(registry, moonshot.WithBaseURL(route.BaseURL)); err != nil {
@@ -1515,15 +1373,21 @@ func registerMoonshotProvider(registry *sigma.Registry, route routeSpec) error {
 	return nil
 }
 
-func registerNVIDIAProvider(registry *sigma.Registry, route routeSpec) error {
+func registerNVIDIAProvider(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
 	if err := nvidia.Register(registry, nvidia.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register nvidia provider: %w", err)
 	}
 	return nil
 }
 
-func registerXAIProvider(registry *sigma.Registry, route routeSpec) error {
-	if err := xai.Register(registry, xai.WithBaseURL(route.BaseURL)); err != nil {
+// registerXAIProvider registers the xAI surface api uses: xAI serves some
+// catalog models over Responses and others over Chat Completions.
+func registerXAIProvider(registry *sigma.Registry, route routeSpec, api sigma.API) error {
+	register := xai.Register
+	if api == sigma.APIOpenAIResponses {
+		register = xai.RegisterResponses
+	}
+	if err := register(registry, xai.WithBaseURL(route.BaseURL)); err != nil {
 		return fmt.Errorf("register xai provider: %w", err)
 	}
 	return nil
@@ -1583,263 +1447,23 @@ func googleImageAPI(route imageRouteSpec) sigma.ImageAPI {
 	return sigma.ImageAPIGoogleImages
 }
 
-func discoveredOpenAIResponsesModel(route routeSpec, id string) sigma.Model {
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAIResponses,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{route.APIKeyEnv},
-			"modelFamily":     modelFamily(id),
-			"probeDiscovered": true,
-			"probeRoute":      route.Name,
-			"probeSurface":    "openai-responses",
-		},
+// catalogProbeModel returns sigma's catalog row for id, so cases run against
+// the capabilities, limits, and request settings sigma ships. When the route
+// sets a base URL, the row's own URL is dropped and the registered provider
+// supplies it; providers that route several protocols derive each endpoint
+// from it, and a test server or proxy receives every request.
+func catalogProbeModel(route routeSpec, id string) sigma.Model {
+	model, ok := sigma.GetModel(route.Provider, sigma.ModelID(id))
+	if !ok {
+		return sigma.Model{ID: sigma.ModelID(id), Provider: route.Provider}
 	}
-}
-
-func discoveredOpenAICodexModel(route routeSpec, id string) sigma.Model {
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICodexResponses,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ThinkingLevelMap: map[sigma.ThinkingLevel]string{
-			sigma.ThinkingLevelLow:    "low",
-			sigma.ThinkingLevelMedium: "medium",
-			sigma.ThinkingLevelHigh:   "high",
-			"off":                     "",
-		},
-		ContextWindow:        400000,
-		MaxOutputTokens:      128000,
-		DefaultTransport:     sigma.TransportSSE,
-		OpenAICodexResponses: &sigma.OpenAICodexResponsesConfig{},
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{route.APIKeyEnv, "OPENAI_CODEX_REFRESH_TOKEN"},
-			"modelFamily":     modelFamily(id),
-			"probeDiscovered": true,
-			"probeRoute":      route.Name,
-			"probeSurface":    "openai-codex-responses",
-			"requiresOAuth":   true,
-		},
-	}
-}
-
-func googleVertexProbeModel(route routeSpec, id string) sigma.Model {
-	if model, ok := sigma.GetModel(route.Provider, sigma.ModelID(id)); ok && isBuiltInGoogleVertexGeminiModel(model) {
-		return model
-	}
-	return sigma.Model{
-		ID:              sigma.ModelID(id),
-		Provider:        route.Provider,
-		API:             sigma.APIGoogleVertex,
-		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
-	}
-}
-
-func googleVertexAnthropicProbeModel(route routeSpec, id string) sigma.Model {
-	if model, ok := sigma.GetModel(route.Provider, sigma.ModelID(id)); ok && isBuiltInGoogleVertexAnthropicModel(model) {
-		return model
-	}
-	return sigma.Model{
-		ID:              sigma.ModelID(id),
-		Provider:        route.Provider,
-		API:             sigma.APIAnthropicMessages,
-		SupportedInputs: []sigma.ContentBlockType{sigma.ContentBlockText},
-	}
-}
-
-func discoveredOpenCodeModel(route routeSpec, id string) sigma.Model {
-	model := sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICompletions,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{"OPENCODE_API_KEY"},
-			"modelFamily":     modelFamily(id),
-			"opencodeAPI":     string(openCodeRouteAPI(route.Name, id)),
-			"probeDiscovered": true,
-		},
-	}
-	applyDiscoveredOpenCodeCompat(&model, route.Name, id)
-	return model
-}
-
-func applyDiscoveredOpenCodeCompat(model *sigma.Model, routeName string, id string) {
-	if routeName != "go" {
-		return
-	}
-	switch id {
-	case "kimi-k2.6", "kimi-k3":
-		model.OpenAICompletionsCompat = &sigma.OpenAICompletionsCompat{
-			ReasoningFormat: sigma.OpenAICompletionsReasoningEffort,
-		}
-	case "kimi-k2.7-code":
-		model.OpenAICompletionsCompat = &sigma.OpenAICompletionsCompat{
-			ReasoningFormat:            sigma.OpenAICompletionsReasoningEffort,
-			SupportsRequiredToolChoice: sigma.OpenAICompatUnsupported,
-		}
-	}
-}
-
-func discoveredXAIModel(route routeSpec, id string) sigma.Model {
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICompletions,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{route.APIKeyEnv},
-			"modelFamily":     modelFamily(id),
-			"probeDiscovered": true,
-			"probeRoute":      route.Name,
-			"probeSurface":    "openai-completions",
-		},
-	}
-}
-
-func discoveredMoonshotModel(route routeSpec, id string) sigma.Model {
-	if model, ok := sigma.DefaultRegistry().Model(route.Provider, sigma.ModelID(id)); ok {
-		return model
-	}
-	model := sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICompletions,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ContextWindow:    262144,
-		MaxOutputTokens:  262144,
-		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			ReasoningFormat:         sigma.OpenAICompletionsReasoningDeepSeek,
-			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
-			SupportsStreamingUsage:  sigma.OpenAICompatSupported,
-			SupportsStrictTools:     sigma.OpenAICompatUnsupported,
-			MaxTokensField:          sigma.OpenAICompletionsMaxTokens,
-		},
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{route.APIKeyEnv},
-			"modelFamily":     modelFamily(id),
-			"probeDiscovered": true,
-			"probeRoute":      route.Name,
-			"probeSurface":    "openai-completions",
-		},
-	}
-	if strings.Contains(id, "kimi-k2.7-code") {
-		model.UnsupportedThinkingLevels = []sigma.ThinkingLevel{sigma.ThinkingLevelOff}
+	if route.BaseURL != "" {
+		metadata := maps.Clone(model.ProviderMetadata)
+		delete(metadata, "baseURL")
+		delete(metadata, sigma.MetadataOpenAICompatibleBaseURL)
+		model.ProviderMetadata = metadata
 	}
 	return model
-}
-
-func discoveredNVIDIAModel(route routeSpec, id string) sigma.Model {
-	if model, ok := sigma.DefaultRegistry().Model(route.Provider, sigma.ModelID(id)); ok {
-		return model
-	}
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICompletions,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			SupportsStore:           sigma.OpenAICompatUnsupported,
-			SupportsDeveloperRole:   sigma.OpenAICompatUnsupported,
-			SupportsReasoningEffort: sigma.OpenAICompatUnsupported,
-			SupportsStreamingUsage:  sigma.OpenAICompatSupported,
-			SupportsStrictTools:     sigma.OpenAICompatUnsupported,
-			MaxTokensField:          sigma.OpenAICompletionsMaxTokens,
-		},
-		ProviderMetadata: map[string]any{
-			"baseURL":         route.BaseURL,
-			"apiKeyEnvVars":   []string{route.APIKeyEnv},
-			"headers":         map[string]string{"NVCF-POLL-SECONDS": "3600"},
-			"modelFamily":     modelFamily(id),
-			"probeDiscovered": true,
-			"probeRoute":      route.Name,
-			"probeSurface":    "openai-completions",
-		},
-	}
-}
-
-func discoveredFireworksOpenAIModel(route routeSpec, id string) sigma.Model {
-	if id == "accounts/fireworks/models/kimi-k3" {
-		if model, ok := sigma.DefaultRegistry().Model(route.Provider, sigma.ModelID(id)); ok {
-			return model
-		}
-	}
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIOpenAICompletions,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ThinkingLevels:   []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh},
-		ContextWindow:    256000,
-		MaxOutputTokens:  256000,
-		OpenAICompletionsCompat: &sigma.OpenAICompletionsCompat{
-			ReasoningFormat:        sigma.OpenAICompletionsReasoningFireworks,
-			SupportsStreamingUsage: sigma.OpenAICompatSupported,
-			SupportsStrictTools:    sigma.OpenAICompatSupported,
-			MaxTokensField:         sigma.OpenAICompletionsMaxTokens,
-		},
-		ProviderMetadata: map[string]any{
-			"baseURL":          route.BaseURL,
-			"apiKeyEnvVars":    []string{route.APIKeyEnv},
-			"modelFamily":      modelFamily(id),
-			"probeDiscovered":  true,
-			"probeRoute":       route.Name,
-			"probeSurface":     "openai-completions",
-			"fireworksSurface": "openai",
-		},
-	}
-}
-
-func discoveredFireworksAnthropicModel(route routeSpec, id string) sigma.Model {
-	return sigma.Model{
-		ID:               sigma.ModelID(id),
-		Provider:         route.Provider,
-		API:              sigma.APIAnthropicMessages,
-		SupportedInputs:  []sigma.ContentBlockType{sigma.ContentBlockText, sigma.ContentBlockImage},
-		SupportsTools:    true,
-		SupportsThinking: true,
-		ThinkingLevels:   []sigma.ThinkingLevel{sigma.ThinkingLevelLow, sigma.ThinkingLevelMedium, sigma.ThinkingLevelHigh},
-		ContextWindow:    262000,
-		MaxOutputTokens:  262000,
-		AnthropicMessagesCompat: &sigma.AnthropicMessagesCompat{
-			SupportsEagerToolInputStreaming: sigma.AnthropicCompatUnsupported,
-			SupportsLongCacheRetention:      sigma.AnthropicCompatUnsupported,
-			SupportsSessionAffinity:         sigma.AnthropicCompatSupported,
-			SupportsCacheControlOnTools:     sigma.AnthropicCompatUnsupported,
-			ThinkingFormat:                  sigma.AnthropicThinkingBudget,
-		},
-		ProviderMetadata: map[string]any{
-			"baseURL":          route.BaseURL,
-			"apiKeyEnvVars":    []string{route.APIKeyEnv},
-			"modelFamily":      modelFamily(id),
-			"probeDiscovered":  true,
-			"probeRoute":       route.Name,
-			"probeSurface":     "anthropic-messages",
-			"fireworksSurface": "anthropic",
-		},
-	}
 }
 
 func runCaseWithTimeout(ctx context.Context, timeout time.Duration, route routeSpec, client *sigma.Client, model sigma.Model, testCase probeCase, credential routeCredential, attempt string) probeResult {
@@ -2145,6 +1769,15 @@ func openAIResponsesProbeCases(_ routeSpec, _ sigma.Model) []probeCase {
 		toolCase("tool_auto_file_read", "auto read-file tool", "auto"),
 		toolCase("tool_required_file_read", "required read-file tool", "required"),
 	}
+}
+
+// xaiProbeCases follows the catalog row's API, since xAI serves some models
+// over Responses and others over Chat Completions.
+func xaiProbeCases(route routeSpec, model sigma.Model) []probeCase {
+	if model.API == sigma.APIOpenAIResponses {
+		return openAIResponsesProbeCases(route, model)
+	}
+	return openAICompatibleProbeCases(route, model)
 }
 
 func openAICodexProbeCases(route routeSpec, model sigma.Model) []probeCase {
@@ -2598,52 +2231,6 @@ func jsonSchemaTextFormat() map[string]any {
 			"required":             []any{"answer"},
 			"additionalProperties": false,
 		},
-	}
-}
-
-func openCodeRouteAPI(route string, id string) sigma.API {
-	provider := sigma.ProviderOpenCode
-	if route == "go" {
-		provider = sigma.ProviderOpenCodeGo
-	}
-	if model, ok := sigma.GetModel(provider, sigma.ModelID(id)); ok {
-		if api, ok := model.ProviderMetadata["opencodeAPI"].(string); ok && api != "" {
-			return sigma.API(api)
-		}
-		return sigma.APIOpenAICompletions
-	}
-
-	switch route {
-	case "zen":
-		return zenRouteAPI(id)
-	case "go":
-		return goRouteAPI(id)
-	default:
-		return sigma.APIOpenAICompletions
-	}
-}
-
-func zenRouteAPI(id string) sigma.API {
-	switch {
-	case strings.HasPrefix(id, "gemini-"):
-		return sigma.APIGoogleGenerativeAI
-	case strings.HasPrefix(id, "claude-") || strings.HasPrefix(id, "qwen3."):
-		return sigma.APIAnthropicMessages
-	case strings.HasPrefix(id, "gpt-") || strings.HasPrefix(id, "grok-") || strings.HasPrefix(id, "muse-"):
-		return sigma.APIOpenAIResponses
-	default:
-		return sigma.APIOpenAICompletions
-	}
-}
-
-func goRouteAPI(id string) sigma.API {
-	switch {
-	case id == "qwen3.8-flash" || id == "minimax-m3":
-		return sigma.APIAnthropicMessages
-	case strings.HasPrefix(id, "gpt-") || strings.HasPrefix(id, "grok-") || strings.HasPrefix(id, "muse-"):
-		return sigma.APIOpenAIResponses
-	default:
-		return sigma.APIOpenAICompletions
 	}
 }
 

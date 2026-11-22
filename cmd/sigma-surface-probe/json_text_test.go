@@ -91,7 +91,7 @@ func TestJSONTextModeUsesPlainTextWireRequest(t *testing.T) {
 			defer server.Close()
 			route := routes["xai"]
 			route.BaseURL = server.URL + "/v1"
-			results := collectProbeModel(context.Background(), route, "grok-4.6", routeCredential{apiKey: "fake"}, config{jsonText: true, repair: true, structuredOutput: true})
+			results := collectProbeModel(context.Background(), route, "grok-4.3", routeCredential{apiKey: "fake"}, config{jsonText: true, repair: true, structuredOutput: true})
 			if calls.Load() != 1 || len(results) != 1 {
 				t.Fatalf("unexpected extra probes: calls=%d results=%+v", calls.Load(), results)
 			}

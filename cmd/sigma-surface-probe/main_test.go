@@ -58,38 +58,6 @@ func collectProbeModel(ctx context.Context, route routeSpec, modelID string, cre
 	return results
 }
 
-func TestOpenCodeRouteAPI(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		route string
-		id    string
-		want  sigma.API
-	}{
-		{route: "zen", id: "gemini-3-flash", want: sigma.APIGoogleGenerativeAI},
-		{route: "zen", id: "claude-opus-4-7", want: sigma.APIAnthropicMessages},
-		{route: "zen", id: "qwen3.6-plus", want: sigma.APIAnthropicMessages},
-		{route: "zen", id: "gpt-5.1-codex", want: sigma.APIOpenAIResponses},
-		{route: "zen", id: "grok-4.6", want: sigma.APIOpenAIResponses},
-		{route: "zen", id: "kimi-k2.6", want: sigma.APIOpenAICompletions},
-		{route: "go", id: "qwen3.8-flash", want: sigma.APIAnthropicMessages},
-		{route: "go", id: "qwen3.7-max", want: sigma.APIOpenAICompletions},
-		{route: "go", id: "grok-4.6", want: sigma.APIOpenAIResponses},
-		{route: "go", id: "kimi-k2.6", want: sigma.APIOpenAICompletions},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.route+"/"+tt.id, func(t *testing.T) {
-			t.Parallel()
-
-			if got := openCodeRouteAPI(tt.route, tt.id); got != tt.want {
-				t.Fatalf("openCodeRouteAPI = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestKnownUnavailable(t *testing.T) {
 	t.Parallel()
 
@@ -103,341 +71,70 @@ func TestKnownUnavailable(t *testing.T) {
 	}
 }
 
-func TestFireworksRoutesBuildExpectedModels(t *testing.T) {
+// Each route probes sigma's own catalog rows, and its registered provider
+// must accept every row it selects, or the probe fails before any request.
+func TestRoutesProbeServableCatalogRows(t *testing.T) {
 	t.Parallel()
 
-	openAI := routes["fireworks-openai"].Model(routes["fireworks-openai"], "accounts/fireworks/routers/kimi-k2p6-turbo")
-	if openAI.Provider != sigma.ProviderFireworks || openAI.API != sigma.APIOpenAICompletions {
-		t.Fatalf("fireworks-openai model provider/API = %q/%q", openAI.Provider, openAI.API)
-	}
-	if openAI.OpenAICompletionsCompat == nil ||
-		openAI.OpenAICompletionsCompat.ReasoningFormat != sigma.OpenAICompletionsReasoningFireworks ||
-		openAI.OpenAICompletionsCompat.MaxTokensField != sigma.OpenAICompletionsMaxTokens {
-		t.Fatalf("fireworks-openai compat = %#v, want Fireworks OpenAI completions compat", openAI.OpenAICompletionsCompat)
-	}
-	assertMetadataString(t, openAI.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
-	assertMetadataStrings(t, openAI.ProviderMetadata, "apiKeyEnvVars", []string{"FIREWORKS_API_KEY"})
-
-	k3 := routes["fireworks-openai"].Model(routes["fireworks-openai"], "accounts/fireworks/models/kimi-k3")
-	if !k3.SupportsThinkingLevel(sigma.ThinkingLevel("max")) {
-		t.Fatalf("fireworks-openai K3 max reasoning metadata = %+v, want max support", k3)
-	}
-	if k3.OpenAICompletionsCompat == nil ||
-		k3.OpenAICompletionsCompat.ReasoningFormat != sigma.OpenAICompletionsReasoningEffort ||
-		k3.OpenAICompletionsCompat.SupportsSessionAffinity != sigma.OpenAICompatSupported ||
-		k3.OpenAICompletionsCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported ||
-		k3.OpenAICompletionsCompat.RequiresReasoningContentOnAssistantMessages != sigma.OpenAICompatSupported {
-		t.Fatalf("fireworks-openai K3 compat = %#v, want generated K3 compat", k3.OpenAICompletionsCompat)
-	}
-	assertMetadataString(t, k3.ProviderMetadata, "deferredToolsMode", "kimi")
-
-	anthropic := routes["fireworks-anthropic"].Model(routes["fireworks-anthropic"], "accounts/fireworks/models/kimi-k2p6")
-	if anthropic.Provider != sigma.ProviderFireworksAnthropic || anthropic.API != sigma.APIAnthropicMessages {
-		t.Fatalf("fireworks-anthropic model provider/API = %q/%q", anthropic.Provider, anthropic.API)
-	}
-	if anthropic.AnthropicMessagesCompat == nil ||
-		anthropic.AnthropicMessagesCompat.SupportsSessionAffinity != sigma.AnthropicCompatSupported ||
-		anthropic.AnthropicMessagesCompat.SupportsEagerToolInputStreaming != sigma.AnthropicCompatUnsupported ||
-		anthropic.AnthropicMessagesCompat.SupportsLongCacheRetention != sigma.AnthropicCompatUnsupported ||
-		anthropic.AnthropicMessagesCompat.SupportsCacheControlOnTools != sigma.AnthropicCompatUnsupported {
-		t.Fatalf("fireworks-anthropic compat = %#v, want Fireworks Anthropic compat", anthropic.AnthropicMessagesCompat)
-	}
-	assertMetadataString(t, anthropic.ProviderMetadata, "baseURL", "https://api.fireworks.ai/inference/v1")
-	assertMetadataStrings(t, anthropic.ProviderMetadata, "apiKeyEnvVars", []string{"FIREWORKS_API_KEY"})
-}
-
-func TestFireworksModelCapabilitiesComeFromProviderMetadata(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got, want := r.URL.Path, "/v1/accounts/fireworks/models/qwen3p8-max"; got != want {
-			t.Errorf("path = %q, want %q", got, want)
-		}
-		if got, want := r.Header.Get("Authorization"), "Bearer key"; got != want {
-			t.Errorf("authorization = %q, want %q", got, want)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"state":"READY","contextLength":262144,"supportsImageInput":false,"supportsTools":true}`)
-	}))
-	t.Cleanup(server.Close)
-
-	route := routes["fireworks-openai"]
-	route.BaseURL = server.URL + "/inference/v1"
-	model := resolveProbeModel(context.Background(), route, "accounts/fireworks/models/qwen3p8-max", routeCredential{apiKey: "key"})
-	if model.SupportsImages() {
-		t.Fatal("resolved Fireworks model supports images, want provider metadata to disable image input")
-	}
-	if !model.SupportsTools {
-		t.Fatal("resolved Fireworks model does not support tools, want provider metadata to enable tools")
-	}
-	if got, want := model.ContextWindow, 262144; got != want {
-		t.Fatalf("context window = %d, want %d", got, want)
-	}
-	if hasString(probeCaseNames(route.Cases(route, model)), "image_input") {
-		t.Fatal("image_input case present for model whose provider metadata disables images")
-	}
-}
-
-func TestFireworksModelMetadataFailureUsesConservativeCapabilities(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
-	}))
-	t.Cleanup(server.Close)
-
-	route := routes["fireworks-openai"]
-	route.BaseURL = server.URL + "/inference/v1"
-	model := resolveProbeModel(context.Background(), route, "accounts/fireworks/models/unknown", routeCredential{apiKey: "key"})
-	if model.SupportsImages() || model.SupportsTools || model.SupportsReasoning() {
-		t.Fatalf("fallback model has optimistic optional capabilities: %+v", model)
-	}
-	if !capabilityMetadataUnavailable(model) {
-		t.Fatalf("fallback model metadata = %#v, want explicit unavailable marker", model.ProviderMetadata)
-	}
-}
-
-func TestFireworksModelMetadataFailureEmitsExplicitSkip(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
-	}))
-	t.Cleanup(server.Close)
-
-	route := routes["fireworks-openai"]
-	route.BaseURL = server.URL + "/inference/v1"
-	route.Cases = func(routeSpec, sigma.Model) []probeCase { return nil }
-	var results []probeResult
-	probeModelEach(context.Background(), route, "accounts/fireworks/models/unknown", routeCredential{apiKey: "key"}, config{}, func(result probeResult) {
-		results = append(results, result)
-	})
-	if got, want := len(results), 1; got != want {
-		t.Fatalf("results = %d, want %d: %#v", got, want, results)
-	}
-	if result := results[0]; result.Case != "optional_capabilities" || result.Attempt != "model_metadata" || result.Outcome != "skipped" || result.Hint != "capability_metadata_unavailable" {
-		t.Fatalf("metadata result = %+v, want explicit optional-capability skip", result)
-	}
-}
-
-func TestFireworksNonReadyModelIsSkipped(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"state":"UPLOADING","supportsImageInput":true,"supportsTools":true}`)
-	}))
-	t.Cleanup(server.Close)
-
-	route := routes["fireworks-openai"]
-	route.BaseURL = server.URL + "/inference/v1"
-	var results []probeResult
-	probeModelEach(context.Background(), route, "accounts/fireworks/models/uploading", routeCredential{apiKey: "key"}, config{}, func(result probeResult) {
-		results = append(results, result)
-	})
-	if got, want := len(results), 1; got != want {
-		t.Fatalf("results = %d, want %d: %#v", got, want, results)
-	}
-	if result := results[0]; result.Case != "all" || result.Attempt != "skip_model_state" || result.Outcome != "skipped" {
-		t.Fatalf("result = %+v, want provider-state skip", result)
-	}
-}
-
-func TestOpenAIRoutesBuildExpectedModels(t *testing.T) {
-	t.Parallel()
-
-	openAIRoute := routes["openai"]
-	openAIModel := openAIRoute.Model(openAIRoute, "gpt-5.1")
-	if openAIModel.Provider != sigma.ProviderOpenAI || openAIModel.API != sigma.APIOpenAIResponses {
-		t.Fatalf("openai model provider/API = %q/%q", openAIModel.Provider, openAIModel.API)
-	}
-	assertMetadataString(t, openAIModel.ProviderMetadata, "baseURL", "https://api.openai.com/v1")
-	assertMetadataString(t, openAIModel.ProviderMetadata, "probeSurface", "openai-responses")
-	assertMetadataStrings(t, openAIModel.ProviderMetadata, "apiKeyEnvVars", []string{"OPENAI_API_KEY"})
-
-	codexRoute := routes["openai-codex"]
-	codexModel := codexRoute.Model(codexRoute, "gpt-5.1-codex")
-	if codexModel.Provider != sigma.ProviderOpenAI || codexModel.API != sigma.APIOpenAICodexResponses {
-		t.Fatalf("openai-codex model provider/API = %q/%q", codexModel.Provider, codexModel.API)
-	}
-	if codexModel.OpenAICodexResponses == nil {
-		t.Fatal("openai-codex model missing OpenAICodexResponses config")
-	}
-	assertMetadataString(t, codexModel.ProviderMetadata, "baseURL", "https://chatgpt.com/backend-api/codex")
-	assertMetadataString(t, codexModel.ProviderMetadata, "probeSurface", "openai-codex-responses")
-	assertMetadataStrings(t, codexModel.ProviderMetadata, "apiKeyEnvVars", []string{"OPENAI_CODEX_ACCESS_TOKEN", "OPENAI_CODEX_REFRESH_TOKEN"})
-}
-
-func TestXAIRouteBuildsExpectedModel(t *testing.T) {
-	t.Parallel()
-
-	route := routes["xai"]
-	model := route.Model(route, "grok-4.3")
-	if model.Provider != sigma.ProviderXAI || model.API != sigma.APIOpenAICompletions {
-		t.Fatalf("xai model provider/API = %q/%q", model.Provider, model.API)
-	}
-	if !model.SupportsTools || !model.SupportsImages() || !model.SupportsReasoning() {
-		t.Fatalf("xai probe model did not enable optimistic probe capabilities: %+v", model)
-	}
-	assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://api.x.ai/v1")
-	assertMetadataString(t, model.ProviderMetadata, "modelFamily", "grok")
-	assertMetadataString(t, model.ProviderMetadata, "probeRoute", "xai")
-	assertMetadataString(t, model.ProviderMetadata, "probeSurface", "openai-completions")
-	assertMetadataStrings(t, model.ProviderMetadata, "apiKeyEnvVars", []string{"XAI_API_KEY"})
-}
-
-func TestMoonshotRoutesBuildExpectedModels(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		provider sigma.ProviderID
-		baseURL  string
-	}{
-		{name: "moonshot", provider: sigma.ProviderMoonshotAI, baseURL: "https://api.moonshot.ai/v1"},
-		{name: "moonshot-cn", provider: sigma.ProviderMoonshotAICN, baseURL: "https://api.moonshot.cn/v1"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for name, route := range routes {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			route := routes[tt.name]
-			if route.RegisterProvider == nil {
-				t.Fatalf("route %q missing provider registration", tt.name)
+			models, err := modelsForRoute(route, nil)
+			if err != nil {
+				t.Fatalf("modelsForRoute: %v", err)
 			}
-			if got, want := route.Provider, tt.provider; got != want {
-				t.Fatalf("provider = %q, want %q", got, want)
-			}
-			if got, want := route.BaseURL, tt.baseURL; got != want {
-				t.Fatalf("base URL = %q, want %q", got, want)
-			}
-			if got, want := route.APIKeyEnv, "MOONSHOT_API_KEY"; got != want {
-				t.Fatalf("api key env = %q, want %q", got, want)
-			}
-
-			model := route.Model(route, "kimi-k2.7-code")
-			if model.Provider != tt.provider || model.API != sigma.APIOpenAICompletions {
-				t.Fatalf("model provider/API = %q/%q", model.Provider, model.API)
-			}
-			if model.OpenAICompletionsCompat == nil ||
-				model.OpenAICompletionsCompat.ReasoningFormat != sigma.OpenAICompletionsReasoningDeepSeek ||
-				model.OpenAICompletionsCompat.SupportsReasoningEffort != sigma.OpenAICompatUnsupported {
-				t.Fatalf("Moonshot probe compat = %#v, want DeepSeek format without reasoning effort", model.OpenAICompletionsCompat)
+			for _, id := range models {
+				want, ok := sigma.GetModel(route.Provider, sigma.ModelID(id))
+				if !ok {
+					t.Fatalf("model %q is not a %s catalog row", id, route.Provider)
+				}
+				got := route.Model(route, id)
+				if got.API != want.API || got.SupportsTools != want.SupportsTools ||
+					got.ContextWindow != want.ContextWindow || got.MaxOutputTokens != want.MaxOutputTokens ||
+					!reflect.DeepEqual(got.SupportedInputs, want.SupportedInputs) ||
+					!reflect.DeepEqual(got.ThinkingLevels, want.ThinkingLevels) {
+					t.Fatalf("probe model %q differs from its catalog row:\n got: %#v\nwant: %#v", id, got, want)
+				}
+				registry := sigma.NewRegistry()
+				if err := route.RegisterProvider(registry, route, got.API); err != nil {
+					t.Fatalf("register provider: %v", err)
+				}
+				if err := registry.RegisterModel(got); err != nil {
+					t.Fatalf("route provider rejects catalog model %q (%s): %v", id, got.API, err)
+				}
 			}
 		})
 	}
 }
 
-func TestNVIDIARouteBuildsExpectedModels(t *testing.T) {
+// A route base URL replaces the row's URL so the registered provider, which
+// derives per-protocol endpoints, receives every request. Vertex rows keep
+// their location-templated URL when the route sets none.
+func TestCatalogProbeModelBaseURL(t *testing.T) {
 	t.Parallel()
 
-	route := routes["nvidia"]
-	if route.RegisterProvider == nil {
-		t.Fatal("nvidia route missing provider registration")
+	zen := routes["zen"]
+	routed := ""
+	for _, id := range catalogModels(zen) {
+		model, _ := sigma.GetModel(zen.Provider, sigma.ModelID(id))
+		if api, _ := model.ProviderMetadata["opencodeAPI"].(string); api == string(sigma.APIAnthropicMessages) {
+			routed = id
+			break
+		}
 	}
-	if got, want := route.Provider, sigma.ProviderNVIDIA; got != want {
-		t.Fatalf("provider = %q, want %q", got, want)
+	if routed == "" {
+		t.Fatal("no Zen catalog row routes to Anthropic Messages")
 	}
-	if got, want := route.BaseURL, "https://integrate.api.nvidia.com/v1"; got != want {
-		t.Fatalf("base URL = %q, want %q", got, want)
-	}
-	if got, want := route.APIKeyEnv, "NVIDIA_API_KEY"; got != want {
-		t.Fatalf("api key env = %q, want %q", got, want)
-	}
-
-	generated := route.Model(route, defaultNVIDIAProbeModel)
-	if generated.Provider != sigma.ProviderNVIDIA || generated.API != sigma.APIOpenAICompletions {
-		t.Fatalf("generated NVIDIA model provider/API = %q/%q", generated.Provider, generated.API)
-	}
-	if generated.OpenAICompletionsCompat == nil ||
-		generated.OpenAICompletionsCompat.SupportsReasoningEffort != sigma.OpenAICompatUnsupported ||
-		generated.OpenAICompletionsCompat.SupportsStreamingUsage != sigma.OpenAICompatSupported ||
-		generated.OpenAICompletionsCompat.SupportsStrictTools != sigma.OpenAICompatUnsupported ||
-		generated.OpenAICompletionsCompat.MaxTokensField != sigma.OpenAICompletionsMaxTokens {
-		t.Fatalf("generated NVIDIA compat = %#v, want NVIDIA OpenAI-compatible defaults", generated.OpenAICompletionsCompat)
-	}
-	assertMetadataString(t, generated.ProviderMetadata, "baseURL", "https://integrate.api.nvidia.com/v1")
-	assertMetadataStrings(t, generated.ProviderMetadata, "apiKeyEnvVars", []string{"NVIDIA_API_KEY"})
-
-	discovered := route.Model(route, "custom/nim")
-	if discovered.Provider != sigma.ProviderNVIDIA || discovered.API != sigma.APIOpenAICompletions {
-		t.Fatalf("discovered NVIDIA model provider/API = %q/%q", discovered.Provider, discovered.API)
-	}
-	if discovered.OpenAICompletionsCompat == nil ||
-		discovered.OpenAICompletionsCompat.SupportsStore != sigma.OpenAICompatUnsupported ||
-		discovered.OpenAICompletionsCompat.SupportsDeveloperRole != sigma.OpenAICompatUnsupported ||
-		discovered.OpenAICompletionsCompat.SupportsReasoningEffort != sigma.OpenAICompatUnsupported ||
-		discovered.OpenAICompletionsCompat.SupportsStreamingUsage != sigma.OpenAICompatSupported ||
-		discovered.OpenAICompletionsCompat.SupportsStrictTools != sigma.OpenAICompatUnsupported ||
-		discovered.OpenAICompletionsCompat.MaxTokensField != sigma.OpenAICompletionsMaxTokens {
-		t.Fatalf("discovered NVIDIA compat = %#v, want NVIDIA OpenAI-compatible defaults", discovered.OpenAICompletionsCompat)
-	}
-	assertMetadataString(t, discovered.ProviderMetadata, "probeRoute", "nvidia")
-	assertMetadataString(t, discovered.ProviderMetadata, "probeSurface", "openai-completions")
-	assertMetadataStrings(t, discovered.ProviderMetadata, "apiKeyEnvVars", []string{"NVIDIA_API_KEY"})
-}
-
-func TestGoogleVertexRouteUsesGeneratedModels(t *testing.T) {
-	t.Parallel()
-
-	route := routes["google-vertex"]
-	if route.RegisterProvider == nil {
-		t.Fatal("google-vertex route missing provider registration")
-	}
-	if got, want := route.Provider, sigma.ProviderGoogleVertex; got != want {
-		t.Fatalf("provider = %q, want %q", got, want)
+	if _, ok := zen.Model(zen, routed).ProviderMetadata["baseURL"]; ok {
+		t.Fatalf("zen model %q kept its row base URL, want the registered provider to supply it", routed)
 	}
 
-	registry := sigma.NewRegistry()
-	if err := route.RegisterProvider(registry, route); err != nil {
-		t.Fatalf("register provider: %v", err)
-	}
-	providers := registry.ListProviders()
-	if len(providers) != 1 || providers[0].ID != sigma.ProviderGoogleVertex || providers[0].TextAPI != sigma.APIGoogleVertex {
-		t.Fatalf("registered providers = %#v, want google-vertex text provider", providers)
-	}
-
-	got := route.Model(route, "gemini-3.1-pro-preview")
-	want, ok := sigma.GetModel(sigma.ProviderGoogleVertex, "gemini-3.1-pro-preview")
-	if !ok {
-		t.Fatal("generated google-vertex model was not registered")
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("probe model differs from generated model:\n got: %#v\nwant: %#v", got, want)
-	}
-	if !got.SupportsThinkingLevel(sigma.ThinkingLevelMedium) || !got.SupportsThinkingLevel(sigma.ThinkingLevelLow) || !got.SupportsThinkingLevel(sigma.ThinkingLevelHigh) || got.SupportsThinkingLevel(sigma.ThinkingLevelMinimal) || got.SupportsThinkingLevel(sigma.ThinkingLevelOff) {
-		t.Fatalf("generated thinking restrictions were not preserved: %+v", got)
-	}
-}
-
-func TestGoogleVertexAnthropicRouteUsesGeneratedModel(t *testing.T) {
-	t.Parallel()
-
-	route := routes["google-vertex-anthropic"]
-	if route.RegisterProvider == nil {
-		t.Fatal("google-vertex-anthropic route missing provider registration")
-	}
-	if got, want := route.Provider, sigma.ProviderGoogleVertexAnthropic; got != want {
-		t.Fatalf("provider = %q, want %q", got, want)
-	}
-
-	registry := sigma.NewRegistry()
-	if err := route.RegisterProvider(registry, route); err != nil {
-		t.Fatalf("register provider: %v", err)
-	}
-	providers := registry.ListProviders()
-	if len(providers) != 1 || providers[0].ID != sigma.ProviderGoogleVertexAnthropic || providers[0].TextAPI != sigma.APIAnthropicMessages {
-		t.Fatalf("registered providers = %#v, want google-vertex-anthropic text provider", providers)
-	}
-
-	got := route.Model(route, defaultGoogleVertexAnthropicModel)
-	want, ok := sigma.GetModel(sigma.ProviderGoogleVertexAnthropic, defaultGoogleVertexAnthropicModel)
-	if !ok {
-		t.Fatal("generated google-vertex-anthropic model was not registered")
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("probe model differs from generated model:\n got: %#v\nwant: %#v", got, want)
+	vertex := routes[routeGoogleVertex]
+	model := vertex.Model(vertex, "gemini-3.1-pro-preview")
+	want, _ := sigma.GetModel(vertex.Provider, "gemini-3.1-pro-preview")
+	if !reflect.DeepEqual(model, want) {
+		t.Fatalf("vertex model differs from its catalog row without a route base URL:\n got: %#v\nwant: %#v", model, want)
 	}
 }
 
@@ -565,7 +262,7 @@ func TestModelsForRouteUseSigmaCatalog(t *testing.T) {
 		}
 		var want []string
 		for _, model := range sigma.Models() {
-			if model.Provider == catalogProvider(route) {
+			if model.Provider == route.Provider {
 				want = append(want, string(model.ID))
 			}
 		}
@@ -683,7 +380,7 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 	t.Parallel()
 
 	route := routes["go"]
-	kimiCode := discoveredOpenCodeModel(route, "kimi-k2.7-code")
+	kimiCode := route.Model(route, "kimi-k2.7-code")
 	codeCases := openAICompatibleProbeCases(route, kimiCode)
 	for _, name := range []string{"thinking_string_none", "thinking_object_disabled", "thinking_bool_false", "enable_thinking_false"} {
 		if hasRepairVariant(codeCases, name) {
@@ -703,21 +400,7 @@ func TestOpenCodeGoKimiProbeCasesMatchReasoningFormat(t *testing.T) {
 		t.Fatal("OpenCode Go Kimi K2.7 Code should not probe unsupported strict required tool choice")
 	}
 
-	kimi26 := discoveredOpenCodeModel(route, "kimi-k2.6")
-	kimi26Cases := openAICompatibleProbeCases(route, kimi26)
-	for _, name := range []string{"thinking_string_none", "thinking_object_disabled", "thinking_bool_false", "enable_thinking_false"} {
-		if hasRepairVariant(kimi26Cases, name) {
-			t.Fatalf("OpenCode Go Kimi K2.6 should not probe raw thinking control %q", name)
-		}
-	}
-	if !hasRepairVariant(kimi26Cases, "reasoning_effort_high") {
-		t.Fatal("OpenCode Go Kimi K2.6 should probe reasoning_effort")
-	}
-	if !hasRepairVariant(kimi26Cases, "logprobs") {
-		t.Fatal("OpenCode Go Kimi K2.6 should retain the logprobs probe")
-	}
-
-	kimiK3 := discoveredOpenCodeModel(route, "kimi-k3")
+	kimiK3 := route.Model(route, "kimi-k3")
 	k3Cases := openAICompatibleProbeCases(route, kimiK3)
 	for _, name := range []string{"thinking_string_none", "thinking_object_disabled", "thinking_bool_false", "enable_thinking_false"} {
 		if hasRepairVariant(k3Cases, name) {
@@ -2068,40 +1751,6 @@ func TestAnthropicProbeCasesFollowModelCapabilitiesAndTypedOptions(t *testing.T)
 	}
 }
 
-func TestXAIRouteRegistrationBuildsClient(t *testing.T) {
-	t.Parallel()
-
-	route := routes["xai"]
-	registry := sigma.NewRegistry()
-	if err := route.RegisterProvider(registry, route); err != nil {
-		t.Fatalf("RegisterProvider returned error: %v", err)
-	}
-	if err := registry.RegisterModel(route.Model(route, "grok-code-fast-1")); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
-	if client == nil {
-		t.Fatal("NewClient returned nil")
-	}
-}
-
-func TestNVIDIARouteRegistrationBuildsClient(t *testing.T) {
-	t.Parallel()
-
-	route := routes["nvidia"]
-	registry := sigma.NewRegistry()
-	if err := route.RegisterProvider(registry, route); err != nil {
-		t.Fatalf("RegisterProvider returned error: %v", err)
-	}
-	if err := registry.RegisterModel(route.Model(route, defaultNVIDIAProbeModel)); err != nil {
-		t.Fatalf("RegisterModel returned error: %v", err)
-	}
-	client := sigma.NewClient(sigma.WithRegistry(registry))
-	if client == nil {
-		t.Fatal("NewClient returned nil")
-	}
-}
-
 func TestRunCaseKeepsDistinctRouteNames(t *testing.T) {
 	t.Parallel()
 
@@ -2269,6 +1918,10 @@ func TestRunHandoffProbesEmitsPairwiseResults(t *testing.T) {
 			sigmatest.Script{Final: sigma.AssistantMessage{Content: []sigma.ContentBlock{sigma.Text("Hello, handoff successful.")}}},
 		),
 	}
+	// Model selection checks the sigma catalog, so the faux routes take
+	// catalog providers that both list the selected model.
+	setRouteProvider("handoff-a", sigma.ProviderOpenAI)
+	setRouteProvider("handoff-b", sigma.ProviderOpenAICodex)
 	t.Setenv("SIGMATEST_API_KEY", "key")
 
 	var emitted []probeResult
@@ -2453,7 +2106,7 @@ func TestProbeModelDoesNotAttributeSafetyRejectionToRepair(t *testing.T) {
 	t.Parallel()
 
 	const safetyMessage = "Content violates usage guidelines. Failed check: SAFETY_CHECK_TYPE_BIO"
-	safetyErr := sigma.NewProviderError(sigma.ProviderXAI, sigma.APIOpenAICompletions, "grok-4.6", http.StatusForbidden,
+	safetyErr := sigma.NewProviderError(sigma.ProviderXAI, sigma.APIOpenAICompletions, "grok-4.3", http.StatusForbidden,
 		"082e5bc5-4916-9711-bf26-53964c03eb51", 0,
 		[]byte(`{"code":"permission-denied","error":"`+safetyMessage+`"}`), nil)
 	for _, tt := range []struct {
@@ -2470,7 +2123,7 @@ func TestProbeModelDoesNotAttributeSafetyRejectionToRepair(t *testing.T) {
 			route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
 				singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), nil),
 			}, sigmatest.Script{Err: safetyErr}, tt.availability, sigmatest.Script{})
-			results := collectProbeModel(context.Background(), route, "grok-4.6", routeCredential{apiKey: "key"}, tt.cfg)
+			results := collectProbeModel(context.Background(), route, "grok-4.3", routeCredential{apiKey: "key"}, tt.cfg)
 			if len(results) != 1 {
 				t.Fatalf("results = %+v, want one result", results)
 			}
@@ -2649,7 +2302,7 @@ func TestRunCaseRetriesIdenticalTransportFailure(t *testing.T) {
 		Provider:  sigmatest.ProviderID,
 		BaseURL:   "https://example.test",
 		APIKeyEnv: "SIGMATEST_API_KEY",
-		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec, _ sigma.API) error {
 			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
 		},
 		Model: func(_ routeSpec, id string) sigma.Model {
@@ -3184,7 +2837,7 @@ func openAICompatibleSigmatestProbeRoute(t *testing.T, cases []probeCase, script
 		Provider:  sigmatest.ProviderID,
 		BaseURL:   "https://example.test",
 		APIKeyEnv: "SIGMATEST_API_KEY",
-		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec, _ sigma.API) error {
 			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
 		},
 		Model: func(_ routeSpec, id string) sigma.Model {
@@ -3216,7 +2869,7 @@ func sigmatestProbeRouteWithCases(t *testing.T, cases []probeCase, scripts ...si
 		Provider:  sigmatest.ProviderID,
 		BaseURL:   "https://example.test",
 		APIKeyEnv: "SIGMATEST_API_KEY",
-		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
+		RegisterProvider: func(registry *sigma.Registry, _ routeSpec, _ sigma.API) error {
 			return registry.RegisterTextProvider(sigmatest.ProviderID, provider)
 		},
 		Model: func(_ routeSpec, id string) sigma.Model {
@@ -3230,21 +2883,23 @@ func sigmatestProbeRouteWithCases(t *testing.T, cases []probeCase, scripts ...si
 	}
 }
 
+func setRouteProvider(name string, provider sigma.ProviderID) {
+	route := routes[name]
+	route.Provider = provider
+	routes[name] = route
+}
+
 func handoffProbeRoute(t *testing.T, name string, scripts ...sigmatest.Script) routeSpec {
 	t.Helper()
 
-	providerID := sigma.ProviderID(name)
 	provider := sigmatest.NewFauxProvider(scripts...)
 	return routeSpec{
-		Name:     name,
-		Provider: providerID,
-		// Model selection checks the sigma catalog; these faux routes stand
-		// in for an OpenAI route.
-		CatalogProvider: sigma.ProviderOpenAI,
-		BaseURL:         "https://example.test",
-		APIKeyEnv:       "SIGMATEST_API_KEY",
-		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
-			return registry.RegisterTextProvider(providerID, provider)
+		Name:      name,
+		Provider:  sigma.ProviderID(name),
+		BaseURL:   "https://example.test",
+		APIKeyEnv: "SIGMATEST_API_KEY",
+		RegisterProvider: func(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
+			return registry.RegisterTextProvider(route.Provider, provider)
 		},
 		Model: func(route routeSpec, id string) sigma.Model {
 			model := sigmatest.TextModel()
