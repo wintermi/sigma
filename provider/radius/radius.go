@@ -738,7 +738,10 @@ type radiusEvent struct {
 	Reason           string          `json:"reason"`
 	Usage            *radiusUsage    `json:"usage"`
 	ResponseID       string          `json:"responseId"`
-	ErrorMessage     string          `json:"errorMessage"`
+	// ResponseModel is the physical model that answered a virtual model
+	// such as "cheap".
+	ResponseModel string `json:"responseModel"`
+	ErrorMessage  string `json:"errorMessage"`
 }
 
 type radiusToolCall struct {
@@ -931,8 +934,14 @@ func (accumulator *radiusAccumulator) final(model sigma.Model, event radiusEvent
 		final.Usage = &accounted
 		final.Cost = &cost
 	}
+	if event.ResponseID != "" || event.ResponseModel != "" {
+		final.ProviderMetadata = map[string]any{}
+	}
 	if event.ResponseID != "" {
-		final.ProviderMetadata = map[string]any{"response_id": event.ResponseID}
+		final.ProviderMetadata["response_id"] = event.ResponseID
+	}
+	if event.ResponseModel != "" {
+		final.ProviderMetadata["model"] = event.ResponseModel
 	}
 	return final
 }

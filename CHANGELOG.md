@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Radius finals now report the gateway's `responseModel` through `AssistantMessage.ResponseModel()`. It was ignored, so for virtual models such as `cheap` the physical model that answered was unknown.
 - Anthropic subscription requests now identify as Claude Code 2.1.322 instead of 2.1.280.
 - `sigma.Options` and `sigma.AuthResolution` now redact their API key, header values, and provider environment values when formatted with `%v`, `%+v`, `%#v`, or `%s`, and the Codex WebSocket error for a malformed proxy URL no longer quotes the URL. Logging either struct printed the API key, and a proxy password in `HTTPS_PROXY` appeared in the error.
 - Anthropic browser login now bounds its authorization-code exchange to 30 seconds, and Kimi Coding device login polls for 15 minutes when the device authorization response omits `expires_in` instead of failing with "missing fields". A token endpoint that never answered hung the Anthropic login, which has no other deadline.

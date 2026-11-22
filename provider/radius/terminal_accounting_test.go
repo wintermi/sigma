@@ -76,3 +76,19 @@ func TestRadiusReplaysTextAndToolCallSignatures(t *testing.T) {
 		t.Fatalf("tool call replay = %#v, want thoughtSignature gemini_sig", content[1])
 	}
 }
+
+// Virtual models such as "cheap" report the physical model that answered.
+func TestRadiusFinalReportsResponseModel(t *testing.T) {
+	t.Parallel()
+	model := sigma.Model{Provider: sigma.ProviderRadius, ID: "cheap"}
+	final := parseRadiusFrames(t, model,
+		`{"type":"start"}`,
+		`{"type":"done","reason":"stop","responseId":"resp_1","responseModel":"gpt-6-luna"}`,
+	)
+	if got := final.ResponseModel(); got != "gpt-6-luna" {
+		t.Fatalf("response model = %q, want gpt-6-luna", got)
+	}
+	if got := final.ResponseID(); got != "resp_1" {
+		t.Fatalf("response id = %q, want resp_1", got)
+	}
+}
