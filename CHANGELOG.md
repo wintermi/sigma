@@ -214,6 +214,7 @@ See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Fixed
 
+- The surface probe skips the raw `thinking: "none"` and `thinking: false` cases for models that use the DeepSeek reasoning format, such as DeepSeek, Kimi K2.6, MiMo, and Ling 3.1 Flash. Those models accept only the thinking object sigma sends, and upstream rejections of the scalar forms said nothing about sigma.
 - Surface-probe Zen and Go runs choose cases by the API OpenCode routes each model to. Models served through Anthropic Messages, OpenAI Responses, or Gemini no longer receive raw Chat Completions fields such as `response_format`, `logprobs`, and `reasoning_effort`, which those APIs reject.
 - Fireworks Kimi K3.1 Pro and the Kimi K3 Fast router accept the `off` thinking level, matching Kimi K3. A live surface probe showed Fireworks accepts disabled thinking for both.
 - The catalog leaves out Fireworks Spot models. Spot requests for GLM 5.3 and Kimi K3 fail with a 403 or 404 for accounts without Spot access, under both the documented `models/<model>-spot` IDs and the `routers/` IDs.

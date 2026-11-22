@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface probes no longer report inconclusive scalar thinking cases for models that use the DeepSeek reasoning format. These models accept only the `thinking` object sigma sends, which the probe still tests; the raw string and boolean forms failed upstream without reflecting sigma's request shape.
+
 OpenCode Zen and Go surface probes now test each model through the API OpenCode routes it to. Claude, GPT, Grok, and Gemini models served over Messages, Responses, or Gemini run that API's typed cases instead of Chat Completions cases whose raw fields those APIs reject, so their results reflect sigma's real request shapes.
 
 Fireworks Kimi K3.1 Pro and the Kimi K3 Fast router now accept requests that turn thinking off, as Kimi K3 already did. Fireworks accepted disabled thinking for both in a live surface probe, so sigma no longer rejects those requests locally.

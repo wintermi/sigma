@@ -390,6 +390,31 @@ func TestOpenCodeProbeCasesFollowRoutedAPI(t *testing.T) {
 	}
 }
 
+// DeepSeek-format models take only the thinking object sigma sends; the raw
+// scalar forms fail upstream without saying anything about sigma.
+func TestDeepSeekFormatProbeCasesSkipScalarThinkingControls(t *testing.T) {
+	t.Parallel()
+
+	route := routes["go"]
+	for _, tt := range []struct {
+		id     string
+		scalar bool
+	}{
+		{id: "deepseek-v4-pro"},
+		{id: "hy3", scalar: true},
+	} {
+		cases := route.Cases(route, route.Model(route, tt.id))
+		for _, name := range []string{"thinking_string_none", "thinking_bool_false"} {
+			if got := hasRepairVariant(cases, name); got != tt.scalar {
+				t.Errorf("%s probes %s = %v, want %v", tt.id, name, got, tt.scalar)
+			}
+		}
+		if !hasRepairVariant(cases, "thinking_object_disabled") {
+			t.Errorf("%s should still probe object disabled thinking", tt.id)
+		}
+	}
+}
+
 // Thinking-only Fireworks models reject disabled thinking, so the probe must
 // not report that rejection as a failure.
 func TestFireworksOpenAIProbeCasesFollowDisabledThinkingSupport(t *testing.T) {

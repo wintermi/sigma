@@ -1894,9 +1894,6 @@ func openAICompatibleProbeCases(route routeSpec, model sigma.Model) []probeCase 
 			toolCase("three_turn_file_update", "multi-turn file update", "auto"),
 		)
 	}
-	if route.Provider != sigma.ProviderFireworks && !isOpenCodeGoReasoningEffortKimi(model) && !modelUnsupportedThinkingOff(model) {
-		return cases
-	}
 	filtered := cases[:0]
 	for _, testCase := range cases {
 		if skipOpenAICompatibleProbeCase(route, model, testCase.Name) {
@@ -1936,6 +1933,9 @@ func skipOpenAICompatibleProbeCase(route routeSpec, model sigma.Model, name stri
 		default:
 			return false
 		}
+	case model.OpenAICompletionsCompat != nil && model.OpenAICompletionsCompat.ReasoningFormat == sigma.OpenAICompletionsReasoningDeepSeek:
+		// DeepSeek-format models take only the thinking object sigma sends.
+		return name == "thinking_string_none" || name == "thinking_bool_false"
 	default:
 		return false
 	}
