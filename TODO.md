@@ -302,26 +302,6 @@ cancellation/error coverage (see the coverage standards in
 - [x] Make retrieval insertions atomic and enforce inferred or configured dimensions.
 - [x] Compile all packages in the build/CI task and document all embedding adapters and migrations.
 
-## Audit findings (2026-11-22)
-
-Open items from the November 22 audit. Each fix needs a regression test that
-reproduces the failure before it is checked off.
-
-### High
-
-
-### Medium
-
-
-### Security and OAuth
-
-
-### Low
-
-
-### Features and catalog
-
-
 ## Credential ergonomics
 
 - [x] Add model-aware environment credential discovery helpers that expose
