@@ -35,10 +35,10 @@ func TestRequestsUseTheAccountCopilotEndpoint(t *testing.T) {
 		modelID sigma.ModelID
 		wantURL string
 	}{
-		{name: "stored business chat completions", token: businessToken, stored: true, modelID: "gemini-3.5-flash", wantURL: "https://api.business.githubcopilot.com/chat/completions"},
+		{name: "stored business chat completions", token: businessToken, stored: true, modelID: "gemini-3.8-flash", wantURL: "https://api.business.githubcopilot.com/chat/completions"},
 		{name: "stored business anthropic", token: businessToken, stored: true, modelID: "claude-fable-5", wantURL: "https://api.business.githubcopilot.com/v1/messages"},
-		{name: "stored individual chat completions", token: individualToken, stored: true, modelID: "gemini-3.5-flash", wantURL: "https://api.individual.githubcopilot.com/chat/completions"},
-		{name: "token provider business chat completions", token: businessToken, modelID: "gemini-3.5-flash", wantURL: "https://api.business.githubcopilot.com/chat/completions"},
+		{name: "stored individual chat completions", token: individualToken, stored: true, modelID: "gemini-3.8-flash", wantURL: "https://api.individual.githubcopilot.com/chat/completions"},
+		{name: "token provider business chat completions", token: businessToken, modelID: "gemini-3.8-flash", wantURL: "https://api.business.githubcopilot.com/chat/completions"},
 		{name: "token provider business anthropic", token: businessToken, modelID: "claude-fable-5", wantURL: "https://api.business.githubcopilot.com/v1/messages"},
 	}
 

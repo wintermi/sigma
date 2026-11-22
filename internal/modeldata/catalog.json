@@ -8065,49 +8065,6 @@
       }
     },
     {
-      "id": "claude-opus-4.7",
-      "name": "Claude Opus 4.7",
-      "provider": "github-copilot",
-      "api": "anthropic-messages",
-      "baseURL": "https://api.individual.githubcopilot.com/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 5,
-        "outputPerMillion": 25,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.5,
-        "cacheWriteInputPerMillion": 6.25
-      },
-      "contextWindow": 200000,
-      "maxOutputTokens": 32000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "claude"
-      },
-      "thinkingLevelMap": {
-        "xhigh": "xhigh"
-      },
-      "anthropicMessagesCompat": {
-        "supportsTemperature": "unsupported",
-        "thinkingFormat": "adaptive",
-        "supportsStrictTools": "supported"
-      }
-    },
-    {
       "id": "claude-opus-4.8",
       "name": "Claude Opus 4.8",
       "provider": "github-copilot",
@@ -8334,143 +8291,6 @@
       }
     },
     {
-      "id": "gemini-3.5-flash",
-      "name": "Gemini 3.5 Flash",
-      "provider": "github-copilot",
-      "api": "openai-completions",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 1.5,
-        "outputPerMillion": 9,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.15
-      },
-      "contextWindow": 200000,
-      "maxOutputTokens": 64000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini"
-      },
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "reasoningFormat": "reasoning_effort"
-      },
-      "thinkingLevelMap": {
-        "minimal": "minimal",
-        "low": "low",
-        "medium": "medium",
-        "high": "high"
-      }
-    },
-    {
-      "id": "gemini-3.6-flash",
-      "name": "Gemini 3.6 Flash",
-      "provider": "github-copilot",
-      "api": "openai-completions",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.75,
-        "outputPerMillion": 3.75,
-        "cacheReadInputPerMillion": 0.075,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 64000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini"
-      },
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "reasoningFormat": "reasoning_effort"
-      },
-      "thinkingLevelMap": {
-        "minimal": "minimal",
-        "low": "low",
-        "medium": "medium",
-        "high": "high"
-      }
-    },
-    {
-      "id": "gemini-3.7-flash",
-      "name": "Gemini 3.7 Flash",
-      "provider": "github-copilot",
-      "api": "openai-completions",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.75,
-        "outputPerMillion": 3.75,
-        "cacheReadInputPerMillion": 0.075,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 64000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gemini"
-      },
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "reasoningFormat": "reasoning_effort"
-      },
-      "thinkingLevelMap": {
-        "low": "low",
-        "medium": "medium",
-        "high": "high"
-      },
-      "unsupportedThinkingLevels": [
-        "minimal"
-      ]
-    },
-    {
       "id": "gemini-3.8-flash",
       "name": "Gemini 3.8 Flash",
       "provider": "github-copilot",
@@ -8516,45 +8336,6 @@
       "unsupportedThinkingLevels": [
         "minimal"
       ]
-    },
-    {
-      "id": "kimi-k2.7-code",
-      "name": "Kimi K2.7 Code",
-      "provider": "github-copilot",
-      "api": "openai-completions",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.95,
-        "outputPerMillion": 4,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.19
-      },
-      "contextWindow": 256000,
-      "maxOutputTokens": 32000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "kimi"
-      },
-      "openAICompletionsCompat": {
-        "supportsStore": "unsupported",
-        "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
-      }
     },
     {
       "id": "gpt-5.6-luna",
@@ -9046,39 +8827,6 @@
       ]
     },
     {
-      "id": "mai-code-1-flash-picker",
-      "name": "MAI-Code-1-Flash",
-      "provider": "github-copilot",
-      "api": "openai-responses",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.75,
-        "outputPerMillion": 4.5,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.075
-      },
-      "contextWindow": 256000,
-      "maxOutputTokens": 128000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "mai"
-      }
-    },
-    {
       "id": "kimi-k3",
       "name": "Kimi K3",
       "provider": "github-copilot",
@@ -9128,46 +8876,6 @@
       ]
     },
     {
-      "id": "gpt-5-mini",
-      "name": "GPT-5 Mini",
-      "provider": "github-copilot",
-      "api": "openai-responses",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.25,
-        "outputPerMillion": 2,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.025
-      },
-      "contextWindow": 264000,
-      "maxOutputTokens": 64000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gpt"
-      },
-      "thinkingLevelMap": {
-        "minimal": "low"
-      },
-      "unsupportedThinkingLevels": [
-        "off"
-      ]
-    },
-    {
       "id": "gpt-5.3-codex",
       "name": "GPT-5.3 Codex",
       "provider": "github-copilot",
@@ -9199,47 +8907,6 @@
       "defaultTransport": "sse",
       "providerMetadata": {
         "modelFamily": "codex"
-      },
-      "thinkingLevelMap": {
-        "minimal": "low",
-        "xhigh": "xhigh"
-      },
-      "unsupportedThinkingLevels": [
-        "off"
-      ]
-    },
-    {
-      "id": "gpt-5.4-mini",
-      "name": "GPT-5.4 mini",
-      "provider": "github-copilot",
-      "api": "openai-responses",
-      "baseURL": "https://api.individual.githubcopilot.com",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.75,
-        "outputPerMillion": 4.5,
-        "currency": "USD",
-        "cacheReadInputPerMillion": 0.075
-      },
-      "contextWindow": 400000,
-      "maxOutputTokens": 128000,
-      "headers": {
-        "User-Agent": "GitHubCopilotChat/0.35.0",
-        "Editor-Version": "vscode/1.107.0",
-        "Editor-Plugin-Version": "copilot-chat/0.35.0",
-        "Copilot-Integration-Id": "vscode-chat"
-      },
-      "authEnvNames": [
-        "COPILOT_GITHUB_TOKEN"
-      ],
-      "defaultTransport": "sse",
-      "providerMetadata": {
-        "modelFamily": "gpt"
       },
       "thinkingLevelMap": {
         "minimal": "low",
@@ -28740,6 +28407,469 @@
         "thinkingFormat": "adaptive",
         "supportsDisabledThinking": "unsupported"
       }
+    },
+    {
+      "id": "claude-fable-5.2",
+      "name": "Claude Fable 5.2",
+      "provider": "github-copilot",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.individual.githubcopilot.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported",
+        "supportsTemperature": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
+      "provider": "github-copilot",
+      "api": "openai-completions",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 7.5,
+        "cacheReadInputPerMillion": 0.075,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-neon",
+      "name": "Gemini 4 Neon",
+      "provider": "github-copilot",
+      "api": "openai-completions",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "max"
+      ]
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "name": "GPT-6.1 Terra",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.05,
+        "cacheWriteInputPerMillion": 1.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 7.5,
+            "cacheReadInputPerMillion": 0.1,
+            "cacheWriteInputPerMillion": 2.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-astra",
+      "name": "GPT-6.2 Astra",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 10,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 16,
+            "outputPerMillion": 60,
+            "cacheReadInputPerMillion": 0.8,
+            "cacheWriteInputPerMillion": 20
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "name": "GPT-6.2 Sol",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "mai-code-2",
+      "name": "MAI Code 2",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.5,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.025,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "mai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "mai-code-2-flash",
+      "name": "MAI Code 2 Flash",
+      "provider": "github-copilot",
+      "api": "openai-responses",
+      "baseURL": "https://api.individual.githubcopilot.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.05,
+        "outputPerMillion": 0.25,
+        "cacheReadInputPerMillion": 0.005,
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "User-Agent": "GitHubCopilotChat/0.35.0",
+        "Editor-Version": "vscode/1.107.0",
+        "Editor-Plugin-Version": "copilot-chat/0.35.0",
+        "Copilot-Integration-Id": "vscode-chat"
+      },
+      "authEnvNames": [
+        "COPILOT_GITHUB_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "mai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
     }
   ],
   "imageModels": [

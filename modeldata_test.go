@@ -2281,9 +2281,10 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		cacheReadCost     float64
 		modelFamily       string
 		completionsCompat bool
+		contextWindow     int
 	}{
-		{id: "kimi-k2.7-code", api: APIOpenAICompletions, imageCapable: true, maxOutputTokens: 32000, inputCost: 0.95, outputCost: 4, cacheReadCost: 0.19, modelFamily: "kimi", completionsCompat: true},
-		{id: "mai-code-1-flash-picker", api: APIOpenAIResponses, imageCapable: false, maxOutputTokens: 128000, inputCost: 0.75, outputCost: 4.5, cacheReadCost: 0.075, modelFamily: "mai"},
+		{id: "gemini-4-neon", api: APIOpenAICompletions, imageCapable: true, contextWindow: 1048576, maxOutputTokens: 65536, inputCost: 3, outputCost: 15, cacheReadCost: 0.15, modelFamily: "gemini", completionsCompat: true},
+		{id: "mai-code-2", api: APIOpenAIResponses, imageCapable: true, contextWindow: 1050000, maxOutputTokens: 128000, inputCost: 0.5, outputCost: 2.5, cacheReadCost: 0.025, modelFamily: "mai"},
 	} {
 		model, ok := registry.Model(ProviderGitHubCopilot, tt.id)
 		if !ok {
@@ -2292,7 +2293,7 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		if model.API != tt.api || !model.SupportsTools || model.SupportsImages() != tt.imageCapable || !model.SupportsReasoning() {
 			t.Fatalf("GitHub Copilot %s capabilities = %+v, want %s tools, images %v, and reasoning", tt.id, model, tt.api, tt.imageCapable)
 		}
-		if model.ContextWindow != 256000 || model.MaxOutputTokens != tt.maxOutputTokens ||
+		if model.ContextWindow != tt.contextWindow || model.MaxOutputTokens != tt.maxOutputTokens ||
 			model.InputCostPerMillion != tt.inputCost || model.OutputCostPerMillion != tt.outputCost ||
 			model.CacheReadInputCostPerMillion != tt.cacheReadCost || model.CacheWriteInputCostPerMillion != 0 {
 			t.Fatalf("GitHub Copilot %s metadata = %+v, want reviewed limits and costs", tt.id, model)
@@ -2301,8 +2302,8 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			if model.OpenAICompletionsCompat == nil ||
 				model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||
 				model.OpenAICompletionsCompat.SupportsDeveloperRole != OpenAICompatUnsupported ||
-				model.OpenAICompletionsCompat.SupportsReasoningEffort != OpenAICompatUnsupported {
-				t.Fatalf("GitHub Copilot %s compat = %#v, want conservative Chat Completions support", tt.id, model.OpenAICompletionsCompat)
+				model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningEffort {
+				t.Fatalf("GitHub Copilot %s compat = %#v, want Chat Completions with reasoning_effort", tt.id, model.OpenAICompletionsCompat)
 			}
 		} else if model.OpenAICompletionsCompat != nil || model.OpenAIResponsesCompat != nil {
 			t.Fatalf("GitHub Copilot %s compat = %#v / %#v, want default Responses support", tt.id, model.OpenAICompletionsCompat, model.OpenAIResponsesCompat)

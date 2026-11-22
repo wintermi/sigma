@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Review the GitHub Copilot catalog against Copilot's current models.
 - [x] Add opt-in Anthropic message threads.
 - [x] Shut down login callback servers gracefully so the success page is delivered.
 - [x] Send mid-conversation effort changes as `configuration_update` items on Responses and Codex.
