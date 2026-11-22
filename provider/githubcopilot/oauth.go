@@ -734,7 +734,7 @@ func EnableGitHubCopilotModels(ctx context.Context, token string, modelIDs []str
 // enterprise domain.
 func GitHubCopilotBaseURL(token string, enterpriseDomain string) string {
 	if token != "" {
-		if baseURL := githubCopilotBaseURLFromToken(token); baseURL != "" {
+		if baseURL := githubCopilotBaseURLFromToken(token, enterpriseDomain); baseURL != "" {
 			return baseURL
 		}
 	}
@@ -920,19 +920,61 @@ func githubCopilotDomain(value string) (string, error) {
 	return strings.ToLower(parsed.Host), nil
 }
 
-func githubCopilotBaseURLFromToken(token string) string {
+// githubCopilotBaseURLFromToken returns the API URL for the token's proxy-ep
+// host. Requests send the token there as a bearer credential, so it returns ""
+// unless the host is a GitHub Copilot or GHE.com host, or lies within the
+// configured enterprise domain.
+func githubCopilotBaseURLFromToken(token, enterpriseDomain string) string {
 	for _, part := range strings.Split(token, ";") {
 		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || key != "proxy-ep" || value == "" {
 			continue
 		}
-		host := strings.TrimPrefix(value, "proxy.")
-		if host == value {
-			return "https://" + host
+		host := strings.TrimPrefix(strings.ToLower(value), "proxy.")
+		if host != strings.ToLower(value) {
+			host = "api." + host
 		}
-		return "https://api." + host
+		if !githubCopilotTrustedHost(host, enterpriseDomain) {
+			return ""
+		}
+		return "https://" + host
 	}
 	return ""
+}
+
+func githubCopilotTrustedHost(host, enterpriseDomain string) bool {
+	if !validDNSHostname(host) {
+		return false
+	}
+	for _, domain := range []string{"githubcopilot.com", "ghe.com", strings.ToLower(enterpriseDomain)} {
+		if domain == "" || domain == githubCopilotOAuthDefaultDomain {
+			continue
+		}
+		if host == domain || strings.HasSuffix(host, "."+domain) {
+			return true
+		}
+	}
+	return false
+}
+
+// validDNSHostname reports whether host is a bare DNS name: dot-separated
+// labels of lowercase letters, digits, and inner hyphens, with no port,
+// userinfo, or path.
+func validDNSHostname(host string) bool {
+	if host == "" || len(host) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(host, ".") {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func githubCopilotModelPolicyBaseURL(token string, opts GitHubCopilotModelEnableOptions) (string, error) {

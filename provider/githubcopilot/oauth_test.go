@@ -360,7 +360,7 @@ func TestRefreshGitHubCopilotTokenParsesExpiryAndRedactsErrors(t *testing.T) {
 		}
 		assertHeader(t, r.Header, "Authorization", "Bearer github-refresh")
 		return githubCopilotJSONResponse(http.StatusOK, `{
-			"token":"tid=test;exp=9999999999;proxy-ep=proxy.enterprise.test;",
+			"token":"tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;",
 			"expires_at":1893456000
 		}`)
 	})
@@ -374,7 +374,7 @@ func TestRefreshGitHubCopilotTokenParsesExpiryAndRedactsErrors(t *testing.T) {
 	if got, want := credentials.Expiry, time.Unix(1893456000, 0); !got.Equal(want) {
 		t.Fatalf("expiry = %s, want %s", got, want)
 	}
-	if got, want := credentials.BaseURL, "https://api.enterprise.test"; got != want {
+	if got, want := credentials.BaseURL, "https://api.enterprise.githubcopilot.com"; got != want {
 		t.Fatalf("base URL = %q, want %q", got, want)
 	}
 
@@ -961,8 +961,32 @@ func TestEnableGitHubCopilotModelsReportsPerModelResults(t *testing.T) {
 func TestGitHubCopilotBaseURLUsesTokenProxyEndpoint(t *testing.T) {
 	t.Parallel()
 
-	if got, want := githubcopilot.GitHubCopilotBaseURL("tid=test;proxy-ep=proxy.example.test;", ""), "https://api.example.test"; got != want {
-		t.Fatalf("base URL = %q, want %q", got, want)
+	for _, tt := range []struct {
+		name       string
+		proxyEP    string
+		enterprise string
+		want       string
+	}{
+		{name: "business host", proxyEP: "proxy.business.githubcopilot.com", want: "https://api.business.githubcopilot.com"},
+		{name: "data residency host", proxyEP: "proxy.acme.ghe.com", want: "https://api.acme.ghe.com"},
+		{name: "enterprise domain host", proxyEP: "proxy.copilot.ghe.example.test", enterprise: "ghe.example.test", want: "https://api.copilot.ghe.example.test"},
+		{name: "host without proxy prefix", proxyEP: "copilot.githubcopilot.com", want: "https://copilot.githubcopilot.com"},
+		// The token is sent to this host as a bearer credential, so hosts
+		// outside the trusted domains fall back to the default endpoint.
+		{name: "untrusted host", proxyEP: "proxy.attacker.example", want: githubcopilot.DefaultBaseURL},
+		{name: "lookalike suffix", proxyEP: "proxy.evilgithubcopilot.com", want: githubcopilot.DefaultBaseURL},
+		{name: "userinfo smuggling", proxyEP: "proxy.attacker.example@business.githubcopilot.com", want: githubcopilot.DefaultBaseURL},
+		{name: "path smuggling", proxyEP: "proxy.attacker.example/.githubcopilot.com", want: githubcopilot.DefaultBaseURL},
+		{name: "port", proxyEP: "proxy.business.githubcopilot.com:8443", want: githubcopilot.DefaultBaseURL},
+		{name: "untrusted host with enterprise domain", proxyEP: "proxy.attacker.example", enterprise: "ghe.example.test", want: "https://copilot-api.ghe.example.test"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			token := "tid=test;proxy-ep=" + tt.proxyEP + ";"
+			if got := githubcopilot.GitHubCopilotBaseURL(token, tt.enterprise); got != tt.want {
+				t.Fatalf("base URL = %q, want %q", got, tt.want)
+			}
+		})
 	}
 	if got, want := githubcopilot.GitHubCopilotBaseURL("", "ghe.example.test"), "https://copilot-api.ghe.example.test"; got != want {
 		t.Fatalf("enterprise base URL = %q, want %q", got, want)

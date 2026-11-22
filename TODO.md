@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Validate the GitHub Copilot `proxy-ep` host before sending the bearer token to it.
 - [x] Keep provider credential headers off cross-origin redirects, and refuse HTTPS downgrades and cross-origin body resends.
 - [x] Remove the Codex `gpt-5.5` and `gpt-5.3-codex-spark` rows that ChatGPT accounts cannot use.
 - [x] Require an explicit map entry for `xhigh` and `max` on thinking models without level metadata.

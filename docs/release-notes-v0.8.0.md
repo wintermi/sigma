@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+GitHub Copilot no longer sends its token to an arbitrary `proxy-ep` host. The token names the account's API host, and sigma used whatever it contained as the request host for every bearer-authenticated call. Only hosts under `githubcopilot.com`, `ghe.com`, or the configured enterprise domain are now used; other values, including ones with ports, paths, or userinfo, fall back to the enterprise or individual endpoint.
+
 HTTP redirects no longer carry provider credentials to another host. Go removes only `Authorization` and cookies when a redirect changes host, so API key headers such as `x-api-key`, `x-goog-api-key`, Azure `api-key`, and `cf-aig-authorization` reached whatever host a provider, proxy, or compromised endpoint redirected to, even over plain HTTP. Provider, OAuth, and AWS credential requests now keep only `Accept`, `Accept-Encoding`, `Accept-Language`, and `User-Agent` on cross-origin redirects, and refuse redirects that downgrade from HTTPS or would resend the request body to another origin. Same-origin redirects behave as before, and a caller's `CheckRedirect` still runs without its client being modified.
 
 The OpenAI Codex catalog drops `gpt-5.5` and `gpt-5.3-codex-spark`. The Codex backend rejects both for ChatGPT accounts, so a model chosen from the registry failed on every request. The surface probe now defaults its Codex checks to `gpt-5.6-terra`, and direct OpenAI and other routes still list these models.

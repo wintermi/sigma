@@ -299,7 +299,10 @@ Copilot dynamic initiator/intent/vision headers, static model headers from
 metadata, and bearer-token auth. Stored Copilot OAuth credentials and
 `GitHubCopilotOAuthTokenProvider` route business, enterprise, and data-residency
 accounts to the host in the token's `proxy-ep` field instead of the individual
-endpoint; an explicit request `base_url` provider option still wins.
+endpoint; an explicit request `base_url` provider option still wins. Because the
+token is sent to that host, only hosts under `githubcopilot.com`, `ghe.com`, or
+the configured enterprise domain are used; any other `proxy-ep` value falls back
+to the enterprise or individual endpoint.
 
 ### Cloudflare AI Gateway
 
