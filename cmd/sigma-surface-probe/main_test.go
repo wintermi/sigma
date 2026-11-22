@@ -376,6 +376,7 @@ func TestOpenCodeProbeCasesFollowRoutedAPI(t *testing.T) {
 		{route: "go", id: "gemini-4-argon"},
 		{route: "go", id: "gpt-6-luna"},
 		{route: "zen", id: "grok-4.7"},
+		{route: "go", id: "grok-4.7"},
 	} {
 		route := routes[tt.route]
 		cases := route.Cases(route, route.Model(route, tt.id))
