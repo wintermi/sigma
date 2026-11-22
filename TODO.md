@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` as quota.
 - [x] Classify Zhipu/Z.ai code 1308 as a non-retryable quota error.
 - [x] Keep numeric provider error codes and classify relayed HTTP statuses sent as codes.
 - [x] Classify relayed timeouts, socket codes, gateway stream failures, and status numbers in text as retryable.
@@ -254,9 +255,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` codes; the
-      `freeusage_limit_error`/`gousage_limit_error` cases in `classForProviderCode`
-      never match the normalized code.
 - [ ] Mark every `claude-sonnet-5` row (Anthropic, Vertex, Copilot, OpenCode,
       Cloudflare) as not supporting temperature.
 - [ ] Mark the OpenCode Zen and Go Claude Opus 5, Opus 5.5, and Fable rows as

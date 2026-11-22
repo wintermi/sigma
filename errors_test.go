@@ -617,6 +617,20 @@ func TestClassifyError(t *testing.T) {
 			code:  "1308",
 		},
 		{
+			name: "opencode free usage limit type is quota",
+			err: NewProviderError(ProviderOpenCode, APIOpenAICompletions, "opencode-test", 429, "", 0,
+				[]byte(`{"type":"error","error":{"type":"FreeUsageLimitError","message":"Rate limited. Please try again later."}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "FreeUsageLimitError",
+		},
+		{
+			name: "opencode go usage limit type is quota",
+			err: NewProviderError(ProviderOpenCodeGo, APIOpenAICompletions, "opencode-test", 429, "", 0,
+				[]byte(`{"type":"error","error":{"type":"GoUsageLimitError","message":"Rate limited. Please try again later."}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "GoUsageLimitError",
+		},
+		{
 			name:      "codex websocket connection limit code",
 			err:       &ProviderError{Provider: ProviderOpenAICodex, ProviderCode: "websocket_connection_limit_reached", Err: ErrProviderResponse},
 			class:     ErrorClassTransient,

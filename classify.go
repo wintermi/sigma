@@ -220,8 +220,9 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 		return ErrorClassContextOverflow, true
 	case "authentication_error", "unauthorized", "unauthenticated", "invalid_api_key", "invalid_api_key_error":
 		return ErrorClassAuth, true
-	// 1308 is Zhipu/Z.ai's plan usage cap, sent as a 429 that resets after hours.
-	case "insufficient_quota", "quota_exceeded", "usage_limit_reached", "freeusage_limit_error", "gousage_limit_error", "1308":
+	// OpenCode sends FreeUsageLimitError and GoUsageLimitError as 429 error
+	// types. 1308 is Zhipu/Z.ai's plan usage cap, a 429 that resets after hours.
+	case "insufficient_quota", "quota_exceeded", "usage_limit_reached", "freeusagelimiterror", "gousagelimiterror", "1308":
 		return ErrorClassQuota, true
 	case "billing", "billing_error", "payment_required", "usage_not_included", "out_of_budget":
 		return ErrorClassBilling, true

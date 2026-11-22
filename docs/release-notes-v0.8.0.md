@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenCode free-tier and Go subscription limits are no longer retried. OpenCode reports them as HTTP 429 with the error types `FreeUsageLimitError` and `GoUsageLimitError`, but sigma's code table held underscored spellings that the real codes never match, so the errors fell back to the 429 status and were retried as rate limits. Both codes are now classified as quota.
+
 Z.ai plan usage caps are no longer retried. When a Zhipu or Z.ai plan reaches its usage limit, the API answers with HTTP 429 and error code `1308`, and the message is in Chinese, so sigma classified it as a rate limit and callers retried a request that cannot succeed until the cap resets hours later. Code `1308` is now classified as quota.
 
 Numeric provider error codes are no longer dropped. Gateways that relay an upstream failure inside a stream often send `{"error":{"code":504,...}}` with no HTTP status. The numeric code was decoded as a float and ignored, so the error had neither a code nor a status and was not retried. Numeric codes are now kept when the error has no textual code, type, or status, and an HTTP status sent this way classifies the error like a response status, after any overflow or quota wording in the message.
