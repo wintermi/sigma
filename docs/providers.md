@@ -304,6 +304,10 @@ token is sent to that host, only hosts under `githubcopilot.com`, `ghe.com`, or
 the configured enterprise domain are used; any other `proxy-ep` value falls back
 to the enterprise or individual endpoint.
 
+The catalog keeps `claude-opus-4.8` and `claude-sonnet-4.6` because Copilot
+still serves them on annual Copilot Pro and Pro+ plans. GitHub has retired them
+for other plans, where requests for them fail.
+
 ### Cloudflare AI Gateway
 
 ```go

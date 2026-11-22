@@ -23,7 +23,6 @@ func TestDisabledThinkingRespectsModelMetadata(t *testing.T) {
 		want map[string]any
 	}{
 		{id: "gemini-3.8-flash", want: map[string]any{"thinkingLevel": "LOW"}},
-		{id: "gemini-3.7-flash", want: map[string]any{"thinkingLevel": "LOW"}},
 		{id: "gemini-2.5-pro", want: map[string]any{"thinkingBudget": 128}},
 		{id: "gemini-2.5-flash", want: map[string]any{"thinkingBudget": 0}},
 	}

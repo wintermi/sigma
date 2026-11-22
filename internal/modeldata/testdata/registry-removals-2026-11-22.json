@@ -201,6 +201,16 @@
       "reason": "provider-retirement"
     },
     {
+      "provider": "google",
+      "id": "gemini-3.5-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google",
+      "id": "gemini-3.7-flash",
+      "reason": "provider-retirement"
+    },
+    {
       "provider": "google-vertex",
       "id": "gemini-2.5-flash",
       "reason": "provider-retirement"
@@ -643,6 +653,11 @@
     {
       "provider": "xiaomi-token-plan-sgp",
       "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "zai",
+      "id": "glm-5.2-highspeed",
       "reason": "provider-retirement"
     }
   ]

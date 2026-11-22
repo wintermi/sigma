@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The last open catalog rows from the retirement review are settled. The Gemini API rows for Gemini 3.5 and 3.7 Flash are removed: Google silently answers those IDs with Gemini 3.6 and 3.8 Flash, so the catalog reported the wrong model and, for 3.5 Flash, double the price. The Z.ai Coding Plan `glm-5.2-highspeed` row becomes `glm-5.3-highspeed`. Vertex Gemini 4 Neon and the Flash `-latest` aliases stay, as do the Copilot Claude Opus 4.8 and Sonnet 4.6 rows, which annual Copilot Pro and Pro+ plans still serve.
+
 The Mistral Medium 3.5 row now uses Mistral's documented model ID, `mistral-medium-3-5`. The previous `mistral-medium-3.5` ID is not a name Mistral's API documents; callers that used it should switch to `mistral-medium-3-5`.
 
 The built-in catalog no longer lists models that providers have shut down. 129 retired rows are removed after checking provider deprecation pages and live model lists, so a catalog model no longer fails with a not-found error from its provider. Ant Ling and Xiaomi lost every model to retirement and now list the successors their providers name: Ling-3.1-flash, MiMo-V2.6-Flash, and MiMo-V2.6-Pro. Callers that still name a removed model must define it themselves or move to a current model.

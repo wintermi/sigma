@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Settle the catalog rows left open by the November 22 retirement review.
 - [x] Use Mistral's documented `mistral-medium-3-5` ID for the Medium 3.5 row.
 - [x] Remove catalog models that providers have retired or no longer serve.
 - [x] Build surface-probe requests from catalog model metadata.
@@ -1096,11 +1097,6 @@ upstream.
       November 30). Also recheck Google image retirement notices, Google Flash
       introductory pricing before January 1, 2027, and the GPT-5.6 Sol
       promotional pricing period.
-- [ ] Settle the catalog rows the November 22 review left in place: Gemini API
-      Gemini 3.5 and 3.7 Flash (deprecated and routed to newer models), Copilot
-      Claude Opus 4.8 and Sonnet 4.6 (retired except on annual plans), Vertex
-      Gemini 4 Neon and the Flash `-latest` aliases (undocumented on Vertex),
-      and Z.ai `glm-5.2-highspeed`.
 - [ ] Review the remaining regional, hosted, and image candidates identified in
       the September registry report with exact route, currency, capability,
       size/format, and availability evidence before importing them.

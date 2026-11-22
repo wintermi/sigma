@@ -453,12 +453,12 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 	}
 	assertGeneratedCostTiers(t, registry)
 
-	googleFlash, ok := registry.Model(ProviderGoogle, "gemini-3.5-flash")
+	googleFlash, ok := registry.Model(ProviderGoogle, "gemini-3.8-flash")
 	if !ok {
-		t.Fatal("fresh registry missing generated Gemini 3.5 Flash model")
+		t.Fatal("fresh registry missing generated Gemini 3.8 Flash model")
 	}
 	if googleFlash.API != APIGoogleGenerativeAI || !googleFlash.SupportsTools || !googleFlash.SupportsImages() || !googleFlash.SupportsReasoning() {
-		t.Fatalf("Gemini 3.5 Flash metadata = %+v, want Generative AI tools, images, and reasoning", googleFlash)
+		t.Fatalf("Gemini 3.8 Flash metadata = %+v, want Generative AI tools, images, and reasoning", googleFlash)
 	}
 
 	mistralSmall, ok := registry.Model(ProviderMistral, "mistral-small-latest")
@@ -1980,17 +1980,16 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			offSupported: true,
 		},
 		{
-			id:   "glm-5.2-highspeed",
-			name: "GLM-5.2 Highspeed",
+			id:   "glm-5.3-highspeed",
+			name: "GLM-5.3 Highspeed",
 			thinking: map[ThinkingLevel]string{
-				ThinkingLevelMinimal: "high",
-				ThinkingLevelLow:     "high",
+				ThinkingLevelMinimal: "low",
+				ThinkingLevelLow:     "low",
 				ThinkingLevelMedium:  "high",
 				ThinkingLevelHigh:    "high",
 				ThinkingLevelXHigh:   "max",
 				ThinkingLevel("max"): "max",
 			},
-			offSupported: true,
 		},
 		{
 			id:            "glm-5.3",
