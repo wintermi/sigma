@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The OpenCode Go surface probe no longer reports upstream model limits as inconclusive. It skips logprobs for Beam Free and DeepSeek V4.1 Flash, structured output for Iceman Contributor Free, required tool choice for the Muse Spark contributor models, and the scalar thinking controls for Qwen3.7 Plus.
+
 Handoff and image surface probes now handle the overall `-timeout` like route probes: after the deadline they send no requests and report the unrun handoff sources, replays, and image cases as `skipped` with attempt `overall_deadline`.
 
 Surface probes that outlast the overall `-timeout` no longer report every remaining case as an upstream availability failure. The probe stops sending requests at the deadline and reports the unrun cases as `skipped` with attempt `overall_deadline`, so the summary shows how much of the run was cut off.

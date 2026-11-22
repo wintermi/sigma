@@ -392,8 +392,9 @@ func TestOpenCodeProbeCasesFollowRoutedAPI(t *testing.T) {
 	}
 }
 
-// DeepSeek-format models and OpenCode Go Hy4 take only the thinking object;
-// the raw scalar forms fail upstream without saying anything about sigma.
+// DeepSeek-format models, OpenCode Go Hy4, and Qwen3.7 Plus take only the
+// thinking object; the raw scalar forms fail upstream without saying anything
+// about sigma.
 func TestProbeCasesSkipRejectedScalarThinkingControls(t *testing.T) {
 	t.Parallel()
 
@@ -404,6 +405,7 @@ func TestProbeCasesSkipRejectedScalarThinkingControls(t *testing.T) {
 	}{
 		{id: "deepseek-v4-pro"},
 		{id: "hy4"},
+		{id: "qwen3.7-plus"},
 		{id: "hy3", scalar: true},
 		{id: "hy4-preview", scalar: true},
 	} {
@@ -416,6 +418,42 @@ func TestProbeCasesSkipRejectedScalarThinkingControls(t *testing.T) {
 		if !hasRepairVariant(cases, "thinking_object_disabled") {
 			t.Errorf("%s should still probe object disabled thinking", tt.id)
 		}
+	}
+}
+
+// OpenCode Go rejects some cases for specific models whatever sigma sends, so
+// the probe drops only those cases and keeps them for other models.
+func TestOpenCodeGoProbeCasesSkipRejectedModelCases(t *testing.T) {
+	t.Parallel()
+
+	route := routes["go"]
+	for _, tt := range []struct {
+		id      string
+		skipped []string
+		kept    []string
+	}{
+		{id: "beam-free", skipped: []string{"logprobs"}, kept: []string{"json_object"}},
+		{id: "deepseek-v4.1-flash", skipped: []string{"logprobs"}, kept: []string{"json_schema"}},
+		{id: "iceman-contributor-free", skipped: []string{"json_object", "json_schema"}, kept: []string{"logprobs"}},
+		{id: "muse-spark-1.3-contributor", skipped: []string{"tool_required_file_read"}, kept: []string{"tool_auto_file_read"}},
+		{id: "glm-5.3", kept: []string{"logprobs", "json_object", "tool_required_file_read"}},
+	} {
+		cases := route.Cases(route, route.Model(route, tt.id))
+		for _, name := range tt.skipped {
+			if hasRepairVariant(cases, name) {
+				t.Errorf("%s should skip %s", tt.id, name)
+			}
+		}
+		for _, name := range tt.kept {
+			if !hasRepairVariant(cases, name) {
+				t.Errorf("%s should still probe %s", tt.id, name)
+			}
+		}
+	}
+
+	zen := routes["zen"]
+	if !hasRepairVariant(zen.Cases(zen, zen.Model(zen, "deepseek-v4.1-flash")), "logprobs") {
+		t.Error("zen deepseek-v4.1-flash should still probe logprobs")
 	}
 }
 

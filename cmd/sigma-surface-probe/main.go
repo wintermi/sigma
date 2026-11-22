@@ -18,6 +18,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -1843,16 +1844,34 @@ func xaiProbeCases(route routeSpec, model sigma.Model) []probeCase {
 // openCodeProbeCases follows the API OpenCode routes the model to, since the
 // Messages, Responses, and Gemini surfaces reject raw Chat Completions fields.
 func openCodeProbeCases(route routeSpec, model sigma.Model) []probeCase {
+	var cases []probeCase
 	switch opencode.OpenCodeAPI(model) {
 	case sigma.APIAnthropicMessages:
-		return anthropicCompatibleProbeCases(route, model)
+		cases = anthropicCompatibleProbeCases(route, model)
 	case sigma.APIOpenAIResponses:
-		return openAIResponsesProbeCases(route, model)
+		cases = openAIResponsesProbeCases(route, model)
 	case sigma.APIGoogleGenerativeAI:
-		return googleVertexProbeCases(route, model)
+		cases = googleVertexProbeCases(route, model)
 	default:
-		return openAICompatibleProbeCases(route, model)
+		cases = openAICompatibleProbeCases(route, model)
 	}
+	if model.Provider != sigma.ProviderOpenCodeGo {
+		return cases
+	}
+	rejected := openCodeGoRejectedProbeCases[model.ID]
+	return slices.DeleteFunc(cases, func(testCase probeCase) bool {
+		return slices.Contains(rejected, testCase.Name)
+	})
+}
+
+// openCodeGoRejectedProbeCases lists cases OpenCode Go rejects for a model
+// because of an upstream limit that no catalog field describes.
+var openCodeGoRejectedProbeCases = map[sigma.ModelID][]string{
+	"beam-free":                  {"logprobs"},
+	"deepseek-v4.1-flash":        {"logprobs"},
+	"iceman-contributor-free":    {"json_object", jsonSchemaType},
+	"muse-spark-1.2-contributor": {"tool_required_file_read"},
+	"muse-spark-1.3-contributor": {"tool_required_file_read"},
 }
 
 func openAICodexProbeCases(route routeSpec, model sigma.Model) []probeCase {
@@ -2001,14 +2020,14 @@ func skipOpenAICompatibleProbeCase(route routeSpec, model sigma.Model, name stri
 }
 
 // rejectsScalarThinking reports models that accept only a thinking object.
-// DeepSeek-format models take the object sigma sends. OpenCode Go Hy4 shares
-// its catalog format with Hy4 siblings that accept scalar forms, so it is
-// matched by ID.
+// DeepSeek-format models take the object sigma sends. OpenCode Go Hy4 and
+// Qwen3.7 Plus share their catalog format with siblings that accept scalar
+// forms, so they are matched by ID.
 func rejectsScalarThinking(model sigma.Model) bool {
 	if model.OpenAICompletionsCompat != nil && model.OpenAICompletionsCompat.ReasoningFormat == sigma.OpenAICompletionsReasoningDeepSeek {
 		return true
 	}
-	return model.Provider == sigma.ProviderOpenCodeGo && model.ID == "hy4"
+	return model.Provider == sigma.ProviderOpenCodeGo && (model.ID == "hy4" || model.ID == "qwen3.7-plus")
 }
 
 func modelUnsupportedThinkingOff(model sigma.Model) bool {

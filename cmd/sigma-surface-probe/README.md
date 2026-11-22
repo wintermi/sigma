@@ -111,6 +111,13 @@ Zen and Go models that OpenCode routes to Anthropic Messages, OpenAI Responses,
 or Gemini run the cases for that API instead of the Chat Completions cases,
 which send raw fields those APIs reject.
 
+OpenCode Go rejects some cases for specific models because of upstream limits:
+logprobs on Beam Free and DeepSeek V4.1 Flash, `response_format` on Iceman
+Contributor Free, and a required `tool_choice` on the Muse Spark contributor
+models. The `go` route skips those cases for those models. It also skips the
+scalar thinking controls for Qwen3.7 Plus, which accepts only the thinking
+object.
+
 Probe the Fireworks OpenAI-compatible route:
 
 ```bash

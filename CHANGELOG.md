@@ -217,6 +217,7 @@ See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Fixed
 
+- The surface probe's `go` route skips cases that OpenCode Go rejects for specific models: logprobs for Beam Free and DeepSeek V4.1 Flash, JSON object and JSON schema output for Iceman Contributor Free, required tool choice for the Muse Spark 1.2 and 1.3 contributor models, and the scalar thinking controls for Qwen3.7 Plus.
 - Surface-probe `-handoff` and `-images` runs also stop sending requests once the overall `-timeout` passes, reporting remaining handoff sources, handoff replays, and image cases as `skipped` with attempt `overall_deadline`. Handoff runs skip credential resolution after the deadline.
 - Once the overall `-timeout` passes, the surface probe sends no further requests and reports each remaining case, and any case the deadline cut short, as `skipped` with attempt `overall_deadline` instead of an `upstream_availability` failure. Repair attempts stop, and later routes skip credential resolution.
 - The surface probe also skips the raw scalar thinking cases for OpenCode Go Hy4, which accepts only a thinking object. sigma turns its thinking off with `reasoning_effort`, which the probe still tests.
