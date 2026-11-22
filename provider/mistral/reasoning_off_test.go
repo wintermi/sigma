@@ -20,7 +20,7 @@ func TestMistralReasoningEffortOff(t *testing.T) {
 		level sigma.ThinkingLevel
 		want  any
 	}{
-		{name: "adjustable model sends none", model: sigma.Model{ID: "mistral-medium-3.5", SupportsThinking: true}, level: sigma.ThinkingLevelOff, want: "none"},
+		{name: "adjustable model sends none", model: sigma.Model{ID: "mistral-medium-3-5", SupportsThinking: true}, level: sigma.ThinkingLevelOff, want: "none"},
 		{
 			name: "mapped off value",
 			model: sigma.Model{
@@ -30,7 +30,7 @@ func TestMistralReasoningEffortOff(t *testing.T) {
 			level: sigma.ThinkingLevelOff,
 			want:  "disabled",
 		},
-		{name: "unset level keeps the default", model: sigma.Model{ID: "mistral-medium-3.5", SupportsThinking: true}},
+		{name: "unset level keeps the default", model: sigma.Model{ID: "mistral-medium-3-5", SupportsThinking: true}},
 		{name: "prompt-mode model", model: sigma.Model{ID: "magistral-medium-latest", SupportsThinking: true}, level: sigma.ThinkingLevelOff},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

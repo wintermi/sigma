@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Use Mistral's documented `mistral-medium-3-5` ID for the Medium 3.5 row.
 - [x] Remove catalog models that providers have retired or no longer serve.
 - [x] Build surface-probe requests from catalog model metadata.
 - [x] Limit surface-probe model selection to sigma's built-in catalog.
@@ -1099,8 +1100,7 @@ upstream.
       Gemini 3.5 and 3.7 Flash (deprecated and routed to newer models), Copilot
       Claude Opus 4.8 and Sonnet 4.6 (retired except on annual plans), Vertex
       Gemini 4 Neon and the Flash `-latest` aliases (undocumented on Vertex),
-      the `mistral-medium-3.5` ID (Mistral documents `mistral-medium-3-5`), and
-      Z.ai `glm-5.2-highspeed`.
+      and Z.ai `glm-5.2-highspeed`.
 - [ ] Review the remaining regional, hosted, and image candidates identified in
       the September registry report with exact route, currency, capability,
       size/format, and availability evidence before importing them.

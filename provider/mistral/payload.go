@@ -528,7 +528,7 @@ func mistralReasoningMode(model sigma.Model) (string, bool) {
 		return providerOptionReasoningModePrompt, true
 	case modelID == "mistral-small-2603",
 		modelID == "mistral-small-latest",
-		modelID == "mistral-medium-3.5",
+		modelID == "mistral-medium-3-5",
 		modelID == "mistral-medium-2604":
 		return providerOptionReasoningModeEffort, true
 	default:

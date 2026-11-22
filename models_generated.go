@@ -10606,7 +10606,7 @@ var builtinTextModels = []Model{
 		},
 	},
 	{
-		ID:               ModelID("mistral-medium-3.5"),
+		ID:               ModelID("mistral-medium-3-5"),
 		Provider:         ProviderID("mistral"),
 		API:              API("mistral-conversations"),
 		Name:             "Mistral Medium 3.5",

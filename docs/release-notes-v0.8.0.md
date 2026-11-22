@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The Mistral Medium 3.5 row now uses Mistral's documented model ID, `mistral-medium-3-5`. The previous `mistral-medium-3.5` ID is not a name Mistral's API documents; callers that used it should switch to `mistral-medium-3-5`.
+
 The built-in catalog no longer lists models that providers have shut down. 129 retired rows are removed after checking provider deprecation pages and live model lists, so a catalog model no longer fails with a not-found error from its provider. Ant Ling and Xiaomi lost every model to retirement and now list the successors their providers name: Ling-3.1-flash, MiMo-V2.6-Flash, and MiMo-V2.6-Pro. Callers that still name a removed model must define it themselves or move to a current model.
 
 Surface-probe results now test the catalog as shipped. Each probe uses the model's catalog row, including its API, input types, thinking levels, token limits, and compatibility settings, instead of optimistic per-route defaults. A failure points at either the provider or the catalog row. The Fireworks route no longer reads live model metadata. xAI rows served over Responses are probed through the Responses surface.
