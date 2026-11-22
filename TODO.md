@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Classify relayed timeouts, socket codes, gateway stream failures, and status numbers in text as retryable.
 - [x] Request encrypted Responses reasoning when the reasoning level is unset.
 - [x] Omit Bedrock Claude thinking when the structured-output tool is forced.
 - [x] Cap deferred Responses bodies at 64 MiB.
@@ -251,17 +252,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Classify more mid-stream and gateway failures as transient: `timed out`/
-      `timeout`, network and connection errors, `connection reset by peer`, bare
-      `ECONNRESET`/`ETIMEDOUT`/`EPIPE`/`ECONNABORTED` text, status numbers in message
-      text (429, 500, 502, 503, 504, 520, 524, 525), `terminated`, `http/2 stream
-      failed`, `stream disconnected before completion`, `ended the response before
-      it was complete`, `connection to the provider was reset`, `reported a failure
-      while generating the response`, `cut short after the reply had begun`,
-      `pending stream has been canceled`, `repeat the request later`,
-      `service is unavailable`, `upstream provider returned an error`, and
-      `websocket_connection_limit_reached` (`classify.go` `messageIndicatesTransient`,
-      `classForProviderCode`).
 - [ ] Read numeric provider error codes (`{"error":{"code":504}}`) instead of
       dropping them in `providerErrorDetails` (`classify.go`/`errors.go` `stringValue`).
 - [ ] Treat Zhipu/Z.ai code `1308` (plan usage cap) as non-retryable quota.

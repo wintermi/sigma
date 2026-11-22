@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+More mid-stream gateway failures are retryable. Errors relayed inside a stream carry no HTTP status, so their class depends on the code and message alone, and wording such as "Upstream request timed out", "read ECONNRESET", "stream disconnected before completion", "The provider ended the response before it was complete.", or the Codex WebSocket connection limit was classified as unknown and not retried. These, the other common gateway phrasings, and standalone `5xx`, Cloudflare `52x`, and `429` statuses in the message text now classify as transient or rate limited. Status numbers are only consulted when nothing else matches, and never inside a longer number or word, so overflow and quota messages keep their class.
+
 Responses reasoning models keep their reasoning between turns when no reasoning level is set. Leaving the level unset still uses the provider's default effort, but sigma only requested `reasoning.encrypted_content` when a level was set. With `store: false`, the default-effort reasoning came back without encrypted content and was dropped from the next request, so the model lost its reasoning across tool calls while the reasoning tokens were still billed. Reasoning models now request the encrypted content whenever reasoning may run; explicit `ThinkingLevelOff` requests are unchanged.
 
 Bedrock Claude structured output works with a reasoning level set. The response format forces Claude to call a synthetic tool, and Claude rejects thinking together with a forced tool choice, so these requests always failed with a 400. Sigma now leaves thinking off when the response format tool is forced; other Bedrock models and requests without a response format are unchanged.

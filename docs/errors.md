@@ -69,7 +69,13 @@ provider capacity such as Azure peak-load rejection. `server_busy`, "servers are
 currently busy", and "model is at capacity" errors are transient and retryable,
 as are Anthropic `api_error` events, which arrive mid-stream without an HTTP
 status, and gateway failures such as "connection closed", "stream was
-interrupted", or "service is temporarily unavailable".
+interrupted", "timed out", "stream disconnected before completion", relayed
+socket codes such as `ECONNRESET` or `EPIPE`, or "service is temporarily
+unavailable". The Codex `websocket_connection_limit_reached` error is transient,
+since a retry opens a fresh connection. When nothing else matches, a standalone
+`500`, `502`, `503`, `504`, `520`, `524`, or `525` in the message text is
+transient and a standalone `429` is rate limited; digits inside a longer number
+or word do not count.
 Rate-limit and transient wording, such as "rate limit", "throttling", or an
 upstream "context deadline exceeded", is never read as overflow, and an HTTP
 `429` without a structured code is rate limited even when its text mentions

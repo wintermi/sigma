@@ -203,7 +203,7 @@ func classForProviderCode(code string) (ErrorClass, bool) {
 		return ErrorClassBilling, true
 	case "rate_limit_error", "rate_limit_exceeded", "rate_limited", "too_many_requests", "throttlingexception":
 		return ErrorClassRateLimited, true
-	case "server_error", "server_busy", "internal_error", "api_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error":
+	case "server_error", "server_busy", "internal_error", "api_error", "overloaded_error", "service_unavailable", "serviceunavailableexception", "internalserverexception", "modelstreamerrorexception", "network_error", "websocket_connection_limit_reached", "subscription_sharing_usage_unavailable", "subscription_sharing_user_unavailable":
 		return ErrorClassTransient, true
 	case "invalid_request_error", "invalid_prompt", "validationexception":
 		return ErrorClassInvalidRequest, true
@@ -256,9 +256,57 @@ func classForMessage(message string) (ErrorClass, bool) {
 		return ErrorClassTransient, true
 	case messageIndicatesContextOverflow(message):
 		return ErrorClassContextOverflow, true
+	// Status numbers in text are checked last: a number can also be a limit
+	// or count in an otherwise classifiable message.
+	case containsStandaloneToken(message, "429", isASCIIAlphanumeric):
+		return ErrorClassRateLimited, true
+	case containsAnyStandaloneToken(message, retryableStatusTokens, isASCIIAlphanumeric):
+		return ErrorClassTransient, true
 	default:
 		return "", false
 	}
+}
+
+// retryableStatusTokens are server and Cloudflare origin statuses (520 unknown
+// error, 524 timeout, 525 TLS handshake failure) that gateways relay as text.
+var retryableStatusTokens = []string{"500", "502", "503", "504", "520", "524", "525"}
+
+// socketErrorTokens are transport error codes that relays report as bare text,
+// such as "read ECONNRESET" or "write EPIPE".
+var socketErrorTokens = []string{"econnreset", "econnaborted", "econnrefused", "etimedout", "epipe"}
+
+func containsAnyStandaloneToken(message string, tokens []string, isWordByte func(byte) bool) bool {
+	for _, token := range tokens {
+		if containsStandaloneToken(message, token, isWordByte) {
+			return true
+		}
+	}
+	return false
+}
+
+// containsStandaloneToken reports whether token occurs in message without a
+// word byte immediately before or after it, so "502" does not match "15025".
+func containsStandaloneToken(message string, token string, isWordByte func(byte) bool) bool {
+	for offset := 0; ; {
+		index := strings.Index(message[offset:], token)
+		if index < 0 {
+			return false
+		}
+		start := offset + index
+		end := start + len(token)
+		if (start == 0 || !isWordByte(message[start-1])) && (end == len(message) || !isWordByte(message[end])) {
+			return true
+		}
+		offset = start + 1
+	}
+}
+
+func isASCIIAlphanumeric(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= '0' && b <= '9'
+}
+
+func isIdentifierByte(b byte) bool {
+	return isASCIIAlphanumeric(b) || b == '_'
 }
 
 func classRetryable(class ErrorClass) bool {
@@ -398,6 +446,29 @@ func messageIndicatesTransient(message string) bool {
 		strings.Contains(message, "provider finish_reason: error") ||
 		strings.Contains(message, "returned an empty response") ||
 		strings.Contains(message, "stopped before completing the response") ||
+		strings.Contains(message, "service is unavailable") ||
+		strings.Contains(message, "internal_error") ||
+		strings.Contains(message, "server_error") ||
+		strings.Contains(message, "network error") ||
+		strings.Contains(message, "network_error") ||
+		strings.Contains(message, "connection error") ||
+		strings.Contains(message, "connection reset") ||
+		strings.Contains(message, "fetch failed") ||
+		strings.Contains(message, "timed out") ||
+		strings.Contains(message, "http2 stream failed") ||
+		strings.Contains(message, "http/2 stream failed") ||
+		strings.Contains(message, "websocket connection limit reached") ||
+		strings.Contains(message, "websocket_connection_limit_reached") ||
+		strings.Contains(message, "stream disconnected before completion") ||
+		strings.Contains(message, "cut short after the reply had begun") ||
+		strings.Contains(message, "ended the response before it was complete") ||
+		strings.Contains(message, "connection to the provider was reset") ||
+		strings.Contains(message, "reported a failure while generating the response") ||
+		strings.Contains(message, "pending stream has been canceled") ||
+		strings.Contains(message, "repeat the request later") ||
+		strings.Contains(message, "subscription_sharing_usage_unavailable") ||
+		strings.Contains(message, "subscription_sharing_user_unavailable") ||
+		containsAnyStandaloneToken(message, socketErrorTokens, isIdentifierByte) ||
 		messageIndicatesPrematureProviderStreamTermination(message)
 }
 
