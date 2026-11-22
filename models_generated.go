@@ -14790,7 +14790,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "big",
 		},
@@ -14826,7 +14826,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -14864,7 +14864,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -14895,7 +14895,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -14926,7 +14926,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -14961,7 +14961,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -14997,7 +14997,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15033,7 +15033,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15070,7 +15070,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15105,7 +15105,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15136,7 +15136,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15167,7 +15167,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15202,7 +15202,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15237,7 +15237,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "claude",
 			"opencodeAPI":         "anthropic-messages",
@@ -15274,7 +15274,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -15310,7 +15310,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -15345,7 +15345,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -15381,7 +15381,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -15410,7 +15410,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15446,7 +15446,7 @@ var builtinTextModels = []Model{
 		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15476,7 +15476,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15506,7 +15506,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15536,7 +15536,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15566,7 +15566,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15596,7 +15596,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:             Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/google/v1beta",
 			"headers":             map[string]string{},
 			"modelFamily":         "gemini",
 			"opencodeAPI":         "google-generative-ai",
@@ -15631,7 +15631,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -15665,7 +15665,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -15697,7 +15697,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -15730,7 +15730,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -15763,7 +15763,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -15796,7 +15796,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15829,7 +15829,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15863,7 +15863,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15896,7 +15896,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15929,7 +15929,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15963,7 +15963,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -15996,7 +15996,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16030,7 +16030,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16064,7 +16064,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16098,7 +16098,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16132,7 +16132,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16166,7 +16166,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16200,7 +16200,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16233,7 +16233,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16275,7 +16275,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16308,7 +16308,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16353,7 +16353,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16398,7 +16398,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16443,7 +16443,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16488,7 +16488,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16534,7 +16534,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16580,7 +16580,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -16620,7 +16620,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -16661,7 +16661,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -16702,7 +16702,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -16732,7 +16732,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -16768,7 +16768,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -16805,7 +16805,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -16839,7 +16839,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -16870,7 +16870,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -16901,7 +16901,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "ling",
 		},
@@ -16925,7 +16925,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "mimo",
 		},
@@ -16959,7 +16959,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -16994,7 +16994,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -17028,7 +17028,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -17061,7 +17061,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -17092,7 +17092,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -17126,7 +17126,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -17157,7 +17157,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -17189,7 +17189,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "nemotron",
 		},
@@ -17220,7 +17220,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "nemotron",
 		},
@@ -17250,7 +17250,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 			"opencodeAPI":         "anthropic-messages",
@@ -17281,7 +17281,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 			"opencodeAPI":         "anthropic-messages",
@@ -17308,7 +17308,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/v1",
+			"baseURL":             "https://opencode.ai/inference/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 			"opencodeAPI":         "anthropic-messages",
@@ -17345,7 +17345,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -17380,7 +17380,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -17414,7 +17414,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -17450,7 +17450,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "deepseek",
 		},
@@ -17484,7 +17484,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -17516,7 +17516,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -17549,7 +17549,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -17582,7 +17582,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "glm",
 		},
@@ -17625,7 +17625,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "gpt",
 			"opencodeAPI":         "openai-responses",
@@ -17666,7 +17666,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -17707,7 +17707,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "grok",
 			"opencodeAPI":         "openai-responses",
@@ -17741,7 +17741,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "hy3",
 		},
@@ -17773,7 +17773,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "hy4",
 		},
@@ -17807,7 +17807,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -17843,7 +17843,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -17875,7 +17875,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -17909,7 +17909,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "kimi",
 		},
@@ -17943,7 +17943,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "longcat",
 		},
@@ -17977,7 +17977,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "mimo",
 		},
@@ -18011,7 +18011,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "mimo",
 		},
@@ -18038,7 +18038,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "mimo",
 		},
@@ -18065,7 +18065,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "mimo",
 		},
@@ -18099,7 +18099,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 		},
@@ -18136,7 +18136,7 @@ var builtinTextModels = []Model{
 		DefaultTransport: Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 			"opencodeAPI":         "anthropic-messages",
@@ -18171,7 +18171,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "minimax",
 			"opencodeAPI":         "anthropic-messages",
@@ -18205,7 +18205,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -18239,7 +18239,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "muse",
 			"opencodeAPI":         "openai-responses",
@@ -18276,7 +18276,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 		},
@@ -18311,7 +18311,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 		},
@@ -18355,7 +18355,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 		},
@@ -18385,7 +18385,7 @@ var builtinTextModels = []Model{
 		DefaultTransport:              Transport("sse"),
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/anthropic/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 			"opencodeAPI":         "anthropic-messages",
@@ -18420,7 +18420,7 @@ var builtinTextModels = []Model{
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
-			"baseURL":             "https://opencode.ai/zen/go/v1",
+			"baseURL":             "https://opencode.ai/inference/go/openai/v1",
 			"headers":             map[string]string{},
 			"modelFamily":         "qwen",
 		},

@@ -1015,7 +1015,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		openCode.OpenAICompletionsCompat.MaxTokensField != OpenAICompletionsMaxTokens {
 		t.Fatalf("OpenCode Zen Kimi compat = %#v, want conservative Chat Completions flags", openCode.OpenAICompletionsCompat)
 	}
-	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/zen/v1")
+	assertMetadataString(t, openCode.ProviderMetadata, "baseURL", "https://opencode.ai/inference/openai/v1")
 	assertMetadataStrings(t, openCode.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"OPENCODE_API_KEY"})
 
 	openCodeClaude, _ := registry.Model(ProviderOpenCode, "claude-opus-5")

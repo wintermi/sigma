@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenCode requests use OpenCode's documented endpoints. Sigma sent every OpenCode Zen and Go request, whatever its protocol, to the shared `/zen/v1` and `/zen/go/v1` bases. OpenCode now documents a separate endpoint per protocol under `/inference`, and model catalogs list those URLs. Built-in OpenCode models now name the endpoint for the protocol they are routed through, and `opencode.ZenBaseURL` and `GoBaseURL` point at the `/inference` OpenAI-compatible bases, from which the Anthropic and Gemini endpoints are derived. A custom base URL outside that layout is still used for every protocol.
+
 MiniMax-M3.1-Flash and the Kimi K3.1 family are available. MiniMax-M3.1-Flash is listed on the direct MiniMax global and China routes and on OpenCode Go; unlike MiniMax-M3 it takes adaptive thinking with an effort from low to max and cannot turn thinking off. Kimi Coding lists Kimi K3.1 Pro, K3.1 Pro Highspeed, and the 256K-context K3 variant, and OpenCode Go lists Kimi K3.1 Pro, all using Kimi K3's request settings with low, high, and max effort.
 
 Qwen Token Plan covers every plan and its current models. The Individual plan is also sold on the China endpoint, which sigma had no provider for; `ProviderQwenTokenPlanIndividualCN`, registered with `qwen.RegisterIndividualCN`, serves the Individual model list from the Qianwen AI Platform gateway with `QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY`. The Team routes listed only Qwen3.7 Max and Qwen3.8 Max and now list the plan's DeepSeek, GLM, Kimi, MiniMax, and Qwen text models, and the Individual routes add DeepSeek V4.1 Flash, GLM-5.3, and Qwen3.8 Flash. Image and video models on the plans are not listed.

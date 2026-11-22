@@ -18,10 +18,15 @@ import (
 )
 
 const (
-	// ZenBaseURL is the OpenCode Zen API base URL.
-	ZenBaseURL = "https://opencode.ai/zen/v1"
-	// GoBaseURL is the OpenCode Go API base URL.
-	GoBaseURL = "https://opencode.ai/zen/go/v1"
+	// ZenBaseURL is the OpenCode Zen OpenAI-compatible API base URL. Anthropic
+	// Messages and Gemini models use the sibling /anthropic/v1 and
+	// /google/v1beta endpoints.
+	ZenBaseURL = "https://opencode.ai/inference/openai/v1"
+	// GoBaseURL is the OpenCode Go OpenAI-compatible API base URL, with the
+	// same sibling endpoints for other protocols.
+	GoBaseURL = "https://opencode.ai/inference/go/openai/v1"
+
+	openAIRouteSuffix = "/openai/v1"
 
 	metadataAPI = "opencodeAPI"
 )
@@ -230,8 +235,19 @@ func openAIOptions(cfg providerConfig) []openai.ProviderOption {
 	return opts
 }
 
+// protocolBaseURL returns OpenCode's endpoint for another protocol beside an
+// OpenAI-compatible base in OpenCode's /inference layout, such as
+// .../inference/anthropic/v1 for .../inference/openai/v1. Other base URLs,
+// such as a proxy or test server, serve every protocol and are kept.
+func protocolBaseURL(baseURL string, route string) string {
+	if root, ok := strings.CutSuffix(baseURL, openAIRouteSuffix); ok {
+		return root + route
+	}
+	return baseURL
+}
+
 func anthropicOptions(cfg providerConfig) []anthropic.ProviderOption {
-	opts := []anthropic.ProviderOption{anthropic.WithBaseURL(cfg.baseURL)}
+	opts := []anthropic.ProviderOption{anthropic.WithBaseURL(protocolBaseURL(cfg.baseURL, "/anthropic/v1"))}
 	if cfg.client != nil {
 		opts = append(opts, anthropic.WithHTTPClient(cfg.client))
 	}
@@ -242,7 +258,7 @@ func anthropicOptions(cfg providerConfig) []anthropic.ProviderOption {
 }
 
 func googleOptions(cfg providerConfig) []google.ProviderOption {
-	opts := []google.ProviderOption{google.WithBaseURL(cfg.baseURL)}
+	opts := []google.ProviderOption{google.WithBaseURL(protocolBaseURL(cfg.baseURL, "/google/v1beta"))}
 	if cfg.client != nil {
 		opts = append(opts, google.WithHTTPClient(cfg.client))
 	}

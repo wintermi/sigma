@@ -777,6 +777,14 @@ for generation, edits, variations, and streaming partial image events.
 
 ### OpenCode Zen and Go
 
+OpenCode serves each protocol from its own endpoint under
+`https://opencode.ai/inference` (`/inference/go` for OpenCode Go):
+`/openai/v1` for Chat Completions and Responses, `/anthropic/v1` for Anthropic
+Messages, and `/google/v1beta` for Gemini. Built-in models carry the endpoint for
+the protocol they are routed through. `opencode.WithBaseURL` with a URL in that
+layout derives the sibling endpoints; any other URL, such as a proxy, is used for
+every protocol.
+
 The OpenCode wrapper maps `sigma.WithSessionID(conversationID)` to
 `x-opencode-session` across Chat Completions, Responses, Anthropic Messages,
 and Google Generative AI routes. Use a stable ID within a conversation and a

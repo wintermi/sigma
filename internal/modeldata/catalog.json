@@ -14158,7 +14158,7 @@
       "name": "Claude Opus 5.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -14203,7 +14203,7 @@
       "name": "DeepSeek V4 Flash Vision Exp",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -14251,7 +14251,7 @@
       "name": "DeepSeek V4.1 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -14299,7 +14299,7 @@
       "name": "GLM-5.2",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15390,7 +15390,7 @@
       "name": "DeepSeek V4 Flash",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15436,7 +15436,7 @@
       "name": "DeepSeek V4 Pro (New)",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15481,7 +15481,7 @@
       "name": "DeepSeek V4.1 Flash",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15529,7 +15529,7 @@
       "name": "GLM-5.1",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15572,7 +15572,7 @@
       "name": "GLM-5.2",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15616,7 +15616,7 @@
       "name": "Grok 4.7",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15668,7 +15668,7 @@
       "name": "Kimi K2.6",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15715,7 +15715,7 @@
       "name": "Kimi K2.7 Code",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15761,7 +15761,7 @@
       "name": "Kimi K3",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15807,7 +15807,7 @@
       "name": "MiMo V2.5",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15851,7 +15851,7 @@
       "name": "MiMo V2.5 Pro",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -15894,7 +15894,7 @@
       "name": "MiMo-V2.6-Flash",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15928,7 +15928,7 @@
       "name": "MiMo-V2.6-Pro",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -15962,7 +15962,7 @@
       "name": "MiniMax-M2.7",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16005,7 +16005,7 @@
       "name": "MiniMax-M3",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16053,7 +16053,7 @@
       "name": "Qwen3.6 Plus",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16099,7 +16099,7 @@
       "name": "Qwen3.7 Max",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16143,7 +16143,7 @@
       "name": "Qwen3.7 Plus",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16197,7 +16197,7 @@
       "name": "DeepSeek V4 Flash Vision Exp",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16243,7 +16243,7 @@
       "name": "GLM-5.3",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16287,7 +16287,7 @@
       "name": "GLM-5.3-Flash (2x usage)",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16332,7 +16332,7 @@
       "name": "GPT-5.6 Luna",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16386,7 +16386,7 @@
       "name": "Grok 4.6",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16438,7 +16438,7 @@
       "name": "Hy3",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16482,7 +16482,7 @@
       "name": "Hy4 preview",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16526,7 +16526,7 @@
       "name": "LongCat-2.0",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16569,7 +16569,7 @@
       "name": "Muse Spark 1.2 Contributor",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16613,7 +16613,7 @@
       "name": "Muse Spark 1.3 Contributor",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16657,7 +16657,7 @@
       "name": "Qwen3.8 Flash",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16698,7 +16698,7 @@
       "name": "Qwen3.8 Max",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16744,7 +16744,7 @@
       "name": "Big Pickle",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -16786,7 +16786,7 @@
       "name": "Claude Haiku 4.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16827,7 +16827,7 @@
       "name": "Claude Opus 4.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16868,7 +16868,7 @@
       "name": "Claude Fable 5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16914,7 +16914,7 @@
       "name": "Claude Opus 4.6",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -16958,7 +16958,7 @@
       "name": "Claude Opus 4.7",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17001,7 +17001,7 @@
       "name": "Claude Opus 4.8",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17044,7 +17044,7 @@
       "name": "Claude Sonnet 4",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17085,7 +17085,7 @@
       "name": "Claude Sonnet 4.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17126,7 +17126,7 @@
       "name": "Claude Sonnet 4.6",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17170,7 +17170,7 @@
       "name": "Claude Sonnet 5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17212,7 +17212,7 @@
       "name": "DeepSeek V4 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -17259,7 +17259,7 @@
       "name": "DeepSeek V4 Pro",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -17306,7 +17306,7 @@
       "name": "Gemini 3 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -17347,7 +17347,7 @@
       "name": "Gemini 3.1 Pro Preview",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -17396,7 +17396,7 @@
       "name": "Gemini 3.5 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -17437,7 +17437,7 @@
       "name": "GLM-5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -17480,7 +17480,7 @@
       "name": "GLM-5.1",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -17523,7 +17523,7 @@
       "name": "GLM-5.3",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -17567,7 +17567,7 @@
       "name": "GLM-5.3-Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17612,7 +17612,7 @@
       "name": "GPT-5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17657,7 +17657,7 @@
       "name": "GPT-5 Codex",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17702,7 +17702,7 @@
       "name": "GPT-5 Nano",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17747,7 +17747,7 @@
       "name": "GPT-5.1",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17792,7 +17792,7 @@
       "name": "GPT-5.1 Codex",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17837,7 +17837,7 @@
       "name": "GPT-5.1 Codex Max",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17882,7 +17882,7 @@
       "name": "GPT-5.1 Codex Mini",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17927,7 +17927,7 @@
       "name": "GPT-5.2",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -17972,7 +17972,7 @@
       "name": "GPT-5.2 Codex",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18017,7 +18017,7 @@
       "name": "GPT-5.3 Codex",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18062,7 +18062,7 @@
       "name": "GPT-5.4",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18107,7 +18107,7 @@
       "name": "GPT-5.4 Mini",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18152,7 +18152,7 @@
       "name": "GPT-5.4 Nano",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18197,7 +18197,7 @@
       "name": "GPT-5.4 Pro",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18242,7 +18242,7 @@
       "name": "GPT-5.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18295,7 +18295,7 @@
       "name": "GPT-5.5 Pro",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18488,7 +18488,7 @@
       "name": "GPT-5.6 Luna",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18543,7 +18543,7 @@
       "name": "GPT-5.6 Sol",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18598,7 +18598,7 @@
       "name": "GPT-5.6 Terra",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18653,7 +18653,7 @@
       "name": "GPT-6 Astra",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18708,7 +18708,7 @@
       "name": "GPT-6 Luna",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18763,7 +18763,7 @@
       "name": "GPT-6 Sol",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18818,7 +18818,7 @@
       "name": "Grok 4.7",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18870,7 +18870,7 @@
       "name": "Grok Build 0.1",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18914,7 +18914,7 @@
       "name": "Grok 4.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -18966,7 +18966,7 @@
       "name": "Kimi K2.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19011,7 +19011,7 @@
       "name": "Kimi K2.6",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19058,7 +19058,7 @@
       "name": "Kimi K2.7 Code",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19102,7 +19102,7 @@
       "name": "MiMo-V2.6-Flash Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19135,7 +19135,7 @@
       "name": "MiniMax-M2.5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -19178,7 +19178,7 @@
       "name": "MiniMax-M2.7",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -19222,7 +19222,7 @@
       "name": "MiniMax-M3",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19266,7 +19266,7 @@
       "name": "Muse Spark 1.3",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19310,7 +19310,7 @@
       "name": "Qwen3.5 Plus",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19351,7 +19351,7 @@
       "name": "Nemotron 3 Ultra Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -19393,7 +19393,7 @@
       "name": "Qwen3.6 Plus",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19434,7 +19434,7 @@
       "name": "Claude Fable 5.1",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19481,7 +19481,7 @@
       "name": "Claude Opus 5",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19525,7 +19525,7 @@
       "name": "Gemini 3.5 Flash Lite",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -19566,7 +19566,7 @@
       "name": "Gemini 3.6 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -19607,7 +19607,7 @@
       "name": "Gemini 3.7 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -19648,7 +19648,7 @@
       "name": "Gemini 3.8 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
       "supportedInputs": [
         "text",
         "image"
@@ -19689,7 +19689,7 @@
       "name": "Grok 4.6",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19741,7 +19741,7 @@
       "name": "Kimi K3",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19786,7 +19786,7 @@
       "name": "Ling 3.0 Flash Fin Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -19828,7 +19828,7 @@
       "name": "Muse Spark 1.2",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19872,7 +19872,7 @@
       "name": "Muse Spark 1.2 Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19915,7 +19915,7 @@
       "name": "Muse Spark 1.3 Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -19958,7 +19958,7 @@
       "name": "Nemotron 3.5 Lightning Free",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20000,7 +20000,7 @@
       "name": "Qwen3.8 Flash",
       "provider": "opencode",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/v1",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -28539,7 +28539,7 @@
       "name": "Kimi K3.1 Pro",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -28585,7 +28585,7 @@
       "name": "MiniMax M3.1 Flash",
       "provider": "opencode-go",
       "api": "openai-completions",
-      "baseURL": "https://opencode.ai/zen/go/v1",
+      "baseURL": "https://opencode.ai/inference/go/anthropic/v1",
       "supportedInputs": [
         "text",
         "image"
