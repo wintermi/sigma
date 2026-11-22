@@ -141,9 +141,13 @@ for _, call := range calls {
 
 `ValidateToolCall` supports the common subset providers emit for tool schemas:
 `type`, `properties`, `patternProperties`, `required`, `enum`, `items`
-(including array-form tuple items with `additionalItems`),
-`additionalProperties`, `minimum`, `maximum`, `minLength`, `maxLength`,
-`pattern`, `not`, `anyOf`, `oneOf`, `allOf`, `const`, and `if`/`then`/`else`.
+(including array-form tuple items with `additionalItems`), `prefixItems`,
+`additionalProperties`, `minItems`, `maxItems`, `uniqueItems`,
+`minProperties`, `maxProperties`, `minimum`, `maximum`, `exclusiveMinimum`,
+`exclusiveMaximum` (numeric, or the draft-04 boolean form), `multipleOf`,
+`minLength`, `maxLength`, `pattern`, `not`, `anyOf`, `oneOf`, `allOf`,
+`const`, and `if`/`then`/`else`. Numeric bounds and `multipleOf` compare exact
+decimal values.
 It resolves local JSON Pointer `$ref` values, including `$defs`/`definitions`
 and recursive schemas. Patterns run on Go's RE2 engine with ECMAScript `\uXXXX`
 escapes translated; lookaround and backreferences, which RE2 cannot express, are

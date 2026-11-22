@@ -987,6 +987,12 @@ func validateConst(schema map[string]any, value any, path string, toolName strin
 }
 
 func (context *validationContext) validateObject(schema map[string]any, object map[string]any, path string, toolName string) error {
+	if err := validateCountBound(schema, "minProperties", len(object), object, path, toolName); err != nil {
+		return err
+	}
+	if err := validateCountBound(schema, "maxProperties", len(object), object, path, toolName); err != nil {
+		return err
+	}
 	properties, err := schemaProperties(schema)
 	if err != nil {
 		return toolValidationError(toolName, path, "properties object", schema["properties"], "schema is malformed", err)
@@ -1230,12 +1236,30 @@ func (context *validationContext) validateAdditionalProperties(schema map[string
 }
 
 func (context *validationContext) validateArray(schema map[string]any, array []any, path string, toolName string) error {
+	if err := validateCountBound(schema, "minItems", len(array), array, path, toolName); err != nil {
+		return err
+	}
+	if err := validateCountBound(schema, "maxItems", len(array), array, path, toolName); err != nil {
+		return err
+	}
+	if err := validateUniqueItems(schema, array, path, toolName); err != nil {
+		return err
+	}
+	// prefixItems (draft 2020-12) applies by position, and items then applies
+	// to the remaining elements.
+	if raw, ok := schema["prefixItems"]; ok {
+		prefix, ok := raw.([]any)
+		if !ok {
+			return toolValidationError(toolName, path, "prefixItems schema array", raw, "schema is malformed", nil)
+		}
+		return context.validateTuple(prefix, schema["items"], array, path, toolName)
+	}
 	raw, ok := schema["items"]
 	if !ok {
 		return nil
 	}
 	if tuple, ok := raw.([]any); ok && len(tuple) > 0 {
-		return context.validateTuple(schema, tuple, array, path, toolName)
+		return context.validateTuple(tuple, schema["additionalItems"], array, path, toolName)
 	}
 	itemSchema, ok := raw.(map[string]any)
 	if !ok {
@@ -1250,8 +1274,9 @@ func (context *validationContext) validateArray(schema map[string]any, array []a
 }
 
 // validateTuple applies array-form items by position and additionalItems to
-// the remaining elements, as draft-07 tuple schemas do.
-func (context *validationContext) validateTuple(schema map[string]any, tuple []any, array []any, path string, toolName string) error {
+// the remaining elements, as draft-07 tuple schemas do. prefixItems passes
+// items as additional.
+func (context *validationContext) validateTuple(tuple []any, additionalItems any, array []any, path string, toolName string) error {
 	for i, item := range array {
 		itemPath := fmt.Sprintf("%s[%d]", path, i)
 		if i < len(tuple) {
@@ -1264,7 +1289,7 @@ func (context *validationContext) validateTuple(schema map[string]any, tuple []a
 			}
 			continue
 		}
-		switch additional := schema["additionalItems"].(type) {
+		switch additional := additionalItems.(type) {
 		case bool:
 			if !additional {
 				return toolValidationError(toolName, itemPath, fmt.Sprintf("at most %d items", len(tuple)), item, "additional item is not allowed", nil)
@@ -1399,6 +1424,52 @@ func validateStringBound(schema map[string]any, keyword string, text string, pat
 	return nil
 }
 
+// validateCountBound checks minItems, maxItems, minProperties, or
+// maxProperties against count.
+func validateCountBound(schema map[string]any, keyword string, count int, value any, path string, toolName string) error {
+	raw, ok := schema[keyword]
+	if !ok {
+		return nil
+	}
+	limit, err := nonNegativeInt(raw)
+	if err != nil {
+		return toolValidationError(toolName, path, keyword+" integer", raw, "schema is malformed", err)
+	}
+	noun := "items"
+	if strings.HasSuffix(keyword, "Properties") {
+		noun = "properties"
+	}
+	if strings.HasPrefix(keyword, "min") && count < limit {
+		return toolValidationError(toolName, path, fmt.Sprintf("at least %d %s", limit, noun), value, "too few "+noun, nil)
+	}
+	if strings.HasPrefix(keyword, "max") && count > limit {
+		return toolValidationError(toolName, path, fmt.Sprintf("at most %d %s", limit, noun), value, "too many "+noun, nil)
+	}
+	return nil
+}
+
+func validateUniqueItems(schema map[string]any, array []any, path string, toolName string) error {
+	raw, ok := schema["uniqueItems"]
+	if !ok {
+		return nil
+	}
+	unique, ok := raw.(bool)
+	if !ok {
+		return toolValidationError(toolName, path, "uniqueItems boolean", raw, "schema is malformed", nil)
+	}
+	if !unique {
+		return nil
+	}
+	for i := range array {
+		for j := i + 1; j < len(array); j++ {
+			if jsonEqual(array[i], array[j]) {
+				return toolValidationError(toolName, fmt.Sprintf("%s[%d]", path, j), "unique items", array[j], "duplicate array item", nil)
+			}
+		}
+	}
+	return nil
+}
+
 func validateStringPattern(schema map[string]any, text string, path string, toolName string) error {
 	raw, ok := schema["pattern"]
 	if !ok {
@@ -1483,6 +1554,58 @@ func validateNumber(schema map[string]any, value any, path string, toolName stri
 		if number.compare(limit) == bound.direction {
 			return toolValidationError(toolName, path, bound.op+limit.String(), value, bound.message, nil)
 		}
+		// Draft-04 spells an exclusive bound as a boolean beside it.
+		if exclusive, _ := schema["exclusive"+strings.ToUpper(bound.key[:1])+bound.key[1:]].(bool); exclusive && number.compare(limit) == 0 {
+			return toolValidationError(toolName, path, strings.Trim(bound.op, "= ")+" "+limit.String(), value, bound.message, nil)
+		}
+	}
+	for _, bound := range []struct {
+		key, op, message string
+		direction        int
+	}{
+		{"exclusiveMinimum", "> ", "number is not above exclusive minimum", -1},
+		{"exclusiveMaximum", "< ", "number is not below exclusive maximum", 1},
+	} {
+		raw, exists := schema[bound.key]
+		if !exists {
+			continue
+		}
+		if _, draft4 := raw.(bool); draft4 {
+			continue
+		}
+		limit, ok := exactNumber(raw)
+		if !ok {
+			return toolValidationError(toolName, path, "numeric "+bound.key, raw, "schema is malformed", fmt.Errorf("value must be numeric"))
+		}
+		if order := number.compare(limit); order == bound.direction || order == 0 {
+			return toolValidationError(toolName, path, bound.op+limit.String(), value, bound.message, nil)
+		}
+	}
+	return validateMultipleOf(schema, number, value, path, toolName)
+}
+
+// validateMultipleOf checks multipleOf exactly in decimal. Numbers whose
+// exponents are too large to expand safely are not checked.
+func validateMultipleOf(schema map[string]any, number decimalNumber, value any, path string, toolName string) error {
+	raw, exists := schema["multipleOf"]
+	if !exists {
+		return nil
+	}
+	divisor, ok := exactNumber(raw)
+	if !ok || divisor.sign <= 0 {
+		return toolValidationError(toolName, path, "positive numeric multipleOf", raw, "schema is malformed", nil)
+	}
+	quotient, ok := number.rat()
+	if !ok {
+		return nil
+	}
+	denominator, ok := divisor.rat()
+	if !ok {
+		return nil
+	}
+	quotient.Quo(quotient, denominator)
+	if !quotient.IsInt() {
+		return toolValidationError(toolName, path, "multiple of "+divisor.String(), value, "number is not a multiple", nil)
 	}
 	return nil
 }

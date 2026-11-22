@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Tool argument validation covers more of JSON Schema. `ValidateToolCall` ignored array and object size bounds, `uniqueItems`, `prefixItems`, exclusive numeric bounds, and `multipleOf`, so a model's out-of-range arguments, such as an empty list where at least one item is required, passed validation and reached the tool instead of being returned for repair. These keywords are now enforced, with numeric comparisons and multiples evaluated in exact decimal arithmetic.
+
 Transcripts with tool call IDs reused across turns can be persisted. Request validation required every tool call ID in the history to be unique, but some providers, Gemini among them, can issue the same ID in different turns, and one such reuse made `MarshalRequest` and `UnmarshalRequest` reject the whole transcript. IDs now only need to be unique within an assistant message; tool results match the most recent call with their ID.
 
 Streaming responses that start with a byte order mark keep their first event. The event stream format says a leading UTF-8 byte order mark is ignored, but sigma kept it, so the first line's field name was not recognized and that event was dropped. The stream body wrapper also wrapped `io.EOF`, which breaks the `io.Reader` contract: `io.ReadAll` and similar readers compare the end-of-stream error with `==` and reported a failure at a normal end. Both now follow the specifications.

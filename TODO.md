@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Enforce size, uniqueness, prefix, exclusive-bound, and multipleOf keywords in tool validation.
 - [x] Allow tool call IDs reused across turns in request validation.
 - [x] Ignore a leading BOM in event streams and return bare `io.EOF` from stream bodies.
 - [x] Keep a proportional input margin when clamping max tokens to the context window.
@@ -304,9 +305,6 @@ reproduces the failure before it is checked off.
 
 ### Low
 
-- [ ] Enforce `minItems`, `maxItems`, `uniqueItems`, `exclusiveMinimum`,
-      `exclusiveMaximum`, `multipleOf`, `minProperties`, `maxProperties`, and
-      `prefixItems` in tool validation (`validation.go`).
 - [ ] Avoid deep-cloning partial tool arguments on every streamed delta
       (`stream.go` `Emit` and `snapshot`).
 - [ ] Handle images sent to non-vision targets consistently across adapters

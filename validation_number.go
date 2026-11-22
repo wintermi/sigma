@@ -139,3 +139,31 @@ func (n decimalNumber) compare(other decimalNumber) int {
 	}
 	return 0
 }
+
+// maxRatExponent bounds the decimal exponent expanded into an exact rational,
+// so an extreme JSON exponent cannot demand unbounded work.
+const maxRatExponent = 400
+
+// rat returns n as an exact rational, or false when its exponent is too large
+// to expand.
+func (n decimalNumber) rat() (*big.Rat, bool) {
+	if n.sign == 0 {
+		return new(big.Rat), true
+	}
+	if !n.exponent.IsInt64() || n.exponent.Int64() > maxRatExponent || n.exponent.Int64() < -maxRatExponent {
+		return nil, false
+	}
+	digits, ok := new(big.Int).SetString(n.digits, 10)
+	if !ok {
+		return nil, false
+	}
+	if n.sign < 0 {
+		digits.Neg(digits)
+	}
+	exponent := n.exponent.Int64()
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(max(exponent, -exponent)), nil)
+	if exponent >= 0 {
+		return new(big.Rat).SetInt(digits.Mul(digits, scale)), true
+	}
+	return new(big.Rat).SetFrac(digits, scale), true
+}
