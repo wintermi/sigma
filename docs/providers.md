@@ -478,7 +478,7 @@ thinking, and function tools in the shared `openai-completions` path.
 `sigma.WithThinkingBudgetTokens` maps to the Fireworks `thinking` object.
 
 The built-in Fireworks Anthropic-compatible models, under
-`ProviderFireworksAnthropic`, cover DeepSeek V4.1 Flash, Ember-1, MiniMax M3 and
+`ProviderFireworksAnthropic`, cover DeepSeek V4.1 Flash, MiniMax M3 and
 M3.1 Flash, Muse Spark Open, Qwen3.8, and their Fireworks routers. Register them
 with `fireworks.RegisterAnthropic`; they use the shared Anthropic Messages
 adapter against Fireworks' `/messages` endpoint and carry compatibility metadata

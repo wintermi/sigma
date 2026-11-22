@@ -7148,55 +7148,6 @@
       ]
     },
     {
-      "id": "accounts/fireworks/models/ember-1",
-      "name": "Ember-1 (Fireworks Anthropic)",
-      "provider": "fireworks-anthropic",
-      "api": "anthropic-messages",
-      "baseURL": "https://api.fireworks.ai/inference/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 3,
-        "outputPerMillion": 15,
-        "cacheReadInputPerMillion": 0.3,
-        "currency": "USD"
-      },
-      "contextWindow": 1048576,
-      "maxOutputTokens": 131072,
-      "headers": {},
-      "authEnvNames": [
-        "FIREWORKS_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "anthropicMessagesCompat": {
-        "supportsEagerToolInputStreaming": "unsupported",
-        "supportsLongCacheRetention": "unsupported",
-        "supportsSessionAffinity": "supported",
-        "supportsCacheControlOnTools": "unsupported",
-        "thinkingFormat": "adaptive",
-        "supportsEmptyThinkingSignature": "supported"
-      },
-      "providerMetadata": {
-        "fireworksSurface": "anthropic",
-        "modelFamily": "ember"
-      },
-      "thinkingLevelMap": {
-        "off": "none",
-        "low": "low",
-        "medium": "medium",
-        "high": "high",
-        "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "minimal",
-        "xhigh"
-      ]
-    },
-    {
       "id": "accounts/fireworks/models/minimax-m3p1-flash",
       "name": "MiniMax-M3.1-Flash (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",

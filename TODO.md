@@ -1093,6 +1093,9 @@ upstream.
 - [x] Review Responses translation of `ThinkingLevelOff`: adapters now send
       the model's mapped off effort or native `none` instead of omitting
       reasoning, keeping this adapter behavior separate from catalog metadata.
+- [ ] Add Fireworks `accounts/fireworks/models/ember-1` once surface probes
+      pass reliably; it returned repeated 500 errors and timeouts on the
+      Anthropic-compatible route on November 22, 2026.
 - [ ] Add Fireworks Spot models (`accounts/fireworks/models/glm-5p3-spot`,
       `kimi-k3-spot`, `deepseek-v4p1-flash-spot`, and
       `deepseek-v4p1-flash-1017-spot`) once a Spot-enabled account confirms
