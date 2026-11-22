@@ -1,7 +1,7 @@
-# Release notes: sigma v0.8.0
+# Release notes: sigma v1.0.0
 
 This is the maintainer-facing development note for the next `sigma` tag. Add
-the v0.8.0 summary and scope as changes land. For the itemized change list see
+the v1.0.0 summary and scope as changes land. For the itemized change list see
 [CHANGELOG.md](../CHANGELOG.md); for the validation commands and pre-tag
 checklist see [RELEASING.md](../RELEASING.md).
 
@@ -839,7 +839,7 @@ and suppression. Surface probes generate separate conversation IDs per case,
 reuse them across turns, retries, and repairs, and report `MissingSessionID` as
 a request-shape error.
 
-`sigma` v0.8.0 begins by tightening native Gemini 3 replay compatibility across
+`sigma` v1.0.0 begins by tightening native Gemini 3 replay compatibility across
 Google Generative AI and Vertex AI so function calls and matching tool results
 retain stable normalized IDs. Google and Vertex streams now also preserve
 explicit max-token, provider-error, and unknown finish reasons when a response

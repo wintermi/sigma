@@ -6,9 +6,9 @@ The project follows standard Major.Minor.Patch versioning and Go module
 semantic import versioning. The initial release is `v0.1.0`; public APIs may
 still change before `v1.0.0`, with breaking changes called out in release notes.
 
-## [0.8.0] - Unreleased
+## [1.0.0] - Unreleased
 
-See [release notes](docs/release-notes-v0.8.0.md).
+See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Added
 
