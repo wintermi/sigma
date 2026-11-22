@@ -98,7 +98,13 @@ func Parse(ctx context.Context, r io.Reader, handle Handler, opts ...Option) err
 		opt(&cfg)
 	}
 
-	reader := &lineReader{reader: bufio.NewReader(r)}
+	buffered := bufio.NewReader(r)
+	// The event stream format ignores one leading UTF-8 byte order mark;
+	// left in place it would hide the first field name.
+	if bom, err := buffered.Peek(len(utf8BOM)); err == nil && string(bom) == utf8BOM {
+		_, _ = buffered.Discard(len(utf8BOM))
+	}
+	reader := &lineReader{reader: buffered}
 	builder := eventBuilder{}
 	lineNumber := 0
 
@@ -133,6 +139,8 @@ func Parse(ctx context.Context, r io.Reader, handle Handler, opts ...Option) err
 		}
 	}
 }
+
+const utf8BOM = "\xef\xbb\xbf"
 
 func dispatchFrame(ctx context.Context, builder *eventBuilder, handle Handler) (bool, error) {
 	if err := dispatch(ctx, builder, handle); err != nil {

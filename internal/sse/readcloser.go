@@ -7,6 +7,7 @@ package sse
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -37,10 +38,14 @@ func CloseOnContextDone(ctx context.Context, body io.ReadCloser) io.ReadCloser {
 
 func (r *contextReadCloser) Read(p []byte) (int, error) {
 	n, err := r.body.Read(p)
-	if err != nil {
-		return n, fmt.Errorf("sse: read: %w", err)
+	if err == nil {
+		return n, nil
 	}
-	return n, nil
+	// io.EOF is returned as is: readers such as io.ReadAll compare it with ==.
+	if errors.Is(err, io.EOF) {
+		return n, io.EOF
+	}
+	return n, fmt.Errorf("sse: read: %w", err)
 }
 
 func (r *contextReadCloser) Close() error {

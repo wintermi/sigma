@@ -94,6 +94,39 @@ func TestParseSupportsCROnlyLineEndings(t *testing.T) {
 	}
 }
 
+// A leading byte order mark is ignored rather than becoming part of the first
+// field name, which would drop the first event.
+func TestParseIgnoresLeadingByteOrderMark(t *testing.T) {
+	t.Parallel()
+
+	events, err := collect("\xef\xbb\xbfdata: first\n\ndata: \xef\xbb\xbfsecond\n\n", nil)
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if got, want := len(events), 2; got != want {
+		t.Fatalf("event count = %d, want %d", got, want)
+	}
+	if got, want := events[0].Data, "first"; got != want {
+		t.Fatalf("first event data = %q, want %q", got, want)
+	}
+	if got, want := events[1].Data, "\xef\xbb\xbfsecond"; got != want {
+		t.Fatalf("later BOM was stripped: data = %q, want %q", got, want)
+	}
+}
+
+// io.ReadAll and other readers compare io.EOF with ==, so the wrapper must
+// not wrap it.
+func TestCloseOnContextDoneReturnsBareEOF(t *testing.T) {
+	t.Parallel()
+
+	body := sse.CloseOnContextDone(context.Background(), io.NopCloser(strings.NewReader("payload")))
+	defer body.Close()
+	data, err := io.ReadAll(body)
+	if err != nil || string(data) != "payload" {
+		t.Fatalf("ReadAll = %q, %v; want payload, nil", data, err)
+	}
+}
+
 func TestParseMultilineEmptyDataAndComments(t *testing.T) {
 	t.Parallel()
 

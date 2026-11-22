@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Streaming responses that start with a byte order mark keep their first event. The event stream format says a leading UTF-8 byte order mark is ignored, but sigma kept it, so the first line's field name was not recognized and that event was dropped. The stream body wrapper also wrapped `io.EOF`, which breaks the `io.Reader` contract: `io.ReadAll` and similar readers compare the end-of-stream error with `==` and reported a failure at a normal end. Both now follow the specifications.
+
 Context-aware max-token helpers leave room for input that providers count higher than sigma's estimate. OpenRouter counts prompts with its own tokenizer, up to 12% above other counts, and rejects input plus `max_tokens` above the window before routing; with a fixed 4,096-token margin, a large prompt near the window was rejected as context overflow and callers compacted unnecessarily. `MaxTokensForContext`, `ReasoningBudgetForContext`, and automatic clamping now reserve 15% of the estimated input while at least 32,768 output tokens remain, and otherwise keep the fixed margin with output capped at 32,768.
 
 Two new compatibility controls cover strict OpenAI-compatible servers. Some servers reject a replayed assistant turn that has tool calls but no `content` field; `OpenAICompletionsCompat.RequiresAssistantContent` now sends an empty string for those turns. Some proxies reject `prompt_cache_key`, which sigma sends whenever a session ID and caching are set; setting `SupportsPromptCacheKey` to unsupported on `OpenAICompletionsCompat` or `OpenAIResponsesCompat` omits it. Both default to the existing behavior.
