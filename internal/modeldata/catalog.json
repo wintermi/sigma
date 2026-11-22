@@ -28401,6 +28401,317 @@
         "supportsReasoningEffort": "supported",
         "reasoningFormat": "qwen"
       }
+    },
+    {
+      "id": "k3.1-pro",
+      "name": "Kimi K3.1 Pro",
+      "provider": "kimi-coding",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "authEnvNames": [
+        "KIMI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "supportsEmptyThinkingSignature": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "k3.1-pro-highspeed",
+      "name": "Kimi K3.1 Pro Highspeed",
+      "provider": "kimi-coding",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "authEnvNames": [
+        "KIMI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "supportsEmptyThinkingSignature": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "k3-256k",
+      "name": "Kimi K3-256K",
+      "provider": "kimi-coding",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.kimi.com/coding/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "authEnvNames": [
+        "KIMI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsSessionAffinity": "supported",
+        "supportsEmptyThinkingSignature": "supported",
+        "thinkingFormat": "adaptive"
+      },
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "kimi-k3.1-pro",
+      "name": "Kimi K3.1 Pro",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ],
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "kimi"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "minimax-m3.1-flash",
+      "name": "MiniMax M3.1 Flash",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/zen/go/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ],
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.015,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      }
+    },
+    {
+      "id": "MiniMax-M3.1-Flash",
+      "name": "MiniMax-M3.1-Flash",
+      "provider": "minimax",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.minimax.io/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.015,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 512000,
+      "headers": {},
+      "authEnvNames": [
+        "MINIMAX_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ],
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      }
+    },
+    {
+      "id": "MiniMax-M3.1-Flash",
+      "name": "MiniMax-M3.1-Flash",
+      "provider": "minimax-cn",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.minimaxi.com/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.015,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 512000,
+      "headers": {},
+      "authEnvNames": [
+        "MINIMAX_CN_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ],
+      "anthropicMessagesCompat": {
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      }
     }
   ],
   "imageModels": [

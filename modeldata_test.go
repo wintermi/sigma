@@ -955,6 +955,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		"nemotron-3-ultra-free": {}, "nemotron-3.5-lightning-free": {}, "qwen3.5-plus": {}, "qwen3.6-plus": {},
 	}
 	openCodeGoIDs := map[ModelID]struct{}{
+		"kimi-k3.1-pro":       {},
+		"minimax-m3.1-flash":  {},
 		"deepseek-v4.1-flash": {},
 		"grok-4.7":            {},
 		"mimo-v2.6-flash":     {},
@@ -993,6 +995,7 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 		{provider: ProviderOpenCode, id: "muse-spark-1.2", want: APIOpenAIResponses},
 		{provider: ProviderOpenCodeGo, id: "qwen3.8-flash", want: APIAnthropicMessages},
 		{provider: ProviderOpenCodeGo, id: "minimax-m3", want: APIAnthropicMessages},
+		{provider: ProviderOpenCodeGo, id: "minimax-m3.1-flash", want: APIAnthropicMessages},
 		{provider: ProviderOpenCodeGo, id: "gpt-5.6-luna", want: APIOpenAIResponses},
 		{provider: ProviderOpenCodeGo, id: "grok-4.6", want: APIOpenAIResponses},
 		{provider: ProviderOpenCodeGo, id: "muse-spark-1.3-contributor", want: APIOpenAIResponses},
