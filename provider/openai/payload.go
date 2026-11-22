@@ -38,7 +38,7 @@ const (
 )
 
 func chatCompletionsPayload(model sigma.Model, req sigma.Request, opts sigma.Options, compat completionsCompat) (map[string]any, error) {
-	cleaned := transform.DropUnansweredToolCalls(transform.PrepareReplay(model, req))
+	cleaned := transform.DropUnansweredToolCalls(transform.ReplaceUnsupportedImages(model, transform.PrepareReplay(model, req)))
 	deferredTools := transform.PlanDeferredTools(cleaned, compat.deferredToolsMode == deferredToolsModeKimi, nil)
 	grammarToolInputProperties, err := chatGrammarToolInputProperties(cleaned, opts, compat)
 	if err != nil {

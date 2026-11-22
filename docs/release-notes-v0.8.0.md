@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Conversations with images can continue on text-only models. When a request includes images and the target model does not declare image input, Anthropic, Google, Bedrock, and Mistral failed the whole request, while the OpenAI adapters dropped the images without a trace. Every built-in adapter except Radius, whose gateway decides for its virtual models, now replaces each run of images in user and tool messages with a short note that an image was omitted, so the model knows something was there and the request goes through.
+
 Long streamed tool arguments stay linear end to end. Decoding of partial tool arguments was already amortized, but every delta event still deep-copied the decoded value, once for the tool-call delta and once for the partial message snapshot, so streaming a large argument such as a whole file did quadratic work. Above 16 KiB, decoded partial arguments are now attached only to the deltas where they were refreshed, and per-delta `PartialMessage` snapshots carry the argument text, which needs no copy. `argumentsText`, `ArgumentsDelta`, and final arguments are unchanged.
 
 Tool argument validation covers more of JSON Schema. `ValidateToolCall` ignored array and object size bounds, `uniqueItems`, `prefixItems`, exclusive numeric bounds, and `multipleOf`, so a model's out-of-range arguments, such as an empty list where at least one item is required, passed validation and reached the tool instead of being returned for repair. These keywords are now enforced, with numeric comparisons and multiples evaluated in exact decimal arithmetic.

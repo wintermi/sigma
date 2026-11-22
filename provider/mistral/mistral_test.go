@@ -1862,8 +1862,8 @@ func TestUnsupportedCapabilitiesFailBeforeNetworkCall(t *testing.T) {
 	client := mistralTestClient(t, providerID, model, server.URL)
 
 	_, err := client.Complete(context.Background(), model, sigma.Request{
-		Messages: []sigma.Message{sigma.UserContent(sigma.ImageBase64("image/png", "aW1hZ2U="))},
-	})
+		Messages: []sigma.Message{sigma.UserText("hi")},
+	}, sigma.WithThinkingBudgetTokens(1024))
 	if err == nil {
 		t.Fatal("Complete returned nil error")
 	}

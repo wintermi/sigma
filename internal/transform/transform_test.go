@@ -6,7 +6,6 @@
 package transform
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -616,7 +615,7 @@ func TestTransformConvertsDeveloperRoleWhenRequired(t *testing.T) {
 	}
 }
 
-func TestTransformPreservesOrRejectsImageToolResults(t *testing.T) {
+func TestTransformPreservesOrReplacesImageToolResults(t *testing.T) {
 	t.Parallel()
 
 	request := sigma.Request{
@@ -653,7 +652,9 @@ func TestTransformPreservesOrRejectsImageToolResults(t *testing.T) {
 		t.Fatalf("image data = %q, want %q", got, want)
 	}
 
-	_, err = Transform(Input{
+	// A text-only target gets a note in place of the image, so a conversation
+	// that once included a screenshot can continue there.
+	transformed, err = Transform(Input{
 		TargetModel: sigma.Model{
 			ID:       "gpt-4.1",
 			Provider: sigma.ProviderOpenAI,
@@ -661,15 +662,27 @@ func TestTransformPreservesOrRejectsImageToolResults(t *testing.T) {
 		},
 		Request: request,
 	})
-	if err == nil {
-		t.Fatal("Transform succeeded for image content on text-only model")
+	if err != nil {
+		t.Fatalf("Transform returned error for text-only model: %v", err)
 	}
-	var transformErr *sigma.Error
-	if !errors.As(err, &transformErr) {
-		t.Fatalf("error type = %T, want *sigma.Error", err)
+	content := transformed.Messages[0].Content
+	if len(content) != 1 || content[0].Type != sigma.ContentBlockText || content[0].Text != nonVisionToolImagePlaceholder {
+		t.Fatalf("content = %#v, want the tool image placeholder", content)
 	}
-	if got, want := transformErr.Code, sigma.ErrorUnsupported; got != want {
-		t.Fatalf("error code = %q, want %q", got, want)
+}
+
+func TestReplaceUnsupportedImagesCollapsesRunsAndKeepsText(t *testing.T) {
+	t.Parallel()
+	request := sigma.Request{Messages: []sigma.Message{
+		sigma.UserContent(sigma.Text("Compare these."), sigma.ImageBase64("image/png", "YQ=="), sigma.ImageBase64("image/png", "Yg=="), sigma.Text("Thanks.")),
+	}}
+	replaced := ReplaceUnsupportedImages(sigma.Model{ID: "text-only", Provider: sigma.ProviderOpenAI}, request)
+	content := replaced.Messages[0].Content
+	if len(content) != 3 || content[1].Text != nonVisionUserImagePlaceholder || content[2].Text != "Thanks." {
+		t.Fatalf("content = %#v, want text, one placeholder, text", content)
+	}
+	if len(request.Messages[0].Content) != 4 {
+		t.Fatal("caller request was modified")
 	}
 }
 

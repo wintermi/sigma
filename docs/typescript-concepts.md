@@ -336,6 +336,9 @@ if model.SupportsImages() {
 
 Go callers should check model metadata and the
 [provider parity matrix](provider-parity.md) before relying on image input.
+For a model whose metadata does not declare image input, each run of images in
+user and tool messages is replaced with a short note saying an image was
+omitted, so a conversation containing images can continue on a text-only model.
 
 ## Image Generation
 

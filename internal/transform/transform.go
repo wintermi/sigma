@@ -110,6 +110,9 @@ func Transform(input Input) (sigma.Request, error) {
 	}
 
 	input.Request = PrepareReplay(input.TargetModel, input.Request)
+	if !input.Policy.AllowUnsupportedImages {
+		input.Request = ReplaceUnsupportedImages(input.TargetModel, input.Request)
+	}
 	if input.Compatibility.DropUnansweredToolCalls {
 		input.Request.Messages = dropUnansweredToolCalls(input.Request.Messages)
 	}

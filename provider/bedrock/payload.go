@@ -156,6 +156,10 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	transformed, err := transform.Transform(transform.Input{
 		TargetModel: model,
 		Request:     req,
+		// Bedrock models without input metadata, such as custom inference
+		// profiles, keep their images; only declared text-only models get
+		// placeholders.
+		Policy: transform.Policy{AllowUnsupportedImages: len(model.SupportedInputs) == 0},
 		Compatibility: transform.Compatibility{
 			ConvertDeveloperRole:    true,
 			DropUnansweredToolCalls: true,
@@ -251,17 +255,9 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 	if opts.ReasoningLevel != "" && opts.ReasoningLevel != sigma.ThinkingLevelOff && !model.SupportsThinking {
 		return unsupportedError(model, "target model does not support thinking options")
 	}
-	if err := validateNova2LiteThinking(model, opts); err != nil {
-		return err
-	}
-	for messageIndex, message := range req.Messages {
-		for _, block := range message.Content {
-			if block.Type == sigma.ContentBlockImage && !supportsInput(model, sigma.ContentBlockImage) {
-				return unsupportedError(model, fmt.Sprintf("message %d: target model does not declare image input support", messageIndex))
-			}
-		}
-	}
-	return nil
+	// Images for a model without image input are replaced with placeholder
+	// text by the transform rather than rejected.
+	return validateNova2LiteThinking(model, opts)
 }
 
 func validateNova2LiteThinking(model sigma.Model, opts sigma.Options) error {
@@ -1249,18 +1245,6 @@ func imageFormat(mimeType string) string {
 	default:
 		return ""
 	}
-}
-
-func supportsInput(model sigma.Model, blockType sigma.ContentBlockType) bool {
-	if len(model.SupportedInputs) == 0 {
-		return true
-	}
-	for _, supported := range model.SupportedInputs {
-		if supported == blockType {
-			return true
-		}
-	}
-	return false
 }
 
 func jsonValue(value any) (any, error) {

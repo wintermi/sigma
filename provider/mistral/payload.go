@@ -122,13 +122,7 @@ func validateCapabilities(model sigma.Model, req sigma.Request, opts sigma.Optio
 	}
 	// Replayed thinking needs no check: the transform drops thinking from other
 	// models and converts it to text for targets without reasoning support.
-	for messageIndex, message := range req.Messages {
-		for _, block := range message.Content {
-			if block.Type == sigma.ContentBlockImage && !model.SupportsImages() {
-				return unsupportedError(model, fmt.Sprintf("message %d: target model does not declare image input support", messageIndex))
-			}
-		}
-	}
+	// Images for a model without image input become placeholder text there too.
 	return nil
 }
 
