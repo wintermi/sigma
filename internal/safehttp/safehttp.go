@@ -64,7 +64,7 @@ func checkRedirect(req *http.Request, via []*http.Request) error {
 	if strings.EqualFold(origin.Scheme, "https") && !strings.EqualFold(req.URL.Scheme, "https") {
 		return fmt.Errorf("%w: %s to %s downgrades to plain HTTP", ErrUnsafeRedirect, origin.Host, req.URL.Host)
 	}
-	if sameOrigin(origin, req.URL) {
+	if SameOrigin(origin, req.URL) {
 		return nil
 	}
 	if req.Body != nil && req.Body != http.NoBody {
@@ -78,7 +78,9 @@ func checkRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func sameOrigin(a, b *url.URL) bool {
+// SameOrigin reports whether a and b share a scheme, host, and port, treating
+// a missing port as the scheme's default.
+func SameOrigin(a, b *url.URL) bool {
 	return strings.EqualFold(a.Scheme, b.Scheme) &&
 		strings.EqualFold(a.Hostname(), b.Hostname()) &&
 		effectivePort(a) == effectivePort(b)

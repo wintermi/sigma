@@ -170,6 +170,47 @@ func TestRadiusCatalogStoreWritesOnlyValidatedCatalogs(t *testing.T) {
 	}
 }
 
+// Catalog base URLs receive the Radius credential with every model request,
+// so a gateway catalog cannot move them to another origin.
+func TestRadiusCatalogBaseURLMustStayOnGatewayOrigin(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		baseURL func(gateway string) string
+		ok      bool
+	}{
+		{name: "gateway origin", baseURL: func(gateway string) string { return gateway }, ok: true},
+		{name: "gateway path", baseURL: func(gateway string) string { return gateway + "/v1" }, ok: true},
+		{name: "other host", baseURL: func(string) string { return "https://attacker.example/v1" }},
+		{name: "other port", baseURL: func(gateway string) string { return strings.Replace(gateway, "127.0.0.1:", "127.0.0.1:1", 1) }},
+		{name: "userinfo", baseURL: func(gateway string) string { return strings.Replace(gateway, "http://", "http://user@", 1) }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var server *httptest.Server
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = io.WriteString(w, radiusCatalog(tt.baseURL(server.URL)))
+			}))
+			t.Cleanup(server.Close)
+
+			registry := sigma.NewRegistry()
+			if err := radius.Register(registry, radius.WithGatewayURL(server.URL)); err != nil {
+				t.Fatalf("Register returned error: %v", err)
+			}
+			client := sigma.NewClient(sigma.WithRegistry(registry))
+			err := client.RefreshTextModels(context.Background(), sigma.ProviderRadius)
+			if (err == nil) != tt.ok {
+				t.Fatalf("RefreshTextModels error = %v, want success %v", err, tt.ok)
+			}
+			_, found := registry.Model(sigma.ProviderRadius, "radius-test")
+			if found != tt.ok {
+				t.Fatalf("catalog model registered = %v, want %v", found, tt.ok)
+			}
+		})
+	}
+}
+
 func TestRadiusCatalogStoreWriteFailurePreventsRefresh(t *testing.T) {
 	t.Parallel()
 

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Keep Radius catalog base URLs on the gateway origin that receives the credential.
 - [x] Validate the GitHub Copilot `proxy-ep` host before sending the bearer token to it.
 - [x] Keep provider credential headers off cross-origin redirects, and refuse HTTPS downgrades and cross-origin body resends.
 - [x] Remove the Codex `gpt-5.5` and `gpt-5.3-codex-spark` rows that ChatGPT accounts cannot use.

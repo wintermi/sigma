@@ -87,6 +87,11 @@ that would resend the request body, fail instead. A `CheckRedirect` policy on a
 caller's `http.Client` still runs after these checks, and the caller's client is
 not modified.
 
+A Radius gateway catalog can name the base URL for its models, and model
+requests send the Radius credential there. The catalog's base URL must use the
+gateway's scheme, host, and port; only the path may differ, and a catalog that
+names another origin is rejected without replacing the registered models.
+
 ## Persistence
 
 `MarshalRequest` serializes only the public `Request` shape. It does not store

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Radius gateway catalogs can no longer send model requests to another host. The catalog's `baseUrl` decides where model requests go, carrying the Radius credential, and any http(s) URL was accepted, including plain HTTP or an unrelated host. A catalog whose base URL is not on the gateway's scheme, host, and port is now rejected and leaves the registered models unchanged; a different path on the gateway origin still works.
+
 GitHub Copilot no longer sends its token to an arbitrary `proxy-ep` host. The token names the account's API host, and sigma used whatever it contained as the request host for every bearer-authenticated call. Only hosts under `githubcopilot.com`, `ghe.com`, or the configured enterprise domain are now used; other values, including ones with ports, paths, or userinfo, fall back to the enterprise or individual endpoint.
 
 HTTP redirects no longer carry provider credentials to another host. Go removes only `Authorization` and cookies when a redirect changes host, so API key headers such as `x-api-key`, `x-goog-api-key`, Azure `api-key`, and `cf-aig-authorization` reached whatever host a provider, proxy, or compromised endpoint redirected to, even over plain HTTP. Provider, OAuth, and AWS credential requests now keep only `Accept`, `Accept-Encoding`, `Accept-Language`, and `User-Agent` on cross-origin redirects, and refuse redirects that downgrade from HTTPS or would resend the request body to another origin. Same-origin redirects behave as before, and a caller's `CheckRedirect` still runs without its client being modified.

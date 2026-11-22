@@ -213,7 +213,7 @@ func (source *ModelSource) TextModels(ctx context.Context) ([]sigma.Model, error
 	if err := json.Unmarshal(body, &catalog); err != nil {
 		return nil, fmt.Errorf("radius: decode catalog: %w", err)
 	}
-	baseURL, err := validBaseURL(catalog.BaseURL)
+	baseURL, err := catalogBaseURL(source.config.gatewayURL, catalog.BaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("radius: invalid catalog: %w", err)
 	}
@@ -404,6 +404,25 @@ func endpoint(baseURL, suffix string) (string, error) {
 		return "", err
 	}
 	return baseURL + suffix, nil
+}
+
+// catalogBaseURL validates the model base URL a gateway catalog names. Model
+// requests carry the Radius credential, so the URL must stay on the gateway's
+// scheme, host, and port; only the path may differ.
+func catalogBaseURL(gatewayURL, value string) (string, error) {
+	baseURL, err := validBaseURL(value)
+	if err != nil {
+		return "", err
+	}
+	gateway, err := url.Parse(gatewayURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid gateway URL %q", gatewayURL)
+	}
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.User != nil || !safehttp.SameOrigin(gateway, parsed) {
+		return "", fmt.Errorf("base URL %q is not on the gateway origin %s://%s", value, gateway.Scheme, gateway.Host)
+	}
+	return baseURL, nil
 }
 
 func validBaseURL(value string) (string, error) {
