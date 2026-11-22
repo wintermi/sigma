@@ -356,6 +356,22 @@ func TestKimiCodingOAuthTokenProviderRefreshesAndStoredAuthPreservesConfig(t *te
 	}
 }
 
+// A device authorization response without expires_in is polled for the
+// 15 minutes Kimi issues codes for, rather than failing the login.
+func TestKimiCodingDeviceCodeDefaultsMissingLifetime(t *testing.T) {
+	t.Parallel()
+	client := kimiCodingOAuthTestHTTPClient(t, func(*http.Request) *http.Response {
+		return kimiCodingOAuthJSONResponse(http.StatusOK, `{"device_code":"device-code","user_code":"ABCD-1234","verification_uri":"https://auth.kimi.com/device","verification_uri_complete":"https://auth.kimi.com/device?code=ABCD-1234"}`)
+	})
+	device, err := requestKimiCodingDeviceCode(context.Background(), client)
+	if err != nil {
+		t.Fatalf("requestKimiCodingDeviceCode returned error: %v", err)
+	}
+	if device.ExpiresIn != 15*time.Minute {
+		t.Fatalf("expires in = %v, want 15m", device.ExpiresIn)
+	}
+}
+
 func durationPointer(value time.Duration) *float64 {
 	seconds := value.Seconds()
 	return &seconds

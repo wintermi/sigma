@@ -35,6 +35,7 @@ const (
 	anthropicOAuthScope                = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"
 	anthropicOAuthCallbackPath         = "/callback"
 	anthropicOAuthDefaultRefreshBefore = 5 * time.Minute
+	anthropicOAuthExchangeTimeout      = 30 * time.Second
 )
 
 var (
@@ -583,6 +584,10 @@ func anthropicBrowserRedirectURI(listener net.Listener) string {
 }
 
 func exchangeAnthropicAuthorizationCode(ctx context.Context, client *http.Client, code string, state string, verifier string, redirectURI string) (AnthropicOAuthCredentials, error) {
+	// The login has no other deadline, so a token endpoint that never answers
+	// would otherwise hang it.
+	ctx, cancel := context.WithTimeout(ctx, anthropicOAuthExchangeTimeout)
+	defer cancel()
 	return postAnthropicToken(ctx, client, map[string]string{
 		"grant_type":    "authorization_code",
 		"client_id":     anthropicOAuthClientID,

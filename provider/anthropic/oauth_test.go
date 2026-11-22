@@ -252,6 +252,28 @@ func TestRefreshAnthropicTokenSuccess(t *testing.T) {
 	}
 }
 
+// A token endpoint that never answers must not hang login, which has no
+// other deadline.
+func TestAnthropicCodeExchangeHasDeadline(t *testing.T) {
+	t.Parallel()
+	var deadline time.Time
+	client := anthropicOAuthTestClient(t, func(r *http.Request) *http.Response {
+		deadline, _ = r.Context().Deadline()
+		return anthropicOAuthJSONResponse(http.StatusOK, map[string]any{
+			"access_token":  "sk-ant-oat01-access",
+			"refresh_token": "refresh-token",
+			"expires_in":    3600,
+		})
+	})
+	start := time.Now()
+	if _, err := exchangeAnthropicAuthorizationCode(context.Background(), client, "code", "state", "verifier", "http://localhost:1/callback"); err != nil {
+		t.Fatal(err)
+	}
+	if deadline.IsZero() || deadline.Sub(start) > 31*time.Second {
+		t.Fatalf("exchange deadline = %v after start, want at most 30s", deadline.Sub(start))
+	}
+}
+
 func TestRefreshAnthropicTokenFailureRedactsBody(t *testing.T) {
 	t.Parallel()
 

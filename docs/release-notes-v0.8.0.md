@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Two login edge cases no longer fail or hang. Anthropic's browser login exchanged the authorization code with no deadline of its own, so an unresponsive token endpoint left the login waiting indefinitely; the exchange now times out after 30 seconds. Kimi Coding rejected a device authorization response without `expires_in` as incomplete; it now polls for 15 minutes, the lifetime Kimi issues codes for.
+
 Device-code login polling follows the server more closely. GitHub Copilot, Kimi Coding, and xAI used the server's poll interval as is, so a zero or very small value polled in a tight loop; every interval is now at least one second. xAI ignored the `interval` sent with `slow_down` and always added five seconds, so it could keep polling earlier than the server asked; it now uses the reported interval, as Copilot and Kimi do. Copilot also polled immediately after showing the code, before the user could approve it, and now waits one interval first like the other providers.
 
 Custom credential stores have a documented cancellation contract. Sigma refreshes a stored OAuth token inside the `ModifyCredential` callback and detaches the refresh from the caller's cancellation, but passes the caller's context to the store. A third-party store that stopped writing when that context was canceled could drop a token the provider had already rotated, forcing a new login. `CredentialStore` and the cancellation guide now state that the context bounds only the lock wait, and the write must complete; `InMemoryCredentialStore` already behaves this way.

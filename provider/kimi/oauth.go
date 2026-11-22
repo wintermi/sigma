@@ -25,13 +25,14 @@ import (
 )
 
 const (
-	kimiCodingOAuthClientID               = "17e5f671-d194-4dfb-9706-5516cb48c098"
-	kimiCodingOAuthDeviceAuthorizationURL = "https://auth.kimi.com/api/oauth/device_authorization"
-	kimiCodingOAuthTokenURL               = "https://auth.kimi.com/api/oauth/token"
-	kimiCodingOAuthDeviceCodeGrantType    = "urn:ietf:params:oauth:grant-type:device_code"
-	kimiCodingOAuthDefaultPollInterval    = 5 * time.Second
-	kimiCodingOAuthSlowDownIncrement      = 5 * time.Second
-	kimiCodingOAuthDefaultRefreshBefore   = 5 * time.Minute
+	kimiCodingOAuthClientID                  = "17e5f671-d194-4dfb-9706-5516cb48c098"
+	kimiCodingOAuthDeviceAuthorizationURL    = "https://auth.kimi.com/api/oauth/device_authorization"
+	kimiCodingOAuthTokenURL                  = "https://auth.kimi.com/api/oauth/token"
+	kimiCodingOAuthDeviceCodeGrantType       = "urn:ietf:params:oauth:grant-type:device_code"
+	kimiCodingOAuthDefaultDeviceCodeLifetime = 15 * time.Minute
+	kimiCodingOAuthDefaultPollInterval       = 5 * time.Second
+	kimiCodingOAuthSlowDownIncrement         = 5 * time.Second
+	kimiCodingOAuthDefaultRefreshBefore      = 5 * time.Minute
 )
 
 // kimiCodingRefreshMaxRetries retries transient refresh failures with 1s, 2s,
@@ -352,8 +353,13 @@ func requestKimiCodingDeviceCode(ctx context.Context, client *http.Client) (kimi
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return kimiCodingDeviceCode{}, fmt.Errorf("kimi coding oauth: decode device authorization response: %w", err)
 	}
+	// A device code without a stated lifetime is polled for 15 minutes, the
+	// lifetime Kimi issues, rather than rejected.
 	expiresIn, validExpiry := kimiCodingDurationFromSeconds(decoded.ExpiresIn)
-	if decoded.DeviceCode == "" || decoded.UserCode == "" || decoded.VerificationURI == "" || decoded.VerificationURIComplete == "" || !validExpiry {
+	if !validExpiry {
+		expiresIn = kimiCodingOAuthDefaultDeviceCodeLifetime
+	}
+	if decoded.DeviceCode == "" || decoded.UserCode == "" || decoded.VerificationURI == "" || decoded.VerificationURIComplete == "" {
 		return kimiCodingDeviceCode{}, errors.New("kimi coding oauth: device authorization response missing fields")
 	}
 	if _, err := safeKimiCodingVerificationURI(decoded.VerificationURI); err != nil {
