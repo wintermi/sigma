@@ -4434,7 +4434,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported"
+        "supportsToolReferences": "supported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -4477,7 +4478,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported"
+        "supportsToolReferences": "supported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -4743,7 +4745,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsToolReferences": "supported"
+        "supportsToolReferences": "supported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -6519,7 +6522,8 @@
         "gatewayProvider": "anthropic-messages"
       },
       "anthropicMessagesCompat": {
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -8255,7 +8259,8 @@
         "modelFamily": "claude"
       },
       "anthropicMessagesCompat": {
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -10197,7 +10202,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -10238,7 +10244,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh"
@@ -10280,7 +10287,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -10330,7 +10338,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -10536,7 +10545,8 @@
         "supportsEagerToolInputStreaming": "supported",
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -10585,7 +10595,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -21411,7 +21422,8 @@
         "gatewayProvider": "vercel"
       },
       "anthropicMessagesCompat": {
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -25265,7 +25277,8 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsTemperature": "unsupported"
       },
       "thinkingLevelMap": {
         "low": "low",

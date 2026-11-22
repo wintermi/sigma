@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Claude models that reject temperature no longer receive it on any Anthropic Messages route. Opus 4.7 and later, Sonnet 5, and Haiku 5.5 reject the `temperature` field, but 13 catalog rows, including direct Claude Sonnet 5 and most Vertex Claude rows, did not record that, so a request with a temperature and no thinking failed. Those rows now mark temperature unsupported, and the adapter omits it.
+
 `IsContextOverflow` and `ClassifyError` agree on throttled requests. A 429 with no structured code and wording like "Too many tokens, please wait" is rate limited by `ClassifyError`, but the diagnostic check behind `IsContextOverflow` lacked that rule and reported overflow, so callers compacted conversations that only needed a retry. Both now treat it as rate limiting.
 
 OpenCode free-tier and Go subscription limits are no longer retried. OpenCode reports them as HTTP 429 with the error types `FreeUsageLimitError` and `GoUsageLimitError`, but sigma's code table held underscored spellings that the real codes never match, so the errors fell back to the 429 status and were retried as rate limits. Both codes are now classified as quota.

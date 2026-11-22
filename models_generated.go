@@ -5057,6 +5057,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
@@ -5091,6 +5092,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
@@ -5301,6 +5303,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsStrictTools:             AnthropicCompatSupport("supported"),
 			SupportsToolReferences:          AnthropicCompatSupport("supported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
@@ -6766,7 +6769,8 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			ThinkingFormat: AnthropicThinkingFormat("adaptive"),
+			SupportsTemperature: AnthropicCompatSupport("unsupported"),
+			ThinkingFormat:      AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"CLOUDFLARE_API_KEY"},
@@ -8111,7 +8115,8 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			ThinkingFormat: AnthropicThinkingFormat("adaptive"),
+			SupportsTemperature: AnthropicCompatSupport("unsupported"),
+			ThinkingFormat:      AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"COPILOT_GITHUB_TOKEN"},
@@ -10146,6 +10151,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -10305,6 +10311,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -10338,6 +10345,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -10376,6 +10384,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -10415,6 +10424,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -10579,6 +10589,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
@@ -10617,6 +10628,7 @@ var builtinTextModels = []Model{
 			SupportsEagerToolInputStreaming: AnthropicCompatSupport("supported"),
 			SupportsLongCacheRetention:      AnthropicCompatSupport("supported"),
 			SupportsCacheControlOnTools:     AnthropicCompatSupport("supported"),
+			SupportsTemperature:             AnthropicCompatSupport("unsupported"),
 			SupportsDisabledThinking:        AnthropicCompatSupport("unsupported"),
 			ThinkingFormat:                  AnthropicThinkingFormat("adaptive"),
 		},
@@ -18682,7 +18694,8 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			ThinkingFormat: AnthropicThinkingFormat("adaptive"),
+			SupportsTemperature: AnthropicCompatSupport("unsupported"),
+			ThinkingFormat:      AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{defaultVercelAIGatewayKeyEnv},

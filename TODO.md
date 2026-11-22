@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Mark temperature unsupported on every Messages route to Claude Opus 4.7+, Sonnet 5, and Haiku 5.5.
 - [x] Align `IsContextOverflow` with `ClassifyError` for codeless 429 token wording.
 - [x] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` as quota.
 - [x] Classify Zhipu/Z.ai code 1308 as a non-retryable quota error.
@@ -256,8 +257,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Mark every `claude-sonnet-5` row (Anthropic, Vertex, Copilot, OpenCode,
-      Cloudflare) as not supporting temperature.
 - [ ] Mark the OpenCode Zen and Go Claude Opus 5, Opus 5.5, and Fable rows as
       supporting mid-conversation effort so `drop_block` is sent.
 
