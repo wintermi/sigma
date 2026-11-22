@@ -166,7 +166,10 @@ func (c *ToolCall) Partial(argumentsDelta string, mode ToolPartialMode) *sigma.P
 	case ToolPartialArgumentsText:
 		if arguments := c.ArgumentsText(); arguments != "" {
 			metadata := map[string]any{"argumentsText": arguments}
-			if decoded, ok := c.DecodePartialArguments(); ok {
+			// Decoded arguments are attached only when refreshed: each event
+			// copies them, and copying a reused value on every delta would make
+			// long arguments quadratic. argumentsText is always current.
+			if decoded, ok, fresh := c.decodePartialArguments(); ok && fresh {
 				metadata["arguments"] = decoded
 			}
 			for key, value := range c.ProviderMetadata {
@@ -181,7 +184,7 @@ func (c *ToolCall) Partial(argumentsDelta string, mode ToolPartialMode) *sigma.P
 		if arguments := c.ArgumentsText(); arguments != "" {
 			partial.ProviderMetadata["argumentsText"] = arguments
 		}
-		if decoded, ok := c.DecodePartialArguments(); ok {
+		if decoded, ok, fresh := c.decodePartialArguments(); ok && fresh {
 			partial.ProviderMetadata["arguments"] = decoded
 		}
 		for key, value := range c.ProviderMetadata {
@@ -251,16 +254,23 @@ const partialDecodeEagerLimit = 16 << 10
 // completion of an object/array fragment for streaming metadata. Beyond
 // partialDecodeEagerLimit the result may lag the latest deltas.
 func (c *ToolCall) DecodePartialArguments() (any, bool) {
+	decoded, ok, _ := c.decodePartialArguments()
+	return decoded, ok
+}
+
+// decodePartialArguments also reports whether the result was decoded now
+// rather than reused from an earlier delta.
+func (c *ToolCall) decodePartialArguments() (any, bool, bool) {
 	arguments := c.ArgumentsText()
 	if length := len(arguments); length > partialDecodeEagerLimit && c.partialLen > 0 && length-c.partialLen < c.partialLen/8 {
-		return c.partial, c.partialOK
+		return c.partial, c.partialOK, false
 	}
 	decoded, ok := c.DecodeArguments()
 	if !ok {
 		decoded, ok = decodePartialJSON(arguments)
 	}
 	c.partialLen, c.partial, c.partialOK = len(arguments), decoded, ok
-	return decoded, ok
+	return decoded, ok, true
 }
 
 func decodePartialJSON(input string) (any, bool) {

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Stop deep-copying partial tool arguments on every streamed delta.
 - [x] Enforce size, uniqueness, prefix, exclusive-bound, and multipleOf keywords in tool validation.
 - [x] Allow tool call IDs reused across turns in request validation.
 - [x] Ignore a leading BOM in event streams and return bare `io.EOF` from stream bodies.
@@ -305,8 +306,6 @@ reproduces the failure before it is checked off.
 
 ### Low
 
-- [ ] Avoid deep-cloning partial tool arguments on every streamed delta
-      (`stream.go` `Emit` and `snapshot`).
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).

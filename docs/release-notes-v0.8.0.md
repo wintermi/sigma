@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Long streamed tool arguments stay linear end to end. Decoding of partial tool arguments was already amortized, but every delta event still deep-copied the decoded value, once for the tool-call delta and once for the partial message snapshot, so streaming a large argument such as a whole file did quadratic work. Above 16 KiB, decoded partial arguments are now attached only to the deltas where they were refreshed, and per-delta `PartialMessage` snapshots carry the argument text, which needs no copy. `argumentsText`, `ArgumentsDelta`, and final arguments are unchanged.
+
 Tool argument validation covers more of JSON Schema. `ValidateToolCall` ignored array and object size bounds, `uniqueItems`, `prefixItems`, exclusive numeric bounds, and `multipleOf`, so a model's out-of-range arguments, such as an empty list where at least one item is required, passed validation and reached the tool instead of being returned for repair. These keywords are now enforced, with numeric comparisons and multiples evaluated in exact decimal arithmetic.
 
 Transcripts with tool call IDs reused across turns can be persisted. Request validation required every tool call ID in the history to be unique, but some providers, Gemini among them, can issue the same ID in different turns, and one such reuse made `MarshalRequest` and `UnmarshalRequest` reject the whole transcript. IDs now only need to be unique within an assistant message; tool results match the most recent call with their ID.

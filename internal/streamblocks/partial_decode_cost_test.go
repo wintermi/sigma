@@ -51,3 +51,31 @@ func TestToolCallPartialDecodesShortArgumentsOnEveryDelta(t *testing.T) {
 		t.Fatalf("replaced arguments = %v, %v", decoded, ok)
 	}
 }
+
+// Every event copies the decoded arguments it carries, so a long argument
+// must not attach them on every delta: they are attached only when the
+// amortized decode refreshes, while argumentsText stays current.
+func TestToolCallPartialAttachesDecodedArgumentsOnlyWhenRefreshed(t *testing.T) {
+	t.Parallel()
+
+	raw := `{"content":"` + strings.Repeat("x", 256<<10) + `"}`
+	var call ToolCall
+	deltas, attached := 0, 0
+	for offset := 0; offset < len(raw); offset += 32 {
+		delta := raw[offset:min(offset+32, len(raw))]
+		call.AppendArguments(delta)
+		partial := call.Partial(delta, ToolPartialArgumentsText)
+		deltas++
+		if _, ok := partial.ProviderMetadata["arguments"]; ok {
+			attached++
+		}
+		if partial.ProviderMetadata["argumentsText"] != call.ArgumentsText() {
+			t.Fatal("argumentsText lags the accumulated arguments")
+		}
+	}
+	// Short arguments refresh on every delta; beyond the eager limit they
+	// refresh after growing by an eighth.
+	if limit := partialDecodeEagerLimit/32 + 64; attached > limit {
+		t.Fatalf("decoded arguments attached to %d of %d deltas, want at most %d", attached, deltas, limit)
+	}
+}

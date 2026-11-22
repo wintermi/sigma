@@ -461,10 +461,13 @@ func (b *partialBlock) contentBlock(decodeArguments bool) ContentBlock {
 }
 
 func (b *partialBlock) toolArguments(decode bool) any {
-	if b.hasArg {
+	arguments := b.arguments.String()
+	// Per-event snapshots prefer the accumulated text, an immutable string,
+	// over copying decoded arguments on every delta, which is quadratic for
+	// long arguments. The terminal snapshot keeps the decoded value.
+	if b.hasArg && (decode || arguments == "") {
 		return cloneJSONValue(b.argument, cloneProviderOptions)
 	}
-	arguments := b.arguments.String()
 	if arguments == "" {
 		return map[string]any{}
 	}

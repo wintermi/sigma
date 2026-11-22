@@ -87,9 +87,12 @@ objects. Opaque Go objects remain caller-owned; terminal `FinalMessage` and
 
 Built-in adapters decode partial tool arguments into
 `PartialToolCall.ProviderMetadata["arguments"]` on every delta up to 16 KiB of
-argument text. Beyond that, the decoded value is refreshed each time the text
-grows by an eighth, so it may lag the latest deltas; `argumentsText`,
-`ArgumentsDelta`, and the final tool-call arguments are always exact.
+argument text. Beyond that, the value is decoded again each time the text grows
+by an eighth and is attached only to the deltas where it was refreshed, so each
+copy reflects the text at that delta; `argumentsText`, `ArgumentsDelta`, and the
+final tool-call arguments are always exact. Tool-call blocks in a non-terminal
+`PartialMessage` carry the accumulated argument text when the adapter streams
+text, rather than a decoded copy.
 
 Every non-terminal event carries `PartialMessage`. Its stop reason defaults to
 `StopReasonPending` while generation remains in progress; the initial `start`
