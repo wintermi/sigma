@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+GitHub Copilot reasoning and strict tools work as on the direct providers. Copilot reports reasoning tokens at the top level of `usage`, which sigma did not read, so thinking usage was always zero. Its Gemini 3.5 to 3.8 Flash and Kimi K3 rows were marked as not accepting a reasoning effort, so the requested thinking level was dropped; they now send `reasoning_effort` with the levels Copilot lists for each model, and Kimi K3 accepts `max`. Copilot Claude rows now advertise strict tool support, so tools that opt in are sent with `strict: true`.
+
 Bedrock no longer drops caller-supplied Anthropic betas when reasoning is on. Thinking adds the interleaved-thinking or thinking-binding beta to `additionalModelRequestFields.anthropic_beta`, and it overwrote any betas the caller set there, so enabling reasoning silently removed betas such as the 1M-context beta and prompts over 200K tokens failed. The thinking beta is now added after the caller's betas, without duplicates.
 
 DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI streams report usage and cost again. Their compatibility defaults did not request streaming usage, and these endpoints only include a usage chunk when `stream_options.include_usage` is set, so the final message carried no usage and no cost estimate. Sigma now requests it for these hosts, as it does for other known providers and unknown endpoints; `OpenAICompletionsCompat.SupportsStreamingUsage` can still turn it off.

@@ -2577,10 +2577,12 @@ func assertGeneratedAnthropicStrictToolSupport(t *testing.T, registry *Registry)
 		}
 		strictSupported := model.AnthropicMessagesCompat != nil &&
 			model.AnthropicMessagesCompat.SupportsStrictTools == AnthropicCompatSupported
-		if model.Provider == ProviderAnthropic && !strictSupported {
-			t.Fatalf("direct Anthropic %s compatibility = %#v, want strict tools enabled", model.ID, model.AnthropicMessagesCompat)
+		// GitHub Copilot's Messages endpoint also accepts strict tools on Claude.
+		strictProvider := model.Provider == ProviderAnthropic || model.Provider == ProviderGitHubCopilot
+		if strictProvider && !strictSupported {
+			t.Fatalf("%s/%s compatibility = %#v, want strict tools enabled", model.Provider, model.ID, model.AnthropicMessagesCompat)
 		}
-		if model.Provider != ProviderAnthropic && strictSupported {
+		if !strictProvider && strictSupported {
 			t.Fatalf("%s/%s compatibility = %#v, want strict tools disabled", model.Provider, model.ID, model.AnthropicMessagesCompat)
 		}
 	}

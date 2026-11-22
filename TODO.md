@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Read Copilot reasoning tokens, send its reasoning effort, and send strict tools to Copilot Claude.
 - [x] Merge caller `anthropic_beta` values with Bedrock thinking betas.
 - [x] Request streaming usage from DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI.
 - [x] Treat whitespace-only tool output as empty on Chat Completions, Responses, and Gemini.
@@ -271,9 +272,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Read top-level `usage.reasoning_tokens` for GitHub Copilot, send reasoning
-      effort on Copilot `gemini-3.8-flash` and `kimi-k3`, and mark Copilot Claude
-      rows as supporting strict tools.
 - [ ] Remove tool-search and additional-tools support from direct OpenAI
       `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-pro`, and `gpt-5.5` rows so cross-provider
       tool history does not fail with "Missing namespace for function_call".

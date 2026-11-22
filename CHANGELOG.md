@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- GitHub Copilot now reports reasoning tokens from the top-level `usage.reasoning_tokens` when `completion_tokens_details` omits them, sends `reasoning_effort` for Gemini 3.5 to 3.8 Flash and Kimi K3 with their supported levels, and sends `strict: true` for opted-in tools on its Claude models. Reasoning tokens were always zero, the thinking level was never sent to those models, and strict tools were never sent on Copilot Claude.
 - Bedrock Claude requests with reasoning now keep `anthropic_beta` values supplied through `BedrockOptions.AdditionalModelRequestFields`, adding the interleaved-thinking or thinking-binding beta after them. The thinking beta replaced the caller's list, so a beta such as `context-1m-2025-08-07` was silently dropped and long prompts failed.
 - Chat Completions requests to DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI now send `stream_options.include_usage`. These hosts only report usage on a stream when asked, so final messages had no usage or cost.
 - Whitespace-only tool output, such as a command that prints only `\r\n`, is now treated as empty: Chat Completions and Responses send the `(no tool output)` or image placeholder, and Gemini sends an empty result. It was sent as is, and some providers reject whitespace-only tool content with a 400.

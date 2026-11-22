@@ -7916,7 +7916,8 @@
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "unsupported",
         "supportsDisabledThinking": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       }
     },
     {
@@ -7956,7 +7957,8 @@
       "anthropicMessagesCompat": {
         "supportsEagerToolInputStreaming": "unsupported",
         "supportsDisabledThinking": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -8001,7 +8003,8 @@
         "modelFamily": "claude"
       },
       "anthropicMessagesCompat": {
-        "supportsEagerToolInputStreaming": "unsupported"
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsStrictTools": "supported"
       }
     },
     {
@@ -8043,7 +8046,8 @@
       },
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       }
     },
     {
@@ -8085,7 +8089,8 @@
       },
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       }
     },
     {
@@ -8129,7 +8134,8 @@
       },
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       }
     },
     {
@@ -8169,7 +8175,8 @@
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsStrictTools": "supported"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -8218,7 +8225,8 @@
         "modelFamily": "claude"
       },
       "anthropicMessagesCompat": {
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsStrictTools": "supported"
       },
       "thinkingLevelMap": {
         "max": "max"
@@ -8260,7 +8268,8 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive",
-        "supportsTemperature": "unsupported"
+        "supportsTemperature": "unsupported",
+        "supportsStrictTools": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -8303,7 +8312,13 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
       }
     },
     {
@@ -8342,7 +8357,13 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
       }
     },
     {
@@ -8381,8 +8402,16 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
-      }
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "gemini-3.8-flash",
@@ -8420,8 +8449,16 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
-      }
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
     },
     {
       "id": "kimi-k2.7-code",
@@ -9020,8 +9057,18 @@
       "openAICompletionsCompat": {
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
-        "supportsReasoningEffort": "unsupported"
-      }
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
     },
     {
       "id": "gpt-5-mini",

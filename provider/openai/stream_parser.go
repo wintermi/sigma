@@ -82,8 +82,11 @@ type openAIUsage struct {
 	PromptCacheHitTokens    *int                `json:"prompt_cache_hit_tokens"`
 	PromptTokensDetails     *promptTokenDetails `json:"prompt_tokens_details"`
 	CompletionTokensDetails *outputTokenDetails `json:"completion_tokens_details"`
-	Cost                    *float64            `json:"cost"`
-	Currency                string              `json:"currency"`
+	// ReasoningTokens is GitHub Copilot's top-level reasoning count, used when
+	// completion_tokens_details does not report it.
+	ReasoningTokens int      `json:"reasoning_tokens"`
+	Cost            *float64 `json:"cost"`
+	Currency        string   `json:"currency"`
 	// OpenRouter BYOK accounting: cost is only OpenRouter's fee when is_byok
 	// is true, and cost_details carries the upstream inference cost.
 	IsBYOK      *bool          `json:"is_byok,omitempty"`
@@ -685,6 +688,9 @@ func (u openAIUsage) sigmaUsage() sigma.Usage {
 	}
 	if u.CompletionTokensDetails != nil {
 		usage.ThinkingTokens = u.CompletionTokensDetails.ReasoningTokens
+	}
+	if usage.ThinkingTokens == 0 {
+		usage.ThinkingTokens = u.ReasoningTokens
 	}
 	return usage
 }
