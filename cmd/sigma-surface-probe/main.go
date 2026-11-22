@@ -301,7 +301,7 @@ const (
 	defaultRouteList                     = "zen,go"
 	defaultOpenAICodexProbeModel         = "gpt-5.6-terra"
 	defaultGoogleVertexAnthropicModel    = "claude-sonnet-4-6"
-	defaultNVIDIAProbeModel              = "nvidia/nemotron-3-super-120b-a12b"
+	defaultNVIDIAProbeModel              = "nvidia/nemotron-3.5-super-vl-120b-a12b"
 	defaultGoogleGeminiImageProbeModel   = "gemini-2.5-flash-image"
 	defaultGoogleCurrentImageProbeModel  = "gemini-3.1-flash-image"
 	defaultOpenAIImageProbeModel         = "gpt-image-1"

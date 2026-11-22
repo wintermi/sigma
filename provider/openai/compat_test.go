@@ -1687,8 +1687,8 @@ func TestOpenAICompletionsCompatMapsRoutedDeepSeekLowReasoning(t *testing.T) {
 		model    sigma.ModelID
 		baseURL  string
 	}{
-		{name: "OpenCode Zen", provider: sigma.ProviderOpenCode, model: "deepseek-v4-flash", baseURL: "https://opencode.ai/zen/v1"},
-		{name: "OpenCode Go", provider: sigma.ProviderOpenCodeGo, model: "deepseek-v4-flash", baseURL: "https://opencode.ai/zen/go/v1"},
+		{name: "OpenCode Zen", provider: sigma.ProviderOpenCode, model: "deepseek-v4.1-flash", baseURL: "https://opencode.ai/zen/v1"},
+		{name: "OpenCode Go", provider: sigma.ProviderOpenCodeGo, model: "deepseek-v4.1-flash", baseURL: "https://opencode.ai/zen/go/v1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

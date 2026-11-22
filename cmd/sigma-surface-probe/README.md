@@ -67,7 +67,7 @@ or the catalog row, and a passing run confirms the row as shipped.
 | `fireworks-anthropic` | Fireworks Anthropic-compatible Messages | `FIREWORKS_API_KEY` | Uses every `fireworks-anthropic` catalog model |
 | `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai` catalog model |
 | `moonshot-cn` | Moonshot AI CN OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai-cn` catalog model |
-| `nvidia` | NVIDIA NIM OpenAI-compatible Chat Completions | `NVIDIA_API_KEY` | Uses `nvidia/nemotron-3-super-120b-a12b` unless `-models` is set |
+| `nvidia` | NVIDIA NIM OpenAI-compatible Chat Completions | `NVIDIA_API_KEY` | Uses `nvidia/nemotron-3.5-super-vl-120b-a12b` unless `-models` is set |
 | `xai` | xAI/Grok Responses or OpenAI-compatible Chat Completions, following each catalog row | `XAI_API_KEY` | Uses every `xai` catalog model |
 
 ## Examples
@@ -107,7 +107,7 @@ Probe the Fireworks OpenAI-compatible route:
 ```bash
 FIREWORKS_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes fireworks-openai \
-  -models accounts/fireworks/routers/glm-5p2-fast \
+  -models accounts/fireworks/models/kimi-k3 \
   -repair
 ```
 
@@ -116,7 +116,7 @@ Probe the Fireworks Anthropic-compatible route:
 ```bash
 FIREWORKS_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes fireworks-anthropic \
-  -models accounts/fireworks/models/kimi-k2p6 \
+  -models accounts/fireworks/models/minimax-m3 \
   -repair
 ```
 
@@ -160,7 +160,7 @@ GOOGLE_CLOUD_PROJECT=my-project \
 GOOGLE_CLOUD_LOCATION=global \
 mise run go:run -- ./cmd/sigma-surface-probe \
   -routes google-vertex \
-  -models gemini-3.6-flash \
+  -models gemini-3.8-flash \
   -repair
 ```
 

@@ -17,7 +17,7 @@ import (
 	"github.com/wintermi/sigma/provider/fireworks"
 )
 
-const fireworksModelID = sigma.ModelID("accounts/fireworks/models/kimi-k2p7-code")
+const fireworksModelID = sigma.ModelID("accounts/fireworks/models/kimi-k3")
 
 func main() {
 	os.Exit(run())

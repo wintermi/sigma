@@ -142,9 +142,9 @@ func TestRegistersCatalogModels(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			model, ok := sigma.DefaultRegistry().Model(tt.provider, "mimo-v2.5-pro")
+			model, ok := sigma.DefaultRegistry().Model(tt.provider, "mimo-v2.6-pro")
 			if !ok {
-				t.Fatalf("default registry missing %s mimo-v2.5-pro", tt.provider)
+				t.Fatalf("default registry missing %s mimo-v2.6-pro", tt.provider)
 			}
 			registry := sigma.NewRegistry()
 			if err := tt.register(registry); err != nil {
@@ -180,9 +180,9 @@ func TestCatalogModelsSendOnlyThinkingToggle(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			model, ok := sigma.DefaultRegistry().Model(provider, "mimo-v2.5-pro")
+			model, ok := sigma.DefaultRegistry().Model(provider, "mimo-v2.6-pro")
 			if !ok {
-				t.Fatalf("default registry missing %s mimo-v2.5-pro", provider)
+				t.Fatalf("default registry missing %s mimo-v2.6-pro", provider)
 			}
 			// Catalog rows carry their endpoint, which overrides the provider's.
 			model.ProviderMetadata["baseURL"] = server.URL + "/v1"

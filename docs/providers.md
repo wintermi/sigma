@@ -465,21 +465,18 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 Environment: `FIREWORKS_API_KEY`.
 
-The built-in Fireworks text routes include
-`accounts/fireworks/models/kimi-k2p7-code`, `accounts/fireworks/models/kimi-k3`,
-and `accounts/fireworks/routers/glm-5p2-fast`. The adapter uses Fireworks'
-OpenAI-compatible Chat Completions endpoint and supports streaming text, usage,
-thinking, and function tools in the shared `openai-completions` path.
+The built-in Fireworks text route is `accounts/fireworks/models/kimi-k3`. The
+adapter uses Fireworks' OpenAI-compatible Chat Completions endpoint and supports
+streaming text, usage, thinking, and function tools in the shared
+`openai-completions` path.
 `sigma.WithReasoningLevel` maps to Fireworks `reasoning_effort`;
 `sigma.WithThinkingBudgetTokens` maps to the Fireworks `thinking` object.
 
-The built-in Fireworks Anthropic-compatible routes are
-`accounts/fireworks/models/kimi-k2p6` and
-`accounts/fireworks/models/kimi-k2p7-code` under
-`ProviderFireworksAnthropic`. Register them with
-`fireworks.RegisterAnthropic`; they use the shared Anthropic Messages adapter
-against Fireworks' `/messages` endpoint and carry compatibility metadata for
-image input, thinking levels, cache behavior, and tool use.
+The built-in Fireworks Anthropic-compatible route is
+`accounts/fireworks/models/minimax-m3` under `ProviderFireworksAnthropic`.
+Register it with `fireworks.RegisterAnthropic`; it uses the shared Anthropic
+Messages adapter against Fireworks' `/messages` endpoint and carries
+compatibility metadata for thinking levels, cache behavior, and tool use.
 
 ### Baseten
 
@@ -493,9 +490,8 @@ Environment: `BASETEN_API_KEY`.
 
 The Baseten wrapper uses Sigma's shared OpenAI-compatible Chat Completions
 adapter with the direct model API base URL. Focused built-in metadata covers
-`zai-org/GLM-5.2` for text and `moonshotai/Kimi-K2.6` for text and image input.
-Both support tools and explicit thinking toggles; GLM 5.2 also maps off, high,
-and max reasoning efforts.
+`zai-org/GLM-5.2` for text and image input. It supports tools and explicit
+thinking toggles, and maps off, high, and max reasoning efforts.
 
 ### NVIDIA NIM
 
@@ -579,9 +575,9 @@ Environment: `XIAOMI_API_KEY` for `ProviderXiaomi`,
 
 The Xiaomi wrapper uses Sigma's shared OpenAI-compatible Chat Completions
 adapter for the API-billing and regional token-plan `/v1` routes. Built-in
-metadata includes `mimo-v2.5`, `mimo-v2.5-pro`, and
-`mimo-v2.5-pro-ultraspeed` for API billing. Each CN, AMS, and SGP token-plan
-route includes `mimo-v2.5` and `mimo-v2.5-pro`; use `RegisterTokenPlanCN`,
+metadata includes `mimo-v2.6-flash` and `mimo-v2.6-pro`, which accept text and
+image input, for API billing and on each CN, AMS, and SGP token-plan route; use
+`RegisterTokenPlanCN`,
 `RegisterTokenPlanAMS`, or `RegisterTokenPlanSGP` for the respective region.
 MiMo documents only a thinking on/off toggle, so these models accept the `off`
 and `high` reasoning levels and send `thinking.type` without

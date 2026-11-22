@@ -143,7 +143,7 @@ func TestCompleteUsesConfiguredBaseURLAndHeaders(t *testing.T) {
 func TestRegistersFocusedCatalog(t *testing.T) {
 	t.Parallel()
 
-	wantIDs := []sigma.ModelID{"moonshotai/Kimi-K2.6", "zai-org/GLM-5.2"}
+	wantIDs := []sigma.ModelID{"zai-org/GLM-5.2"}
 	var gotIDs []sigma.ModelID
 	for _, model := range sigma.DefaultRegistry().ListModels() {
 		if model.Provider == sigma.ProviderBaseten {
@@ -252,9 +252,6 @@ func TestCompleteUsesBasetenThinkingControls(t *testing.T) {
 		{name: "glm off", modelID: "zai-org/GLM-5.2", level: sigma.ThinkingLevelOff, wantEffort: "none"},
 		{name: "glm high", modelID: "zai-org/GLM-5.2", level: sigma.ThinkingLevelHigh, wantEnabled: true, wantEffort: "high"},
 		{name: "glm max", modelID: "zai-org/GLM-5.2", level: sigma.ThinkingLevel("max"), wantEnabled: true, wantEffort: "max"},
-		{name: "kimi default", modelID: "moonshotai/Kimi-K2.6"},
-		{name: "kimi off", modelID: "moonshotai/Kimi-K2.6", level: sigma.ThinkingLevelOff},
-		{name: "kimi high", modelID: "moonshotai/Kimi-K2.6", level: sigma.ThinkingLevelHigh, wantEnabled: true},
 	}
 
 	for _, tt := range tests {

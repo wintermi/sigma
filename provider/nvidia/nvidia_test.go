@@ -210,7 +210,7 @@ func TestEmbedMapsInputTypeAndPreservesExplicitProviderMetadata(t *testing.T) {
 func TestRegistersCatalogModels(t *testing.T) {
 	t.Parallel()
 
-	text, ok := sigma.DefaultRegistry().Model(sigma.ProviderNVIDIA, "openai/gpt-oss-20b")
+	text, ok := sigma.DefaultRegistry().Model(sigma.ProviderNVIDIA, "nvidia/nemotron-3.5-super-vl-120b-a12b")
 	if !ok {
 		t.Fatal("default registry missing NVIDIA text model")
 	}

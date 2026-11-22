@@ -218,8 +218,8 @@ func TestRegisterSmokeProviderSupportsConfiguredRoutes(t *testing.T) {
 		{name: "OpenAI Responses", provider: sigma.ProviderOpenAI, model: "gpt-5.6-sol", providerAPI: sigma.APIOpenAIResponses},
 		{name: "OpenCode Go", provider: sigma.ProviderOpenCodeGo, model: "kimi-k3", providerAPI: sigma.APIOpenAICompletions},
 		{name: "Fireworks", provider: sigma.ProviderFireworks, model: "accounts/fireworks/models/kimi-k3", providerAPI: sigma.APIOpenAICompletions},
-		{name: "Fireworks Anthropic", provider: sigma.ProviderFireworksAnthropic, model: "accounts/fireworks/models/deepseek-v4-pro", providerAPI: sigma.APIAnthropicMessages},
-		{name: "Google Vertex", provider: sigma.ProviderGoogleVertex, model: "gemini-2.5-flash", providerAPI: sigma.APIGoogleVertex},
+		{name: "Fireworks Anthropic", provider: sigma.ProviderFireworksAnthropic, model: "accounts/fireworks/models/minimax-m3", providerAPI: sigma.APIAnthropicMessages},
+		{name: "Google Vertex", provider: sigma.ProviderGoogleVertex, model: "gemini-3.8-flash", providerAPI: sigma.APIGoogleVertex},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

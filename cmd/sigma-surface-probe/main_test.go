@@ -160,11 +160,11 @@ func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 		}
 	}
 	for _, modelID := range []string{
-		"gemini-2.5-flash",
 		"gemini-3-flash-preview",
 		"gemini-3.1-pro-preview",
 		"gemini-3.5-flash-lite",
-		"gemini-3.6-flash",
+		"gemini-3.7-flash",
+		"gemini-3.8-flash",
 	} {
 		if !hasString(models, modelID) {
 			t.Fatalf("built-in models do not include %q: %v", modelID, models)
@@ -176,8 +176,12 @@ func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 		"gemini-1.5-pro",
 		"gemini-2.0-flash",
 		"gemini-2.0-flash-lite",
+		"gemini-2.5-flash",
+		"gemini-2.5-flash-lite",
 		"gemini-2.5-flash-lite-preview-09-2025",
+		"gemini-2.5-pro",
 		"gemini-3-pro-preview",
+		"gemini-3.6-flash",
 	} {
 		if hasString(models, modelID) {
 			t.Fatalf("built-in models unexpectedly include retired model %q: %v", modelID, models)
@@ -190,12 +194,12 @@ func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 
 	models, err := modelsForRoute(routes["google-vertex"], map[string]bool{
 		"gemini-3.5-flash-lite": true,
-		"gemini-3.6-flash":      true,
+		"gemini-3.7-flash":      true,
 	})
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
-	if !reflect.DeepEqual(models, []string{"gemini-3.5-flash-lite", "gemini-3.6-flash"}) {
+	if !reflect.DeepEqual(models, []string{"gemini-3.5-flash-lite", "gemini-3.7-flash"}) {
 		t.Fatalf("models = %v, want sorted selected Vertex models", models)
 	}
 
@@ -206,8 +210,10 @@ func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 		"gemini-1.5-pro",
 		"gemini-2.0-flash",
 		"gemini-2.0-flash-lite",
+		"gemini-2.5-flash",
 		"gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-3-pro-preview",
+		"gemini-3.6-flash",
 	} {
 		_, err = modelsForRoute(routes["google-vertex"], map[string]bool{modelID: true})
 		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
@@ -276,7 +282,7 @@ func TestModelsForRouteUseSigmaCatalog(t *testing.T) {
 func TestModelsForRouteValidatesSelectedModelsAgainstCatalog(t *testing.T) {
 	t.Parallel()
 
-	route := routes["fireworks-openai"]
+	route := routes["openai"]
 	catalog := catalogModels(route)
 	selected := map[string]bool{catalog[len(catalog)-1]: true, catalog[0]: true}
 	models, err := modelsForRoute(route, selected)
@@ -287,7 +293,7 @@ func TestModelsForRouteValidatesSelectedModelsAgainstCatalog(t *testing.T) {
 		t.Fatalf("models = %v, want sorted selected models %v", models, want)
 	}
 
-	_, err = modelsForRoute(route, map[string]bool{"accounts/fireworks/models/ember-1": true})
+	_, err = modelsForRoute(routes["fireworks-openai"], map[string]bool{"accounts/fireworks/models/ember-1": true})
 	if err == nil || !strings.Contains(err.Error(), "not in sigma's fireworks catalog") {
 		t.Fatalf("uncatalogued model error = %v, want a local rejection", err)
 	}
@@ -314,7 +320,7 @@ func TestModelsForRouteDefaultsOpenAICodexWithoutDiscovery(t *testing.T) {
 func TestModelsForRouteDefaultsNVIDIAWithoutDiscovery(t *testing.T) {
 	t.Parallel()
 
-	if got, want := defaultNVIDIAProbeModel, "nvidia/nemotron-3-super-120b-a12b"; got != want {
+	if got, want := defaultNVIDIAProbeModel, "nvidia/nemotron-3.5-super-vl-120b-a12b"; got != want {
 		t.Fatalf("defaultNVIDIAProbeModel = %q, want %q", got, want)
 	}
 	models, err := modelsForRoute(routes["nvidia"], nil)
@@ -575,7 +581,7 @@ func TestGoogleVertexAuthOptions(t *testing.T) {
 	t.Parallel()
 
 	route := routes["google-vertex"]
-	model := route.Model(route, "gemini-2.5-flash")
+	model := route.Model(route, "gemini-3.8-flash")
 	oauth := applyProbeOptions(authOptions(route, routeCredential{
 		accessToken: "oauth-token",
 		projectID:   "test-project",
@@ -664,7 +670,7 @@ func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if got, want := r.URL.Path, "/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-2.5-flash:streamGenerateContent"; got != want {
+				if got, want := r.URL.Path, "/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-3.8-flash:streamGenerateContent"; got != want {
 					t.Errorf("path = %q, want %q", got, want)
 				}
 				if got := r.URL.Query().Get("alt"); got != "sse" {
@@ -690,7 +696,7 @@ func TestGoogleVertexProbeRequestRoutingAndAuthentication(t *testing.T) {
 
 			route := routes["google-vertex"]
 			route.BaseURL = server.URL + "/v1"
-			model := route.Model(route, "gemini-2.5-flash")
+			model := route.Model(route, "gemini-3.8-flash")
 			result := runCase(context.Background(), route, probeClient(route, model), model,
 				singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), []sigma.Option{sigma.WithMaxTokens(128)}),
 				tt.credential, "basic_text")
@@ -815,7 +821,7 @@ func TestGoogleVertexProbeErrorDoesNotLeakAccessToken(t *testing.T) {
 
 	route := routes["google-vertex"]
 	route.BaseURL = server.URL + "/v1"
-	model := route.Model(route, "gemini-2.5-flash")
+	model := route.Model(route, "gemini-3.8-flash")
 	result := runCase(context.Background(), route, probeClient(route, model), model,
 		singleTurnCase("basic_text", "plain streaming text", basicRequest("Reply with exactly: sigma-ok."), nil),
 		routeCredential{accessToken: accessToken, projectID: "test-project", location: "us-central1"}, "basic_text")
@@ -859,11 +865,7 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 		notWant []string
 	}{
 		{
-			modelID: "gemini-2.5-flash",
-			want:    []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
-		},
-		{
-			modelID: "gemini-2.5-pro",
+			modelID: "gemini-3.8-flash",
 			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 			notWant: []string{"thinking_disabled"},
 		},
@@ -883,7 +885,7 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 			notWant: []string{"thinking_disabled"},
 		},
 		{
-			modelID: "gemini-3.6-flash",
+			modelID: "gemini-3.7-flash",
 			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 			notWant: []string{"thinking_disabled"},
 		},
@@ -917,11 +919,19 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 		})
 	}
 
-	auto := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-2.5-flash")), "tool_auto_file_read").Options)
+	// No current Vertex row allows thinking off; the case must still follow
+	// metadata that does.
+	offCapable, _ := sigma.GetModel(sigma.ProviderGoogleVertex, "gemini-3.8-flash")
+	offCapable.UnsupportedThinkingLevels = nil
+	if !hasRepairVariant(googleVertexProbeCases(routes["google-vertex"], offCapable), "thinking_disabled") {
+		t.Error("off-capable Vertex model missing case thinking_disabled")
+	}
+
+	auto := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-3.8-flash")), "tool_auto_file_read").Options)
 	if auto.GoogleOptions == nil || auto.GoogleOptions.ToolChoice != "auto" {
 		t.Fatalf("auto tool options = %#v", auto.GoogleOptions)
 	}
-	anyChoice := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-2.5-flash")), "tool_any_file_read").Options)
+	anyChoice := applyProbeOptions(findProbeCase(t, googleVertexProbeCases(routes["google-vertex"], routes["google-vertex"].Model(routes["google-vertex"], "gemini-3.8-flash")), "tool_any_file_read").Options)
 	if anyChoice.GoogleOptions == nil || anyChoice.GoogleOptions.ToolChoice != "any" {
 		t.Fatalf("any tool options = %#v", anyChoice.GoogleOptions)
 	}
@@ -1691,7 +1701,7 @@ func TestAnthropicProbeCasesDoNotSendRawOpenAIExtraBody(t *testing.T) {
 	t.Parallel()
 
 	route := routes["fireworks-anthropic"]
-	model := route.Model(route, "accounts/fireworks/models/kimi-k2p6")
+	model := route.Model(route, "accounts/fireworks/models/minimax-m3")
 	for _, testCase := range anthropicCompatibleProbeCases(route, model) {
 		options := applyProbeOptions(testCase.Options)
 		if providerOptions := options.ProviderOptions[sigma.ProviderFireworks]; providerOptions != nil {

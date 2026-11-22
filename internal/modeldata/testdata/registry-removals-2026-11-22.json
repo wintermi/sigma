@@ -1,0 +1,649 @@
+{
+  "textModels": [
+    {
+      "provider": "ant-ling",
+      "id": "Ling-2.6-1T",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "ant-ling",
+      "id": "Ling-2.6-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "ant-ling",
+      "id": "Ring-2.6-1T",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-4-turbo",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5-chat-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2-chat-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.2-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.3-chat-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.3-codex-spark",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "gpt-5.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o1",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o1-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o3-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "azure-openai-responses",
+      "id": "o4-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "baseten",
+      "id": "moonshotai/Kimi-K2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o3-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "o4-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/moonshotai/kimi-k2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-ai-gateway",
+      "id": "workers-ai/@cf/nvidia/nemotron-3-120b-a12b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/moonshotai/kimi-k2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/moonshotai/kimi-k2.7-code",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/nvidia/nemotron-3-120b-a12b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/qwen/qwen3-30b-a3b-fp8",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "cloudflare-workers-ai",
+      "id": "@cf/zai-org/glm-5.2",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/glm-5p2",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/kimi-k2p7-code",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks",
+      "id": "accounts/fireworks/routers/glm-5p2-fast",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/deepseek-v4-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/gpt-oss-120b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/kimi-k2p6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/kimi-k2p7-code",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/minimax-m2p7",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "fireworks-anthropic",
+      "id": "accounts/fireworks/models/qwen3p7-plus",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "claude-opus-5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "github-copilot",
+      "id": "gpt-5.6-terra",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-flash-lite",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-3.6-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex-anthropic",
+      "id": "claude-opus-4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex-anthropic",
+      "id": "claude-opus-4-1",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex-anthropic",
+      "id": "claude-sonnet-4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex-anthropic",
+      "id": "claude-sonnet-4@20250514",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex-openai",
+      "id": "meta/llama-3.3-70b-instruct-maas",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "groq",
+      "id": "llama-3.1-8b-instant",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "groq",
+      "id": "llama-3.3-70b-versatile",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "minimax",
+      "id": "MiniMax-M2.7",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "minimax",
+      "id": "MiniMax-M2.7-highspeed",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "minimax-cn",
+      "id": "MiniMax-M2.7",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "minimax-cn",
+      "id": "MiniMax-M2.7-highspeed",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-2512",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-medium-2507",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-medium-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-small-2505",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "devstral-small-2507",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "labs-devstral-small-2512",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "magistral-medium-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "magistral-small",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-large-2411",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-2505",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-medium-2508",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-nemo",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "mistral-small-2506",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mistral-7b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mistral-nemo",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mixtral-8x22b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "open-mixtral-8x7b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "pixtral-12b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "mistral",
+      "id": "pixtral-large-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "deepseek-ai/deepseek-v4.1-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.2-11b-vision-instruct",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "meta/llama-3.2-90b-vision-instruct",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "moonshotai/kimi-k2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "nvidia/nemotron-3-super-120b-a12b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "nvidia",
+      "id": "openai/gpt-oss-20b",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4-turbo",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4.1-nano",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-4o-2024-05-13",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "gpt-5.3-codex-spark",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "o1",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "o1-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "o3-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "openai",
+      "id": "o4-mini",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "claude-sonnet-4",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "deepseek-v4-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "deepseek-v4-flash-vision-exp",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "gemini-3.1-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.1",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "glm-5.2",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "kimi-k2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "ling-3.0-flash-fin-free",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.2-contributor-free",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "muse-spark-1.3-contributor-free",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode",
+      "id": "nemotron-3-ultra-free",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "deepseek-v4-flash",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "deepseek-v4-flash-vision-exp",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.1",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "glm-5.2",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "grok-4.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "kimi-k2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "mimo-v2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "minimax-m2.7",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.6-plus",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "opencode-go",
+      "id": "qwen3.7-max",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "together",
+      "id": "MiniMaxAI/MiniMax-M2.7",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "together",
+      "id": "deepseek-ai/DeepSeek-V4-Pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "together",
+      "id": "google/gemma-4-31B-it",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "together",
+      "id": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "together",
+      "id": "moonshotai/Kimi-K2.6",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi",
+      "id": "mimo-v2.5-pro-ultraspeed",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-ams",
+      "id": "mimo-v2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-ams",
+      "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-cn",
+      "id": "mimo-v2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-cn",
+      "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-sgp",
+      "id": "mimo-v2.5",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "xiaomi-token-plan-sgp",
+      "id": "mimo-v2.5-pro",
+      "reason": "provider-retirement"
+    }
+  ]
+}

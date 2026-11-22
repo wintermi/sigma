@@ -26,7 +26,7 @@ func TestRegisterReportsOpenAICompletionsAPI(t *testing.T) {
 	if err := antling.Register(registry); err != nil {
 		t.Fatalf("Register returned error: %v", err)
 	}
-	if err := registry.RegisterModel(antLingTestModel(t, "Ling-2.6-flash")); err != nil {
+	if err := registry.RegisterModel(antLingTestModel(t, "Ling-3.1-flash")); err != nil {
 		t.Fatalf("RegisterModel returned error: %v", err)
 	}
 
@@ -42,7 +42,7 @@ func TestRegisterReportsOpenAICompletionsAPI(t *testing.T) {
 func TestRegisterAcceptsGeneratedCatalogModels(t *testing.T) {
 	t.Parallel()
 
-	for _, modelID := range []sigma.ModelID{"Ling-2.6-flash", "Ling-2.6-1T", "Ring-2.6-1T"} {
+	for _, modelID := range []sigma.ModelID{"Ling-3.1-flash"} {
 		modelID := modelID
 		t.Run(string(modelID), func(t *testing.T) {
 			t.Parallel()
@@ -58,17 +58,17 @@ func TestRegisterAcceptsGeneratedCatalogModels(t *testing.T) {
 	}
 }
 
-func TestRingSendsAntLingRequestShape(t *testing.T) {
+func TestLingSendsAntLingRequestShape(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captureRequest(t, requests, r)
-		writeCompleted(t, w, "Ring-2.6-1T")
+		writeCompleted(t, w, "Ling-3.1-flash")
 	}))
 	t.Cleanup(server.Close)
 
-	model := antLingTestModel(t, "Ring-2.6-1T")
+	model := antLingTestModel(t, "Ling-3.1-flash")
 	model = withBaseURL(model, server.URL)
 	client := antLingTestClient(t, model, server.URL, antling.WithHeader("X-Provider", "provider"))
 	final, err := client.Complete(
@@ -103,7 +103,8 @@ func TestRingSendsAntLingRequestShape(t *testing.T) {
 	assertHeader(t, request.Headers, "X-Provider", "provider")
 	assertHeader(t, request.Headers, "X-Custom", "custom")
 	assertJSONPath(t, request.Body, []string{"max_tokens"}, float64(123))
-	assertJSONPath(t, request.Body, []string{"reasoning", "effort"}, "high")
+	assertJSONPath(t, request.Body, []string{"thinking", "type"}, "enabled")
+	assertNoJSONPath(t, request.Body, []string{"reasoning"})
 	assertNoJSONPath(t, request.Body, []string{"max_completion_tokens"})
 	assertNoJSONPath(t, request.Body, []string{"reasoning_effort"})
 	assertNoJSONPath(t, request.Body, []string{"store"})
@@ -111,17 +112,18 @@ func TestRingSendsAntLingRequestShape(t *testing.T) {
 	assertNoJSONPath(t, request.Body, []string{"prompt_cache_retention"})
 }
 
-func TestLingOmitsReasoningForNonReasoningModel(t *testing.T) {
+// Ling 3.x thinks by default, so turning reasoning off must be sent explicitly.
+func TestLingDisablesThinkingWhenReasoningIsOff(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		captureRequest(t, requests, r)
-		writeCompleted(t, w, "Ling-2.6-flash")
+		writeCompleted(t, w, "Ling-3.1-flash")
 	}))
 	t.Cleanup(server.Close)
 
-	model := antLingTestModel(t, "Ling-2.6-flash")
+	model := antLingTestModel(t, "Ling-3.1-flash")
 	model = withBaseURL(model, server.URL)
 	client := antLingTestClient(t, model, server.URL)
 	if _, err := client.Complete(
@@ -129,12 +131,13 @@ func TestLingOmitsReasoningForNonReasoningModel(t *testing.T) {
 		model,
 		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
 		sigma.WithAPIKey("request-key"),
-		sigma.WithReasoningLevel(sigma.ThinkingLevelHigh),
+		sigma.WithReasoningLevel(sigma.ThinkingLevelOff),
 	); err != nil {
 		t.Fatalf("Complete returned error: %v", err)
 	}
 
 	request := receiveRequest(t, requests)
+	assertJSONPath(t, request.Body, []string{"thinking", "type"}, "disabled")
 	assertNoJSONPath(t, request.Body, []string{"reasoning"})
 	assertNoJSONPath(t, request.Body, []string{"reasoning_effort"})
 }
@@ -145,14 +148,14 @@ func TestStreamCloseCancelsStreamingRequest(t *testing.T) {
 	requestCanceled := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_antling_close","model":"Ling-2.6-flash","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`+"\n\n")
+		_, _ = io.WriteString(w, `data: {"id":"chatcmpl_antling_close","model":"Ling-3.1-flash","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`+"\n\n")
 		w.(http.Flusher).Flush()
 		<-r.Context().Done()
 		close(requestCanceled)
 	}))
 	t.Cleanup(server.Close)
 
-	model := antLingTestModel(t, "Ling-2.6-flash")
+	model := antLingTestModel(t, "Ling-3.1-flash")
 	model = withBaseURL(model, server.URL)
 	client := antLingTestClient(t, model, server.URL)
 	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})

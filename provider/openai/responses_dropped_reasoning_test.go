@@ -15,9 +15,9 @@ import (
 func TestResponsesPayloadOmitsToolItemIDWhenReasoningIsDropped(t *testing.T) {
 	t.Parallel()
 
-	model, ok := sigma.GetModel(sigma.ProviderOpenAI, "o4-mini")
+	model, ok := sigma.GetModel(sigma.ProviderOpenAI, "o3")
 	if !ok {
-		t.Fatal("o4-mini not in catalog")
+		t.Fatal("o3 not in catalog")
 	}
 	reasoning := func(id string, encrypted string) sigma.ContentBlock {
 		block := sigma.Thinking("", "")
@@ -99,9 +99,9 @@ func TestResponsesPayloadOmitsToolItemIDWhenReasoningIsDropped(t *testing.T) {
 func TestResponsesPayloadReplacesMessageIDWithoutItsReasoning(t *testing.T) {
 	t.Parallel()
 
-	model, ok := sigma.GetModel(sigma.ProviderOpenAI, "o4-mini")
+	model, ok := sigma.GetModel(sigma.ProviderOpenAI, "o3")
 	if !ok {
-		t.Fatal("o4-mini not in catalog")
+		t.Fatal("o3 not in catalog")
 	}
 	reasoning := func(encrypted string) sigma.ContentBlock {
 		block := sigma.Thinking("", "")

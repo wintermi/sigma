@@ -16,7 +16,6 @@ func TestVertexCatalogLongContextAccounting(t *testing.T) {
 		id        ModelID
 		at, above float64
 	}{
-		{"gemini-2.5-pro", .24875, .4925025},
 		{"gemini-3.1-pro-preview", .394, .782004},
 		{"gemini-3.1-pro-preview-customtools", .394, .782004},
 	} {
@@ -76,7 +75,7 @@ func TestVertexCatalogCleanupBoundaries(t *testing.T) {
 	if _, ok := registry.EmbeddingModel(ProviderGoogleVertex, "gemini-embedding-001"); !ok {
 		t.Error("retained Vertex embedding missing")
 	}
-	for _, id := range []ModelID{"claude-sonnet-4", "claude-sonnet-4@20250514", "claude-opus-5"} {
+	for _, id := range []ModelID{"claude-sonnet-4-5", "claude-sonnet-4-6", "claude-opus-5"} {
 		if _, ok := registry.Model(ProviderGoogleVertexAnthropic, id); !ok {
 			t.Errorf("cleanup removed a represented Claude model or alias: %s", id)
 		}

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Remove catalog models that providers have retired or no longer serve.
 - [x] Build surface-probe requests from catalog model metadata.
 - [x] Limit surface-probe model selection to sigma's built-in catalog.
 - [x] Review the GitHub Copilot catalog against Copilot's current models.
@@ -1086,9 +1087,20 @@ upstream.
 - [x] Review Responses translation of `ThinkingLevelOff`: adapters now send
       the model's mapped off effort or native `none` instead of omitting
       reasoning, keeping this adapter behavior separate from catalog metadata.
-- [ ] Recheck upcoming direct OpenAI retirements on October 23 and December 1,
-      2026, Google image retirement notices, Google Flash introductory pricing
-      before January 1, 2027, and the GPT-5.6 Sol promotional pricing period.
+- [ ] Recheck catalog retirements due after the November 22, 2026 review:
+      Claude Sonnet 4.5 on Anthropic and Vertex (November 30), direct Gemini
+      2.5 Pro and Flash (December 1), OpenAI GPT-5, GPT-5 Mini, Nano, and Pro,
+      o3, and o3-pro (December 11), Moonshot Kimi K2.6 and K2.7 Code (late
+      December), and Vertex GLM-5.2 MaaS (available until at least
+      November 30). Also recheck Google image retirement notices, Google Flash
+      introductory pricing before January 1, 2027, and the GPT-5.6 Sol
+      promotional pricing period.
+- [ ] Settle the catalog rows the November 22 review left in place: Gemini API
+      Gemini 3.5 and 3.7 Flash (deprecated and routed to newer models), Copilot
+      Claude Opus 4.8 and Sonnet 4.6 (retired except on annual plans), Vertex
+      Gemini 4 Neon and the Flash `-latest` aliases (undocumented on Vertex),
+      the `mistral-medium-3.5` ID (Mistral documents `mistral-medium-3-5`), and
+      Z.ai `glm-5.2-highspeed`.
 - [ ] Review the remaining regional, hosted, and image candidates identified in
       the September registry report with exact route, currency, capability,
       size/format, and availability evidence before importing them.

@@ -21,7 +21,6 @@ func TestVertexCatalogMaaSRequests(t *testing.T) {
 		level  sigma.ThinkingLevel
 		effort string
 	}{
-		{id: "meta/llama-3.3-70b-instruct-maas"},
 		{id: "meta/llama-4-maverick-17b-128e-instruct-maas"},
 		{id: "openai/gpt-oss-120b-maas", level: sigma.ThinkingLevelHigh, effort: "high"},
 		{id: "xai/grok-4.20-non-reasoning"},

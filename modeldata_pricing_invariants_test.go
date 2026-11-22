@@ -62,7 +62,7 @@ func TestMistralRowsPriceCachedInput(t *testing.T) {
 	if err := registerBuiltinTextModels(registry); err != nil {
 		t.Fatal(err)
 	}
-	withoutCachedRate := map[ModelID]bool{"magistral-small": true, "mistral-medium-3.5": true}
+	withoutCachedRate := map[ModelID]bool{"mistral-medium-3.5": true}
 	for _, model := range registry.ListModels() {
 		if model.Provider == ProviderMistral && model.InputCostPerMillion > 0 && !withoutCachedRate[model.ID] && roundedCost(model.CacheReadInputCostPerMillion) != roundedCost(model.InputCostPerMillion/10) {
 			t.Errorf("%s cache read = %v, want %v", model.ID, model.CacheReadInputCostPerMillion, model.InputCostPerMillion/10)
@@ -104,18 +104,13 @@ func TestMistralVisionModelsAdvertiseImageInput(t *testing.T) {
 		provider ProviderID
 		id       ModelID
 	}{
-		{ProviderMistral, "labs-devstral-small-2512"},
-		{ProviderMistral, "magistral-medium-latest"},
 		{ProviderMistral, "ministral-3b-latest"},
 		{ProviderMistral, "ministral-8b-latest"},
 		{ProviderMistral, "mistral-large-2512"},
 		{ProviderMistral, "mistral-large-latest"},
-		{ProviderMistral, "mistral-medium-2505"},
-		{ProviderMistral, "mistral-medium-2508"},
 		{ProviderMistral, "mistral-medium-2604"},
 		{ProviderMistral, "mistral-medium-3.5"},
 		{ProviderMistral, "mistral-medium-latest"},
-		{ProviderMistral, "mistral-small-2506"},
 		{ProviderMistral, "mistral-small-2603"},
 		{ProviderMistral, "mistral-small-latest"},
 		{ProviderAmazonBedrock, "mistral.ministral-3-8b-instruct"},

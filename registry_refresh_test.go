@@ -259,17 +259,23 @@ func TestRegistryRefreshEmbeddingDimensions(t *testing.T) {
 func TestRegistryRefreshRetirementBoundaries(t *testing.T) {
 	t.Parallel()
 	registry := sigma.DefaultRegistry()
-	data, err := os.ReadFile("internal/modeldata/testdata/registry-removals-2026-09-23.json")
-	if err != nil {
-		t.Fatal(err)
-	}
 	type removedModel struct {
 		Provider sigma.ProviderID
 		ID       sigma.ModelID
 	}
 	var removed struct{ TextModels, ImageModels, EmbeddingModels []removedModel }
-	if err := json.Unmarshal(data, &removed); err != nil {
-		t.Fatal(err)
+	for _, review := range []string{"2026-09-23", "2026-11-22"} {
+		data, err := os.ReadFile("internal/modeldata/testdata/registry-removals-" + review + ".json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var batch struct{ TextModels, ImageModels, EmbeddingModels []removedModel }
+		if err := json.Unmarshal(data, &batch); err != nil {
+			t.Fatal(err)
+		}
+		removed.TextModels = append(removed.TextModels, batch.TextModels...)
+		removed.ImageModels = append(removed.ImageModels, batch.ImageModels...)
+		removed.EmbeddingModels = append(removed.EmbeddingModels, batch.EmbeddingModels...)
 	}
 	for _, model := range removed.TextModels {
 		if _, ok := registry.Model(model.Provider, model.ID); ok {
@@ -294,7 +300,7 @@ func TestRegistryRefreshRetirementBoundaries(t *testing.T) {
 		{sigma.ProviderOpenCode, "gpt-5.1-codex"},
 		{sigma.ProviderAmazonBedrock, "us.anthropic.claude-opus-4-1-20250805-v1:0"},
 		{sigma.ProviderGoogle, "gemini-2.5-pro"},
-		{sigma.ProviderOpenAI, "gpt-4.1-nano"},
+		{sigma.ProviderAzureOpenAIResponses, "gpt-4.1-nano"},
 	} {
 		if _, ok := registry.Model(tt.provider, tt.id); !ok {
 			t.Errorf("retirement crossed service or date boundary: %s/%s", tt.provider, tt.id)

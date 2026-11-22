@@ -163,66 +163,6 @@ func TestVertexCompleteSendsProviderNeutralToolChoice(t *testing.T) {
 	}
 }
 
-func TestVertexGemini25ReasoningLevelsUseThinkingBudgets(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		level      sigma.ThinkingLevel
-		wantBudget float64
-	}{
-		{level: sigma.ThinkingLevelLow, wantBudget: 2048},
-		{level: sigma.ThinkingLevelMedium, wantBudget: 8192},
-		{level: sigma.ThinkingLevelHigh, wantBudget: 24576},
-	}
-	for _, tt := range tests {
-		t.Run(string(tt.level), func(t *testing.T) {
-			t.Parallel()
-
-			requests := make(chan capturedVertexRequest, 1)
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				captureVertexRequest(t, requests, r)
-				writeVertexSSE(t, w, vertexCompletedEvent)
-			}))
-			t.Cleanup(server.Close)
-
-			model, ok := sigma.GetModel(sigma.ProviderGoogleVertex, "gemini-2.5-flash")
-			if !ok {
-				t.Fatal("generated Vertex Gemini 2.5 Flash model is missing")
-			}
-			client := vertexTestClientWithModel(
-				t,
-				model,
-				vertexAPIKeyResolver("vertex-api-key"),
-				WithVertexConfig(VertexConfig{ProjectID: "test-project", Location: "us-central1", APIVersion: "v1"}),
-				WithVertexBaseURL(server.URL+"/v1"),
-			)
-
-			_, err := client.Complete(
-				context.Background(),
-				model,
-				sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-				sigma.WithReasoningLevel(tt.level),
-			)
-			if err != nil {
-				t.Fatalf("Complete returned error: %v", err)
-			}
-
-			var payload map[string]any
-			if err := json.Unmarshal([]byte(receiveVertexRequest(t, requests).Body), &payload); err != nil {
-				t.Fatalf("Unmarshal request body returned error: %v", err)
-			}
-			generation := payload["generationConfig"].(map[string]any)
-			thinking := generation["thinkingConfig"].(map[string]any)
-			if got := thinking["thinkingBudget"]; got != tt.wantBudget {
-				t.Fatalf("thinkingBudget = %v, want %v", got, tt.wantBudget)
-			}
-			if got, ok := thinking["thinkingLevel"]; ok {
-				t.Fatalf("thinkingLevel = %v, want omitted for Gemini 2.5", got)
-			}
-		})
-	}
-}
-
 func TestVertexCurrentGeminiFlashModelsUseNamedThinkingLevels(t *testing.T) {
 	t.Parallel()
 
@@ -232,7 +172,7 @@ func TestVertexCurrentGeminiFlashModelsUseNamedThinkingLevels(t *testing.T) {
 		want    string
 	}{
 		{modelID: "gemini-3.5-flash-lite", level: sigma.ThinkingLevelMinimal, want: "MINIMAL"},
-		{modelID: "gemini-3.6-flash", level: sigma.ThinkingLevelMedium, want: "MEDIUM"},
+		{modelID: "gemini-3.5-flash", level: sigma.ThinkingLevelMedium, want: "MEDIUM"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {

@@ -206,7 +206,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 	}{
 		{
 			name:        "glm uses chat completions and max tokens",
-			modelID:     "glm-5.2",
+			modelID:     "glm-5.3",
 			wantPath:    "/chat/completions",
 			wantAuthKey: "Authorization",
 			response:    chatCompletedEvent,
@@ -215,7 +215,7 @@ func TestOpenCodeGoGeneratedModelsDispatch(t *testing.T) {
 		},
 		{
 			name:        "grok uses responses and max output tokens",
-			modelID:     "grok-4.6",
+			modelID:     "grok-4.7",
 			wantPath:    "/responses",
 			wantAuthKey: "Authorization",
 			response:    responsesCompletedEvent,

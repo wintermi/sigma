@@ -126,9 +126,9 @@ func TestAnthropicWrapperUsesBearerAuthAndCopilotHeaders(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	registry := sigma.DefaultRegistry()
-	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5")
+	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5.5")
 	if !ok {
-		t.Fatal("default registry missing GitHub Copilot Claude Opus 5 model")
+		t.Fatal("default registry missing GitHub Copilot Claude Opus 5.5 model")
 	}
 	if err := githubcopilot.RegisterAnthropic(registry, githubcopilot.WithAnthropicBaseURL(server.URL+"/v1")); err != nil {
 		t.Fatalf("RegisterAnthropic returned error: %v", err)
@@ -169,9 +169,9 @@ func TestAnthropicWrapperOAuthCredentialOmitsClaudeCodeIdentity(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	registry := sigma.DefaultRegistry()
-	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5")
+	model, ok := registry.Model(sigma.ProviderGitHubCopilot, "claude-opus-5.5")
 	if !ok {
-		t.Fatal("default registry missing GitHub Copilot Claude Opus 5 model")
+		t.Fatal("default registry missing GitHub Copilot Claude Opus 5.5 model")
 	}
 	if err := githubcopilot.RegisterAnthropic(registry, githubcopilot.WithAnthropicBaseURL(server.URL+"/v1")); err != nil {
 		t.Fatalf("RegisterAnthropic returned error: %v", err)
