@@ -331,6 +331,8 @@ type xaiDevicePollResult struct {
 	credentials XAIOAuthCredentials
 	pending     bool
 	slowDown    bool
+	// interval is the server's new poll interval on slow_down, if reported.
+	interval time.Duration
 }
 
 func requestXAIDeviceCode(ctx context.Context, client *http.Client, config XAIOAuthClientConfig) (xaiDeviceCode, error) {
@@ -400,7 +402,13 @@ func pollXAIDeviceCodeWithWait(
 			return result.credentials, nil
 		}
 		if result.slowDown {
-			interval += xaiOAuthSlowDownPollIncrement
+			// Use the server's new interval when it reports one; otherwise
+			// apply the RFC 8628 increment.
+			if result.interval > 0 {
+				interval = oauthvalidity.PollInterval(result.interval)
+			} else {
+				interval += xaiOAuthSlowDownPollIncrement
+			}
 		}
 		if now().Add(interval).After(deadline) {
 			return XAIOAuthCredentials{}, errors.New("xai oauth: device code expired")
@@ -422,7 +430,8 @@ func pollXAIDeviceCodeOnce(ctx context.Context, client *http.Client, config XAIO
 	}
 
 	var decoded struct {
-		Error string `json:"error"`
+		Error    string   `json:"error"`
+		Interval *float64 `json:"interval"`
 	}
 	if err := json.Unmarshal(body, &decoded); err != nil {
 		return xaiDevicePollResult{}, fmt.Errorf("xai oauth: decode device token response: %w", err)
@@ -438,7 +447,11 @@ func pollXAIDeviceCodeOnce(ctx context.Context, client *http.Client, config XAIO
 	case "authorization_pending":
 		return xaiDevicePollResult{pending: true}, nil
 	case "slow_down":
-		return xaiDevicePollResult{slowDown: true}, nil
+		result := xaiDevicePollResult{slowDown: true}
+		if decoded.Interval != nil {
+			result.interval, _ = durationFromSeconds(*decoded.Interval)
+		}
+		return result, nil
 	case "access_denied", "authorization_denied":
 		return xaiDevicePollResult{}, errors.New("xai oauth: device authorization was denied")
 	case "expired_token":
@@ -536,7 +549,7 @@ func xaiPollInterval(interval *float64) time.Duration {
 	if !ok {
 		return xaiOAuthDefaultPollInterval
 	}
-	return duration
+	return oauthvalidity.PollInterval(duration)
 }
 
 func durationFromSeconds(seconds float64) (time.Duration, bool) {

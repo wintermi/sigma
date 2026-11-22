@@ -859,9 +859,18 @@ func startGitHubCopilotDeviceFlow(ctx context.Context, client *http.Client, doma
 }
 
 func pollGitHubCopilotDeviceFlow(ctx context.Context, client *http.Client, domain string, device githubCopilotDeviceCodeResponse) (string, error) {
+	return pollGitHubCopilotDeviceFlowWithWait(ctx, client, domain, device, githubCopilotSleepContext)
+}
+
+func pollGitHubCopilotDeviceFlowWithWait(ctx context.Context, client *http.Client, domain string, device githubCopilotDeviceCodeResponse, wait func(context.Context, time.Duration) error) (string, error) {
 	interval := githubCopilotPollInterval(device)
 	deadline := time.Now().Add(time.Duration(device.ExpiresIn) * time.Second)
 	slowed := false
+	// The user has not approved the code yet, so the first poll waits one
+	// interval like every later one.
+	if err := wait(ctx, interval); err != nil {
+		return "", err
+	}
 	for {
 		result, err := pollGitHubCopilotDeviceFlowOnce(ctx, client, domain, device.DeviceCode)
 		if err != nil {
@@ -874,7 +883,7 @@ func pollGitHubCopilotDeviceFlow(ctx context.Context, client *http.Client, domai
 			// GitHub reports the new minimum interval; fall back to the RFC 8628
 			// increment when it is absent.
 			if result.interval > 0 {
-				interval = result.interval
+				interval = oauthvalidity.PollInterval(result.interval)
 			} else {
 				interval += githubCopilotOAuthSlowDownPollIncrement
 			}
@@ -889,7 +898,7 @@ func pollGitHubCopilotDeviceFlow(ctx context.Context, client *http.Client, domai
 			}
 			return "", fmt.Errorf("github copilot oauth: device flow timed out")
 		}
-		if err := githubCopilotSleepContext(ctx, interval); err != nil {
+		if err := wait(ctx, interval); err != nil {
 			return "", err
 		}
 	}
@@ -950,7 +959,7 @@ func githubCopilotPollInterval(device githubCopilotDeviceCodeResponse) time.Dura
 	if device.Interval <= 0 {
 		return githubCopilotOAuthDefaultPollInterval
 	}
-	return time.Duration(device.Interval * float64(time.Second))
+	return oauthvalidity.PollInterval(time.Duration(device.Interval * float64(time.Second)))
 }
 
 func safeGitHubCopilotVerificationURI(raw string) (string, error) {

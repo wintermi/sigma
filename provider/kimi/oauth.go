@@ -398,7 +398,7 @@ func pollKimiCodingDeviceCodeWithWait(
 		}
 		if result.slowDown {
 			if result.interval != nil {
-				interval = *result.interval
+				interval = oauthvalidity.PollInterval(*result.interval)
 			} else {
 				interval += kimiCodingOAuthSlowDownIncrement
 			}
@@ -517,7 +517,7 @@ func kimiCodingPollInterval(interval *float64) time.Duration {
 	if !ok {
 		return kimiCodingOAuthDefaultPollInterval
 	}
-	return duration
+	return oauthvalidity.PollInterval(duration)
 }
 
 func kimiCodingDurationFromSecondsPtr(seconds *float64) (time.Duration, bool) {

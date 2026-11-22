@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Poll device-code logins at least one second apart, honour xAI slow_down intervals, and wait before Copilot's first poll.
 - [x] Document that `CredentialStore.ModifyCredential` must finish writing after cancellation.
 - [x] Wrap OnRefresh failures and retry the save on the next use.
 - [x] Skip ambient AWS keys when an explicit `AWS_PROFILE` has no static keys.
@@ -287,8 +288,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Add a 1-second minimum device-flow poll interval, honor xAI `slow_down`
-      intervals, and wait one interval before the first Copilot poll.
 - [ ] Add a timeout to the Anthropic login code exchange; fall back to a
       15-minute expiry when Kimi omits `expires_in`.
 - [ ] Redact `sigma.Options.APIKey` and `AuthResolution` under `fmt` verbs, and the

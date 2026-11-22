@@ -21,32 +21,33 @@ func (f slowDownRoundTripper) RoundTrip(r *http.Request) (*http.Response, error)
 	return f(r), nil
 }
 
-func TestDeviceFlowSlowDownUsesServerInterval(t *testing.T) {
+// The first poll waits one interval, slow_down adopts the server's interval,
+// and every interval is at least one second.
+func TestDeviceFlowWaitsFirstAndUsesServerInterval(t *testing.T) {
 	t.Parallel()
 
 	var mu sync.Mutex
-	var polls []time.Time
+	responses := []string{`{"error":"slow_down","interval":7}`, `{"error":"slow_down","interval":0.3}`, `{"access_token":"token"}`}
 	client := &http.Client{Transport: slowDownRoundTripper(func(*http.Request) *http.Response {
 		mu.Lock()
 		defer mu.Unlock()
-		polls = append(polls, time.Now())
-		body := `{"error":"slow_down","interval":0.3}`
-		if len(polls) > 1 {
-			body = `{"access_token":"token"}`
-		}
+		body := responses[0]
+		responses = responses[1:]
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(body))}
 	})}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	token, err := pollGitHubCopilotDeviceFlow(ctx, client, "github.com", githubCopilotDeviceCodeResponse{DeviceCode: "device", Interval: 0.01, ExpiresIn: 60})
-	if err != nil {
-		t.Fatalf("pollGitHubCopilotDeviceFlow returned error: %v", err)
+	var waits []time.Duration
+	token, err := pollGitHubCopilotDeviceFlowWithWait(context.Background(), client, "github.com",
+		githubCopilotDeviceCodeResponse{DeviceCode: "device", Interval: 0.01, ExpiresIn: 60},
+		func(_ context.Context, duration time.Duration) error {
+			waits = append(waits, duration)
+			return nil
+		})
+	if err != nil || token != "token" {
+		t.Fatalf("token = %q, err = %v; want token", token, err)
 	}
-	if token != "token" {
-		t.Fatalf("token = %q, want token", token)
-	}
-	if gap := polls[1].Sub(polls[0]); gap < 300*time.Millisecond || gap > 2*time.Second {
-		t.Fatalf("poll gap after slow_down = %v, want the server's 300ms interval", gap)
+	want := []time.Duration{time.Second, 7 * time.Second, time.Second}
+	if len(waits) != len(want) || waits[0] != want[0] || waits[1] != want[1] || waits[2] != want[2] {
+		t.Fatalf("waits = %v, want %v", waits, want)
 	}
 }

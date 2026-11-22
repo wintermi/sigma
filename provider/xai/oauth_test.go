@@ -140,6 +140,46 @@ func TestPollXAIDeviceCodeWaitsBeforePollingAndHonorsSlowDown(t *testing.T) {
 	}
 }
 
+// slow_down carries the server's new interval, which replaces the increment,
+// and every interval is at least one second.
+func TestPollXAIDeviceCodeUsesSlowDownIntervalAndMinimum(t *testing.T) {
+	t.Parallel()
+
+	responses := []string{
+		`{"error":"slow_down","interval":9}`,
+		`{"error":"slow_down","interval":0.2}`,
+		`{"access_token":"access-token","refresh_token":"refresh-token"}`,
+	}
+	client := xaiOAuthTestHTTPClient(t, func(*http.Request) *http.Response {
+		body := responses[0]
+		responses = responses[1:]
+		status := http.StatusBadRequest
+		if strings.Contains(body, "access-token") {
+			status = http.StatusOK
+		}
+		return xaiOAuthJSONResponse(status, body)
+	})
+
+	var waits []time.Duration
+	_, err := pollXAIDeviceCodeWithWait(
+		context.Background(),
+		client,
+		xaiOAuthTestClientConfig,
+		xaiDeviceCode{DeviceCode: "device-code", Interval: 0.01, ExpiresIn: time.Hour},
+		func() time.Time { return time.Date(2026, 7, 18, 0, 0, 0, 0, time.UTC) },
+		func(_ context.Context, duration time.Duration) error {
+			waits = append(waits, duration)
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("pollXAIDeviceCodeWithWait returned error: %v", err)
+	}
+	if got, want := waits, []time.Duration{time.Second, 9 * time.Second, time.Second}; !equalDurations(got, want) {
+		t.Fatalf("waits = %v, want %v", got, want)
+	}
+}
+
 func TestLoginXAIDeviceCodeRejectsUnsafeVerificationURI(t *testing.T) {
 	t.Parallel()
 
