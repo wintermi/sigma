@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Make `MessagesCompat.AdaptiveThinking` select adaptive thinking.
 - [x] Send `none` for thinking off on OpenRouter models without an off mapping.
 - [x] Send `prompt_cache_retention` to Azure only on opt-in.
 - [x] Send `reasoning_effort` only to Z.ai models that declare support.
@@ -310,8 +311,6 @@ reproduces the failure before it is checked off.
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).
-- [ ] Make `MessagesCompat.AdaptiveThinking` take effect when no explicit
-      thinking format is set (`provider/anthropic/payload.go` `thinkingFormat`).
 - [ ] Send `thinkingBudget` rather than `thinkingLevel` to custom pre-Gemini-3
       models without a thinking level map; detect Gemini 3+ in prefixed model IDs
       (`provider/google/payload.go` `geminiMajorVersion`).

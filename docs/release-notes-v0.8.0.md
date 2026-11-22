@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`MessagesCompat.AdaptiveThinking` now takes effect. A custom Anthropic-compatible router that accepts only adaptive thinking could set the flag through `anthropic.WithMessagesCompat`, but the detected default thinking format, budget, was always checked first, so requests still sent `thinking.budget_tokens` and the router rejected them. The override now selects adaptive thinking unless the model's own metadata names a format.
+
 Turning thinking off works on every OpenRouter reasoning model. An explicit `ThinkingLevelOff` sent the model's mapped off value only when its metadata had one, so refreshed or custom OpenRouter rows without the mapping sent no reasoning setting at all, and the model kept reasoning at its default effort. These requests now send `reasoning.effort: "none"`.
 
 Azure OpenAI no longer receives `prompt_cache_retention` by default. Long cache retention sent OpenAI's `prompt_cache_retention: "24h"` to every Azure Responses deployment, a field Azure does not document, so a deployment that rejects unknown fields failed the request. Azure now gets it only when the model's metadata marks long cache retention as supported. Deployments that declare explicit cache-mode support still receive `prompt_cache_options`, and explicit caller directives still pass through.

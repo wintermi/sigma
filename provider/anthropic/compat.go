@@ -56,6 +56,12 @@ func anthropicMessagesCompat(model sigma.Model, baseURL string, override *Messag
 	compat.cacheControlOnTools = override.CacheControlOnTools
 	compat.adaptiveThinking = override.AdaptiveThinking
 	compat.supportsStrictTools = override.StrictTools
+	// An explicit adaptive override selects adaptive thinking unless the
+	// model's own metadata names a format; the detected budget default would
+	// otherwise always win.
+	if override.AdaptiveThinking && (model.AnthropicMessagesCompat == nil || model.AnthropicMessagesCompat.ThinkingFormat == "") {
+		compat.thinkingFormat = sigma.AnthropicThinkingAdaptive
+	}
 	return compat
 }
 

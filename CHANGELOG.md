@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `anthropic.WithMessagesCompat(anthropic.MessagesCompat{AdaptiveThinking: true})` now selects adaptive thinking for models whose metadata names no thinking format. The detected budget default always took precedence, so the override had no effect and adaptive-only routers rejected the budget thinking request.
 - OpenRouter reasoning models without an `off` thinking-level mapping now send `reasoning.effort: "none"` for an explicit `ThinkingLevelOff`. Nothing was sent, so OpenRouter applied the model's default reasoning and billed reasoning tokens although thinking was turned off.
 - Azure OpenAI Responses requests with `CacheRetentionLong` no longer send `prompt_cache_retention` unless the model's `OpenAIResponsesCompat.SupportsLongCacheRetention` is explicitly supported. Azure does not document the field, so deployments that reject it failed long-retention requests; explicit `prompt_cache_options` support and caller-supplied cache directives are unchanged.
 - Z.ai-format Chat Completions requests now send `reasoning_effort` only when the model declares support for it, as the GLM-5.2 and GLM-5.3 rows do. GLM-4.6V, GLM-4.7, GLM-5 Turbo, and custom Z.ai models received it alongside `thinking.type` although they do not accept it.
