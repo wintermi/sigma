@@ -25,6 +25,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/safehttp"
 )
 
 const (
@@ -384,10 +385,7 @@ func writeOpenRouterOAuthHTML(w http.ResponseWriter, status int, heading string,
 }
 
 func openRouterOAuthHTTPClient(client *http.Client) *http.Client {
-	if client != nil {
-		return client
-	}
-	return http.DefaultClient
+	return safehttp.Client(client)
 }
 
 func openRouterOAuthContextOrError(ctx context.Context, err error) error {

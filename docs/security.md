@@ -77,6 +77,16 @@ resolve to `::1`, the Anthropic login also listens on the IPv6 loopback at the
 same port, and moves to another port when a different process already holds it
 there.
 
+HTTP redirects keep credentials on the origin that issued them. Provider, OAuth,
+and AWS credential requests follow same-origin redirects as before. A redirect
+to another scheme, host, or port keeps only the `Accept`, `Accept-Encoding`,
+`Accept-Language`, and `User-Agent` headers, so headers such as `x-api-key`,
+`x-goog-api-key`, Azure `api-key`, and `cf-aig-authorization` are not sent to
+the new host. Redirects from HTTPS to plain HTTP, and cross-origin redirects
+that would resend the request body, fail instead. A `CheckRedirect` policy on a
+caller's `http.Client` still runs after these checks, and the caller's client is
+not modified.
+
 ## Persistence
 
 `MarshalRequest` serializes only the public `Request` shape. It does not store

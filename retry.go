@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/safehttp"
 )
 
 const (
@@ -108,9 +109,8 @@ func DoHTTPWithRetryAttempts(
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if client == nil {
-		client = http.DefaultClient
-	}
+	// Redirects must not carry provider credential headers to another origin.
+	client = safehttp.Client(client)
 	policy := retryPolicyFromOptions(opts)
 	attempts := policy.attempts()
 

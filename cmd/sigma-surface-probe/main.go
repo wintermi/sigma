@@ -23,6 +23,7 @@ import (
 
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/safehttp"
 	"github.com/wintermi/sigma/provider/anthropic"
 	"github.com/wintermi/sigma/provider/fireworks"
 	"github.com/wintermi/sigma/provider/google"
@@ -634,7 +635,7 @@ func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]stri
 	req.Header.Set("X-Api-Key", apiKey)
 	req.Header.Set("X-Goog-Api-Key", apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := safehttp.Client(nil).Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -732,7 +733,7 @@ func fetchFireworksModelCapabilities(ctx context.Context, inferenceBaseURL strin
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := safehttp.Client(nil).Do(req)
 	if err != nil {
 		return fireworksModelCapabilities{}, err
 	}

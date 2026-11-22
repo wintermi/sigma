@@ -21,6 +21,7 @@ import (
 	"github.com/wintermi/sigma/internal/contextlock"
 	"github.com/wintermi/sigma/internal/oauthvalidity"
 	"github.com/wintermi/sigma/internal/redact"
+	"github.com/wintermi/sigma/internal/safehttp"
 )
 
 const (
@@ -527,10 +528,7 @@ func kimiCodingDurationFromSeconds(seconds float64) (time.Duration, bool) {
 }
 
 func kimiCodingHTTPClient(client *http.Client) *http.Client {
-	if client != nil {
-		return client
-	}
-	return http.DefaultClient
+	return safehttp.Client(client)
 }
 
 func kimiCodingSleepContext(ctx context.Context, duration time.Duration) error {

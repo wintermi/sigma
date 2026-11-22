@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma"
+	"github.com/wintermi/sigma/internal/safehttp"
 )
 
 // CredentialSource identifies how the Bedrock provider should find AWS credentials.
@@ -188,8 +189,8 @@ func defaultChainCredential(ctx context.Context, model sigma.Model, opts sigma.O
 		defaultChainCredentialCache.put(fingerprint, credentials, now)
 		return credentials, nil
 	}
-	client := bedrockHTTPClient(opts)
-	metadataClient := metadataHTTPClient(opts)
+	client := safehttp.Client(bedrockHTTPClient(opts))
+	metadataClient := safehttp.Client(metadataHTTPClient(opts))
 	// A configured ECS or web-identity source is committed to once its
 	// environment variables are present: a fetch failure surfaces instead of
 	// silently falling through to IMDS and signing with the wrong role.

@@ -22,6 +22,7 @@ import (
 	"github.com/wintermi/sigma"
 	"github.com/wintermi/sigma/internal/headerutil"
 	"github.com/wintermi/sigma/internal/jsonutil"
+	"github.com/wintermi/sigma/internal/safehttp"
 	"github.com/wintermi/sigma/internal/sse"
 	"github.com/wintermi/sigma/internal/streamlifecycle"
 	"github.com/wintermi/sigma/internal/transform"
@@ -186,7 +187,7 @@ func (source *ModelSource) TextModels(ctx context.Context) ([]sigma.Model, error
 		req.Header.Set(key, value)
 	}
 
-	resp, err := source.config.httpClientOrDefault().Do(req)
+	resp, err := safehttp.Client(source.config.httpClientOrDefault()).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("radius: fetch catalog: %w", err)
 	}
