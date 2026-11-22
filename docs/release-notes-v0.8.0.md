@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Callers can see when OpenAI drops replayed reasoning. From GPT-6.2 on, the Responses API removes replayed reasoning that follows an edit of earlier input, or that came from another organization, end user, or model, and reports the removal in `input_transformations`; sigma ignored it, so a caller could not tell the model had answered without its earlier reasoning. Final messages from OpenAI, Azure, and Codex Responses now carry those removals in `ProviderMetadata["input_transformations"]`.
+
 OpenCode requests use OpenCode's documented endpoints. Sigma sent every OpenCode Zen and Go request, whatever its protocol, to the shared `/zen/v1` and `/zen/go/v1` bases. OpenCode now documents a separate endpoint per protocol under `/inference`, and model catalogs list those URLs. Built-in OpenCode models now name the endpoint for the protocol they are routed through, and `opencode.ZenBaseURL` and `GoBaseURL` point at the `/inference` OpenAI-compatible bases, from which the Anthropic and Gemini endpoints are derived. A custom base URL outside that layout is still used for every protocol.
 
 MiniMax-M3.1-Flash and the Kimi K3.1 family are available. MiniMax-M3.1-Flash is listed on the direct MiniMax global and China routes and on OpenCode Go; unlike MiniMax-M3 it takes adaptive thinking with an effort from low to max and cannot turn thinking off. Kimi Coding lists Kimi K3.1 Pro, K3.1 Pro Highspeed, and the 256K-context K3 variant, and OpenCode Go lists Kimi K3.1 Pro, all using Kimi K3's request settings with low, high, and max effort.

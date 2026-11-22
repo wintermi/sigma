@@ -55,6 +55,9 @@ type responsesResponse struct {
 	Usage             *responsesUsage       `json:"usage"`
 	Error             *responsesError       `json:"error"`
 	IncompleteDetails *incompleteDetails    `json:"incomplete_details"`
+	// InputTransformations is decoded leniently: older servers and proxies
+	// omit it, and Codex tolerates malformed entries.
+	InputTransformations json.RawMessage `json:"input_transformations"`
 }
 
 type responsesOutputItem struct {
@@ -121,6 +124,9 @@ type incompleteDetails struct {
 }
 
 type responsesStreamParser struct {
+	// reasoningRemovals are replayed reasoning items the API withheld from
+	// the model, reported in input_transformations.
+	reasoningRemovals   []any
 	writer              sigma.StreamWriter
 	model               sigma.Model
 	options             responsesStreamOptions
@@ -534,6 +540,37 @@ func (p *responsesStreamParser) captureResponse(response responsesResponse) {
 	for index, item := range response.Output {
 		p.captureOutputItem(index, item)
 	}
+	if removals := reasoningRemovals(response.InputTransformations); removals != nil {
+		p.reasoningRemovals = removals
+	}
+}
+
+// reasoningRemovals returns the replayed reasoning items the API removed from
+// the input. From GPT-6.2 on, OpenAI removes reasoning that follows an edit of
+// earlier input (prefix_mismatch) and reasoning created under another
+// organization, end user, or model. turn_boundary removals are left out:
+// models before GPT-5.6 report every earlier turn's reasoning that way on
+// every request, as their normal behavior.
+func reasoningRemovals(raw json.RawMessage) []any {
+	if len(raw) == 0 {
+		return nil
+	}
+	var transformations []map[string]any
+	if err := json.Unmarshal(raw, &transformations); err != nil {
+		return nil
+	}
+	var removals []any
+	for _, transformation := range transformations {
+		kind, _ := transformation["type"].(string)
+		action, _ := transformation["action"].(string)
+		reason, _ := transformation["reason"].(string)
+		if kind != "reasoning" || action != "removed" || reason == "turn_boundary" {
+			continue
+		}
+		id, _ := transformation["id"].(string)
+		removals = append(removals, map[string]any{"type": kind, "id": id, "action": action, "reason": reason})
+	}
+	return removals
 }
 
 func (p *responsesStreamParser) captureTerminalResponse(response responsesResponse) {
@@ -1012,6 +1049,12 @@ func (p *responsesStreamParser) finalize(ctx context.Context) sigma.AssistantMes
 		p.final.Cost = &cost
 	}
 	p.final.ProviderMetadata = responseMetadata(p.responseID, p.providerModel, p.terminalStatus, p.incompleteReason, p.terminalEndTurn, p.model.ID)
+	if len(p.reasoningRemovals) > 0 {
+		if p.final.ProviderMetadata == nil {
+			p.final.ProviderMetadata = make(map[string]any)
+		}
+		p.final.ProviderMetadata["input_transformations"] = p.reasoningRemovals
+	}
 	return p.final
 }
 

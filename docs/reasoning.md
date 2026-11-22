@@ -92,6 +92,14 @@ without provenance are treated as the target model's own. The opt-in
 block as a `thinking-dropped` change; `WithHandoffThinkingDelimiters` no longer
 has an effect.
 
+OpenAI Responses, Azure, and Codex can withhold replayed reasoning from the
+model: from GPT-6.2 on, reasoning that follows an edit of earlier input, or that
+was created under another organization, end user, or model, is removed and
+reported. Sigma records those removals on the final message as
+`ProviderMetadata["input_transformations"]`, a list of `type`, `id`, `action`,
+and `reason` entries. `turn_boundary` removals, which earlier models report for
+every previous turn as normal behavior, are left out.
+
 ## Display Policy
 
 Sigma does not decide whether thinking should be visible to users. Many

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Report reasoning dropped by OpenAI `input_transformations`.
 - [x] Move OpenCode routes to the protocol-specific `/inference` endpoints.
 - [x] Add MiniMax-M3.1-Flash and the Kimi K3.1 Pro and K3-256K rows.
 - [x] Add the Qwen Token Plan Individual CN provider and current Team and Individual model lists.
@@ -320,7 +321,6 @@ reproduces the failure before it is checked off.
 - [ ] Add Anthropic message threads.
 - [ ] Add mid-conversation effort updates (`configuration_update`) on Responses
       and Codex.
-- [ ] Report reasoning dropped by OpenAI `input_transformations`.
 
 ## Credential ergonomics
 
