@@ -527,12 +527,14 @@ registry := sigma.DefaultRegistry()
 _ = qwen.Register(registry)
 _ = qwen.RegisterIndividual(registry)
 _ = qwen.RegisterCN(registry)
+_ = qwen.RegisterIndividualCN(registry)
 client := sigma.NewClient(sigma.WithRegistry(registry))
 ```
 
 Environment: `QWEN_TOKEN_PLAN_TEAM_API_KEY` for `ProviderQwenTokenPlan`,
 `QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY` for `ProviderQwenTokenPlanIndividual`, and
-`QWEN_TOKEN_PLAN_TEAM_CN_API_KEY` for `ProviderQwenTokenPlanCN`. Each falls back
+`QWEN_TOKEN_PLAN_TEAM_CN_API_KEY` for `ProviderQwenTokenPlanCN`, and
+`QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY` for `ProviderQwenTokenPlanIndividualCN`. Each falls back
 to the regional variable the plans used to share, `QWEN_TOKEN_PLAN_API_KEY` or
 `QWEN_TOKEN_PLAN_CN_API_KEY`. Requests go to the QwenCloud
 (`token-plan.maas.qwencloudapi.com`) and Qianwen AI Platform
@@ -540,11 +542,12 @@ to the regional variable the plans used to share, `QWEN_TOKEN_PLAN_API_KEY` or
 `*.maas.aliyuncs.com` hosts reach the same gateways.
 
 The Qwen Token Plan wrappers use Sigma's shared OpenAI-compatible Chat
-Completions adapter with international, Individual subscription, and China
-regional routes. The Individual route shares the international endpoint and
-credential and provides seven curated DeepSeek V4, GLM-5.2, Qwen3.6, Qwen3.7,
-and Qwen3.8 models. Built-in metadata preserves each model's text and image
-inputs, tool support, limits, and Qwen thinking controls.
+Completions adapter with Team and Individual plans on the international and
+China endpoints. Team routes list the plan's DeepSeek V4, GLM-5, Kimi K2,
+MiniMax-M2.5, and Qwen3.6 to Qwen3.8 text models; Individual routes list its
+narrower DeepSeek V4, GLM-5.2 and 5.3, and Qwen3.6 to Qwen3.8 subset. Built-in
+metadata preserves each model's text and image inputs, tool support, limits,
+and Qwen thinking controls.
 
 ### Xiaomi MiMo
 

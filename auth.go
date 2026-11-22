@@ -65,6 +65,12 @@ const (
 	defaultOpenCodeAPIKeyEnv      = "OPENCODE_API_KEY"
 	defaultVercelAIGatewayKeyEnv  = "AI_GATEWAY_API_KEY"
 	defaultQwenTokenPlanAPIKeyEnv = "QWEN_TOKEN_PLAN_API_KEY"
+
+	qwenTokenPlanCNAPIKeyEnv           = "QWEN_TOKEN_PLAN_CN_API_KEY"
+	qwenTokenPlanTeamAPIKeyEnv         = "QWEN_TOKEN_PLAN_TEAM_API_KEY"
+	qwenTokenPlanTeamCNAPIKeyEnv       = "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY"
+	qwenTokenPlanIndividualAPIKeyEnv   = "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY"
+	qwenTokenPlanIndividualCNAPIKeyEnv = "QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY"
 )
 
 var defaultProviderEnvNames = map[ProviderID][]string{
@@ -109,9 +115,10 @@ var defaultProviderEnvNames = map[ProviderID][]string{
 	ProviderXiaomiTokenPlanSGP:    {"XIAOMI_TOKEN_PLAN_SGP_API_KEY"},
 	// Qwen Token Plan keys are per plan; the shared regional variable both
 	// plans used before is still read after the plan's own.
-	ProviderQwenTokenPlan:           {"QWEN_TOKEN_PLAN_TEAM_API_KEY", defaultQwenTokenPlanAPIKeyEnv},
-	ProviderQwenTokenPlanIndividual: {"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", defaultQwenTokenPlanAPIKeyEnv},
-	ProviderQwenTokenPlanCN:         {"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"},
+	ProviderQwenTokenPlan:             {qwenTokenPlanTeamAPIKeyEnv, defaultQwenTokenPlanAPIKeyEnv},
+	ProviderQwenTokenPlanIndividual:   {qwenTokenPlanIndividualAPIKeyEnv, defaultQwenTokenPlanAPIKeyEnv},
+	ProviderQwenTokenPlanCN:           {qwenTokenPlanTeamCNAPIKeyEnv, qwenTokenPlanCNAPIKeyEnv},
+	ProviderQwenTokenPlanIndividualCN: {qwenTokenPlanIndividualCNAPIKeyEnv, qwenTokenPlanCNAPIKeyEnv},
 }
 
 // Credential carries authentication material for a provider.

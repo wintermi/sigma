@@ -182,6 +182,9 @@ const (
 	ProviderQwenTokenPlanIndividual ProviderID = "qwen-token-plan-individual"
 	// ProviderQwenTokenPlanCN identifies Qwen Token Plan China.
 	ProviderQwenTokenPlanCN ProviderID = "qwen-token-plan-cn"
+	// ProviderQwenTokenPlanIndividualCN identifies Qwen Token Plan Individual
+	// on the China endpoint.
+	ProviderQwenTokenPlanIndividualCN ProviderID = "qwen-token-plan-individual-cn"
 	// ProviderCustom identifies a user-defined provider path.
 	ProviderCustom ProviderID = "custom"
 )

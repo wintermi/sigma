@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Add the Qwen Token Plan Individual CN provider and current Team and Individual model lists.
 - [x] Move Qwen Token Plan to the current gateways and per-plan key variables.
 - [x] Add Copilot Claude 5.5 and Gemini 4 rows and remove retired GPT-5.4 and GPT-5.5.
 - [x] Add long-context price tiers to the Azure GPT-5.4, 5.5, and 5.6 rows.
@@ -319,9 +320,6 @@ reproduces the failure before it is checked off.
       and Codex.
 - [ ] Report reasoning dropped by OpenAI `input_transformations`.
 - [ ] Check whether OpenCode routes should move to the `/inference` endpoints.
-- [ ] Add the Qwen Token Plan Individual CN provider, per-plan key variables,
-      current gateways, and missing Team and Individual rows (`glm-5.3`,
-      `qwen3.8-flash`, `qwen4-max-preview`, `deepseek-v4.1-flash`).
 - [ ] Add MiniMax-M3.1-Flash and the Kimi K3.1 Pro and `k3-256k` rows.
 
 ## Credential ergonomics

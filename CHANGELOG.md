@@ -12,6 +12,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- Qwen Token Plan adds the Individual plan on the China endpoint (`ProviderQwenTokenPlanIndividualCN`, `qwen.RegisterIndividualCN`, `QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY`) and lists each plan's current text models: Team routes gain DeepSeek V4 and V4.1 Flash, GLM-5 to 5.3, Kimi K2.5 to K2.7 Code, MiniMax-M2.5, and Qwen3.6 to 3.8 models alongside Qwen3.7 and 3.8 Max, and Individual routes gain DeepSeek V4.1 Flash, GLM-5.3, and Qwen3.8 Flash.
 - The GitHub Copilot catalog adds Claude Sonnet 5.5, Claude Haiku 5.5, Gemini 4 Argon, and Gemini 4 Carbon, with pricing and reasoning levels from their direct-provider rows, and removes GPT-5.4 and GPT-5.5, which Copilot has retired.
 - OpenAI Codex and Azure OpenAI Responses catalogs now include GPT-6.1 Sol, GPT-6.1 Terra, GPT-6.2 Astra, and GPT-6.2 Sol, with the pricing, long-context tiers, and reasoning levels of the direct OpenAI rows. Codex rows use Codex's context windows (272K for GPT-6.2 Astra, 500K for the others); Azure rows use 1.05M like the other Azure GPT-6 rows.
 - The November 22 catalog review adds 75 text models through existing

@@ -1743,14 +1743,18 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		efforts         map[ThinkingLevel]string
 		offUnsupported  bool
 	}{
-		"deepseek-v4-flash-0731": {family: "deepseek-flash", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
-		"deepseek-v4-pro":        {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
-		"deepseek-v4-pro-0813":   {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
-		"glm-5.2":                {family: "glm", maxOutputTokens: 131072, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
-		"qwen3.6-flash":          {family: "qwen3.6", maxOutputTokens: 65536, images: true},
-		"qwen3.7-max":            {family: "qwen", maxOutputTokens: 131072},
-		"qwen3.7-plus":           {family: "qwen", maxOutputTokens: 65536, images: true},
-		"qwen3.8-max":            {family: "qwen", maxOutputTokens: 131072, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelMedium: "medium", ThinkingLevelXHigh: "xhigh"}, offUnsupported: true},
+		"deepseek-v4-flash-0731":   {family: "deepseek-flash", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"deepseek-v4-pro":          {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"deepseek-v4-pro-0813":     {family: "deepseek-thinking", maxOutputTokens: 384000, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"glm-5.2":                  {family: "glm", maxOutputTokens: 131072, efforts: map[ThinkingLevel]string{ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"qwen3.6-flash":            {family: "qwen3.6", maxOutputTokens: 65536, images: true},
+		"qwen3.7-max":              {family: "qwen", maxOutputTokens: 131072},
+		"qwen3.7-plus":             {family: "qwen", maxOutputTokens: 65536, images: true},
+		"qwen3.8-max":              {family: "qwen", maxOutputTokens: 131072, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelMedium: "medium", ThinkingLevelXHigh: "xhigh"}, offUnsupported: true},
+		"deepseek-v4.1-flash":      {family: "deepseek-flash", maxOutputTokens: 384000, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"deepseek-v4.1-flash-1017": {family: "deepseek-flash", maxOutputTokens: 384000, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"glm-5.3":                  {family: "glm", maxOutputTokens: 131072, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelHigh: "high", ThinkingLevel("max"): "max"}},
+		"qwen3.8-flash":            {family: "qwen", maxOutputTokens: 131072, images: true, efforts: map[ThinkingLevel]string{ThinkingLevelLow: "low", ThinkingLevelMedium: "medium", ThinkingLevelXHigh: "xhigh"}},
 	}
 	individualCount := 0
 	for _, model := range registry.ListModels() {

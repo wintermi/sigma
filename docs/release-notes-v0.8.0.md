@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Qwen Token Plan covers every plan and its current models. The Individual plan is also sold on the China endpoint, which sigma had no provider for; `ProviderQwenTokenPlanIndividualCN`, registered with `qwen.RegisterIndividualCN`, serves the Individual model list from the Qianwen AI Platform gateway with `QWEN_TOKEN_PLAN_INDIVIDUAL_CN_API_KEY`. The Team routes listed only Qwen3.7 Max and Qwen3.8 Max and now list the plan's DeepSeek, GLM, Kimi, MiniMax, and Qwen text models, and the Individual routes add DeepSeek V4.1 Flash, GLM-5.3, and Qwen3.8 Flash. Image and video models on the plans are not listed.
+
 Qwen Token Plan uses its current gateways and a key per plan. Team and Individual plans issue different API keys, but both read `QWEN_TOKEN_PLAN_API_KEY`, so only one plan could be configured from the environment at a time. Each plan now reads its own variable first, `QWEN_TOKEN_PLAN_TEAM_API_KEY`, `QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY`, or `QWEN_TOKEN_PLAN_TEAM_CN_API_KEY`, and still falls back to the shared regional variable. Requests now default to the QwenCloud and Qianwen AI Platform gateway hosts; the former Alibaba Cloud hosts resolve to the same gateways, so configurations that name them keep working.
 
 The GitHub Copilot catalog follows Copilot's current models more closely. Claude Sonnet 5.5 and Haiku 5.5 are added on the Messages route with their direct Anthropic reasoning levels, temperature restrictions, and strict tool support, and Gemini 4 Argon and Carbon are added on Chat Completions with low, medium, and high reasoning effort. GPT-5.4 and GPT-5.5, which Copilot has retired, are removed.

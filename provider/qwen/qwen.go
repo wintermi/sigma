@@ -46,6 +46,12 @@ func NewCNProvider(opts ...ProviderOption) *Provider {
 	return openai.NewProvider(providerOpts...)
 }
 
+// NewIndividualCNProvider constructs a Qwen Token Plan Individual provider on
+// the China endpoint.
+func NewIndividualCNProvider(opts ...ProviderOption) *Provider {
+	return NewCNProvider(opts...)
+}
+
 // WithBaseURL configures the provider base URL, for example an httptest server URL.
 func WithBaseURL(baseURL string) ProviderOption {
 	return openai.WithBaseURL(baseURL)
@@ -90,6 +96,15 @@ func RegisterCN(registry *sigma.Registry, opts ...ProviderOption) error {
 	return registry.RegisterTextProvider(sigma.ProviderQwenTokenPlanCN, NewCNProvider(opts...))
 }
 
+// RegisterIndividualCN adds a Qwen Token Plan Individual China text provider
+// to registry.
+func RegisterIndividualCN(registry *sigma.Registry, opts ...ProviderOption) error {
+	if registry == nil {
+		return &sigma.Error{Code: sigma.ErrorUnsupported, Message: "registry is required"}
+	}
+	return registry.RegisterTextProvider(sigma.ProviderQwenTokenPlanIndividualCN, NewIndividualCNProvider(opts...))
+}
+
 // RegisterDefault adds a Qwen Token Plan international text provider to sigma's default registry.
 func RegisterDefault(opts ...ProviderOption) error {
 	return sigma.RegisterDefaultTextProvider(sigma.ProviderQwenTokenPlan, NewProvider(opts...))
@@ -103,4 +118,10 @@ func RegisterDefaultIndividual(opts ...ProviderOption) error {
 // RegisterDefaultCN adds a Qwen Token Plan China text provider to sigma's default registry.
 func RegisterDefaultCN(opts ...ProviderOption) error {
 	return sigma.RegisterDefaultTextProvider(sigma.ProviderQwenTokenPlanCN, NewCNProvider(opts...))
+}
+
+// RegisterDefaultIndividualCN adds a Qwen Token Plan Individual China text
+// provider to sigma's default registry.
+func RegisterDefaultIndividualCN(opts ...ProviderOption) error {
+	return sigma.RegisterDefaultTextProvider(sigma.ProviderQwenTokenPlanIndividualCN, NewIndividualCNProvider(opts...))
 }
