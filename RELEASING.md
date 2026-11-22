@@ -123,8 +123,10 @@ Deferred (not excluded) work is tracked in [TODO.md](TODO.md).
       new version with its release date.
 - [ ] Review [README.md](README.md) and the
       [provider parity matrix](docs/provider-parity.md) for accuracy.
-- [ ] Confirm any breaking change before `v1.0.0` is documented in the changelog
-      and release notes with upgrade guidance.
+- [ ] Confirm the release makes no breaking change to the stable API defined in
+      [Versioning and compatibility](README.md#versioning-and-compatibility); a
+      breaking change requires a new major version and module path. Document
+      deprecations and behavior changes with upgrade guidance.
 - [ ] Confirm the working tree is clean after validation.
 - [ ] Tag only after maintainer acceptance; do not tag from an unreviewed tree.
 

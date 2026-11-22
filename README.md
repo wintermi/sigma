@@ -13,11 +13,36 @@ The module path is currently:
 go get github.com/wintermi/sigma
 ```
 
-The root package name is `sigma`. Version tags follow standard
-Major.Minor.Patch numbering, starting with `v0.1.0`. Any breaking changes before
-`v1.0.0` should be documented in [CHANGELOG.md](CHANGELOG.md),
-[release notes](docs/release-notes-v0.7.0.md), and upgrade guidance. This
-checkout is licensed under the [MIT License](LICENSE).
+The root package name is `sigma`. Version tags follow semantic versioning; see
+[Versioning and compatibility](#versioning-and-compatibility). This checkout is
+licensed under the [MIT License](LICENSE).
+
+### Versioning and compatibility
+
+From `v1.0.0`, sigma follows semantic versioning and Go module semantic import
+versioning. Patch releases fix bugs, and minor releases add features without
+breaking existing callers. A breaking change to the stable API requires a new
+major version with its own module path, such as `github.com/wintermi/sigma/v2`.
+
+The stable API is:
+
+- exported identifiers in the root `sigma` package, the `provider/...` packages,
+  and `sigmatest`
+- the request JSON written by `MarshalRequest` and read by `UnmarshalRequest`,
+  including the field names on `Request`, `Message`, `ContentBlock`, and `Tool`
+
+Outside the stable API, and free to change in any release:
+
+- the built-in model catalog: models, prices, limits, and capability metadata
+  follow providers, and retired models are removed
+- provider wire behavior that follows upstream API changes
+- error message text
+- `internal/...` packages, the `cmd/...` tools such as the surface probe, and
+  `examples/`
+
+Deprecated identifiers carry a `Deprecated:` doc comment and remain until the
+next major version. [CHANGELOG.md](CHANGELOG.md) records every release, and each
+version's release notes give upgrade guidance.
 
 ## Quick Start
 

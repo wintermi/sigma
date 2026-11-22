@@ -19,8 +19,8 @@ final, err := client.Complete(ctx, model, req)
 ```
 
 No envelope or schema version is added today. The JSON field names on
-`Request`, `Message`, `ContentBlock`, and `Tool` are part of sigma's public API
-stability policy. If a future format change needs an envelope, it should be added
+`Request`, `Message`, `ContentBlock`, and `Tool` are part of sigma's
+[stable API](../README.md#versioning-and-compatibility). If a future format change needs an envelope, it should be added
 as an opt-in format rather than changing what `MarshalRequest` emits.
 
 `UnmarshalRequest` rejects unknown struct fields and then validates replay

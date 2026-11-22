@@ -2,9 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-The project follows standard Major.Minor.Patch versioning and Go module
-semantic import versioning. The initial release is `v0.1.0`; public APIs may
-still change before `v1.0.0`, with breaking changes called out in release notes.
+The project follows semantic versioning and Go module semantic import
+versioning. From `v1.0.0`, breaking changes to the stable API require a new
+major version; see [Versioning and compatibility](README.md#versioning-and-compatibility).
+Releases before `v1.0.0` could change public APIs, with breaking changes called
+out in release notes.
 
 ## [1.0.0] - Unreleased
 
