@@ -109,11 +109,17 @@ func TestResponsesCompatibilityAcrossRequestPaths(t *testing.T) {
 			if payload["prompt_cache_key"] != "session" {
 				t.Fatalf("cache key = %#v", payload["prompt_cache_key"])
 			}
-			if tt.unsupported || tt.provider == sigma.ProviderOpenAICodex {
+			switch {
+			case tt.unsupported:
 				if _, ok := payload["max_output_tokens"]; ok {
 					t.Fatal("unsupported max_output_tokens sent")
 				}
-			} else if payload["max_output_tokens"] != float64(16) {
+			case tt.provider == sigma.ProviderOpenAICodex:
+				// The raw body override wins, as on the other Responses routes.
+				if payload["max_output_tokens"] != float64(88) {
+					t.Fatalf("Codex output limit = %#v", payload["max_output_tokens"])
+				}
+			case payload["max_output_tokens"] != float64(16):
 				t.Fatalf("output limit = %#v", payload["max_output_tokens"])
 			}
 		})

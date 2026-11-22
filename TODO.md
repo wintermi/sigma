@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Forward `MaxTokens` as Codex `max_output_tokens`.
 - [x] Send the Codex system prompt as a leading developer message.
 - [x] Reject untyped nodes in strict tool schemas before dispatch.
 - [x] Reject Claude strict-mode-unsupported schema keywords before dispatch.
@@ -264,8 +265,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Revisit always deleting Codex `max_output_tokens`; forward `max(MaxTokens, 16)`
-      unless the model opts out (`codex_responses.go`).
 - [ ] Lower the Codex WebSocket reuse window from 55 to 45 minutes so long turns
       finish before the 60-minute server close (`codex_websocket.go`
       `codexWebSocketMaxAge`).

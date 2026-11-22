@@ -266,37 +266,51 @@ func TestCodexResponsesSendsSystemPromptAsLeadingDeveloperMessageAndForcesStoreF
 	}
 }
 
-func TestCodexResponsesOmitsUnsupportedMaxOutputTokens(t *testing.T) {
+func TestCodexResponsesForwardsMaxOutputTokens(t *testing.T) {
 	t.Parallel()
 
-	requests := make(chan capturedRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captureRequest(t, requests, r)
-		writeResponsesSSE(t, w, responsesCompletedEvent)
-	}))
-	t.Cleanup(server.Close)
+	limit := func(value int) *int { return &value }
+	for _, tt := range []struct {
+		name      string
+		maxTokens *int
+		optOut    bool
+		want      any
+	}{
+		{name: "raised to the minimum", maxTokens: limit(1), want: float64(16)},
+		{name: "requested limit", maxTokens: limit(4096), want: float64(4096)},
+		{name: "unset", want: nil},
+		{name: "model opts out", maxTokens: limit(4096), optOut: true, want: nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			requests := make(chan capturedRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captureRequest(t, requests, r)
+				writeResponsesSSE(t, w, responsesCompletedEvent)
+			}))
+			t.Cleanup(server.Close)
 
-	providerID := sigma.ProviderID("codex-responses-max-tokens-test")
-	model := codexResponsesTestModel(providerID)
-	client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
-
-	_, err := client.Complete(
-		context.Background(),
-		model,
-		sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}},
-		sigma.WithMaxTokens(1),
-	)
-	if err != nil {
-		t.Fatalf("Complete returned error: %v", err)
-	}
-
-	request := receiveRequest(t, requests)
-	var payload map[string]any
-	if err := json.Unmarshal(request.Body, &payload); err != nil {
-		t.Fatalf("Unmarshal request body returned error: %v", err)
-	}
-	if _, ok := payload["max_output_tokens"]; ok {
-		t.Fatalf("max_output_tokens was sent in Codex payload: %#v", payload)
+			providerID := sigma.ProviderID("codex-responses-max-tokens-test")
+			model := codexResponsesTestModel(providerID)
+			if tt.optOut {
+				model.OpenAIResponsesCompat = &sigma.OpenAIResponsesCompat{SupportsMaxOutputTokens: sigma.OpenAICompatUnsupported}
+			}
+			client := codexResponsesTestClient(t, providerID, model, server.URL, codexTokenProvider("codex-oauth-token"))
+			var opts []sigma.Option
+			if tt.maxTokens != nil {
+				opts = append(opts, sigma.WithMaxTokens(*tt.maxTokens))
+			}
+			if _, err := client.Complete(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}, opts...); err != nil {
+				t.Fatalf("Complete returned error: %v", err)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal(receiveRequest(t, requests).Body, &payload); err != nil {
+				t.Fatalf("Unmarshal request body returned error: %v", err)
+			}
+			if got := payload["max_output_tokens"]; got != tt.want {
+				t.Fatalf("max_output_tokens = %#v, want %#v", got, tt.want)
+			}
+		})
 	}
 }
 

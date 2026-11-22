@@ -206,7 +206,6 @@ func (p *CodexResponsesProvider) resolveRequestAuth(ctx context.Context, model s
 
 func normalizeCodexResponsesPayload(payload map[string]any) {
 	payload["store"] = false
-	delete(payload, "max_output_tokens")
 	delete(payload, "previous_response_id")
 	if _, ok := payload["text"]; !ok {
 		payload["text"] = map[string]any{"verbosity": "low"}

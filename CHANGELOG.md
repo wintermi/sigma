@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Codex requests now send `max_output_tokens` when `MaxTokens` is set, raised to the 16-token minimum, unless the model sets `OpenAIResponsesCompat.SupportsMaxOutputTokens` to unsupported; explicit sampling and body overrides apply as on other Responses routes. The field was always deleted, so caller output caps were ignored on Codex.
 - OpenAI Codex requests now send the system prompt as a leading `developer` input message instead of top-level `instructions`, and no longer fill in a default `You are a helpful assistant.` instruction. From GPT-6.2 on, the Codex backend appends `instructions` after the input, so the system prompt was never served from the prompt cache.
 - Strict tool schemas now reject nodes with no `type`, `anyOf`, or `enum`, such as `items: {}` or a bare `const`, before dispatch. Strict modes reject untyped nodes, so these tools were sent and the request failed with a 400.
 - Anthropic Messages strict tools now reject, before dispatch, the schema keywords Claude's strict mode does not accept: numeric bounds, `multipleOf`, `maxItems`, `uniqueItems`, contains and property-count bounds, `minItems` other than 0 or 1, and unsupported `format` values. They were sent with `strict: true`, and Claude rejected the whole request with a 400.

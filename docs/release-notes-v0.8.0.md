@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI Codex honors `MaxTokens`. Codex once rejected `max_output_tokens`, so sigma deleted it from every Codex request, and output caps were silently ignored: no `StopReasonMaxTokens`, and longer, costlier responses than requested. The backend accepts the field again, so Codex now sends it like the other Responses routes, at least 16 tokens, with the existing `SupportsMaxOutputTokens` opt-out for models that reject it.
+
 OpenAI Codex keeps the system prompt in the prompt cache. Sigma sent the system prompt as top-level `instructions`, which the Codex backend places after the conversation from GPT-6.2 on, so each new turn changed the prompt ahead of it and the system prompt was re-read at full price. Codex requests now send it as the first `developer` input message, as the Codex client does, and send no instructions when there is no system prompt. Other Responses routes are unchanged.
 
 Strict tool schemas with untyped nodes fail locally. OpenAI-compatible, Responses, Mistral, and Anthropic strict modes reject schema nodes without a type, but strict derivation accepted `{}`, `items: {}`, and bare `const` nodes and sent them, so the provider rejected the request with a 400. Derivation now reports "schemas without a type are unsupported" for the tool before dispatch; an `enum` still counts as typed.

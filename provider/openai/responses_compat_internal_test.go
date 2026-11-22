@@ -205,10 +205,6 @@ func TestResponsesUnsupportedMaxOutputTokensPreservesExplicitFields(t *testing.T
 			if got, present := payload["max_output_tokens"]; !present || got != tt.want {
 				t.Fatalf("max_output_tokens = %v, present %t; want %v", got, present, tt.want)
 			}
-			normalizeCodexResponsesPayload(payload)
-			if _, present := payload["max_output_tokens"]; present {
-				t.Fatal("Codex retained max_output_tokens")
-			}
 		})
 	}
 }
