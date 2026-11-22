@@ -94,8 +94,20 @@ func TestRegistryRefreshDispatch(t *testing.T) {
 			if body["tools"] == nil {
 				t.Fatal("function tools omitted")
 			}
-			if tt.response == "responses" && body["reasoning"].(map[string]any)["effort"] != "high" {
-				t.Fatalf("reasoning = %#v", body["reasoning"])
+			if tt.response == "responses" {
+				// Models that take effort as a configuration_update item send a
+				// fixed top-level effort.
+				want := "high"
+				if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsMidConversationEffort {
+					want = "medium"
+					input := body["input"].([]any)
+					if update := input[len(input)-1].(map[string]any); update["type"] != "configuration_update" || update["reasoning"].(map[string]any)["effort"] != "high" {
+						t.Fatalf("configuration update = %#v", update)
+					}
+				}
+				if body["reasoning"].(map[string]any)["effort"] != want {
+					t.Fatalf("reasoning = %#v", body["reasoning"])
+				}
 			}
 			if tt.response == "anthropic" && strings.HasPrefix(string(tt.id), "claude") && body["thinking"].(map[string]any)["type"] != "adaptive" {
 				t.Fatalf("thinking = %#v", body["thinking"])

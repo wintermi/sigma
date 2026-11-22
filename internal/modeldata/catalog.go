@@ -175,6 +175,7 @@ type OpenAIResponsesCompat struct {
 	SupportsExplicitPromptCacheMode bool   `json:"supportsExplicitPromptCacheMode,omitempty"`
 	SupportsLongCacheRetention      string `json:"supportsLongCacheRetention,omitempty"`
 	SessionAffinityFormat           string `json:"sessionAffinityFormat,omitempty"`
+	SupportsMidConversationEffort   bool   `json:"supportsMidConversationEffort,omitempty"`
 }
 
 // OpenRouterRoutingPreference mirrors sigma.OpenRouterRoutingPreference.

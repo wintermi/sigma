@@ -13909,6 +13909,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -13955,6 +13956,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14001,6 +14003,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14046,6 +14049,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14092,6 +14096,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14137,6 +14142,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14182,6 +14188,7 @@ var builtinTextModels = []Model{
 			SupportsAdditionalTools:         true,
 			SupportsToolSearch:              true,
 			SupportsExplicitPromptCacheMode: true,
+			SupportsMidConversationEffort:   true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -14479,6 +14486,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6-astra",
 			SupportsAdditionalTools: true,
@@ -14525,6 +14535,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6-luna",
 			SupportsAdditionalTools: true,
@@ -14571,6 +14584,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6-sol",
 			SupportsAdditionalTools: true,
@@ -14616,6 +14632,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6.1-sol",
 			SupportsAdditionalTools: true,
@@ -14662,6 +14681,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6.1-terra",
 			SupportsAdditionalTools: true,
@@ -14707,6 +14729,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6.2-astra",
 			SupportsAdditionalTools: true,
@@ -14752,6 +14777,9 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
+		OpenAIResponsesCompat: &OpenAIResponsesCompat{
+			SupportsMidConversationEffort: true,
+		},
 		OpenAICodexResponses: &OpenAICodexResponsesConfig{
 			Model:                   "gpt-6.2-sol",
 			SupportsAdditionalTools: true,

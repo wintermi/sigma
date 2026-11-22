@@ -92,6 +92,14 @@ without provenance are treated as the target model's own. The opt-in
 block as a `thinking-dropped` change; `WithHandoffThinkingDelimiters` no longer
 has an effect.
 
+GPT-6 models on OpenAI Responses and Codex, and other models whose
+`OpenAIResponsesCompat.SupportsMidConversationEffort` is set, take the reasoning
+level as a `configuration_update` input item instead of `reasoning.effort`,
+which stays fixed at `medium`. Each earlier turn of the same model is preceded by
+the effort it ran with, recorded as the assistant message's
+`ProviderThinkingLevel`, so changing the level mid-conversation keeps the prompt
+cache.
+
 OpenAI Responses, Azure, and Codex can withhold replayed reasoning from the
 model: from GPT-6.2 on, reasoning that follows an edit of earlier input, or that
 was created under another organization, end user, or model, is removed and

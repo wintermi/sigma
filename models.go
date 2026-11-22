@@ -246,6 +246,10 @@ type OpenAIResponsesCompat struct {
 	// SupportsPromptCacheKey set to unsupported omits prompt_cache_key, for
 	// proxies that reject it. Unspecified sends it when a session is set.
 	SupportsPromptCacheKey OpenAICompatSupport `json:"supportsPromptCacheKey,omitempty"`
+	// SupportsMidConversationEffort sends the requested reasoning effort as a
+	// configuration_update input item, with a fixed reasoning.effort, so a
+	// change of thinking level keeps the prompt cache.
+	SupportsMidConversationEffort bool `json:"supportsMidConversationEffort,omitempty"`
 }
 
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model

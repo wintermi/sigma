@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send mid-conversation effort changes as `configuration_update` items on Responses and Codex.
 - [x] Report reasoning dropped by OpenAI `input_transformations`.
 - [x] Move OpenCode routes to the protocol-specific `/inference` endpoints.
 - [x] Add MiniMax-M3.1-Flash and the Kimi K3.1 Pro and K3-256K rows.
@@ -319,8 +320,6 @@ reproduces the failure before it is checked off.
 ### Features and catalog
 
 - [ ] Add Anthropic message threads.
-- [ ] Add mid-conversation effort updates (`configuration_update`) on Responses
-      and Codex.
 
 ## Credential ergonomics
 

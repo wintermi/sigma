@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Changing the thinking level no longer invalidates the prompt cache on GPT-6. The reasoning effort is part of the cached prompt, so moving a GPT-6 conversation from high to low effort, or turning thinking off, re-read the whole history at full price. GPT-6 models on OpenAI Responses and Codex now send a fixed top-level effort and carry the requested level in `configuration_update` input items, with each earlier turn's level replayed before it from the assistant message's `ProviderThinkingLevel`. Other Responses models can opt in with `OpenAIResponsesCompat.SupportsMidConversationEffort`.
+
 Callers can see when OpenAI drops replayed reasoning. From GPT-6.2 on, the Responses API removes replayed reasoning that follows an edit of earlier input, or that came from another organization, end user, or model, and reports the removal in `input_transformations`; sigma ignored it, so a caller could not tell the model had answered without its earlier reasoning. Final messages from OpenAI, Azure, and Codex Responses now carry those removals in `ProviderMetadata["input_transformations"]`.
 
 OpenCode requests use OpenCode's documented endpoints. Sigma sent every OpenCode Zen and Go request, whatever its protocol, to the shared `/zen/v1` and `/zen/go/v1` bases. OpenCode now documents a separate endpoint per protocol under `/inference`, and model catalogs list those URLs. Built-in OpenCode models now name the endpoint for the protocol they are routed through, and `opencode.ZenBaseURL` and `GoBaseURL` point at the `/inference` OpenAI-compatible bases, from which the Anthropic and Gemini endpoints are derived. A custom base URL outside that layout is still used for every protocol.

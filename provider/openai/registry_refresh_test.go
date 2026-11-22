@@ -80,8 +80,17 @@ func TestRegistryRefreshCodexReasoning(t *testing.T) {
 					t.Fatalf("wrong Codex route: %s %v", request.Path, payload["model"])
 				}
 				// Codex applies its own default effort when reasoning is omitted, so
-				// Off must be sent explicitly.
-				if reasoning, _ := payload["reasoning"].(map[string]any); reasoning["effort"] != tt.effort {
+				// Off must be sent explicitly. Models that take configuration_update
+				// items carry the effort there, with a fixed top-level effort.
+				wantTopLevel := tt.effort
+				if model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsMidConversationEffort {
+					wantTopLevel = "medium"
+					input := payload["input"].([]any)
+					if update := input[len(input)-1].(map[string]any); update["type"] != "configuration_update" || update["reasoning"].(map[string]any)["effort"] != tt.effort {
+						t.Fatalf("configuration update = %#v", update)
+					}
+				}
+				if reasoning, _ := payload["reasoning"].(map[string]any); reasoning["effort"] != wantTopLevel {
 					t.Fatalf("reasoning=%v", payload["reasoning"])
 				}
 				assertAdditionalToolsPayload(t, request.Body)

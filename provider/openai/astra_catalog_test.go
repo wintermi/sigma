@@ -70,11 +70,17 @@ func TestAstraCatalogReasoningAndToolReplay(t *testing.T) {
 					if request.Path != wantPath || payload["model"] != "gpt-6-astra" {
 						t.Fatalf("wrong route/model: %s, %v", request.Path, payload["model"])
 					}
-					if payload["reasoning"].(map[string]any)["effort"] != string(level) {
+					// GPT-6 sends the effort as a trailing configuration_update item
+					// with a fixed top-level effort, so level changes keep the cache.
+					if payload["reasoning"].(map[string]any)["effort"] != "medium" {
 						t.Fatalf("reasoning = %#v", payload["reasoning"])
 					}
 					input := payload["input"].([]any)
-					content := input[len(input)-1].(map[string]any)["content"].([]any)
+					update := input[len(input)-1].(map[string]any)
+					if update["type"] != "configuration_update" || update["reasoning"].(map[string]any)["effort"] != string(level) {
+						t.Fatalf("configuration update = %#v", update)
+					}
+					content := input[len(input)-2].(map[string]any)["content"].([]any)
 					image := content[1].(map[string]any)
 					if image["type"] != "input_image" || image["image_url"] != "data:image/png;base64,aGk=" {
 						t.Fatalf("image input = %#v", image)

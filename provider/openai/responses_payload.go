@@ -55,6 +55,12 @@ func responsesPayload(model sigma.Model, req sigma.Request, opts sigma.Options) 
 	if err != nil {
 		return nil, err
 	}
+	// The requested effort follows the conversation, and each earlier turn of
+	// this model is preceded by the effort it ran with, so the input grows as
+	// a stable prefix and a change of thinking level keeps the prompt cache.
+	if effort := responsesConfigurationUpdateEffort(model, opts); effort != "" {
+		input = append(input, configurationUpdateItem(effort))
+	}
 
 	payload := openAIPayloadWithModelSamplingDefaults(model)
 	payload["model"] = string(model.ID)
@@ -316,10 +322,15 @@ func responsesInput(model sigma.Model, req sigma.Request, deferredToolsMode resp
 	loadedToolNames := make(map[string]struct{})
 	ids := newResponsesIDs(req.Messages)
 	toolNamesByCallID := responsesToolNamesByCallID(req.Messages, ids)
+	effortUpdates := model.OpenAIResponsesCompat != nil && model.OpenAIResponsesCompat.SupportsMidConversationEffort
 	for index, message := range req.Messages {
 		converted, err := responsesMessage(model, message, index, ids, deferredToolsMode, deferredTools, loadedToolNames, toolNamesByCallID, grammarToolInputProperties, storedItems)
 		if err != nil {
 			return nil, err
+		}
+		if effortUpdates && len(converted) > 0 && message.Role == sigma.RoleAssistant && message.ProviderThinkingLevel != "" &&
+			message.Provider == model.Provider && message.API == model.API && message.Model == model.ID {
+			items = append(items, configurationUpdateItem(message.ProviderThinkingLevel))
 		}
 		items = append(items, converted...)
 	}
@@ -740,6 +751,16 @@ func responsesToolSearchCallID(toolCallID string, names []string) string {
 }
 
 func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma.Options) {
+	// With configuration_update items carrying the effort, including Off as
+	// "none", the top-level effort is part of the cached prompt and stays fixed.
+	if responsesConfigurationUpdateEffort(model, opts) != "" {
+		summary := "auto"
+		if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningSummary != "" {
+			summary = opts.OpenAIOptions.ReasoningSummary
+		}
+		payload["reasoning"] = map[string]any{"effort": configurationUpdateRequestEffort, "summary": summary}
+		return
+	}
 	// Responses models apply their own default effort when reasoning is
 	// omitted, so an explicit Off is sent as the model's off value, or "none".
 	// GitHub Copilot does not accept an off effort.
@@ -753,6 +774,7 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	if effort := reasoningEffort(model, opts); effort != "" {
 		reasoning["effort"] = effort
 	}
+
 	if opts.OpenAIOptions != nil && opts.OpenAIOptions.ReasoningSummary != "" {
 		reasoning["summary"] = opts.OpenAIOptions.ReasoningSummary
 	} else if len(reasoning) > 0 {
@@ -761,6 +783,27 @@ func addResponsesReasoning(payload map[string]any, model sigma.Model, opts sigma
 	if len(reasoning) > 0 {
 		payload["reasoning"] = reasoning
 	}
+}
+
+// configurationUpdateRequestEffort is the fixed reasoning.effort sent when
+// configuration_update items carry the requested effort.
+const configurationUpdateRequestEffort = "medium"
+
+// responsesConfigurationUpdateEffort returns the effort to send as a
+// configuration_update item, or "" to send it as reasoning.effort.
+func responsesConfigurationUpdateEffort(model sigma.Model, opts sigma.Options) string {
+	if model.OpenAIResponsesCompat == nil || !model.OpenAIResponsesCompat.SupportsMidConversationEffort {
+		return ""
+	}
+	if requestedReasoningLevel(opts) == sigma.ThinkingLevelOff {
+		return explicitOffEffort(model, opts, "none")
+	}
+	return reasoningEffort(model, opts)
+}
+
+// configurationUpdateItem carries a reasoning effort as an input item.
+func configurationUpdateItem(effort string) map[string]any {
+	return map[string]any{providerToolOptionTypeKey: "configuration_update", "reasoning": map[string]any{"effort": effort}}
 }
 
 func addResponsesReasoningInclude(payload map[string]any, model sigma.Model, opts sigma.Options) {

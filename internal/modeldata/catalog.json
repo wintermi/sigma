@@ -13759,7 +13759,10 @@
       "unsupportedThinkingLevels": [
         "off",
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
+      }
     },
     {
       "id": "gpt-6-luna",
@@ -13812,6 +13815,9 @@
         "high": "high",
         "xhigh": "xhigh",
         "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
       }
     },
     {
@@ -13865,6 +13871,9 @@
         "high": "high",
         "xhigh": "xhigh",
         "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
       }
     },
     {
@@ -15097,7 +15106,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "unsupportedThinkingLevels": [
         "off",
@@ -15145,7 +15155,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "thinkingLevelMap": {
         "off": "none",
@@ -15200,7 +15211,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "thinkingLevelMap": {
         "off": "none",
@@ -23764,7 +23776,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "unsupportedThinkingLevels": [
         "off",
@@ -23812,7 +23825,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "thinkingLevelMap": {
         "off": "none",
@@ -23874,7 +23888,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "unsupportedThinkingLevels": [
         "off",
@@ -23929,7 +23944,8 @@
       "openAIResponsesCompat": {
         "supportsAdditionalTools": true,
         "supportsToolSearch": true,
-        "supportsExplicitPromptCacheMode": true
+        "supportsExplicitPromptCacheMode": true,
+        "supportsMidConversationEffort": true
       },
       "unsupportedThinkingLevels": [
         "off",
@@ -25759,7 +25775,10 @@
       "unsupportedThinkingLevels": [
         "off",
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
+      }
     },
     {
       "id": "gpt-6.1-sol",
@@ -25870,7 +25889,10 @@
       },
       "unsupportedThinkingLevels": [
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
+      }
     },
     {
       "id": "gpt-6.1-terra",
@@ -25981,7 +26003,10 @@
       "unsupportedThinkingLevels": [
         "off",
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
+      }
     },
     {
       "id": "gpt-6.2-astra",
@@ -26092,7 +26117,10 @@
       "unsupportedThinkingLevels": [
         "off",
         "minimal"
-      ]
+      ],
+      "openAIResponsesCompat": {
+        "supportsMidConversationEffort": true
+      }
     },
     {
       "id": "gpt-6.2-sol",

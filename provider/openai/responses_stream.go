@@ -160,6 +160,9 @@ type responsesStreamOptions struct {
 	useCodexServiceTierFallback bool
 	codexTerminalSignals        bool
 	grammarToolInputProperties  map[string]string
+	// providerThinkingLevel is the effort sent as a configuration_update item,
+	// recorded on the final message for replay.
+	providerThinkingLevel string
 }
 
 type responsesCustomToolCall struct {
@@ -281,8 +284,9 @@ func newResponsesStreamParser(writer sigma.StreamWriter, model sigma.Model, opts
 		customToolCalls: make(map[int]*responsesCustomToolCall),
 		toolItemIDs:     make(map[int]string),
 		final: sigma.AssistantMessage{
-			Model:    model.ID,
-			Provider: model.Provider,
+			Model:                 model.ID,
+			Provider:              model.Provider,
+			ProviderThinkingLevel: opts.providerThinkingLevel,
 		},
 	}
 }
@@ -1316,6 +1320,7 @@ func responsesStreamOptionsForRequest(model sigma.Model, req sigma.Request, opts
 		return responsesStreamOptions{}, err
 	}
 	options.grammarToolInputProperties = properties
+	options.providerThinkingLevel = responsesConfigurationUpdateEffort(model, opts)
 	return options, nil
 }
 
