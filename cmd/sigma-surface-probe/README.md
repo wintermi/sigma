@@ -19,9 +19,9 @@ Common flags:
 
 ```text
 -routes                 comma-separated routes to probe
--models                 comma-separated model IDs; omitting this uses route defaults
+-models                 comma-separated sigma catalog model IDs; omitting this uses route defaults
 -repair                 try targeted repair variants after a failing case
--include-unavailable    probe known unavailable advertised models instead of skipping
+-include-unavailable    probe catalog models known to be unavailable instead of skipping
 -codex-oauth            run OpenAI Codex device-code OAuth for openai-codex
 -handoff                run cross-provider replay handoff diagnostics
 -structured-output      run focused OpenAI-compatible structured-output probes
@@ -40,25 +40,30 @@ image.
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.
 
+The probe only checks models in sigma's built-in catalog. It does not query a
+provider's live model list. `-models` must name catalog IDs for the route's
+provider; any other ID is rejected before a request is sent. To probe a new
+provider model, add it to the catalog first.
+
 ## Routes
 
 | Route | API shape | Credential | Default model behavior |
 | --- | --- | --- | --- |
-| `openai` | OpenAI Responses | `OPENAI_API_KEY` | Discovers OpenAI models |
+| `openai` | OpenAI Responses | `OPENAI_API_KEY` | Uses every `openai` catalog model |
 | `openai` with `-images` | OpenAI Images and OpenAI Responses image-generation tool | `OPENAI_API_KEY` | Uses `gpt-image-1`, `dall-e-2` for variations, and `gpt-5.5` for the Responses tool case |
 | `google` with `-images` | Gemini `generateContent` | `GOOGLE_API_KEY`, then `GOOGLE_CLOUD_API_KEY` | Uses the generated `gemini-2.5-flash-image` and `gemini-3.1-flash-image` rows |
 | `google-vertex` with `-images` | Vertex AI Gemini `generateContent` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses the generated `gemini-3.1-flash-image` row |
-| `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.5` unless `-models` is set |
-| `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Discovers Zen models |
-| `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Discovers Go models |
+| `openai-codex` | OpenAI Codex Responses | `OPENAI_CODEX_ACCESS_TOKEN`, `OPENAI_CODEX_REFRESH_TOKEN`, or `-codex-oauth` | Uses `gpt-5.6-terra` unless `-models` is set |
+| `zen` | OpenCode routed surfaces | `OPENCODE_API_KEY` | Uses every `opencode` catalog model |
+| `go` | OpenCode Go routed surfaces | `OPENCODE_API_KEY` | Uses every `opencode-go` catalog model |
 | `google-vertex` | Native Vertex Gemini `streamGenerateContent` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses every built-in `google-vertex` Gemini text model in sorted order unless `-models` is set |
 | `google-vertex-anthropic` | Vertex Anthropic Claude `streamRawPredict` | `GOOGLE_CLOUD_ACCESS_TOKEN`, `GOOGLE_CLOUD_API_KEY`, or `GOOGLE_API_KEY`; also requires project and location | Uses `claude-sonnet-4-6` unless `-models` selects other built-in Vertex Claude models |
-| `fireworks-openai` | Fireworks OpenAI-compatible Chat Completions | `FIREWORKS_API_KEY` | Discovers Fireworks models |
-| `fireworks-anthropic` | Fireworks Anthropic-compatible Messages | `FIREWORKS_API_KEY` | Discovers Fireworks models |
-| `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Discovers Moonshot AI models |
-| `moonshot-cn` | Moonshot AI CN OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Discovers Moonshot AI CN models |
+| `fireworks-openai` | Fireworks OpenAI-compatible Chat Completions | `FIREWORKS_API_KEY` | Uses every `fireworks` catalog model |
+| `fireworks-anthropic` | Fireworks Anthropic-compatible Messages | `FIREWORKS_API_KEY` | Uses every `fireworks-anthropic` catalog model |
+| `moonshot` | Moonshot AI OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai` catalog model |
+| `moonshot-cn` | Moonshot AI CN OpenAI-compatible Chat Completions | `MOONSHOT_API_KEY` | Uses every `moonshotai-cn` catalog model |
 | `nvidia` | NVIDIA NIM OpenAI-compatible Chat Completions | `NVIDIA_API_KEY` | Uses `nvidia/nemotron-3-super-120b-a12b` unless `-models` is set |
-| `xai` | xAI/Grok OpenAI-compatible Chat Completions | `XAI_API_KEY` | Discovers xAI models |
+| `xai` | xAI/Grok OpenAI-compatible Chat Completions | `XAI_API_KEY` | Uses every `xai` catalog model |
 
 ## Examples
 
@@ -97,7 +102,7 @@ Probe the Fireworks OpenAI-compatible route:
 ```bash
 FIREWORKS_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
   -routes fireworks-openai \
-  -models accounts/fireworks/routers/kimi-k2p6-turbo \
+  -models accounts/fireworks/routers/glm-5p2-fast \
   -repair
 ```
 
@@ -270,7 +275,7 @@ into every other selected target route/model. Missing credentials and source
 models that do not emit a tool call are reported as skipped diagnostics. Each
 source context and each target replay receives its own `-case-timeout`.
 
-Discover and probe every model returned by one provider:
+Probe every catalog model for one provider:
 
 ```bash
 XAI_API_KEY=... mise run go:run -- ./cmd/sigma-surface-probe \
@@ -402,7 +407,7 @@ Outcome meanings:
 | `upstream_availability` | The upstream route or model is currently unavailable. |
 | `inconclusive` | The failure does not contain enough evidence for a request-shape, capability, or availability conclusion. |
 | `fixed_by_repair_variant` | The original case failed, but a targeted variant worked. |
-| `no_working_attempt` | The request completed without the required output (an image probe with no image, partial image, or image tool output), or handoff model discovery failed. |
+| `no_working_attempt` | The request completed without the required output (an image probe with no image, partial image, or image tool output), or handoff model selection failed. |
 
 A text case whose repair variants all fail keeps the classification of its
 original failure; it is not reported as `no_working_attempt`.

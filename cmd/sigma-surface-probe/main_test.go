@@ -446,7 +446,7 @@ func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 
 	route := routes["google-vertex"]
 	route.BaseURL = "http://127.0.0.1:1/v1"
-	models, err := modelsForRoute(context.Background(), route, routeCredential{}, nil)
+	models, err := modelsForRoute(route, nil)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
@@ -491,7 +491,7 @@ func TestModelsForGoogleVertexUseBuiltInCatalog(t *testing.T) {
 func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 	t.Parallel()
 
-	models, err := modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{
+	models, err := modelsForRoute(routes["google-vertex"], map[string]bool{
 		"gemini-3.5-flash-lite": true,
 		"gemini-3.6-flash":      true,
 	})
@@ -512,7 +512,7 @@ func TestModelsForGoogleVertexValidateExplicitModels(t *testing.T) {
 		"gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-3-pro-preview",
 	} {
-		_, err = modelsForRoute(context.Background(), routes["google-vertex"], routeCredential{}, map[string]bool{modelID: true})
+		_, err = modelsForRoute(routes["google-vertex"], map[string]bool{modelID: true})
 		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex text model") {
 			t.Fatalf("invalid model %q error = %v, want clear local rejection", modelID, err)
 		}
@@ -524,7 +524,7 @@ func TestModelsForGoogleVertexAnthropicUseBuiltInCatalog(t *testing.T) {
 
 	route := routes["google-vertex-anthropic"]
 	route.BaseURL = "http://127.0.0.1:1/v1"
-	models, err := modelsForRoute(context.Background(), route, routeCredential{}, nil)
+	models, err := modelsForRoute(route, nil)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
@@ -532,7 +532,7 @@ func TestModelsForGoogleVertexAnthropicUseBuiltInCatalog(t *testing.T) {
 		t.Fatalf("models = %v, want default Vertex Anthropic model", models)
 	}
 
-	models, err = modelsForRoute(context.Background(), route, routeCredential{}, map[string]bool{
+	models, err = modelsForRoute(route, map[string]bool{
 		"claude-opus-4-8":   true,
 		"claude-sonnet-4-6": true,
 	})
@@ -544,25 +544,58 @@ func TestModelsForGoogleVertexAnthropicUseBuiltInCatalog(t *testing.T) {
 	}
 
 	for _, modelID := range []string{"not-a-vertex-model", "gemini-3.6-flash"} {
-		_, err = modelsForRoute(context.Background(), route, routeCredential{}, map[string]bool{modelID: true})
+		_, err = modelsForRoute(route, map[string]bool{modelID: true})
 		if err == nil || !strings.Contains(err.Error(), "not a built-in google-vertex-anthropic text model") {
 			t.Fatalf("invalid model %q error = %v, want clear local rejection", modelID, err)
 		}
 	}
 }
 
-func TestModelsForRouteUsesSelectedModelsWithoutDiscovery(t *testing.T) {
+// A run probes sigma's own catalog for the route, never everything the
+// provider's /models endpoint lists, and needs no network to choose models.
+func TestModelsForRouteUseSigmaCatalog(t *testing.T) {
 	t.Parallel()
 
-	models, err := modelsForRoute(context.Background(), routes["fireworks-anthropic"], routeCredential{apiKey: "key"}, map[string]bool{
-		"z": true,
-		"a": true,
-	})
+	for _, name := range []string{"openai", "zen", "go", "fireworks-openai", "fireworks-anthropic", "moonshot", "xai"} {
+		route := routes[name]
+		route.BaseURL = "http://127.0.0.1:1/v1"
+		models, err := modelsForRoute(route, nil)
+		if err != nil {
+			t.Fatalf("%s: modelsForRoute returned error: %v", name, err)
+		}
+		var want []string
+		for _, model := range sigma.Models() {
+			if model.Provider == catalogProvider(route) {
+				want = append(want, string(model.ID))
+			}
+		}
+		sort.Strings(want)
+		if len(models) == 0 || !reflect.DeepEqual(models, want) {
+			t.Fatalf("%s models = %v, want the catalog's %v", name, models, want)
+		}
+	}
+}
+
+func TestModelsForRouteValidatesSelectedModelsAgainstCatalog(t *testing.T) {
+	t.Parallel()
+
+	route := routes["fireworks-openai"]
+	catalog := catalogModels(route)
+	selected := map[string]bool{catalog[len(catalog)-1]: true, catalog[0]: true}
+	models, err := modelsForRoute(route, selected)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
-	if !reflect.DeepEqual(models, []string{"a", "z"}) {
-		t.Fatalf("models = %v, want sorted selected models", models)
+	if want := []string{catalog[0], catalog[len(catalog)-1]}; !reflect.DeepEqual(models, want) {
+		t.Fatalf("models = %v, want sorted selected models %v", models, want)
+	}
+
+	_, err = modelsForRoute(route, map[string]bool{"accounts/fireworks/models/ember-1": true})
+	if err == nil || !strings.Contains(err.Error(), "not in sigma's fireworks catalog") {
+		t.Fatalf("uncatalogued model error = %v, want a local rejection", err)
+	}
+	if _, err := modelsForRoute(routes["openai-codex"], map[string]bool{"gpt-6-sol": true}); err != nil {
+		t.Fatalf("Codex catalog model rejected: %v", err)
 	}
 }
 
@@ -572,7 +605,7 @@ func TestModelsForRouteDefaultsOpenAICodexWithoutDiscovery(t *testing.T) {
 	if got, want := defaultOpenAICodexProbeModel, "gpt-5.6-terra"; got != want {
 		t.Fatalf("defaultOpenAICodexProbeModel = %q, want %q", got, want)
 	}
-	models, err := modelsForRoute(context.Background(), routes["openai-codex"], routeCredential{apiKey: "token"}, nil)
+	models, err := modelsForRoute(routes["openai-codex"], nil)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
@@ -587,7 +620,7 @@ func TestModelsForRouteDefaultsNVIDIAWithoutDiscovery(t *testing.T) {
 	if got, want := defaultNVIDIAProbeModel, "nvidia/nemotron-3-super-120b-a12b"; got != want {
 		t.Fatalf("defaultNVIDIAProbeModel = %q, want %q", got, want)
 	}
-	models, err := modelsForRoute(context.Background(), routes["nvidia"], routeCredential{apiKey: "token"}, nil)
+	models, err := modelsForRoute(routes["nvidia"], nil)
 	if err != nil {
 		t.Fatalf("modelsForRoute returned error: %v", err)
 	}
@@ -2241,7 +2274,7 @@ func TestRunHandoffProbesEmitsPairwiseResults(t *testing.T) {
 	var emitted []probeResult
 	runHandoffProbes(context.Background(), config{
 		routes: []string{"handoff-a", "handoff-b"},
-		models: map[string]bool{"model": true},
+		models: map[string]bool{"gpt-6-sol": true},
 	}, func(result probeResult) {
 		emitted = append(emitted, result)
 	})
@@ -2992,21 +3025,6 @@ func TestSummaryCounts(t *testing.T) {
 	}
 }
 
-func TestParseModelIDs(t *testing.T) {
-	t.Parallel()
-
-	ids, err := parseModelIDs([]byte(`{"data":[{"id":"b"},{"id":"a"}]}`))
-	if err != nil {
-		t.Fatalf("parseModelIDs returned error: %v", err)
-	}
-	if got, want := ids[0], "a"; got != want {
-		t.Fatalf("first id = %q, want %q", got, want)
-	}
-	if got, want := ids[1], "b"; got != want {
-		t.Fatalf("second id = %q, want %q", got, want)
-	}
-}
-
 func hasRepairVariant(variants []probeCase, name string) bool {
 	for _, variant := range variants {
 		if variant.Name == name {
@@ -3218,10 +3236,13 @@ func handoffProbeRoute(t *testing.T, name string, scripts ...sigmatest.Script) r
 	providerID := sigma.ProviderID(name)
 	provider := sigmatest.NewFauxProvider(scripts...)
 	return routeSpec{
-		Name:      name,
-		Provider:  providerID,
-		BaseURL:   "https://example.test",
-		APIKeyEnv: "SIGMATEST_API_KEY",
+		Name:     name,
+		Provider: providerID,
+		// Model selection checks the sigma catalog; these faux routes stand
+		// in for an OpenAI route.
+		CatalogProvider: sigma.ProviderOpenAI,
+		BaseURL:         "https://example.test",
+		APIKeyEnv:       "SIGMATEST_API_KEY",
 		RegisterProvider: func(registry *sigma.Registry, _ routeSpec) error {
 			return registry.RegisterTextProvider(providerID, provider)
 		},

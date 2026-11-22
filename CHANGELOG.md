@@ -178,6 +178,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Changed
 
+- The surface probe now checks only models in sigma's built-in catalog. Routes no longer query the provider's live `/models` list, and `-models` rejects IDs that are not catalog rows for the route's provider before any request is sent.
 - The GitHub Copilot catalog review adds Claude Fable 5.2, Gemini 4 Hydrogen and Neon, GPT-6.1 Sol and Terra, GPT-6.2 Astra and Sol, and MAI Code 2 and 2 Flash, and removes the retired Claude Opus 4.7, Gemini 3.5 to 3.7 Flash, GPT-5 Mini, GPT-5.4 Mini, Kimi K2.7 Code, and MAI-Code-1-Flash-Picker rows. New rows take Copilot's limits, prices, and reasoning levels from the models.dev snapshot and their request settings from the closest Copilot sibling.
 - Generated Bedrock gpt-oss (including safeguard and versioned IDs) and GPT-5.4
   through 5.6 rows now advertise reasoning, and the GPT-5.x rows accept `xhigh`,

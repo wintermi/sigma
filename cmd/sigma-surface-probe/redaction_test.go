@@ -26,9 +26,8 @@ func TestProbeHTTPErrorsRedactEchoedCredentials(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	_, discoverErr := discoverModels(context.Background(), routeSpec{BaseURL: server.URL}, key)
 	_, fireworksErr := fetchFireworksModelCapabilities(context.Background(), server.URL+"/inference/v1", "model", key)
-	for name, err := range map[string]error{"model discovery": discoverErr, "fireworks metadata": fireworksErr} {
+	for name, err := range map[string]error{"fireworks metadata": fireworksErr} {
 		if err == nil {
 			t.Fatalf("%s succeeded, want HTTP error", name)
 		}

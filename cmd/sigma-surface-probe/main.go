@@ -35,10 +35,12 @@ import (
 )
 
 type routeSpec struct {
-	Name             string
-	Provider         sigma.ProviderID
+	Name     string
+	Provider sigma.ProviderID
+	// CatalogProvider is the provider whose sigma catalog rows the route
+	// probes, when it differs from Provider.
+	CatalogProvider  sigma.ProviderID
 	BaseURL          string
-	ModelBaseURL     string
 	APIKeyEnv        string
 	RegisterProvider func(*sigma.Registry, routeSpec) error
 	Model            func(routeSpec, string) sigma.Model
@@ -170,6 +172,7 @@ var routes = map[string]routeSpec{
 	"openai-codex": {
 		Name:             "openai-codex",
 		Provider:         sigma.ProviderOpenAI,
+		CatalogProvider:  sigma.ProviderOpenAICodex,
 		BaseURL:          "https://chatgpt.com/backend-api/codex",
 		APIKeyEnv:        "OPENAI_CODEX_ACCESS_TOKEN",
 		RegisterProvider: registerOpenAICodexProvider,
@@ -223,7 +226,6 @@ var routes = map[string]routeSpec{
 		Name:             "fireworks-anthropic",
 		Provider:         sigma.ProviderFireworksAnthropic,
 		BaseURL:          fireworks.DefaultBaseURL,
-		ModelBaseURL:     fireworks.DefaultBaseURL,
 		APIKeyEnv:        "FIREWORKS_API_KEY",
 		RegisterProvider: registerFireworksAnthropicProvider,
 		Model:            discoveredFireworksAnthropicModel,
@@ -366,9 +368,9 @@ func main() {
 		if err != nil {
 			fatalf("%v", err)
 		}
-		models, err := modelsForRoute(ctx, route, credential, cfg.models)
+		models, err := modelsForRoute(route, cfg.models)
 		if err != nil {
-			fatalf("discover %s models: %v", route.Name, err)
+			fatalf("select %s models: %v", route.Name, err)
 		}
 		for _, modelID := range models {
 			if len(cfg.models) > 0 && !cfg.models[modelID] {
@@ -404,7 +406,7 @@ func parseConfig() config {
 	flag.StringVar(&routeList, "routes", defaultRouteList, "comma-separated routes: openai,openai-codex,zen,go,google-vertex,google-vertex-anthropic,fireworks-openai,fireworks-anthropic,moonshot,moonshot-cn,nvidia,xai")
 	flag.StringVar(&modelList, "models", "", "comma-separated model IDs to probe")
 	flag.BoolVar(&repair, "repair", false, "try targeted repair variants after a failing case")
-	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run known unavailable advertised models instead of skipping them")
+	flag.BoolVar(&includeUnavailable, "include-unavailable", false, "run catalog models known to be unavailable instead of skipping them")
 	flag.BoolVar(&codexOAuth, "codex-oauth", false, "run OpenAI Codex device-code OAuth for the openai-codex route")
 	flag.BoolVar(&codexOAuthBrowser, "codex-oauth-browser", false, "run OpenAI Codex browser callback OAuth for the openai-codex route")
 	flag.BoolVar(&handoff, "handoff", false, "run cross-provider replay handoff diagnostics instead of per-route surface cases")
@@ -548,7 +550,7 @@ func readLineContext(ctx context.Context, reader io.Reader) (string, error) {
 	}
 }
 
-func modelsForRoute(ctx context.Context, route routeSpec, credential routeCredential, selected map[string]bool) ([]string, error) {
+func modelsForRoute(route routeSpec, selected map[string]bool) ([]string, error) {
 	if len(selected) > 0 {
 		models := make([]string, 0, len(selected))
 		for modelID := range selected {
@@ -562,6 +564,10 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 				model, ok := sigma.GetModel(route.Provider, sigma.ModelID(modelID))
 				if !ok || !isBuiltInGoogleVertexAnthropicModel(model) {
 					return nil, fmt.Errorf("model %q is not a built-in google-vertex-anthropic text model", modelID)
+				}
+			default:
+				if _, ok := sigma.GetModel(catalogProvider(route), sigma.ModelID(modelID)); !ok {
+					return nil, fmt.Errorf("model %q is not in sigma's %s catalog", modelID, catalogProvider(route))
 				}
 			}
 			models = append(models, modelID)
@@ -591,7 +597,33 @@ func modelsForRoute(ctx context.Context, route routeSpec, credential routeCreden
 		}
 		return models, nil
 	}
-	return discoverModels(ctx, route, credential.apiKey)
+	models := catalogModels(route)
+	if len(models) == 0 {
+		return nil, fmt.Errorf("sigma's catalog has no %s models", catalogProvider(route))
+	}
+	return models, nil
+}
+
+// catalogProvider returns the provider whose sigma catalog rows route probes.
+func catalogProvider(route routeSpec) sigma.ProviderID {
+	if route.CatalogProvider != "" {
+		return route.CatalogProvider
+	}
+	return route.Provider
+}
+
+// catalogModels lists the sigma catalog models the route probes, so a run
+// checks sigma's own model list rather than everything the provider serves.
+func catalogModels(route routeSpec) []string {
+	provider := catalogProvider(route)
+	models := make([]string, 0)
+	for _, model := range sigma.Models() {
+		if model.Provider == provider {
+			models = append(models, string(model.ID))
+		}
+	}
+	sort.Strings(models)
+	return models
 }
 
 func isBuiltInGoogleVertexGeminiModel(model sigma.Model) bool {
@@ -620,68 +652,6 @@ func redactedProbeBody(body []byte, apiKey string) string {
 		text = strings.ReplaceAll(text, apiKey, "[redacted]")
 	}
 	return redact.Preview(text, 2048)
-}
-
-func discoverModels(ctx context.Context, route routeSpec, apiKey string) ([]string, error) {
-	baseURL := route.BaseURL
-	if route.ModelBaseURL != "" {
-		baseURL = route.ModelBaseURL
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+"/models", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("X-Api-Key", apiKey)
-	req.Header.Set("X-Goog-Api-Key", apiKey)
-
-	resp, err := safehttp.Client(nil).Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("GET /models returned HTTP %d: %s", resp.StatusCode, redactedProbeBody(body, apiKey))
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return parseModelIDs(body)
-}
-
-func parseModelIDs(body []byte) ([]string, error) {
-	var decoded any
-	if err := json.Unmarshal(body, &decoded); err != nil {
-		return nil, err
-	}
-	ids := make([]string, 0)
-	var walk func(any)
-	walk = func(value any) {
-		switch v := value.(type) {
-		case map[string]any:
-			if id, _ := v["id"].(string); id != "" {
-				ids = append(ids, id)
-			}
-			if data, ok := v["data"]; ok {
-				walk(data)
-			}
-			if models, ok := v["models"]; ok {
-				walk(models)
-			}
-		case []any:
-			for _, item := range v {
-				walk(item)
-			}
-		}
-	}
-	walk(decoded)
-	if len(ids) == 0 {
-		return nil, fmt.Errorf("no model IDs in /models response")
-	}
-	sort.Strings(ids)
-	return ids, nil
 }
 
 type fireworksModelCapabilities struct {
@@ -964,12 +934,12 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			})
 			continue
 		}
-		models, err := modelsForRoute(ctx, route, credential, cfg.models)
+		models, err := modelsForRoute(route, cfg.models)
 		if err != nil {
 			emit(probeResult{
 				Route:   route.Name,
 				Case:    "handoff_source",
-				Attempt: "model_discovery",
+				Attempt: "model_selection",
 				Outcome: "no_working_attempt",
 				Error:   err.Error(),
 			})
