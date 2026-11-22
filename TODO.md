@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Drop other models' thinking in `TransformRequestForModel` instead of converting it to text.
 - [x] Declare GPT-5.4 and GPT-5.5 tools at the top level.
 - [x] Read Copilot reasoning tokens, send its reasoning effort, and send strict tools to Copilot Claude.
 - [x] Merge caller `anthropic_beta` values with Bedrock thinking betas.
@@ -273,9 +274,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Decide whether `TransformRequestForModel` should drop thinking from other
-      models, as `internal/transform` now does, instead of converting it to
-      visible `<thinking>` text (`handoff.go` `shouldConvertHandoffThinking`).
 - [ ] Decide whether Mistral should send `store: false` by default or move to the
       stateless chat completions endpoint; Conversations stores transcripts by
       default (`provider/mistral/mistral.go`).

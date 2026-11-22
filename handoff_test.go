@@ -40,8 +40,8 @@ func TestTransformRequestForModelPreservesSameModelThinking(t *testing.T) {
 	if got, want := block.Type, sigma.ContentBlockThinking; got != want {
 		t.Fatalf("thinking block type = %q, want %q", got, want)
 	}
-	if got := result.Report.ConvertedThinkingBlocks; got != 0 {
-		t.Fatalf("converted thinking blocks = %d, want 0", got)
+	if got := result.Report.DroppedThinkingBlocks; got != 0 {
+		t.Fatalf("dropped thinking blocks = %d, want 0", got)
 	}
 	if got, want := result.Request.Messages[0].ProviderThinkingLevel, "high"; got != want {
 		t.Fatalf("provider thinking level = %q, want %q", got, want)
@@ -102,7 +102,9 @@ func TestTransformRequestForModelClonesOpenAIGrammarTools(t *testing.T) {
 	}
 }
 
-func TestTransformRequestForModelConvertsForeignThinkingWithReport(t *testing.T) {
+// Replayed as text, another model's thinking reads as part of the target's own
+// replies, so handoff drops it and keeps the visible text.
+func TestTransformRequestForModelDropsForeignThinkingWithReport(t *testing.T) {
 	t.Parallel()
 
 	request := sigma.Request{Messages: []sigma.Message{{
@@ -110,7 +112,7 @@ func TestTransformRequestForModelConvertsForeignThinkingWithReport(t *testing.T)
 		Provider: sigma.ProviderAnthropic,
 		API:      sigma.APIAnthropicMessages,
 		Model:    "claude-sonnet",
-		Content:  []sigma.ContentBlock{sigma.Thinking("check constraints", "sig")},
+		Content:  []sigma.ContentBlock{sigma.Thinking("check constraints", "sig"), sigma.Text("Answer.")},
 	}}}
 	target := sigma.Model{
 		ID:               "gpt-5.1",
@@ -119,29 +121,22 @@ func TestTransformRequestForModelConvertsForeignThinkingWithReport(t *testing.T)
 		SupportsThinking: true,
 	}
 
-	result, err := sigma.TransformRequestForModel(
-		target,
-		request,
-		sigma.WithHandoffThinkingDelimiters("[thinking]", "[/thinking]"),
-	)
+	result, err := sigma.TransformRequestForModel(target, request)
 	if err != nil {
 		t.Fatalf("TransformRequestForModel returned error: %v", err)
 	}
 
-	block := result.Request.Messages[0].Content[0]
-	if got, want := block.Type, sigma.ContentBlockText; got != want {
-		t.Fatalf("converted block type = %q, want %q", got, want)
+	content := result.Request.Messages[0].Content
+	if len(content) != 1 || content[0].Type != sigma.ContentBlockText || content[0].Text != "Answer." {
+		t.Fatalf("content = %#v, want only the visible text", content)
 	}
-	if got, want := block.Text, "[thinking]\ncheck constraints\n[/thinking]"; got != want {
-		t.Fatalf("converted thinking text = %q, want %q", got, want)
+	if got := result.Report.DroppedThinkingBlocks; got != 1 {
+		t.Fatalf("dropped thinking blocks = %d, want 1", got)
 	}
-	if got := result.Report.ConvertedThinkingBlocks; got != 1 {
-		t.Fatalf("converted thinking blocks = %d, want 1", got)
-	}
-	assertHandoffChange(t, result.Report, sigma.HandoffChangeThinkingConverted, 0, 0)
+	assertHandoffChange(t, result.Report, sigma.HandoffChangeThinkingDropped, 0, 0)
 }
 
-func TestTransformRequestForModelConvertsSameProviderDifferentModelThinking(t *testing.T) {
+func TestTransformRequestForModelDropsSameProviderDifferentModelThinking(t *testing.T) {
 	t.Parallel()
 
 	request := sigma.Request{Messages: []sigma.Message{{
@@ -163,15 +158,11 @@ func TestTransformRequestForModelConvertsSameProviderDifferentModelThinking(t *t
 		t.Fatalf("TransformRequestForModel returned error: %v", err)
 	}
 
-	block := result.Request.Messages[0].Content[0]
-	if got, want := block.Type, sigma.ContentBlockText; got != want {
-		t.Fatalf("converted block type = %q, want %q", got, want)
+	if content := result.Request.Messages[0].Content; len(content) != 0 {
+		t.Fatalf("content = %#v, want the other model's thinking dropped", content)
 	}
-	if got, want := block.Text, "<thinking>\nmodel-private state\n</thinking>"; got != want {
-		t.Fatalf("converted thinking text = %q, want %q", got, want)
-	}
-	if got := result.Report.ConvertedThinkingBlocks; got != 1 {
-		t.Fatalf("converted thinking blocks = %d, want 1", got)
+	if got := result.Report.DroppedThinkingBlocks; got != 1 {
+		t.Fatalf("dropped thinking blocks = %d, want 1", got)
 	}
 }
 

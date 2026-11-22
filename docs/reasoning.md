@@ -88,8 +88,9 @@ from assistant messages whose recorded provenance differs from the target are
 dropped; their text and tool calls are kept. Chat Completions routes that require
 `reasoning_content` on assistant messages send it empty for those turns. Messages
 without provenance are treated as the target model's own. The opt-in
-`sigma.TransformRequestForModel` helpers still convert thinking to text when
-called explicitly.
+`sigma.TransformRequestForModel` helpers drop that thinking too and report each
+block as a `thinking-dropped` change; `WithHandoffThinkingDelimiters` no longer
+has an effect.
 
 ## Display Policy
 

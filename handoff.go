@@ -11,17 +11,18 @@ import (
 	"strings"
 )
 
-const (
-	defaultHandoffThinkingStartDelimiter = "<thinking>"
-	defaultHandoffThinkingEndDelimiter   = "</thinking>"
-)
-
 // HandoffChangeKind identifies one request adaptation made during handoff.
 type HandoffChangeKind string
 
 const (
-	// HandoffChangeThinkingConverted indicates a thinking block was converted
-	// to text for a target that cannot safely replay it natively.
+	// HandoffChangeThinkingDropped indicates a thinking block recorded by a
+	// different provider, API, or model was dropped. Replayed as text, the
+	// target would read another model's reasoning as part of its own replies.
+	HandoffChangeThinkingDropped HandoffChangeKind = "thinking-dropped"
+	// HandoffChangeThinkingConverted is no longer reported.
+	//
+	// Deprecated: foreign thinking is dropped and reported as
+	// HandoffChangeThinkingDropped.
 	HandoffChangeThinkingConverted HandoffChangeKind = "thinking-converted"
 	// HandoffChangeDeveloperRoleConverted indicates a developer message was
 	// converted to a user message for target compatibility.
@@ -55,6 +56,9 @@ type HandoffChange struct {
 
 // HandoffReport summarizes adaptations made for a target model.
 type HandoffReport struct {
+	DroppedThinkingBlocks int `json:"droppedThinkingBlocks,omitempty"`
+	// Deprecated: foreign thinking is dropped and counted in
+	// DroppedThinkingBlocks; this count is always zero.
 	ConvertedThinkingBlocks    int             `json:"convertedThinkingBlocks,omitempty"`
 	ConvertedDeveloperMessages int             `json:"convertedDeveloperMessages,omitempty"`
 	RepairedToolResultNames    int             `json:"repairedToolResultNames,omitempty"`
@@ -80,13 +84,12 @@ type HandoffMessagesResult struct {
 // HandoffOption configures public cross-provider request adaptation.
 type HandoffOption func(*handoffConfig)
 
-// WithHandoffThinkingDelimiters configures the text wrappers used when
-// provider-native thinking blocks are converted to text.
-func WithHandoffThinkingDelimiters(start string, end string) HandoffOption {
-	return func(config *handoffConfig) {
-		config.thinkingStartDelimiter = start
-		config.thinkingEndDelimiter = end
-	}
+// WithHandoffThinkingDelimiters has no effect.
+//
+// Deprecated: foreign thinking is dropped rather than converted to text, so
+// there are no delimiters to configure.
+func WithHandoffThinkingDelimiters(string, string) HandoffOption {
+	return func(*handoffConfig) {}
 }
 
 // WithHandoffUnsupportedImageReplacement replaces unsupported image blocks
@@ -156,26 +159,15 @@ func TransformMessagesForModel(target Model, messages []Message, opts ...Handoff
 }
 
 type handoffConfig struct {
-	thinkingStartDelimiter      string
-	thinkingEndDelimiter        string
 	unsupportedImageReplacement *string
 }
 
 func newHandoffConfig(opts ...HandoffOption) handoffConfig {
-	config := handoffConfig{
-		thinkingStartDelimiter: defaultHandoffThinkingStartDelimiter,
-		thinkingEndDelimiter:   defaultHandoffThinkingEndDelimiter,
-	}
+	var config handoffConfig
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&config)
 		}
-	}
-	if config.thinkingStartDelimiter == "" {
-		config.thinkingStartDelimiter = defaultHandoffThinkingStartDelimiter
-	}
-	if config.thinkingEndDelimiter == "" {
-		config.thinkingEndDelimiter = defaultHandoffThinkingEndDelimiter
 	}
 	return config
 }
@@ -227,12 +219,10 @@ func transformHandoffMessage(message Message, ctx handoffMessageContext) (Messag
 			ctx.report.record(HandoffChangeUnsupportedImageReplaced, ctx.messageIndex, intPtr(index), "replaced image block with text")
 			continue
 		}
-		if transformed.Role == RoleAssistant && block.Type == ContentBlockThinking && shouldConvertHandoffThinking(message, ctx) {
-			if strings.TrimSpace(block.ThinkingText) == "" || block.Redacted {
-				continue
+		if transformed.Role == RoleAssistant && block.Type == ContentBlockThinking && shouldDropHandoffThinking(message, ctx) {
+			if strings.TrimSpace(block.ThinkingText) != "" && !block.Redacted {
+				ctx.report.record(HandoffChangeThinkingDropped, ctx.messageIndex, intPtr(index), "dropped thinking block from another model")
 			}
-			content = append(content, Text(wrapHandoffThinking(block.ThinkingText, ctx.config)))
-			ctx.report.record(HandoffChangeThinkingConverted, ctx.messageIndex, intPtr(index), "converted thinking block to text")
 			continue
 		}
 		cloned := block.Clone()
@@ -258,9 +248,9 @@ func transformHandoffMessage(message Message, ctx handoffMessageContext) (Messag
 	return transformed, nil
 }
 
-func shouldConvertHandoffThinking(message Message, ctx handoffMessageContext) bool {
-	// Keep interrupted reasoning distinguishable until provider request preparation
-	// removes it. Converting it to text here would make it appear user-visible.
+func shouldDropHandoffThinking(message Message, ctx handoffMessageContext) bool {
+	// Keep interrupted reasoning distinguishable until provider request
+	// preparation removes it.
 	if message.StopReason == StopReasonError || message.StopReason == StopReasonAborted {
 		return false
 	}
@@ -274,10 +264,6 @@ func shouldConvertHandoffThinking(message Message, ctx handoffMessageContext) bo
 		return true
 	}
 	return message.Model != "" && ctx.target.ID != "" && message.Model != ctx.target.ID
-}
-
-func wrapHandoffThinking(text string, config handoffConfig) string {
-	return config.thinkingStartDelimiter + "\n" + text + "\n" + config.thinkingEndDelimiter
 }
 
 func recordHandoffToolCalls(toolNamesByID map[string]string, message Message) {
@@ -457,8 +443,8 @@ func (report *HandoffReport) recordOutput(kind HandoffChangeKind, messageIndex i
 
 func (report *HandoffReport) recordChange(kind HandoffChangeKind, messageIndex int, outputIndex *int, contentIndex *int, detail string) {
 	switch kind {
-	case HandoffChangeThinkingConverted:
-		report.ConvertedThinkingBlocks++
+	case HandoffChangeThinkingDropped:
+		report.DroppedThinkingBlocks++
 	case HandoffChangeDeveloperRoleConverted:
 		report.ConvertedDeveloperMessages++
 	case HandoffChangeToolResultNameRepaired:
@@ -471,6 +457,8 @@ func (report *HandoffReport) recordChange(kind HandoffChangeKind, messageIndex i
 		report.SynthesizedToolResults++
 	case HandoffChangeUnsupportedImageReplaced:
 		report.ReplacedUnsupportedImages++
+	case HandoffChangeThinkingConverted:
+		// Deprecated and no longer recorded.
 	}
 	report.Changes = append(report.Changes, HandoffChange{
 		Kind:               kind,
