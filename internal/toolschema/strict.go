@@ -40,8 +40,18 @@ func Enabled(metadata map[string]any) bool {
 	return strict
 }
 
+// UnsupportedKeyword reports whether a provider's strict mode rejects a schema
+// keyword with the given value.
+type UnsupportedKeyword func(key string, value any) bool
+
 // MakeStrict returns a provider-compatible strict copy of a tool schema.
 func MakeStrict(input any) (map[string]any, error) {
+	return MakeStrictWith(input, nil)
+}
+
+// MakeStrictWith is MakeStrict with extra keywords rejected by unsupported,
+// checked on every schema node.
+func MakeStrictWith(input any, unsupported UnsupportedKeyword) (map[string]any, error) {
 	if input == nil {
 		input = map[string]any{"type": "object"}
 	}
@@ -53,7 +63,7 @@ func MakeStrict(input any) (map[string]any, error) {
 	if !ok {
 		return nil, fmt.Errorf("root schema must be an object")
 	}
-	if err := makeNodeStrict(root); err != nil {
+	if err := makeNodeStrict(root, unsupported); err != nil {
 		return nil, err
 	}
 	if root["type"] != "object" {
@@ -92,16 +102,28 @@ func decode(input any) (any, error) {
 	return decoded, nil
 }
 
-func makeNodeStrict(schema map[string]any) error {
+func makeNodeStrict(schema map[string]any, unsupported UnsupportedKeyword) error {
 	for _, key := range unsupportedStrictSchemaKeys {
 		if _, exists := schema[key]; exists {
 			return fmt.Errorf("%s schemas are unsupported", key)
 		}
 	}
-	if err := makeAnyOfStrict(schema); err != nil {
+	if unsupported != nil {
+		keys := make([]string, 0, len(schema))
+		for key := range schema {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if unsupported(key, schema[key]) {
+				return fmt.Errorf("%s keyword with value %v is unsupported", key, schema[key])
+			}
+		}
+	}
+	if err := makeAnyOfStrict(schema, unsupported); err != nil {
 		return err
 	}
-	if err := makeItemsStrict(schema); err != nil {
+	if err := makeItemsStrict(schema, unsupported); err != nil {
 		return err
 	}
 
@@ -115,10 +137,10 @@ func makeNodeStrict(schema map[string]any) error {
 	if typeName != "object" {
 		return nil
 	}
-	return makeObjectStrict(schema)
+	return makeObjectStrict(schema, unsupported)
 }
 
-func makeAnyOfStrict(schema map[string]any) error {
+func makeAnyOfStrict(schema map[string]any, unsupported UnsupportedKeyword) error {
 	raw, exists := schema["anyOf"]
 	if !exists {
 		return nil
@@ -135,14 +157,14 @@ func makeAnyOfStrict(schema map[string]any) error {
 		if isStructured(variant) {
 			return fmt.Errorf("object and array unions are unsupported")
 		}
-		if err := makeNodeStrict(variant); err != nil {
+		if err := makeNodeStrict(variant, unsupported); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func makeItemsStrict(schema map[string]any) error {
+func makeItemsStrict(schema map[string]any, unsupported UnsupportedKeyword) error {
 	raw, exists := schema["items"]
 	if !exists {
 		return nil
@@ -154,10 +176,10 @@ func makeItemsStrict(schema map[string]any) error {
 	if !ok {
 		return fmt.Errorf("boolean schemas are unsupported")
 	}
-	return makeNodeStrict(items)
+	return makeNodeStrict(items, unsupported)
 }
 
-func makeObjectStrict(schema map[string]any) error {
+func makeObjectStrict(schema map[string]any, unsupported UnsupportedKeyword) error {
 	if additional, exists := schema["additionalProperties"]; exists && additional != false {
 		return fmt.Errorf("schema-valued or true additionalProperties is unsupported")
 	}
@@ -189,7 +211,7 @@ func makeObjectStrict(schema map[string]any) error {
 		if !ok {
 			return fmt.Errorf("property %q must be a schema object", name)
 		}
-		if err := makeNodeStrict(property); err != nil {
+		if err := makeNodeStrict(property, unsupported); err != nil {
 			return fmt.Errorf("property %q: %w", name, err)
 		}
 		if !required[name] && !allowsNull(property) {

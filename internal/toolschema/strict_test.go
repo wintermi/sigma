@@ -125,6 +125,24 @@ func TestMakeStrictRejectsUnsafeSchemas(t *testing.T) {
 	}
 }
 
+func TestMakeStrictWithChecksKeywordsOnEveryNode(t *testing.T) {
+	t.Parallel()
+	rejectMaximum := func(key string, _ any) bool { return key == "maximum" }
+	for _, schema := range []map[string]any{
+		{"type": "object", "maximum": 1},
+		objectWithProperty(map[string]any{"type": "integer", "maximum": 1}),
+		objectWithProperty(map[string]any{"type": "array", "items": map[string]any{"type": "integer", "maximum": 1}}),
+		objectWithProperty(map[string]any{"anyOf": []any{map[string]any{"type": "integer", "maximum": 1}, map[string]any{"type": "null"}}}),
+	} {
+		if _, err := MakeStrictWith(schema, rejectMaximum); err == nil || !strings.Contains(err.Error(), "maximum keyword") {
+			t.Fatalf("MakeStrictWith(%v) error = %v, want maximum rejected", schema, err)
+		}
+		if _, err := MakeStrict(schema); err != nil {
+			t.Fatalf("MakeStrict(%v) error = %v, want none", schema, err)
+		}
+	}
+}
+
 func TestMakeStrictDefaultsNilSchemaToClosedObject(t *testing.T) {
 	t.Parallel()
 

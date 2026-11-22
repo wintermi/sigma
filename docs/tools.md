@@ -223,8 +223,14 @@ support; custom models and compatible endpoints can use
 `anthropic.MessagesCompat.StrictTools`. Strict derivation rejects schemas that
 cannot be converted safely, including references, composed object or array
 unions, tuples, conditionals, pattern properties, and schema-valued additional
-properties, before provider dispatch. Omitted or false strict metadata
-preserves the original schema, and other provider routes remain unchanged.
+properties, before provider dispatch. Anthropic Messages also rejects the
+keywords Claude's strict mode does not accept: `minimum`, `maximum`,
+`exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`, `uniqueItems`,
+`minContains`, `maxContains`, `minProperties`, `maxProperties`, `minItems` other
+than 0 or 1, and `format` values other than `date-time`, `time`, `date`,
+`duration`, `email`, `hostname`, `uri`, `ipv4`, `ipv6`, and `uuid`. Omitted or
+false strict metadata preserves the original schema, and other provider routes
+remain unchanged.
 Responses routes send `strict: false` for those tools, because the Responses
 API treats an omitted `strict` as `true`.
 

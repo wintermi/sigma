@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic strict tools fail locally, with the tool and keyword named, when their schema uses a keyword Claude's strict mode rejects. A strict tool with `{"type":"integer","minimum":1}`, a `maxItems` bound, or an unsupported string `format` was sent as is, and Claude rejected the whole request with a 400. Sigma now checks every schema node against Claude's documented strict-mode limitations before dispatch, as it already did for references and unions; tools without strict metadata are unchanged.
+
 OpenCode Claude Opus 5, Opus 5.5, and Fable 5.1 keep working after the system prompt or tools change. OpenCode forwards per-message effort and thinking block binding to Claude, but these rows did not enable them, so replayed signed thinking from an earlier prompt was rejected with "Invalid signature in thinking block" on every later turn. They now use mid-conversation effort like their direct Anthropic rows, which sends `drop_block` so stale thinking is dropped instead.
 
 Claude models that reject temperature no longer receive it on any Anthropic Messages route. Opus 4.7 and later, Sonnet 5, and Haiku 5.5 reject the `temperature` field, but 13 catalog rows, including direct Claude Sonnet 5 and most Vertex Claude rows, did not record that, so a request with a temperature and no thinking failed. Those rows now mark temperature unsupported, and the adapter omits it.

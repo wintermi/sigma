@@ -544,9 +544,31 @@ func anthropicTools(tools []sigma.Tool, retention sigma.CacheRetention, compat m
 	return converted, nil
 }
 
+// anthropicStrictUnsupportedKeyword reports keywords Claude's strict tool use
+// rejects with a 400 for the whole request: numeric and size bounds, minItems
+// other than 0 or 1, and string formats outside its supported set.
+func anthropicStrictUnsupportedKeyword(key string, value any) bool {
+	switch key {
+	case "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+		"maxItems", "uniqueItems", "minContains", "maxContains", "minProperties", "maxProperties":
+		return true
+	case "minItems":
+		number, ok := value.(json.Number)
+		return !ok || (number.String() != "0" && number.String() != "1")
+	case "format":
+		format, _ := value.(string)
+		switch format {
+		case "date-time", "time", "date", "duration", "email", "hostname", "uri", "ipv4", "ipv6", "uuid":
+			return false
+		}
+		return true
+	}
+	return false
+}
+
 func anthropicToolInputSchema(tool sigma.Tool, strict bool) (any, error) {
 	if strict {
-		inputSchema, err := toolschema.MakeStrict(tool.InputSchema)
+		inputSchema, err := toolschema.MakeStrictWith(tool.InputSchema, anthropicStrictUnsupportedKeyword)
 		if err != nil {
 			return nil, fmt.Errorf("anthropic messages: tool %q strict schema: %w", tool.Name, err)
 		}

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Reject Claude strict-mode-unsupported schema keywords before dispatch.
 - [x] Send `drop_block` for OpenCode Claude Opus 5, Opus 5.5, and Fable 5.1.
 - [x] Mark temperature unsupported on every Messages route to Claude Opus 4.7+, Sonnet 5, and Haiku 5.5.
 - [x] Align `IsContextOverflow` with `ClassifyError` for codeless 429 token wording.
@@ -261,11 +262,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Reject or strip Anthropic strict-mode-unsupported schema keywords
-      (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`,
-      `maxItems`, `minItems` above 1, `uniqueItems`, `minContains`, `maxContains`,
-      `minProperties`, `maxProperties`, unsupported `format`) before sending
-      `strict: true` (`internal/toolschema/strict.go`).
 - [ ] Fail locally on strict schemas with untyped nodes (`items: {}`, bare `const`)
       instead of sending them (`internal/toolschema/strict.go` `makeNodeStrict`).
 - [ ] Send the Codex system prompt as a leading `developer` input item instead of
