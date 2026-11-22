@@ -24,9 +24,10 @@ if model.SupportsReasoning() && model.SupportsThinkingLevel(sigma.ThinkingLevelM
 
 `Model.ProviderThinkingLevel` maps a provider-neutral level to the value the
 provider expects when `ThinkingLevelMap` is present.
-On models with `SupportsThinking`, the map overrides provider values: unmapped
-levels through `high` remain supported and use the level text, while `xhigh`
-and `max` require an entry. `UnsupportedThinkingLevels` rejects a level.
+On models with `SupportsThinking`, levels through `high` are supported and use
+the level text unless the map overrides them, while `xhigh` and `max` require a
+map entry, including on models with no map. `UnsupportedThinkingLevels`
+rejects a level.
 
 ## Request Options
 

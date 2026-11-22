@@ -32,10 +32,11 @@ func (model Model) SupportsReasoning() bool {
 }
 
 // SupportsThinkingLevel reports whether level can be requested for model.
-// For models that advertise SupportsThinking, ThinkingLevelMap overrides
-// provider values: unmapped levels up to high stay supported, while xhigh and
-// max require an explicit entry. Use UnsupportedThinkingLevels to reject a
-// level. Without SupportsThinking, ThinkingLevelMap lists every supported level.
+// For models that advertise SupportsThinking, levels up to high are supported
+// by default, while xhigh and max require an explicit ThinkingLevelMap entry;
+// map entries also override provider values. Use UnsupportedThinkingLevels to
+// reject a level. Without SupportsThinking, ThinkingLevelMap lists every
+// supported level.
 func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 	if level == "" {
 		return false
@@ -50,7 +51,7 @@ func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 		if _, ok := model.ThinkingLevelMap[level]; ok {
 			return true
 		}
-		return model.SupportsThinking && level != ThinkingLevelXHigh && level != ThinkingLevel("max")
+		return model.SupportsThinking && !requiresExplicitThinkingLevel(level)
 	}
 	if len(model.ThinkingLevels) > 0 {
 		for _, supported := range model.ThinkingLevels {
@@ -60,7 +61,13 @@ func (model Model) SupportsThinkingLevel(level ThinkingLevel) bool {
 		}
 		return false
 	}
-	return model.SupportsThinking
+	return model.SupportsThinking && !requiresExplicitThinkingLevel(level)
+}
+
+// requiresExplicitThinkingLevel reports levels above high, which only models
+// that list them support.
+func requiresExplicitThinkingLevel(level ThinkingLevel) bool {
+	return level == ThinkingLevelXHigh || level == ThinkingLevel("max")
 }
 
 func (model Model) unsupportedThinkingLevel(level ThinkingLevel) bool {

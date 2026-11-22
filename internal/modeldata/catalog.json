@@ -525,6 +525,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -563,6 +566,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -930,6 +937,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -968,6 +978,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -1259,6 +1273,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -2271,6 +2288,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -2646,6 +2667,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -2684,6 +2708,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -2888,6 +2916,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -2926,6 +2957,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -3757,6 +3792,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -3795,6 +3833,10 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "budget"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -4659,6 +4701,9 @@
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
         "supportsToolReferences": "supported"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -4699,6 +4744,10 @@
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive",
         "supportsToolReferences": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -6471,6 +6520,10 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -7221,6 +7274,9 @@
       },
       "openAICompletionsCompat": {
         "supportsSessionAffinity": "supported"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -8159,6 +8215,9 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -8197,6 +8256,10 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {
@@ -10394,6 +10457,9 @@
         "supportsLongCacheRetention": "supported",
         "supportsCacheControlOnTools": "supported",
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -20032,6 +20098,9 @@
       "providerMetadata": {
         "modelFamily": "qwen",
         "opencodeAPI": "anthropic-messages"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
       }
     },
     {
@@ -21386,6 +21455,9 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "max": "max"
       }
     },
     {
@@ -21420,6 +21492,10 @@
       },
       "anthropicMessagesCompat": {
         "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
       }
     },
     {

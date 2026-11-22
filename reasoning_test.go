@@ -74,6 +74,26 @@ func TestModelPartialThinkingLevelMapKeepsDefaultLevels(t *testing.T) {
 	}
 }
 
+func TestModelWithoutThinkingLevelMapRejectsLevelsAboveHigh(t *testing.T) {
+	t.Parallel()
+
+	model := sigma.Model{SupportsThinking: true}
+	for _, tt := range []struct {
+		level     sigma.ThinkingLevel
+		supported bool
+	}{
+		{level: sigma.ThinkingLevelOff, supported: true},
+		{level: sigma.ThinkingLevelMinimal, supported: true},
+		{level: sigma.ThinkingLevelHigh, supported: true},
+		{level: sigma.ThinkingLevelXHigh, supported: false},
+		{level: sigma.ThinkingLevel("max"), supported: false},
+	} {
+		if got := model.SupportsThinkingLevel(tt.level); got != tt.supported {
+			t.Fatalf("SupportsThinkingLevel(%q) = %v, want %v", tt.level, got, tt.supported)
+		}
+	}
+}
+
 func TestModelThinkingLevelsRejectUnsupportedLevels(t *testing.T) {
 	t.Parallel()
 
