@@ -215,6 +215,7 @@ See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Fixed
 
+- Surface-probe `-handoff` and `-images` runs also stop sending requests once the overall `-timeout` passes, reporting remaining handoff sources, handoff replays, and image cases as `skipped` with attempt `overall_deadline`. Handoff runs skip credential resolution after the deadline.
 - Once the overall `-timeout` passes, the surface probe sends no further requests and reports each remaining case, and any case the deadline cut short, as `skipped` with attempt `overall_deadline` instead of an `upstream_availability` failure. Repair attempts stop, and later routes skip credential resolution.
 - The surface probe also skips the raw scalar thinking cases for OpenCode Go Hy4, which accepts only a thinking object. sigma turns its thinking off with `reasoning_effort`, which the probe still tests.
 - The surface probe skips the raw `thinking: "none"` and `thinking: false` cases for models that use the DeepSeek reasoning format, such as DeepSeek, Kimi K2.6, MiMo, and Ling 3.1 Flash. Those models accept only the thinking object sigma sends, and upstream rejections of the scalar forms said nothing about sigma.

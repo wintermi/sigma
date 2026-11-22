@@ -40,7 +40,7 @@ image.
 Once the overall `-timeout` passes, the probe sends no further requests. Each
 remaining case, and a case the deadline cut short, is reported as `skipped`
 with attempt `overall_deadline` rather than as an upstream failure, and repair
-attempts stop.
+attempts stop. Handoff sources and replays and image cases follow the same rule.
 
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.

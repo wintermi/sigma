@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -3008,6 +3009,83 @@ func TestProbeSkipsCasesAfterOverallDeadline(t *testing.T) {
 	}
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want one per case: %#v", len(results), results)
+	}
+	for _, result := range results {
+		if result.Outcome != outcomeSkipped || result.Attempt != "overall_deadline" {
+			t.Fatalf("result = %+v, want an overall_deadline skip", result)
+		}
+	}
+}
+
+// Handoff sources left after the overall deadline must not reach a provider.
+// It replaces the package routes, so it cannot run in parallel.
+func TestHandoffProbesSkipSourcesAfterOverallDeadline(t *testing.T) {
+	oldRoutes := routes
+	t.Cleanup(func() {
+		routes = oldRoutes
+	})
+	provider := sigmatest.NewFauxProvider()
+	register := func(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
+		return registry.RegisterTextProvider(route.Provider, provider)
+	}
+	routes = map[string]routeSpec{}
+	for _, name := range []string{"handoff-a", "handoff-b"} {
+		route := handoffProbeRoute(t, name)
+		route.RegisterProvider = register
+		routes[name] = route
+	}
+	setRouteProvider("handoff-a", sigma.ProviderOpenAI)
+	setRouteProvider("handoff-b", sigma.ProviderOpenAICodex)
+	t.Setenv("SIGMATEST_API_KEY", "key")
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	var results []probeResult
+	runHandoffProbes(ctx, config{routes: []string{"handoff-a", "handoff-b"}, models: map[string]bool{"gpt-6-sol": true}}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got := len(provider.Requests()); got != 0 {
+		t.Fatalf("provider received %d requests after the overall deadline", got)
+	}
+	if len(results) != 2 {
+		t.Fatalf("results = %d, want one skipped source per route: %#v", len(results), results)
+	}
+	for _, result := range results {
+		if result.Case != "handoff_source" || result.Outcome != outcomeSkipped || result.Attempt != "overall_deadline" {
+			t.Fatalf("result = %+v, want an overall_deadline skip", result)
+		}
+	}
+}
+
+// Image cases left after the overall deadline must not reach the provider.
+// It replaces the package image routes, so it cannot run in parallel.
+func TestImageProbesSkipCasesAfterOverallDeadline(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		http.Error(w, "unexpected request", http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+	oldImageRoutes := imageRoutes
+	t.Cleanup(func() {
+		imageRoutes = oldImageRoutes
+	})
+	route := imageRoutes["openai"]
+	route.BaseURL = server.URL + "/v1"
+	imageRoutes = map[string]imageRouteSpec{"openai": route}
+	t.Setenv("OPENAI_API_KEY", "key")
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	var results []probeResult
+	runImageProbes(ctx, config{routes: []string{"openai"}}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("image provider received %d requests after the overall deadline", got)
+	}
+	if len(results) == 0 {
+		t.Fatal("image probes reported no results")
 	}
 	for _, result := range results {
 		if result.Outcome != outcomeSkipped || result.Attempt != "overall_deadline" {

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Apply overall-deadline skips to handoff and image surface probes.
 - [x] Stop surface-probe requests at the overall deadline and report remaining cases as skipped.
 - [x] Skip scalar thinking surface-probe cases for OpenCode Go Hy4.
 - [x] Raise the surface probe default timeout to 30 minutes.

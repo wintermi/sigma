@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Handoff and image surface probes now handle the overall `-timeout` like route probes: after the deadline they send no requests and report the unrun handoff sources, replays, and image cases as `skipped` with attempt `overall_deadline`.
+
 Surface probes that outlast the overall `-timeout` no longer report every remaining case as an upstream availability failure. The probe stops sending requests at the deadline and reports the unrun cases as `skipped` with attempt `overall_deadline`, so the summary shows how much of the run was cut off.
 
 Surface probes skip the raw scalar thinking cases for OpenCode Go Hy4, which rejects them; Hy4's `reasoning_effort` controls, which sigma uses, are still tested.

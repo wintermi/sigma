@@ -812,16 +812,22 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			})
 			continue
 		}
-		credential, err := credentialForRoute(ctx, route, cfg)
-		if err != nil {
-			emit(probeResult{
-				Route:   route.Name,
-				Case:    "handoff_source",
-				Attempt: "credential",
-				Outcome: outcomeSkipped,
-				Error:   err.Error(),
-			})
-			continue
+		// After the overall deadline no requests are sent, so skip credential
+		// resolution, which can itself need the network.
+		var credential routeCredential
+		if ctx.Err() == nil {
+			resolved, err := credentialForRoute(ctx, route, cfg)
+			if err != nil {
+				emit(probeResult{
+					Route:   route.Name,
+					Case:    "handoff_source",
+					Attempt: "credential",
+					Outcome: outcomeSkipped,
+					Error:   err.Error(),
+				})
+				continue
+			}
+			credential = resolved
 		}
 		models, err := modelsForRoute(route, cfg.models)
 		if err != nil {
@@ -835,7 +841,14 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			continue
 		}
 		for _, modelID := range models {
+			if ctx.Err() != nil {
+				emit(overallDeadlineSkip(route.Name, modelID, "handoff_source"))
+				continue
+			}
 			source, result := generateHandoffSource(ctx, route, modelID, credential, cfg)
+			if result.Outcome != "ok" && ctx.Err() != nil {
+				result = overallDeadlineSkip(route.Name, modelID, "handoff_source")
+			}
 			emit(result)
 			if result.Outcome == "ok" {
 				sources = append(sources, source)
@@ -848,7 +861,16 @@ func runHandoffProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			if source.Route.Name == target.Route.Name && source.Model.ID == target.Model.ID {
 				continue
 			}
-			emit(runHandoffTarget(ctx, source, target, cfg.caseTimeout))
+			result := probeResult{}
+			if ctx.Err() == nil {
+				result = runHandoffTarget(ctx, source, target, cfg.caseTimeout)
+			}
+			if result.Outcome != "ok" && ctx.Err() != nil {
+				result = overallDeadlineSkip(target.Route.Name, string(target.Model.ID), "handoff_replay")
+				result.SourceRoute = source.Route.Name
+				result.SourceModel = string(source.Model.ID)
+			}
+			emit(result)
 		}
 	}
 }
@@ -886,7 +908,14 @@ func runImageProbes(ctx context.Context, cfg config, emit func(probeResult)) {
 			continue
 		}
 		for _, testCase := range cases {
-			emit(runImageCaseWithTimeout(ctx, cfg.caseTimeout, route, testCase, credential))
+			result := probeResult{}
+			if ctx.Err() == nil {
+				result = runImageCaseWithTimeout(ctx, cfg.caseTimeout, route, testCase, credential)
+			}
+			if result.Outcome != "ok" && ctx.Err() != nil {
+				result = overallDeadlineSkip(route.Name, testCase.ModelID, testCase.Name)
+			}
+			emit(result)
 		}
 	}
 }
