@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Azure cost estimates for long prompts use the long-context price. Azure bills GPT-5.4, GPT-5.5, and GPT-5.6 at higher rates above 272K input tokens, as OpenAI does, but seven Azure rows lacked that tier, so long prompts were estimated at the base price. They now carry the same tiers as their OpenAI rows.
+
 GPT-6.1 and GPT-6.2 are available on OpenAI Codex and Azure OpenAI Responses. The direct OpenAI catalog already had GPT-6.1 Sol and Terra and GPT-6.2 Astra and Sol; Codex and Azure now list them too, with the same pricing tiers and reasoning levels. Codex rows use the context windows Codex serves, 272K for GPT-6.2 Astra and 500K for the others, and Azure rows use 1.05M like Azure's other GPT-6 rows. Catalog inclusion does not guarantee account access.
 
 Conversations with images can continue on text-only models. When a request includes images and the target model does not declare image input, Anthropic, Google, Bedrock, and Mistral failed the whole request, while the OpenAI adapters dropped the images without a trace. Every built-in adapter except Radius, whose gateway decides for its virtual models, now replaces each run of images in user and tool messages with a short note that an image was omitted, so the model knows something was there and the request goes through.

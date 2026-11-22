@@ -202,6 +202,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Azure OpenAI Responses GPT-5.4, GPT-5.4 Pro, GPT-5.5, GPT-5.5 Pro, and GPT-5.6 Luna, Sol, and Terra now carry the long-context price tier above 272K input tokens that their OpenAI rows have. Without it, cost estimates for long Azure prompts used the base price.
 - Images in user and tool messages sent to a model without image input are now replaced with a placeholder note on every built-in adapter except Radius. Anthropic, Google, Bedrock, and Mistral rejected the whole request, and OpenAI dropped the images silently, so a conversation that once contained a screenshot could never move to a text-only model.
 - Streaming long tool arguments no longer copies the whole decoded argument value on every delta. Beyond 16 KiB, `PartialToolCall.ProviderMetadata["arguments"]` is attached only to the deltas where the amortized decode refreshed it (`argumentsText` stays current on every delta), and tool-call blocks in non-terminal `PartialMessage` snapshots carry the accumulated argument text instead of a decoded copy. Each delta deep-copied the arguments twice, so total work grew quadratically with argument size.
 - `ValidateToolCall` now enforces `minItems`, `maxItems`, `uniqueItems`, `prefixItems`, `minProperties`, `maxProperties`, `exclusiveMinimum`, `exclusiveMaximum` (numeric and draft-04 boolean forms), and `multipleOf`, comparing numbers exactly. These keywords were ignored, so arguments such as an empty array for `minItems: 1` passed validation and reached the tool.

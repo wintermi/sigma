@@ -6003,8 +6003,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          2.5,
 		OutputCostPerMillion:         15,
 		CacheReadInputCostPerMillion: 0.25,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          5,
+				OutputCostPerMillion:         22.5,
+				CacheReadInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4",
 			APIVersion:       "v1",
@@ -6098,8 +6106,15 @@ var builtinTextModels = []Model{
 		UnsupportedThinkingLevels: []ThinkingLevel{ThinkingLevel("off")},
 		InputCostPerMillion:       30,
 		OutputCostPerMillion:      180,
-		CostCurrency:              "USD",
-		DefaultTransport:          Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:     272000,
+				InputCostPerMillion:  60,
+				OutputCostPerMillion: 270,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.4-pro",
 			APIVersion:       "v1",
@@ -6130,8 +6145,16 @@ var builtinTextModels = []Model{
 		InputCostPerMillion:          5,
 		OutputCostPerMillion:         30,
 		CacheReadInputCostPerMillion: 0.5,
-		CostCurrency:                 "USD",
-		DefaultTransport:             Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:             272000,
+				InputCostPerMillion:          10,
+				OutputCostPerMillion:         45,
+				CacheReadInputCostPerMillion: 1,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.5",
 			APIVersion:       "v1",
@@ -6161,8 +6184,15 @@ var builtinTextModels = []Model{
 		UnsupportedThinkingLevels: []ThinkingLevel{ThinkingLevel("off"), ThinkingLevel("minimal"), ThinkingLevel("low")},
 		InputCostPerMillion:       30,
 		OutputCostPerMillion:      180,
-		CostCurrency:              "USD",
-		DefaultTransport:          Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:     272000,
+				InputCostPerMillion:  60,
+				OutputCostPerMillion: 270,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.5-pro",
 			APIVersion:       "v1",
@@ -6195,8 +6225,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          1.2,
 		CacheReadInputCostPerMillion:  0.02,
 		CacheWriteInputCostPerMillion: 0.25,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           0.4,
+				OutputCostPerMillion:          1.8,
+				CacheReadInputCostPerMillion:  0.04,
+				CacheWriteInputCostPerMillion: 0.5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-luna",
 			APIVersion:       "v1",
@@ -6229,8 +6268,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          20,
 		CacheReadInputCostPerMillion:  0.4,
 		CacheWriteInputCostPerMillion: 5,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           8,
+				OutputCostPerMillion:          30,
+				CacheReadInputCostPerMillion:  0.8,
+				CacheWriteInputCostPerMillion: 10,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-sol",
 			APIVersion:       "v1",
@@ -6263,8 +6311,17 @@ var builtinTextModels = []Model{
 		OutputCostPerMillion:          12,
 		CacheReadInputCostPerMillion:  0.2,
 		CacheWriteInputCostPerMillion: 2.5,
-		CostCurrency:                  "USD",
-		DefaultTransport:              Transport("sse"),
+		CostTiers: []ModelCostTier{
+			{
+				InputTokensAbove:              272000,
+				InputCostPerMillion:           4,
+				OutputCostPerMillion:          18,
+				CacheReadInputCostPerMillion:  0.4,
+				CacheWriteInputCostPerMillion: 5,
+			},
+		},
+		CostCurrency:     "USD",
+		DefaultTransport: Transport("sse"),
 		AzureOpenAIResponses: &AzureOpenAIResponsesConfig{
 			Deployment:       "gpt-5.6-terra",
 			APIVersion:       "v1",

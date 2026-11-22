@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Add long-context price tiers to the Azure GPT-5.4, 5.5, and 5.6 rows.
 - [x] Add GPT-6.1 and GPT-6.2 rows to the Codex and Azure catalogs.
 - [x] Replace images with placeholder text for text-only models on every adapter.
 - [x] Stop deep-copying partial tool arguments on every streamed delta.
@@ -316,8 +317,6 @@ reproduces the failure before it is checked off.
       and Codex.
 - [ ] Report reasoning dropped by OpenAI `input_transformations`.
 - [ ] Check whether OpenCode routes should move to the `/inference` endpoints.
-- [ ] Add long-context price tiers to Azure `gpt-5.4`, `gpt-5.4-pro`, `gpt-5.5`,
-      `gpt-5.5-pro`, `gpt-5.6-luna`, `gpt-5.6-sol`, and `gpt-5.6-terra`.
 - [ ] Add Copilot `claude-haiku-5.5`, `claude-sonnet-5.5`, `gemini-4-argon`, and
       `gemini-4-carbon`; remove Copilot `gpt-5.4` and `gpt-5.5`.
 - [ ] Add the Qwen Token Plan Individual CN provider, per-plan key variables,
