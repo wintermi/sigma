@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Use Fireworks' documented Spot model IDs and prices.
 - [x] Skip the disabled-thinking surface-probe case for thinking-only Fireworks models.
 - [x] Add the current OpenCode Zen, OpenCode Go, and Fireworks models to the catalog.
 - [x] Settle the catalog rows left open by the November 22 retirement review.

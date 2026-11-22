@@ -6655,7 +6655,7 @@
       ]
     },
     {
-      "id": "accounts/fireworks/routers/glm-5p3-spot",
+      "id": "accounts/fireworks/models/glm-5p3-spot",
       "name": "GLM 5.3 Spot (Fireworks)",
       "provider": "fireworks",
       "api": "openai-completions",
@@ -6666,9 +6666,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.7,
-        "outputPerMillion": 2.2,
-        "cacheReadInputPerMillion": 0.13,
+        "inputPerMillion": 0.98,
+        "outputPerMillion": 3.08,
+        "cacheReadInputPerMillion": 0.182,
         "currency": "USD"
       },
       "contextWindow": 1048573,
@@ -6689,8 +6689,7 @@
       "providerMetadata": {
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
-        "modelFamily": "glm",
-        "router": true
+        "modelFamily": "glm"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -6961,7 +6960,7 @@
       ]
     },
     {
-      "id": "accounts/fireworks/routers/kimi-k3-spot",
+      "id": "accounts/fireworks/models/kimi-k3-spot",
       "name": "Kimi K3 Spot (Fireworks)",
       "provider": "fireworks",
       "api": "openai-completions",
@@ -6998,8 +6997,7 @@
         "deferredToolsMode": "kimi",
         "disabledThinkingFormat": "object-disabled",
         "fireworksSurface": "openai",
-        "modelFamily": "kimi",
-        "router": true
+        "modelFamily": "kimi"
       },
       "thinkingLevelMap": {
         "low": "low",
@@ -7203,7 +7201,7 @@
       ]
     },
     {
-      "id": "accounts/fireworks/routers/deepseek-v4p1-flash-1017-spot",
+      "id": "accounts/fireworks/models/deepseek-v4p1-flash-1017-spot",
       "name": "DeepSeek V4.1 Flash 1017 Spot (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",
       "api": "anthropic-messages",
@@ -7215,9 +7213,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.15,
-        "outputPerMillion": 0.6,
-        "cacheReadInputPerMillion": 0.003,
+        "inputPerMillion": 0.21,
+        "outputPerMillion": 0.84,
+        "cacheReadInputPerMillion": 0.0042,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -7237,8 +7235,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek",
-        "router": true
+        "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
         "off": "none",
@@ -7303,7 +7300,7 @@
       ]
     },
     {
-      "id": "accounts/fireworks/routers/deepseek-v4p1-flash-spot",
+      "id": "accounts/fireworks/models/deepseek-v4p1-flash-spot",
       "name": "DeepSeek V4.1 Flash Spot (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",
       "api": "anthropic-messages",
@@ -7315,9 +7312,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.15,
-        "outputPerMillion": 0.6,
-        "cacheReadInputPerMillion": 0.003,
+        "inputPerMillion": 0.21,
+        "outputPerMillion": 0.84,
+        "cacheReadInputPerMillion": 0.0042,
         "currency": "USD"
       },
       "contextWindow": 1000000,
@@ -7337,8 +7334,7 @@
       },
       "providerMetadata": {
         "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek",
-        "router": true
+        "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
         "off": "none",

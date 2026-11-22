@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Fireworks Spot models now work under the IDs Fireworks documents: `accounts/fireworks/models/glm-5p3-spot`, `kimi-k3-spot`, `deepseek-v4p1-flash-spot`, and `deepseek-v4p1-flash-1017-spot`. The previous `routers/` IDs were rejected with a 403 or 404. GLM 5.3 Spot and DeepSeek V4.1 Flash Spot prices are corrected to Fireworks' published Spot rates.
+
 Surface-probe runs against thinking-only Fireworks models, such as GLM 5.3 and its routers, no longer report a failed disabled-thinking case. The probe now skips that case when the model's catalog metadata says thinking cannot be turned off, as it already did for other providers.
 
 The OpenCode and Fireworks catalogs gain 57 current models. OpenCode Zen and Go add the models their live model lists serve, among them Claude 5.5, Gemini 4, GPT-6.1 and 6.2, Muse, and several free preview models. Fireworks adds GLM 5.3, Kimi K3.1 Pro, DeepSeek V4.1 Flash, Ember-1, MiniMax M3.1 Flash, Muse Spark Open, and Qwen3.8, with their Fireworks routers. Each row takes limits, prices, and thinking levels from models.dev and request settings from a reviewed catalog sibling; new Fireworks Anthropic-compatible models use adaptive thinking.
