@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Add opt-in Anthropic message threads.
 - [x] Shut down login callback servers gracefully so the success page is delivered.
 - [x] Send mid-conversation effort changes as `configuration_update` items on Responses and Codex.
 - [x] Report reasoning dropped by OpenAI `input_transformations`.
@@ -320,7 +321,6 @@ reproduces the failure before it is checked off.
 
 ### Features and catalog
 
-- [ ] Add Anthropic message threads.
 
 ## Credential ergonomics
 

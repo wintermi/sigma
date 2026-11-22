@@ -37,6 +37,7 @@ type messagesCompat struct {
 	supportsStrictTools           bool
 	supportsToolReferences        bool
 	supportsMidConversationEffort bool
+	supportsMessageThreads        bool
 	thinkingFormat                sigma.AnthropicThinkingFormat
 	// claudeCodeIdentity is request-scoped: it is set when the resolved
 	// credential is an Anthropic OAuth token, which Anthropic only accepts
@@ -151,6 +152,9 @@ func applyModelMessagesCompat(compat messagesCompat, override *sigma.AnthropicMe
 	}
 	if value, ok := anthropicCompatBool(override.SupportsMidConversationEffort); ok {
 		compat.supportsMidConversationEffort = value
+	}
+	if value, ok := anthropicCompatBool(override.SupportsMessageThreads); ok {
+		compat.supportsMessageThreads = value
 	}
 	if override.ThinkingFormat != "" {
 		compat.thinkingFormat = override.ThinkingFormat

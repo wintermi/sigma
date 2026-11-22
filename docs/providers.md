@@ -388,6 +388,20 @@ callback at `http://localhost:53692/callback`; when that port is reserved or in
 use it binds a free loopback port, and if no port is available it completes with
 `OnManualCode` input alone.
 
+Message threads (beta) are opt-in: set
+`AnthropicMessagesCompat.SupportsMessageThreads` on a model to have Anthropic
+keep the conversation on the server. With a session ID and caching, the first
+request creates a thread, and each later request whose earlier messages, system
+prompt, tools, and request settings are unchanged continues it, sending only the
+new messages. Any change starts a new thread. A rejected continuation is resent
+as a new thread, and an endpoint that does not support threads gets the full
+request and threads stay off for that session. Set the `disable_continuation`
+provider option to `true` for requests that must not continue or replace the
+session's thread, such as cache warming, and call
+`sigma.CleanupSessionResources` when a session ends to release its thread
+state. Gateways that drop the `thread` field would lose the conversation, so
+enable this only for endpoints that support it.
+
 This adapter also handles Anthropic-compatible endpoints used by some Kimi,
 Fireworks, and Xiaomi routes. Compatibility varies by endpoint; check
 [provider parity](provider-parity.md).

@@ -147,7 +147,33 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		final.ProviderThinkingLevel = providerThinkingLevel
 	}
 
-	resp, err := p.do(ctx, model, req, opts, credential, claudeCode)
+	compat.claudeCodeIdentity = claudeCode
+	payload, err := messagesPayload(model, req, opts, compat)
+	if err != nil {
+		_ = writer.Error(ctx, err, final)
+		return
+	}
+	beta := anthropicBeta(model, opts, compat, len(req.Tools) > 0)
+	session := threadSession(opts, compat)
+	if session != "" {
+		beta = strings.Join(appendBetas(appendBetas(nil, beta), messageThreadsBeta), ",")
+	}
+	thread, settings, err := p.prepareThread(model, opts, session, beta, payload)
+	if err != nil {
+		_ = writer.Error(ctx, err, final)
+		return
+	}
+	send := func(body map[string]any) (*http.Response, error) {
+		return p.do(ctx, model, req, opts, credential, claudeCode, body, beta)
+	}
+	body := payload
+	if thread != nil {
+		body = thread.body
+	}
+	resp, err := send(body)
+	if err == nil && thread != nil {
+		resp, thread, err = resendRejectedThread(resp, thread, payload, send)
+	}
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -158,8 +184,8 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		return
 	}
 	defer resp.Body.Close()
-	body := sse.CloseOnContextDone(ctx, resp.Body)
-	defer body.Close()
+	stream := sse.CloseOnContextDone(ctx, resp.Body)
+	defer stream.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		providerErr := responseError(resp, model)
@@ -169,8 +195,7 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		return
 	}
 
-	compat.claudeCodeIdentity = claudeCode
-	final, err = parseMessagesStream(ctx, body, writer, model, compat, req.Tools, providerThinkingLevel)
+	final, err = parseMessagesStream(ctx, stream, writer, model, compat, req.Tools, providerThinkingLevel)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			final.StopReason = sigma.StopReasonAborted
@@ -181,16 +206,99 @@ func (p *Provider) run(ctx context.Context, writer sigma.StreamWriter, model sig
 		_ = writer.Error(ctx, err, final)
 		return
 	}
+	if thread != nil {
+		recordThreadAnswer(model, req, opts, compat, thread, settings, final)
+	}
 	_ = writer.Done(ctx, final)
 }
 
-func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool) (*http.Response, error) {
+// prepareThread returns the thread request for session, or nil when the
+// session does not use threads or the caller disabled continuation.
+func (p *Provider) prepareThread(model sigma.Model, opts sigma.Options, session string, beta string, payload map[string]any) (*threadRequest, string, error) {
+	if session == "" || continuationDisabled(opts, model.Provider) {
+		return nil, "", nil
+	}
+	endpoint, err := p.endpoint(model, opts)
+	if err != nil {
+		return nil, "", err
+	}
+	full, err := normalizedPayload(payload)
+	if err != nil {
+		return nil, "", err
+	}
+	settings := threadSettings(endpoint, beta, full)
+	return prepareThreadRequest(session, settings, full), settings, nil
+}
+
+// resendRejectedThread resends a thread request the server rejected because
+// of the thread: as a new thread when the old one cannot be continued, or
+// without a thread, turning threads off for the session, when the endpoint
+// cannot use them. Other responses, including other errors, are returned.
+func resendRejectedThread(resp *http.Response, thread *threadRequest, payload map[string]any, send func(map[string]any) (*http.Response, error)) (*http.Response, *threadRequest, error) {
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return resp, thread, nil
+	}
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	_ = resp.Body.Close()
+	newThread, withoutThread := threadFallback(resp.StatusCode, data)
+	switch {
+	case newThread:
+		thread = newThreadRequest(thread.session, thread.full)
+		resp, err := send(thread.body)
+		return resp, thread, err
+	case withoutThread:
+		turnThreadsOff(thread.session)
+		resp, err := send(payload)
+		return resp, nil, err
+	default:
+		resp.Body = io.NopCloser(bytes.NewReader(data))
+		return resp, thread, nil
+	}
+}
+
+// recordThreadAnswer records where the session's next request can continue.
+// The answer is converted as the next request will send it, so the prefix
+// hash matches when nothing earlier changes. Answers from a fallback model
+// are not stored by the server and cannot be continued.
+func recordThreadAnswer(model sigma.Model, req sigma.Request, opts sigma.Options, compat messagesCompat, thread *threadRequest, settings string, final sigma.AssistantMessage) {
+	if responseModel := final.ResponseModel(); responseModel != "" && responseModel != model.ID {
+		return
+	}
+	next := req
+	next.Messages = append(append([]sigma.Message(nil), req.Messages...), sigma.Message{
+		Role:                  sigma.RoleAssistant,
+		Content:               final.Content,
+		Provider:              model.Provider,
+		API:                   model.API,
+		Model:                 model.ID,
+		StopReason:            final.StopReason,
+		ProviderThinkingLevel: final.ProviderThinkingLevel,
+	})
+	payload, err := messagesPayload(model, next, opts, compat)
+	if err != nil {
+		return
+	}
+	full, err := normalizedPayload(payload)
+	if err != nil {
+		return
+	}
+	messages, _ := full["messages"].([]any)
+	last := -1
+	for index, message := range messages {
+		if object, ok := message.(map[string]any); ok && object["role"] == "assistant" {
+			last = index
+		}
+	}
+	recordThreadReply(thread, settings, final.ResponseID(), messages[:last+1])
+}
+
+func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool, payload map[string]any, beta string) (*http.Response, error) {
 	return sigma.DoHTTPWithRetry(
 		ctx,
 		p.httpClient(opts),
 		opts,
 		func(ctx context.Context) (*http.Request, error) {
-			return p.newRequest(ctx, model, req, opts, credential, claudeCode)
+			return p.newRequest(ctx, model, req, opts, credential, claudeCode, payload, beta)
 		},
 		func(resp *http.Response) *sigma.ProviderError {
 			return responseError(resp, model)
@@ -199,14 +307,10 @@ func (p *Provider) do(ctx context.Context, model sigma.Model, req sigma.Request,
 	)
 }
 
-func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool) (*http.Request, error) {
+func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.Request, opts sigma.Options, credential sigma.Credential, claudeCode bool, payload map[string]any, beta string) (*http.Request, error) {
 	baseURL := p.baseURLForModel(model, opts)
 	compat := anthropicMessagesCompat(model, baseURL, p.compat)
 	compat.claudeCodeIdentity = claudeCode
-	payload, err := messagesPayload(model, req, opts, compat)
-	if err != nil {
-		return nil, err
-	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic messages: encode request: %w", err)
@@ -228,7 +332,7 @@ func (p *Provider) newRequest(ctx context.Context, model sigma.Model, req sigma.
 		httpReq.Header.Set("User-Agent", claudeCodeUserAgent)
 		httpReq.Header.Set("X-App", "cli")
 	}
-	if beta := anthropicBeta(model, opts, compat, len(req.Tools) > 0); beta != "" {
+	if beta != "" {
 		httpReq.Header.Set("Anthropic-Beta", beta)
 	}
 

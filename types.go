@@ -409,18 +409,23 @@ type OpenAICompletionsCompat struct {
 // Anthropic-compatible routers and custom endpoints. Leave fields at their zero
 // value to use provider or base-URL detection.
 type AnthropicMessagesCompat struct {
-	SupportsEagerToolInputStreaming AnthropicCompatSupport   `json:"supportsEagerToolInputStreaming,omitempty"`
-	SupportsLongCacheRetention      AnthropicCompatSupport   `json:"supportsLongCacheRetention,omitempty"`
-	SupportsSessionAffinity         AnthropicCompatSupport   `json:"supportsSessionAffinity,omitempty"`
-	SupportsCacheControlOnTools     AnthropicCompatSupport   `json:"supportsCacheControlOnTools,omitempty"`
-	SupportsEmptyThinkingSignature  AnthropicCompatSupport   `json:"supportsEmptyThinkingSignature,omitempty"`
-	SupportsTemperature             AnthropicCompatSupport   `json:"supportsTemperature,omitempty"`
-	SupportsDisabledThinking        AnthropicCompatSupport   `json:"supportsDisabledThinking,omitempty"`
-	SupportsStrictTools             AnthropicCompatSupport   `json:"supportsStrictTools,omitempty"`
-	SupportsToolReferences          AnthropicCompatSupport   `json:"supportsToolReferences,omitempty"`
-	SupportsMidConversationEffort   AnthropicCompatSupport   `json:"supportsMidConversationEffort,omitempty"`
-	ThinkingFormat                  AnthropicThinkingFormat  `json:"thinkingFormat,omitempty"`
-	AllowedFallbackModels           []AnthropicFallbackModel `json:"allowedFallbackModels,omitempty"`
+	SupportsEagerToolInputStreaming AnthropicCompatSupport `json:"supportsEagerToolInputStreaming,omitempty"`
+	SupportsLongCacheRetention      AnthropicCompatSupport `json:"supportsLongCacheRetention,omitempty"`
+	SupportsSessionAffinity         AnthropicCompatSupport `json:"supportsSessionAffinity,omitempty"`
+	SupportsCacheControlOnTools     AnthropicCompatSupport `json:"supportsCacheControlOnTools,omitempty"`
+	SupportsEmptyThinkingSignature  AnthropicCompatSupport `json:"supportsEmptyThinkingSignature,omitempty"`
+	SupportsTemperature             AnthropicCompatSupport `json:"supportsTemperature,omitempty"`
+	SupportsDisabledThinking        AnthropicCompatSupport `json:"supportsDisabledThinking,omitempty"`
+	SupportsStrictTools             AnthropicCompatSupport `json:"supportsStrictTools,omitempty"`
+	SupportsToolReferences          AnthropicCompatSupport `json:"supportsToolReferences,omitempty"`
+	SupportsMidConversationEffort   AnthropicCompatSupport `json:"supportsMidConversationEffort,omitempty"`
+	// SupportsMessageThreads opts in to Anthropic message threads (beta): with a
+	// session ID and caching, the server keeps the conversation and each turn
+	// sends only the new messages. Gateways that drop the thread field lose
+	// the conversation, so it is off unless set.
+	SupportsMessageThreads AnthropicCompatSupport   `json:"supportsMessageThreads,omitempty"`
+	ThinkingFormat         AnthropicThinkingFormat  `json:"thinkingFormat,omitempty"`
+	AllowedFallbackModels  []AnthropicFallbackModel `json:"allowedFallbackModels,omitempty"`
 }
 
 // AnthropicFallbackModel describes an allowed server-side refusal fallback
