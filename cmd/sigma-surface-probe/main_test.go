@@ -2980,6 +2980,42 @@ func setRouteProvider(name string, provider sigma.ProviderID) {
 	routes[name] = route
 }
 
+// Cases left after the overall deadline must not reach the provider or be
+// reported as upstream availability failures.
+func TestProbeSkipsCasesAfterOverallDeadline(t *testing.T) {
+	t.Parallel()
+
+	provider := sigmatest.NewFauxProvider()
+	route := handoffProbeRoute(t, "deadline")
+	route.RegisterProvider = func(registry *sigma.Registry, route routeSpec, _ sigma.API) error {
+		return registry.RegisterTextProvider(route.Provider, provider)
+	}
+	route.Cases = func(routeSpec, sigma.Model) []probeCase {
+		return []probeCase{
+			singleTurnCase("basic_text", "plain text", basicRequest("Reply with ok."), nil),
+			singleTurnCase("developer_instruction", "system instruction", basicRequest("Reply with ok."), nil),
+		}
+	}
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	var results []probeResult
+	probeModelEach(ctx, route, "model", routeCredential{apiKey: "key"}, config{repair: true}, func(result probeResult) {
+		results = append(results, result)
+	})
+	if got := len(provider.Requests()); got != 0 {
+		t.Fatalf("provider received %d requests after the overall deadline", got)
+	}
+	if len(results) != 2 {
+		t.Fatalf("results = %d, want one per case: %#v", len(results), results)
+	}
+	for _, result := range results {
+		if result.Outcome != outcomeSkipped || result.Attempt != "overall_deadline" {
+			t.Fatalf("result = %+v, want an overall_deadline skip", result)
+		}
+	}
+}
+
 func handoffProbeRoute(t *testing.T, name string, scripts ...sigmatest.Script) routeSpec {
 	t.Helper()
 

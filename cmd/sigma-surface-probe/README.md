@@ -37,6 +37,11 @@ with the identical request before they are reported as upstream availability.
 Image probes apply the same retries, and also retry responses that contain no
 image.
 
+Once the overall `-timeout` passes, the probe sends no further requests. Each
+remaining case, and a case the deadline cut short, is reported as `skipped`
+with attempt `overall_deadline` rather than as an upstream failure, and repair
+attempts stop.
+
 Default routes are `zen,go`. Image mode defaults to the `openai` image route.
 All other routes must be requested explicitly.
 
@@ -403,7 +408,7 @@ Outcome meanings:
 | Outcome | Meaning |
 | --- | --- |
 | `ok` | The original probe case worked. |
-| `skipped` | The route/model is known unavailable and was skipped. |
+| `skipped` | The route/model is known unavailable, or the overall `-timeout` passed before the case could run (attempt `overall_deadline`). |
 | `sigma_request_shape` | The provider rejected the request shape. |
 | `provider_capability_limit` | The provider does not appear to support the tested capability. |
 | `upstream_availability` | The upstream route or model is currently unavailable. |

@@ -359,9 +359,15 @@ func main() {
 		if !ok {
 			fatalf("unknown route %q", routeName)
 		}
-		credential, err := credentialForRoute(ctx, route, cfg)
-		if err != nil {
-			fatalf("%v", err)
+		// After the overall deadline no requests are sent, so skip credential
+		// resolution, which can itself need the network.
+		var credential routeCredential
+		if ctx.Err() == nil {
+			resolved, err := credentialForRoute(ctx, route, cfg)
+			if err != nil {
+				fatalf("%v", err)
+			}
+			credential = resolved
 		}
 		models, err := modelsForRoute(route, cfg.models)
 		if err != nil {
@@ -666,11 +672,21 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		cases = structuredOutputProbeCases(cases)
 	}
 	for _, testCase := range cases {
+		if ctx.Err() != nil {
+			emit(overallDeadlineSkip(route.Name, modelID, testCase.Name))
+			continue
+		}
 		if route.Name == "go" || route.Name == "zen" {
 			// Each case is a conversation; retries and repairs share its client.
 			client = probeClient(route, model)
 		}
 		result := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, testCase, credential, testCase.Name)
+		if result.Outcome != "ok" && ctx.Err() != nil {
+			// The overall deadline cut the case short; that says nothing about
+			// the provider.
+			emit(overallDeadlineSkip(route.Name, modelID, testCase.Name))
+			continue
+		}
 		if result.Outcome == "ok" {
 			emit(annotateStructuredOutputResult(cfg, result))
 			continue
@@ -695,6 +711,9 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		failedAttempts = append(failedAttempts, failedAttempt{Attempt: result.Attempt, Error: result.Error})
 		successfulControls := make([]string, 0)
 		for _, variant := range repairVariants(route, testCase) {
+			if ctx.Err() != nil {
+				break
+			}
 			attempt := runCaseWithTimeout(ctx, cfg.caseTimeout, route, client, model, variant, credential, variant.Name)
 			if attempt.Outcome == "ok" {
 				transportFailures := append([]failedAttempt(nil), attempt.FailedAttempts...)
@@ -740,6 +759,18 @@ func probeModelEach(ctx context.Context, route routeSpec, modelID string, creden
 		repaired.SuccessfulControls = append([]string(nil), successfulControls...)
 		repaired = annotateStructuredOutputResult(cfg, repaired)
 		emit(repaired)
+	}
+}
+
+// overallDeadlineSkip reports a case the overall -timeout left unrun.
+func overallDeadlineSkip(routeName string, modelID string, caseName string) probeResult {
+	return probeResult{
+		Route:   routeName,
+		Model:   modelID,
+		Case:    caseName,
+		Attempt: "overall_deadline",
+		Outcome: outcomeSkipped,
+		Error:   "overall probe deadline exceeded",
 	}
 }
 

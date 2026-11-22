@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface probes that outlast the overall `-timeout` no longer report every remaining case as an upstream availability failure. The probe stops sending requests at the deadline and reports the unrun cases as `skipped` with attempt `overall_deadline`, so the summary shows how much of the run was cut off.
+
 Surface probes skip the raw scalar thinking cases for OpenCode Go Hy4, which rejects them; Hy4's `reasoning_effort` controls, which sigma uses, are still tested.
 
 The surface probe's default overall timeout rises from 10 to 30 minutes. Full OpenCode Go runs outlasted the old default, and every case after the deadline reported a misleading upstream-availability failure.
