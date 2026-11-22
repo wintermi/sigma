@@ -603,6 +603,20 @@ func TestClassifyError(t *testing.T) {
 			code:  "400",
 		},
 		{
+			name: "zhipu plan usage cap is quota",
+			err: NewProviderError(ProviderZAI, APIOpenAICompletions, "glm-test", 429, "", 0,
+				[]byte(`{"error":{"code":"1308","message":"已达到 5 小时的使用上限。您的限额将在 2026-11-22 18:00:00 重置。"}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "1308",
+		},
+		{
+			name: "zhipu numeric plan usage cap is quota",
+			err: NewProviderError(ProviderZAI, APIOpenAICompletions, "glm-test", 429, "", 0,
+				[]byte(`{"error":{"code":1308,"message":"usage cap reached"}}`), ErrProviderResponse),
+			class: ErrorClassQuota,
+			code:  "1308",
+		},
+		{
 			name:      "codex websocket connection limit code",
 			err:       &ProviderError{Provider: ProviderOpenAICodex, ProviderCode: "websocket_connection_limit_reached", Err: ErrProviderResponse},
 			class:     ErrorClassTransient,

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Classify Zhipu/Z.ai code 1308 as a non-retryable quota error.
 - [x] Keep numeric provider error codes and classify relayed HTTP statuses sent as codes.
 - [x] Classify relayed timeouts, socket codes, gateway stream failures, and status numbers in text as retryable.
 - [x] Request encrypted Responses reasoning when the reasoning level is unset.
@@ -253,7 +254,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Treat Zhipu/Z.ai code `1308` (plan usage cap) as non-retryable quota.
 - [ ] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` codes; the
       `freeusage_limit_error`/`gousage_limit_error` cases in `classForProviderCode`
       never match the normalized code.

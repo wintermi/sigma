@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Z.ai plan usage caps are no longer retried. When a Zhipu or Z.ai plan reaches its usage limit, the API answers with HTTP 429 and error code `1308`, and the message is in Chinese, so sigma classified it as a rate limit and callers retried a request that cannot succeed until the cap resets hours later. Code `1308` is now classified as quota.
+
 Numeric provider error codes are no longer dropped. Gateways that relay an upstream failure inside a stream often send `{"error":{"code":504,...}}` with no HTTP status. The numeric code was decoded as a float and ignored, so the error had neither a code nor a status and was not retried. Numeric codes are now kept when the error has no textual code, type, or status, and an HTTP status sent this way classifies the error like a response status, after any overflow or quota wording in the message.
 
 More mid-stream gateway failures are retryable. Errors relayed inside a stream carry no HTTP status, so their class depends on the code and message alone, and wording such as "Upstream request timed out", "read ECONNRESET", "stream disconnected before completion", "The provider ended the response before it was complete.", or the Codex WebSocket connection limit was classified as unknown and not retried. These, the other common gateway phrasings, and standalone `5xx`, Cloudflare `52x`, and `429` statuses in the message text now classify as transient or rate limited. Status numbers are only consulted when nothing else matches, and never inside a longer number or word, so overflow and quota messages keep their class.
