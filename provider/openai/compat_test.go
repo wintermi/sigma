@@ -2063,9 +2063,11 @@ func TestOpenAICompletionsCompatStreamingUsageDefaultsByEndpoint(t *testing.T) {
 	}{
 		{name: "unknown custom endpoint", provider: sigma.ProviderCustom, baseURL: "https://llm.example.test/v1", want: true},
 		{name: "local endpoint", provider: sigma.ProviderCustom, baseURL: "http://localhost:11434/v1", want: true},
-		{name: "deepseek", provider: sigma.ProviderDeepSeek, baseURL: "https://api.deepseek.com/v1", want: false},
-		{name: "together", provider: sigma.ProviderTogether, baseURL: "https://api.together.ai/v1", want: false},
-		{name: "cerebras", provider: sigma.ProviderCerebras, baseURL: "https://api.cerebras.ai/v1", want: false},
+		{name: "deepseek", provider: sigma.ProviderDeepSeek, baseURL: "https://api.deepseek.com/v1", want: true},
+		{name: "together", provider: sigma.ProviderTogether, baseURL: "https://api.together.ai/v1", want: true},
+		{name: "cerebras", provider: sigma.ProviderCerebras, baseURL: "https://api.cerebras.ai/v1", want: true},
+		{name: "zai", provider: sigma.ProviderZAI, baseURL: "https://api.z.ai/api/paas/v4", want: true},
+		{name: "cloudflare workers ai", provider: sigma.ProviderCloudflareWorkersAI, baseURL: "https://api.cloudflare.com/client/v4/accounts/a/ai/v1", want: true},
 	}
 
 	for _, tt := range tests {

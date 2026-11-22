@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI streams report usage and cost again. Their compatibility defaults did not request streaming usage, and these endpoints only include a usage chunk when `stream_options.include_usage` is set, so the final message carried no usage and no cost estimate. Sigma now requests it for these hosts, as it does for other known providers and unknown endpoints; `OpenAICompletionsCompat.SupportsStreamingUsage` can still turn it off.
+
 Whitespace-only tool results no longer fail requests. A tool that returned only whitespace, for example a shell command printing a bare newline, was sent to the provider unchanged, and some OpenAI-compatible providers reject such tool content with a 400. Chat Completions and Responses now send the same placeholder as for empty output, and Gemini sends an empty result as it does for empty output.
 
 Bedrock reports Claude context-window stops as overflow. When the prompt and output fill Claude's context window, Bedrock ends the turn with `model_context_window_exceeded`. Sigma did not recognize it and returned an unclassified error, so callers could not tell they needed to compact. It now fails with a context-overflow provider error, the same treatment the direct Anthropic adapter gives this stop reason.

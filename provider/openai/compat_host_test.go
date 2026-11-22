@@ -23,7 +23,7 @@ func TestDetectedCompatMatchesXAIAndZAIByDomain(t *testing.T) {
 		{baseURL: "https://api.x.ai/v1", wantXAI: true, wantStreamUsage: true},
 		{baseURL: "https://x.ai/v1", wantXAI: true, wantStreamUsage: true},
 		{baseURL: "https://fox.ai/v1", wantStreamUsage: true},
-		{baseURL: "https://api.z.ai/api/paas/v4"},
+		{baseURL: "https://api.z.ai/api/paas/v4", wantStreamUsage: true},
 		{baseURL: "https://fizz.ai/v1", wantStreamUsage: true},
 	}
 	for _, tt := range tests {

@@ -151,6 +151,7 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.openRouterRouting = &sigma.OpenRouterRoutingPreference{}
 	case provider == sigma.ProviderDeepSeek || strings.Contains(host, "deepseek.com"):
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningUnsupported
+		compat.supportsStreamingUsage = true
 	case provider == sigma.ProviderFireworks || strings.Contains(host, "fireworks.ai"):
 		compat.reasoningFormat = sigma.OpenAICompletionsReasoningFireworks
 		compat.supportsStreamingUsage = true
@@ -172,12 +173,14 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.supportsRequiredToolChoice = true
 		compat.maxTokensField = sigma.OpenAICompletionsMaxTokens
 	case provider == sigma.ProviderTogether || strings.Contains(host, "together.ai"):
+		compat.supportsStreamingUsage = true
 	case provider == sigma.ProviderBaseten || host == "inference.baseten.co":
 		compat.supportsReasoningEffort = false
 		compat.supportsStreamingUsage = true
 		compat.supportsStrictTools = true
 		compat.supportsLongCacheRetention = false
 	case provider == sigma.ProviderCerebras || strings.Contains(host, "cerebras.ai"):
+		compat.supportsStreamingUsage = true
 	case provider == sigma.ProviderXAI || hostWithinDomain(host, "x.ai"):
 		compat.supportsReasoningEffort = false
 		compat.supportsStreamingUsage = true
@@ -189,7 +192,9 @@ func detectedCompletionsCompat(model sigma.Model, baseURL string) completionsCom
 		compat.supportsReasoningEffort = false
 		compat.maxTokensField = sigma.OpenAICompletionsMaxTokens
 	case providerText == "z.ai" || providerText == "zai" || hostWithinDomain(host, "z.ai"):
+		compat.supportsStreamingUsage = true
 	case providerText == "cloudflare" || strings.Contains(host, "workers-ai") || strings.Contains(host, "cloudflare.com"):
+		compat.supportsStreamingUsage = true
 	case strings.Contains(host, "ai-gateway.vercel.sh") || strings.Contains(host, "gateway.ai.vercel.com"):
 		compat.supportsStreamingUsage = true
 		compat.vercelAIGatewayRouting = &sigma.VercelAIGatewayRoutingPreference{}
