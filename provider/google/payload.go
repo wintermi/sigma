@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -498,7 +499,9 @@ func googleThinkingConfig(model sigma.Model, opts sigma.Options) (map[string]any
 			Err:      sigma.ErrInvalidOptions,
 		}
 	}
-	if tokens, err := strconv.Atoi(value); err == nil {
+	if budget, ok := legacyGeminiThinkingBudget(model, opts.ReasoningLevel); ok {
+		thinking["thinkingBudget"] = budget
+	} else if tokens, err := strconv.Atoi(value); err == nil {
 		thinking["thinkingBudget"] = tokens
 	} else {
 		level, ok := googleThinkingLevel(value)
@@ -517,6 +520,33 @@ func googleThinkingConfig(model sigma.Model, opts sigma.Options) (map[string]any
 		thinking["includeThoughts"] = true
 	}
 	return thinking, nil
+}
+
+// legacyGeminiThinkingBudget returns a thinking budget for a level on a
+// model before Gemini 3 without its own level mapping. Those models take
+// thinkingBudget and reject thinkingLevel; unknown ones get -1, dynamic.
+func legacyGeminiThinkingBudget(model sigma.Model, level sigma.ThinkingLevel) (int, bool) {
+	if _, mapped := model.ThinkingLevelMap[level]; mapped {
+		return 0, false
+	}
+	major, ok := geminiMajorVersion(model.ID)
+	if !ok || major >= 3 {
+		return 0, false
+	}
+	id := strings.ToLower(string(model.ID))
+	var budgets map[sigma.ThinkingLevel]int
+	switch {
+	case strings.Contains(id, "2.5-pro"):
+		budgets = map[sigma.ThinkingLevel]int{sigma.ThinkingLevelMinimal: 128, sigma.ThinkingLevelLow: 2048, sigma.ThinkingLevelMedium: 8192, sigma.ThinkingLevelHigh: 32768}
+	case strings.Contains(id, "2.5-flash-lite"):
+		budgets = map[sigma.ThinkingLevel]int{sigma.ThinkingLevelMinimal: 512, sigma.ThinkingLevelLow: 2048, sigma.ThinkingLevelMedium: 8192, sigma.ThinkingLevelHigh: 24576}
+	case strings.Contains(id, "2.5-flash"):
+		budgets = map[sigma.ThinkingLevel]int{sigma.ThinkingLevelMinimal: 128, sigma.ThinkingLevelLow: 2048, sigma.ThinkingLevelMedium: 8192, sigma.ThinkingLevelHigh: 24576}
+	}
+	if budget, ok := budgets[level]; ok {
+		return budget, true
+	}
+	return -1, true
 }
 
 func googleThinkingDisabled(opts sigma.Options) bool {
@@ -846,24 +876,16 @@ func requiresGoogleToolCallID(model sigma.Model) bool {
 	return ok && major >= 3
 }
 
+// geminiVersionPattern finds the Gemini major version anywhere in an ID, as
+// some hosts prefix it, such as "vendor-gemini-4-argon".
+var geminiVersionPattern = regexp.MustCompile(`gemini(?:-live)?-(\d+)`)
+
 func geminiMajorVersion(modelID sigma.ModelID) (int, bool) {
-	id := strings.ToLower(string(modelID))
-	found := false
-	for _, prefix := range []string{"gemini-live-", "gemini-"} {
-		if strings.HasPrefix(id, prefix) {
-			id = strings.TrimPrefix(id, prefix)
-			found = true
-			break
-		}
-	}
-	if !found {
+	match := geminiVersionPattern.FindStringSubmatch(strings.ToLower(string(modelID)))
+	if match == nil {
 		return 0, false
 	}
-	dot := strings.IndexAny(id, ".-")
-	if dot >= 0 {
-		id = id[:dot]
-	}
-	major, err := strconv.Atoi(id)
+	major, err := strconv.Atoi(match[1])
 	if err != nil {
 		return 0, false
 	}

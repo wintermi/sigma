@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Custom Gemini models get the thinking control their generation accepts. A Gemini 2.x model registered without a thinking-level map sent `thinkingLevel: "HIGH"` for a reasoning level, which only Gemini 3 and later accept, so the request failed. These models now send a `thinkingBudget`: the documented Gemini 2.5 Pro, Flash, and Flash-Lite budgets for each level, or `-1` (dynamic) for other versions. Gemini version detection also finds the version in IDs a host has prefixed, such as `vendor-gemini-4-argon`, which previously lost the tool call IDs Gemini 3 and later require.
+
 `MessagesCompat.AdaptiveThinking` now takes effect. A custom Anthropic-compatible router that accepts only adaptive thinking could set the flag through `anthropic.WithMessagesCompat`, but the detected default thinking format, budget, was always checked first, so requests still sent `thinking.budget_tokens` and the router rejected them. The override now selects adaptive thinking unless the model's own metadata names a format.
 
 Turning thinking off works on every OpenRouter reasoning model. An explicit `ThinkingLevelOff` sent the model's mapped off value only when its metadata had one, so refreshed or custom OpenRouter rows without the mapping sent no reasoning setting at all, and the model kept reasoning at its default effort. These requests now send `reasoning.effort: "none"`.

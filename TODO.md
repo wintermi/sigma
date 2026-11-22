@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send thinking budgets to unmapped pre-Gemini-3 models and detect prefixed Gemini versions.
 - [x] Make `MessagesCompat.AdaptiveThinking` select adaptive thinking.
 - [x] Send `none` for thinking off on OpenRouter models without an off mapping.
 - [x] Send `prompt_cache_retention` to Azure only on opt-in.
@@ -311,9 +312,6 @@ reproduces the failure before it is checked off.
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).
-- [ ] Send `thinkingBudget` rather than `thinkingLevel` to custom pre-Gemini-3
-      models without a thinking level map; detect Gemini 3+ in prefixed model IDs
-      (`provider/google/payload.go` `geminiMajorVersion`).
 - [ ] Add a compat option to send `""` for tool-call-only assistant content, and
       one to disable `prompt_cache_key`.
 - [ ] Keep a 15% (minimum 4096-token) input margin and a 32768 output cap near a

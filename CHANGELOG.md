@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Custom Gemini and Vertex models before Gemini 3 without a thinking-level mapping now send `thinkingBudget` for a reasoning level (the Gemini 2.5 Pro, Flash, and Flash-Lite budgets, or `-1` for dynamic thinking) instead of `thinkingLevel`, which those models reject. Gemini versions are also detected in prefixed IDs such as `vendor-gemini-4-argon`, so those models send the tool call IDs Gemini 3 and later require.
 - `anthropic.WithMessagesCompat(anthropic.MessagesCompat{AdaptiveThinking: true})` now selects adaptive thinking for models whose metadata names no thinking format. The detected budget default always took precedence, so the override had no effect and adaptive-only routers rejected the budget thinking request.
 - OpenRouter reasoning models without an `off` thinking-level mapping now send `reasoning.effort: "none"` for an explicit `ThinkingLevelOff`. Nothing was sent, so OpenRouter applied the model's default reasoning and billed reasoning tokens although thinking was turned off.
 - Azure OpenAI Responses requests with `CacheRetentionLong` no longer send `prompt_cache_retention` unless the model's `OpenAIResponsesCompat.SupportsLongCacheRetention` is explicitly supported. Azure does not document the field, so deployments that reject it failed long-retention requests; explicit `prompt_cache_options` support and caller-supplied cache directives are unchanged.
