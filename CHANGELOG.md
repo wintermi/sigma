@@ -8,7 +8,7 @@ major version; see [Versioning and compatibility](README.md#versioning-and-compa
 Releases before `v1.0.0` could change public APIs, with breaking changes called
 out in release notes.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-11-22
 
 See [release notes](docs/release-notes-v1.0.0.md).
 

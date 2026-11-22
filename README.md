@@ -184,7 +184,7 @@ images, `GenerateImages` dispatches to a registered image provider and returns
 
 - [Changelog](CHANGELOG.md) tracks release-visible changes and known
   limitations.
-- [Release notes](docs/release-notes-v0.7.0.md) summarize the latest closed tag
+- [Release notes](docs/release-notes-v1.0.0.md) summarize the latest closed tag
   scope and compatibility boundary.
 - [Releasing](RELEASING.md) documents the validation commands and pre-tag
   checklist used for every release.
