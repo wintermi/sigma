@@ -45,48 +45,48 @@ cancellation/error coverage (see the coverage standards in
 - [x] Send error tool-result images after the tool results for Anthropic and Bedrock Claude.
 - [x] Stop sending `reasoning.budget_tokens` on Responses requests.
 - [x] Coerce recursive discriminated unions in polynomial time.
-- [x] - [x] Attach provider diagnostics to mid-stream error final messages.
-- [x] - [x] Accumulate delta-only stream events without quadratic string copies.
-- [x] - [x] Keep streamed partial tool-argument decoding linear for long arguments.
-- [x] - [x] Validate recursive discriminated unions in linear time.
-- [x] - [x] Default Bedrock Claude maxTokens to the model output limit.
-- [x] - [x] Send max_completion_tokens to direct OpenAI Chat Completions.
-- [x] - [x] Keep Gemini 2 parallel function responses together around tool-result images.
-- [x] - [x] Find retrieval separator positions without a linear scan per chunk.
-- [x] - [x] Split retrieval text with invalid UTF-8 without panicking.
-- [x] - [x] Replay OpenCode history recorded with the catalog API as same-model history.
-- [x] - [x] Omit Responses tool item IDs whose reasoning item is not replayed.
-- [x] - [x] Stop classifying Bedrock throttling and rate-limit bodies as context overflow.
-- [x] - [x] Keep empty tool-schema objects when adapters copy tool definitions.
-- [x] - [x] Allow explicit eval artifact directories outside a Go module.
-- [x] - [x] Apply `-case-timeout` to surface-probe handoff source and replay requests.
-- [x] - [x] Document when the surface probe emits `no_working_attempt`.
-- [x] - [x] Retry transient 5xx failures in surface-probe image cases.
-- [x] - [x] Reject NaN and infinite values in embedding vector utilities.
-- [x] - [x] Reject embedding responses whose vector count differs from the input count.
-- [x] - [x] Fail faux image and embedding calls when no script is queued.
-- [x] - [x] Map portrait and landscape image sizes to Gemini 2:3 and 3:2 aspect ratios.
-- [x] - [x] Send multi-image OpenAI edits as `image[]` multipart parts.
-- [x] - [x] Return typed overflow errors for OpenAI and Google image responses over 64 MiB.
-- [x] - [x] Send Radius context as the gateway's transcript shape with a leading system message.
-- [x] - [x] Forward `ToolChoice` on Radius requests.
-- [x] - [x] Surface Bedrock `:message-type: error` frames as provider errors.
-- [x] - [x] Omit empty Bedrock tool descriptions.
-- [x] - [x] Send `anthropic-beta` on Vertex Anthropic requests.
-- [x] - [x] Retry transient Kimi Coding OAuth refresh failures.
-- [x] - [x] Use the server-provided interval on Copilot device-flow `slow_down`.
-- [x] - [x] Restrict plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` hosts as the AWS SDKs do.
-- [x] - [x] Redact secrets when credential structs are formatted with `fmt` verbs.
-- [x] - [x] Prefer an explicit Bedrock `AWS_PROFILE` over ambient AWS environment keys.
-- [x] - [x] Accept `GEMINI_API_KEY` for Gemini API credentials.
-- [x] - [x] Make tool validation error selection deterministic across runs.
-- [x] - [x] Preserve JSON number precision when coercing tool arguments to strings.
-- [x] - [x] Stop sending message-level cache_control to OpenRouter non-Anthropic models.
-- [x] - [x] Match xAI and Z.ai compat hosts by domain instead of substring.
-- [x] - [x] Skip thinking-only assistant turns when replaying Chat Completions history.
-- [x] - [x] Newline-join Chat Completions tool-result text and fill empty results with a placeholder.
-- [x] - [x] Resolve Chat Completions tool-call deltas by index, then id, without merging index-less named calls.
-- [x] - [x] Route API-key Vertex Gemini text requests without a project through express mode.
+- [x] Attach provider diagnostics to mid-stream error final messages.
+- [x] Accumulate delta-only stream events without quadratic string copies.
+- [x] Keep streamed partial tool-argument decoding linear for long arguments.
+- [x] Validate recursive discriminated unions in linear time.
+- [x] Default Bedrock Claude maxTokens to the model output limit.
+- [x] Send max_completion_tokens to direct OpenAI Chat Completions.
+- [x] Keep Gemini 2 parallel function responses together around tool-result images.
+- [x] Find retrieval separator positions without a linear scan per chunk.
+- [x] Split retrieval text with invalid UTF-8 without panicking.
+- [x] Replay OpenCode history recorded with the catalog API as same-model history.
+- [x] Omit Responses tool item IDs whose reasoning item is not replayed.
+- [x] Stop classifying Bedrock throttling and rate-limit bodies as context overflow.
+- [x] Keep empty tool-schema objects when adapters copy tool definitions.
+- [x] Allow explicit eval artifact directories outside a Go module.
+- [x] Apply `-case-timeout` to surface-probe handoff source and replay requests.
+- [x] Document when the surface probe emits `no_working_attempt`.
+- [x] Retry transient 5xx failures in surface-probe image cases.
+- [x] Reject NaN and infinite values in embedding vector utilities.
+- [x] Reject embedding responses whose vector count differs from the input count.
+- [x] Fail faux image and embedding calls when no script is queued.
+- [x] Map portrait and landscape image sizes to Gemini 2:3 and 3:2 aspect ratios.
+- [x] Send multi-image OpenAI edits as `image[]` multipart parts.
+- [x] Return typed overflow errors for OpenAI and Google image responses over 64 MiB.
+- [x] Send Radius context as the gateway's transcript shape with a leading system message.
+- [x] Forward `ToolChoice` on Radius requests.
+- [x] Surface Bedrock `:message-type: error` frames as provider errors.
+- [x] Omit empty Bedrock tool descriptions.
+- [x] Send `anthropic-beta` on Vertex Anthropic requests.
+- [x] Retry transient Kimi Coding OAuth refresh failures.
+- [x] Use the server-provided interval on Copilot device-flow `slow_down`.
+- [x] Restrict plain-HTTP `AWS_CONTAINER_CREDENTIALS_FULL_URI` hosts as the AWS SDKs do.
+- [x] Redact secrets when credential structs are formatted with `fmt` verbs.
+- [x] Prefer an explicit Bedrock `AWS_PROFILE` over ambient AWS environment keys.
+- [x] Accept `GEMINI_API_KEY` for Gemini API credentials.
+- [x] Make tool validation error selection deterministic across runs.
+- [x] Preserve JSON number precision when coercing tool arguments to strings.
+- [x] Stop sending message-level cache_control to OpenRouter non-Anthropic models.
+- [x] Match xAI and Z.ai compat hosts by domain instead of substring.
+- [x] Skip thinking-only assistant turns when replaying Chat Completions history.
+- [x] Newline-join Chat Completions tool-result text and fill empty results with a placeholder.
+- [x] Resolve Chat Completions tool-call deltas by index, then id, without merging index-less named calls.
+- [x] Route API-key Vertex Gemini text requests without a project through express mode.
 - [x] Replay foreign thinking to Gemini without delimiter tags.
 - [x] Treat Gemini `TOO_MANY_TOOL_CALLS` as a typed error.
 - [x] Classify bodyless Cerebras 400 responses as context overflow.
@@ -241,6 +241,165 @@ cancellation/error coverage (see the coverage standards in
 - [x] Version external embedding cache identities, validate before lookup, and apply batch options once.
 - [x] Make retrieval insertions atomic and enforce inferred or configured dimensions.
 - [x] Compile all packages in the build/CI task and document all embedding adapters and migrations.
+
+## Audit findings (2026-11-22)
+
+Open items from the November 22 audit. Each fix needs a regression test that
+reproduces the failure before it is checked off.
+
+### High
+
+- [ ] Stop sending Bedrock thinking with the forced structured-output tool choice;
+      Claude rejects thinking with a forced `tool_choice` (`provider/bedrock/payload.go`
+      `addBedrockResponseFormatTool`/`bedrockThinkingFields`; the "response format"
+      case in `reasoning_test.go` asserts the failing payload).
+- [ ] Send the `off` effort (or `none`) on Responses reasoning models when no
+      reasoning level is set, and always request `reasoning.encrypted_content` for
+      xAI, so default requests do not reason without replayable reasoning
+      (`provider/openai/responses_payload.go` `addResponsesReasoningInclude`).
+- [ ] Classify more mid-stream and gateway failures as transient: `timed out`/
+      `timeout`, network and connection errors, `connection reset by peer`, bare
+      `ECONNRESET`/`ETIMEDOUT`/`EPIPE`/`ECONNABORTED` text, status numbers in message
+      text (429, 500, 502, 503, 504, 520, 524, 525), `terminated`, `http/2 stream
+      failed`, `stream disconnected before completion`, `ended the response before
+      it was complete`, `connection to the provider was reset`, `reported a failure
+      while generating the response`, `cut short after the reply had begun`,
+      `pending stream has been canceled`, `repeat the request later`,
+      `service is unavailable`, `upstream provider returned an error`, and
+      `websocket_connection_limit_reached` (`classify.go` `messageIndicatesTransient`,
+      `classForProviderCode`).
+- [ ] Read numeric provider error codes (`{"error":{"code":504}}`) instead of
+      dropping them in `providerErrorDetails` (`classify.go`/`errors.go` `stringValue`).
+- [ ] Treat Zhipu/Z.ai code `1308` (plan usage cap) as non-retryable quota.
+- [ ] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` codes; the
+      `freeusage_limit_error`/`gousage_limit_error` cases in `classForProviderCode`
+      never match the normalized code.
+- [ ] Mark every `claude-sonnet-5` row (Anthropic, Vertex, Copilot, OpenCode,
+      Cloudflare) as not supporting temperature.
+- [ ] Mark the OpenCode Zen and Go Claude Opus 5, Opus 5.5, and Fable rows as
+      supporting mid-conversation effort so `drop_block` is sent.
+
+### Medium
+
+- [ ] Reject or strip Anthropic strict-mode-unsupported schema keywords
+      (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`,
+      `maxItems`, `minItems` above 1, `uniqueItems`, `minContains`, `maxContains`,
+      `minProperties`, `maxProperties`, unsupported `format`) before sending
+      `strict: true` (`internal/toolschema/strict.go`).
+- [ ] Fail locally on strict schemas with untyped nodes (`items: {}`, bare `const`)
+      instead of sending them (`internal/toolschema/strict.go` `makeNodeStrict`).
+- [ ] Send the Codex system prompt as a leading `developer` input item instead of
+      top-level `instructions` so GPT-6.2 keeps it in the prompt cache; review the
+      same for OpenAI Responses (`responses_payload.go`, `codex_responses.go`).
+- [ ] Revisit always deleting Codex `max_output_tokens`; forward `max(MaxTokens, 16)`
+      unless the model opts out (`codex_responses.go`).
+- [ ] Lower the Codex WebSocket reuse window from 55 to 45 minutes so long turns
+      finish before the 60-minute server close (`codex_websocket.go`
+      `codexWebSocketMaxAge`).
+- [ ] Map Gemini `CONTINUATION` to `StopReasonMaxTokens` instead of an error
+      (`provider/google/stream.go` `googleStopReason`).
+- [ ] Decide whether Bedrock `model_context_window_exceeded` is a max-tokens stop
+      or an overflow error; today it is an "unhandled stop reason" error
+      (`provider/bedrock/stream.go`).
+- [ ] Send the empty-tool-result placeholder for whitespace-only tool output on
+      Chat Completions, Responses, and Google (`openai/payload.go`,
+      `responses_payload.go`, `google/payload.go`).
+- [ ] Request streaming usage (`stream_options.include_usage`) for DeepSeek, Z.ai,
+      Cerebras, Together, and Cloudflare compat routes (`provider/openai/compat.go`).
+- [ ] Merge caller `anthropic_beta` values with Bedrock thinking betas instead of
+      overwriting them (`provider/bedrock/payload.go`).
+- [ ] Align `IsContextOverflow` with `ClassifyError` for code-less 429 bodies that
+      read like overflow (`classify.go` `diagnosticClass`).
+- [ ] Read top-level `usage.reasoning_tokens` for GitHub Copilot, send reasoning
+      effort on Copilot `gemini-3.8-flash` and `kimi-k3`, and mark Copilot Claude
+      rows as supporting strict tools.
+- [ ] Remove tool-search and additional-tools support from direct OpenAI
+      `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-pro`, and `gpt-5.5` rows so cross-provider
+      tool history does not fail with "Missing namespace for function_call".
+- [ ] Decide whether `TransformRequestForModel` should drop thinking from other
+      models, as `internal/transform` now does, instead of converting it to
+      visible `<thinking>` text (`handoff.go` `shouldConvertHandoffThinking`).
+- [ ] Decide whether Mistral should send `store: false` by default or move to the
+      stateless chat completions endpoint; Conversations stores transcripts by
+      default (`provider/mistral/mistral.go`).
+
+### Security and OAuth
+
+- [ ] Treat every IPv6 loopback bind error other than "address unavailable" as
+      fatal in the Anthropic OAuth callback, so Windows `WSAEADDRINUSE` is caught
+      (`provider/anthropic/oauth.go`).
+- [ ] Refresh OAuth tokens 5 minutes before expiry instead of 60 seconds
+      (`provider_auth.go` and each provider's refresh-window constant).
+- [ ] Re-validate stored GitHub Copilot `baseURL` metadata and
+      `GitHubCopilotOAuthCredentials.BaseURL` against the trusted host list when
+      read; strip the port in `githubCopilotDomain`.
+- [ ] Reject Radius redirect URIs whose path is `/` or otherwise collides with the
+      callback mux, instead of panicking after the listener opens
+      (`provider/radius/oauth.go`).
+- [ ] Cancel the `OnManualCode` context when the browser callback wins for
+      Anthropic, Codex, and Radius, as OpenRouter does.
+- [ ] Enable unconfigured GitHub Copilot models during device login.
+- [ ] Skip ambient AWS environment keys when an explicit `AWS_PROFILE` has no
+      static keys (`provider/bedrock/auth.go`).
+- [ ] Return the underlying error and retry persistence when `OnRefresh` fails for
+      Kimi, xAI, and Radius.
+- [ ] Document that `CredentialStore.ModifyCredential` must persist a rotated token
+      even if the caller cancels, or pass it a detached context
+      (`provider_auth.go`).
+- [ ] Add a 1-second minimum device-flow poll interval, honor xAI `slow_down`
+      intervals, and wait one interval before the first Copilot poll.
+- [ ] Add a timeout to the Anthropic login code exchange; fall back to a
+      15-minute expiry when Kimi omits `expires_in`.
+- [ ] Redact `sigma.Options.APIKey` and `AuthResolution` under `fmt` verbs, and the
+      proxy password in the Codex invalid-proxy-URL error.
+
+### Low
+
+- [ ] Enforce `minItems`, `maxItems`, `uniqueItems`, `exclusiveMinimum`,
+      `exclusiveMaximum`, `multipleOf`, `minProperties`, `maxProperties`, and
+      `prefixItems` in tool validation (`validation.go`).
+- [ ] Avoid deep-cloning partial tool arguments on every streamed delta
+      (`stream.go` `Emit` and `snapshot`).
+- [ ] Strip a leading UTF-8 BOM in the SSE parser, and return bare `io.EOF` from
+      `contextReadCloser.Read` (`internal/sse`).
+- [ ] Allow tool-call IDs reused across separate turns in `ValidateRequest`
+      (`persistence.go`).
+- [ ] Handle images sent to non-vision targets consistently across adapters
+      (placeholder text rather than failing on Anthropic, Google, Bedrock, and
+      Mistral while OpenAI drops them).
+- [ ] Stop sending `reasoning_effort` to Z.ai rows without a compat override.
+- [ ] Stop sending `prompt_cache_retention` to Azure Responses.
+- [ ] Send `none` for thinking off on OpenRouter reasoning rows without an `off`
+      mapping.
+- [ ] Make `MessagesCompat.AdaptiveThinking` take effect when no explicit
+      thinking format is set (`provider/anthropic/payload.go` `thinkingFormat`).
+- [ ] Send `thinkingBudget` rather than `thinkingLevel` to custom pre-Gemini-3
+      models without a thinking level map; detect Gemini 3+ in prefixed model IDs
+      (`provider/google/payload.go` `geminiMajorVersion`).
+- [ ] Add a compat option to send `""` for tool-call-only assistant content, and
+      one to disable `prompt_cache_key`.
+- [ ] Keep a 15% (minimum 4096-token) input margin and a 32768 output cap near a
+      full window when clamping max tokens for OpenRouter (`estimate.go`).
+- [ ] Update the Claude Code identity version to 2.1.322.
+- [ ] Read `responseModel` from Radius terminal events.
+
+### Features and catalog
+
+- [ ] Add Anthropic message threads.
+- [ ] Add mid-conversation effort updates (`configuration_update`) on Responses
+      and Codex.
+- [ ] Report reasoning dropped by OpenAI `input_transformations`.
+- [ ] Check whether OpenCode routes should move to the `/inference` endpoints.
+- [ ] Add Codex `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6.2-astra` (272K), and
+      `gpt-6.2-sol` (500K) rows, and Azure `gpt-6.2-*` rows.
+- [ ] Add long-context price tiers to Azure `gpt-5.4`, `gpt-5.4-pro`, `gpt-5.5`,
+      `gpt-5.5-pro`, `gpt-5.6-luna`, `gpt-5.6-sol`, and `gpt-5.6-terra`.
+- [ ] Add Copilot `claude-haiku-5.5`, `claude-sonnet-5.5`, `gemini-4-argon`, and
+      `gemini-4-carbon`; remove Copilot `gpt-5.4` and `gpt-5.5`.
+- [ ] Add the Qwen Token Plan Individual CN provider, per-plan key variables,
+      current gateways, and missing Team and Individual rows (`glm-5.3`,
+      `qwen3.8-flash`, `qwen4-max-preview`, `deepseek-v4.1-flash`).
+- [ ] Add MiniMax-M3.1-Flash and the Kimi K3.1 Pro and `k3-256k` rows.
 
 ## Credential ergonomics
 
