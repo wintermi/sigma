@@ -830,6 +830,17 @@ func TestIsContextOverflow(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "codeless 429 with token wording is throttling",
+			message: AssistantMessage{
+				StopReason: StopReasonError,
+				Diagnostics: []Diagnostic{{
+					Provider:        ProviderOpenAI,
+					StatusCode:      429,
+					ProviderMessage: "Too many tokens, please wait before trying again.",
+				}},
+			},
+		},
+		{
 			name: "normal stop above context window",
 			message: AssistantMessage{
 				StopReason: StopReasonEndTurn,

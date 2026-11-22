@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+`IsContextOverflow` and `ClassifyError` agree on throttled requests. A 429 with no structured code and wording like "Too many tokens, please wait" is rate limited by `ClassifyError`, but the diagnostic check behind `IsContextOverflow` lacked that rule and reported overflow, so callers compacted conversations that only needed a retry. Both now treat it as rate limiting.
+
 OpenCode free-tier and Go subscription limits are no longer retried. OpenCode reports them as HTTP 429 with the error types `FreeUsageLimitError` and `GoUsageLimitError`, but sigma's code table held underscored spellings that the real codes never match, so the errors fell back to the 429 status and were retried as rate limits. Both codes are now classified as quota.
 
 Z.ai plan usage caps are no longer retried. When a Zhipu or Z.ai plan reaches its usage limit, the API answers with HTTP 429 and error code `1308`, and the message is in Chinese, so sigma classified it as a rate limit and callers retried a request that cannot succeed until the cap resets hours later. Code `1308` is now classified as quota.

@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `IsContextOverflow` no longer reports overflow for an HTTP 429 without a structured code whose message mentions tokens, such as "Too many tokens, please wait before trying again." `ClassifyError` already treats that response as rate limited, so callers compacted their context for a throttled request.
 - OpenCode `FreeUsageLimitError` and `GoUsageLimitError` responses are now classified as quota and are not retryable. The classifier compared the lowercased code against `freeusage_limit_error` and `gousage_limit_error`, which never matched, so these 429s were rate limited unless their message happened to mention a usage limit.
 - Zhipu and Z.ai error code `1308`, the plan usage cap, is now classified as quota and is not retryable. It arrives as an HTTP 429 with a Chinese message that matched no quota wording, so it was rate limited and retried although the cap resets after hours.
 - Provider errors with a numeric `code` and no textual code, type, or status, such as `{"error":{"code":504,"message":"Gateway error"}}`, now keep that code as `ProviderCode`, and an HTTP status sent as the code classifies the error when it arrived without one. The number was decoded as a float and dropped, so these mid-stream gateway errors were unknown and not retryable. Textual codes, types, and statuses such as Google's `INTERNAL` still take precedence.

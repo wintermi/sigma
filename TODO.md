@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Align `IsContextOverflow` with `ClassifyError` for codeless 429 token wording.
 - [x] Match OpenCode `FreeUsageLimitError` and `GoUsageLimitError` as quota.
 - [x] Classify Zhipu/Z.ai code 1308 as a non-retryable quota error.
 - [x] Keep numeric provider error codes and classify relayed HTTP statuses sent as codes.
@@ -289,8 +290,6 @@ reproduces the failure before it is checked off.
       Cerebras, Together, and Cloudflare compat routes (`provider/openai/compat.go`).
 - [ ] Merge caller `anthropic_beta` values with Bedrock thinking betas instead of
       overwriting them (`provider/bedrock/payload.go`).
-- [ ] Align `IsContextOverflow` with `ClassifyError` for code-less 429 bodies that
-      read like overflow (`classify.go` `diagnosticClass`).
 - [ ] Read top-level `usage.reasoning_tokens` for GitHub Copilot, send reasoning
       effort on Copilot `gemini-3.8-flash` and `kimi-k3`, and mark Copilot Claude
       rows as supporting strict tools.

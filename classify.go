@@ -388,13 +388,18 @@ func diagnosticClass(diagnostic Diagnostic) ErrorClass {
 		diagnostic.UnderlyingMessage,
 		diagnostic.Message,
 	))
+	status := effectiveErrorStatus(diagnostic.StatusCode, code)
 	if class, ok := classForCodeAndMessage(code, message); ok {
+		// Match ClassifyError: a 429 without a structured code is throttling.
+		if class == ErrorClassContextOverflow && codeIsStatusOrEmpty(code) && status == http.StatusTooManyRequests {
+			return ErrorClassRateLimited
+		}
 		return class
 	}
 	if bodylessCerebrasOverflow(diagnostic.Provider, diagnostic.StatusCode, diagnostic.ProviderCode, diagnostic.ProviderMessage, diagnostic.BodyPreview) {
 		return ErrorClassContextOverflow
 	}
-	if class, ok := classForStatus(effectiveErrorStatus(diagnostic.StatusCode, code)); ok {
+	if class, ok := classForStatus(status); ok {
 		return class
 	}
 	return ErrorClassUnknown
