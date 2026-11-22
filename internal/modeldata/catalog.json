@@ -6506,6 +6506,514 @@
       }
     },
     {
+      "id": "accounts/fireworks/models/glm-5p3",
+      "name": "GLM 5.3 (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1048573,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/glm-5p3-flash",
+      "name": "GLM 5.3 Flash (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.03,
+        "currency": "USD"
+      },
+      "contextWindow": 1048573,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/glm-5p3-fast",
+      "name": "GLM 5.3 Fast (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 6.6,
+        "cacheReadInputPerMillion": 0.39,
+        "currency": "USD"
+      },
+      "contextWindow": 1048572,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/glm-5p3-spot",
+      "name": "GLM 5.3 Spot (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.7,
+        "outputPerMillion": 2.2,
+        "cacheReadInputPerMillion": 0.13,
+        "currency": "USD"
+      },
+      "contextWindow": 1048573,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/glm-fast-latest",
+      "name": "GLM 5.3 Fast (Latest) (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 6.6,
+        "cacheReadInputPerMillion": 0.39,
+        "currency": "USD"
+      },
+      "contextWindow": 1048572,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/glm-flash-latest",
+      "name": "GLM Flash Latest (GLM 5.3 Flash) (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.03,
+        "currency": "USD"
+      },
+      "contextWindow": 1048573,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/glm-latest",
+      "name": "GLM Latest (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.4,
+        "outputPerMillion": 4.4,
+        "cacheReadInputPerMillion": 0.26,
+        "currency": "USD"
+      },
+      "contextWindow": 1048573,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "fireworks",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "providerMetadata": {
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "glm",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/kimi-k3p1-pro",
+      "name": "Kimi K3.1 Pro (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "providerMetadata": {
+        "deferredToolsMode": "kimi",
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "kimi"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/kimi-k3-fast",
+      "name": "Kimi K3 Fast (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.5,
+        "outputPerMillion": 22.5,
+        "cacheReadInputPerMillion": 0.45,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "providerMetadata": {
+        "deferredToolsMode": "kimi",
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "kimi",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/kimi-k3-spot",
+      "name": "Kimi K3 Spot (Fireworks)",
+      "provider": "fireworks",
+      "api": "openai-completions",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.1,
+        "outputPerMillion": 10.5,
+        "cacheReadInputPerMillion": 0.21,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "supported",
+        "maxTokensField": "max_tokens",
+        "supportsSessionAffinity": "supported",
+        "supportsLongCacheRetention": "unsupported",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "providerMetadata": {
+        "deferredToolsMode": "kimi",
+        "disabledThinkingFormat": "object-disabled",
+        "fireworksSurface": "openai",
+        "modelFamily": "kimi",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
       "id": "accounts/fireworks/models/minimax-m3",
       "name": "MiniMax-M3 (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",
@@ -6545,6 +7053,750 @@
         "fireworksSurface": "anthropic",
         "modelFamily": "minimax"
       }
+    },
+    {
+      "id": "accounts/fireworks/models/deepseek-v4p1-flash",
+      "name": "DeepSeek V4.1 Flash (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.006,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/deepseek-v4p1-flash-1017",
+      "name": "DeepSeek V4.1 Flash 1017 (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.006,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/deepseek-flash-latest",
+      "name": "DeepSeek Flash Latest (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.006,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/deepseek-v4p1-flash-1017-spot",
+      "name": "DeepSeek V4.1 Flash 1017 Spot (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.003,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/deepseek-v4p1-flash-1017-ultrafast",
+      "name": "DeepSeek V4.1 Flash 1017 Ultra-fast (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.2,
+        "outputPerMillion": 4.8,
+        "cacheReadInputPerMillion": 0.024,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/deepseek-v4p1-flash-spot",
+      "name": "DeepSeek V4.1 Flash Spot (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.003,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "deepseek",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/ember-1",
+      "name": "Ember-1 (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.3,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "ember"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/minimax-m3p1-flash",
+      "name": "MiniMax-M3.1-Flash (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.015,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 512000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "minimax"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/minimax-latest",
+      "name": "MiniMax Latest (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 1.2,
+        "cacheReadInputPerMillion": 0.06,
+        "currency": "USD"
+      },
+      "contextWindow": 512000,
+      "maxOutputTokens": 512000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "minimax",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/muse-spark-open",
+      "name": "Muse Spark Open (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.25,
+        "outputPerMillion": 4.25,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "muse"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "max"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/qwen3p8-2p4t-a95b",
+      "name": "Qwen3.8 2.4T A95B (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.25,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "qwen"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "high",
+        "max"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/models/qwen3p8-max",
+      "name": "Qwen3.8 Max (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.25,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "qwen"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "high",
+        "max"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/qwen-max-latest",
+      "name": "Qwen Max Latest (Qwen3.8 Max) (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.25,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "qwen",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "high",
+        "max"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/kimi-fast-latest",
+      "name": "Kimi Fast Latest (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.5,
+        "outputPerMillion": 22.5,
+        "cacheReadInputPerMillion": 0.45,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 262000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "kimi",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "accounts/fireworks/routers/kimi-latest",
+      "name": "Kimi Latest (Fireworks Anthropic)",
+      "provider": "fireworks-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.fireworks.ai/inference/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 262000,
+      "headers": {},
+      "authEnvNames": [
+        "FIREWORKS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "unsupported",
+        "supportsLongCacheRetention": "unsupported",
+        "supportsSessionAffinity": "supported",
+        "supportsCacheControlOnTools": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsEmptyThinkingSignature": "supported"
+      },
+      "providerMetadata": {
+        "fireworksSurface": "anthropic",
+        "modelFamily": "kimi",
+        "router": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "xhigh"
+      ]
     },
     {
       "id": "claude-fable-5",
@@ -15499,6 +16751,997 @@
       }
     },
     {
+      "id": "beam-free",
+      "name": "Beam Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "beam"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-fable-5-2",
+      "name": "Claude Fable 5.2",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsMidConversationEffort": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "supportsTemperature": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsMidConversationEffort": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      }
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "supportsTemperature": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported",
+        "supportsMidConversationEffort": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "deepseek-v4.1-flash-free",
+      "name": "DeepSeek V4.1 Flash Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported",
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens",
+        "supportsLongCacheRetention": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "high": "high",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium",
+        "xhigh"
+      ]
+    },
+    {
+      "id": "flint-40b-free",
+      "name": "Flint 40B Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "flint"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gemini-4-argon",
+      "name": "Gemini 4 Argon",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "opencodeAPI": "google-generative-ai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-carbon",
+      "name": "Gemini 4 Carbon",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "opencodeAPI": "google-generative-ai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 7.5,
+        "cacheReadInputPerMillion": 0.075,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "opencodeAPI": "google-generative-ai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-neon",
+      "name": "Gemini 4 Neon",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/google/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "opencodeAPI": "google-generative-ai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "max"
+      ]
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession",
+        "supportsGrammarTools": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-astra",
+      "name": "GPT-6.2 Astra",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 10,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 16,
+            "outputPerMillion": 60,
+            "cacheReadInputPerMillion": 0.8,
+            "cacheWriteInputPerMillion": 20
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession",
+        "supportsGrammarTools": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "name": "GPT-6.2 Sol",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession",
+        "supportsGrammarTools": true
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "hy4-flash-free",
+      "name": "Hy4 flash Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "hy4"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "iceman-free",
+      "name": "Iceman Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "iceman"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "longcat-2.5-free",
+      "name": "LongCat 2.5 Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "xhigh",
+        "max"
+      ],
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "longcat"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "mistral-large-4",
+      "name": "Mistral Large 4",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.68,
+        "outputPerMillion": 2.09,
+        "cacheReadInputPerMillion": 0.07,
+        "currency": "USD"
+      },
+      "contextWindow": 524288,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "mistral"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "muse-ember-1.0",
+      "name": "Muse Ember 1.0",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.004,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 0.3,
+            "outputPerMillion": 1.5,
+            "cacheReadInputPerMillion": 0.012
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 270000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "muse",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "muse-wonder-1.0",
+      "name": "Muse Wonder",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.2,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "muse",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "nemotron-3.5-super-vl-free",
+      "name": "Nemotron 3.5 Super VL Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nemotron"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "max"
+      ]
+    },
+    {
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 6,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "xhigh": "xhigh"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "high",
+        "max"
+      ]
+    },
+    {
+      "id": "tidepool-alpha-free",
+      "name": "Tidepool Alpha Free",
+      "provider": "opencode",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "tidepool"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
       "id": "anthropic/claude-sonnet-5",
       "name": "Anthropic: Claude Sonnet 5",
       "provider": "openrouter",
@@ -23834,6 +26077,444 @@
         "thinkingFormat": "adaptive",
         "supportsDisabledThinking": "unsupported"
       }
+    },
+    {
+      "id": "beam-free",
+      "name": "Beam Free",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "beam"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {
+        "supportsTemperature": "unsupported",
+        "thinkingFormat": "adaptive",
+        "supportsMidConversationEffort": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      }
+    },
+    {
+      "id": "gemini-4-argon",
+      "name": "Gemini 4 Argon",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/google/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "opencodeAPI": "google-generative-ai"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gpt-6-luna",
+      "name": "GPT-6 Luna",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 0.75,
+            "cacheReadInputPerMillion": 0.02,
+            "cacheWriteInputPerMillion": 0.25
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt",
+        "opencodeAPI": "openai-responses"
+      },
+      "openAIResponsesCompat": {
+        "sessionAffinityFormat": "openai-nosession"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
+    },
+    {
+      "id": "hy4",
+      "name": "Hy4",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.834,
+        "outputPerMillion": 2.501,
+        "cacheReadInputPerMillion": 0.042,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "hy4"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "hy4-flash-free",
+      "name": "Hy4 flash Free",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "hy4"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "iceman-contributor-free",
+      "name": "Iceman Contributor Free",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 131072,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "iceman"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "longcat-2.5-free",
+      "name": "LongCat 2.5 Free",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "xhigh",
+        "max"
+      ],
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "longcat"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "qwen4-max",
+      "name": "Qwen4 Max",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/anthropic/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "xhigh",
+        "max"
+      ],
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 4.5,
+        "cacheReadInputPerMillion": 0.075,
+        "cacheWriteInputPerMillion": 1.875,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen",
+        "opencodeAPI": "anthropic-messages"
+      },
+      "anthropicMessagesCompat": {}
+    },
+    {
+      "id": "step-5-preview",
+      "name": "Step 5 Preview",
+      "provider": "opencode-go",
+      "api": "openai-completions",
+      "baseURL": "https://opencode.ai/inference/go/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 2.7,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "OPENCODE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "step"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "maxTokensField": "max_tokens"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
     },
     {
       "id": "MiniMax-M3.1-Flash",

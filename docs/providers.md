@@ -469,18 +469,20 @@ client := sigma.NewClient(sigma.WithRegistry(registry))
 
 Environment: `FIREWORKS_API_KEY`.
 
-The built-in Fireworks text route is `accounts/fireworks/models/kimi-k3`. The
-adapter uses Fireworks' OpenAI-compatible Chat Completions endpoint and supports
-streaming text, usage, thinking, and function tools in the shared
-`openai-completions` path.
+The built-in Fireworks Chat Completions models cover GLM 5.3 and Kimi K3 and
+K3.1 Pro, including Fireworks routers such as `accounts/fireworks/routers/glm-latest`
+and `accounts/fireworks/routers/kimi-k3-fast`. The adapter uses Fireworks'
+OpenAI-compatible Chat Completions endpoint and supports streaming text, usage,
+thinking, and function tools in the shared `openai-completions` path.
 `sigma.WithReasoningLevel` maps to Fireworks `reasoning_effort`;
 `sigma.WithThinkingBudgetTokens` maps to the Fireworks `thinking` object.
 
-The built-in Fireworks Anthropic-compatible route is
-`accounts/fireworks/models/minimax-m3` under `ProviderFireworksAnthropic`.
-Register it with `fireworks.RegisterAnthropic`; it uses the shared Anthropic
-Messages adapter against Fireworks' `/messages` endpoint and carries
-compatibility metadata for thinking levels, cache behavior, and tool use.
+The built-in Fireworks Anthropic-compatible models, under
+`ProviderFireworksAnthropic`, cover DeepSeek V4.1 Flash, Ember-1, MiniMax M3 and
+M3.1 Flash, Muse Spark Open, Qwen3.8, and their Fireworks routers. Register them
+with `fireworks.RegisterAnthropic`; they use the shared Anthropic Messages
+adapter against Fireworks' `/messages` endpoint and carry compatibility metadata
+for thinking levels, cache behavior, and tool use.
 
 ### Baseten
 
