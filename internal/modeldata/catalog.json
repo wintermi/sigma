@@ -6655,55 +6655,6 @@
       ]
     },
     {
-      "id": "accounts/fireworks/models/glm-5p3-spot",
-      "name": "GLM 5.3 Spot (Fireworks)",
-      "provider": "fireworks",
-      "api": "openai-completions",
-      "baseURL": "https://api.fireworks.ai/inference/v1",
-      "supportedInputs": [
-        "text"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.98,
-        "outputPerMillion": 3.08,
-        "cacheReadInputPerMillion": 0.182,
-        "currency": "USD"
-      },
-      "contextWindow": 1048573,
-      "maxOutputTokens": 262144,
-      "headers": {},
-      "authEnvNames": [
-        "FIREWORKS_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "openAICompletionsCompat": {
-        "reasoningFormat": "fireworks",
-        "supportsStreamingUsage": "supported",
-        "supportsStrictTools": "supported",
-        "maxTokensField": "max_tokens",
-        "supportsSessionAffinity": "supported",
-        "supportsLongCacheRetention": "unsupported"
-      },
-      "providerMetadata": {
-        "disabledThinkingFormat": "object-disabled",
-        "fireworksSurface": "openai",
-        "modelFamily": "glm"
-      },
-      "thinkingLevelMap": {
-        "low": "low",
-        "high": "high",
-        "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "off",
-        "minimal",
-        "medium",
-        "xhigh"
-      ]
-    },
-    {
       "id": "accounts/fireworks/routers/glm-fast-latest",
       "name": "GLM 5.3 Fast (Latest) (Fireworks)",
       "provider": "fireworks",
@@ -6960,58 +6911,6 @@
       ]
     },
     {
-      "id": "accounts/fireworks/models/kimi-k3-spot",
-      "name": "Kimi K3 Spot (Fireworks)",
-      "provider": "fireworks",
-      "api": "openai-completions",
-      "baseURL": "https://api.fireworks.ai/inference/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 2.1,
-        "outputPerMillion": 10.5,
-        "cacheReadInputPerMillion": 0.21,
-        "currency": "USD"
-      },
-      "contextWindow": 1048576,
-      "maxOutputTokens": 131072,
-      "headers": {},
-      "authEnvNames": [
-        "FIREWORKS_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "openAICompletionsCompat": {
-        "reasoningFormat": "reasoning_effort",
-        "supportsStreamingUsage": "supported",
-        "supportsStrictTools": "supported",
-        "maxTokensField": "max_tokens",
-        "supportsSessionAffinity": "supported",
-        "supportsLongCacheRetention": "unsupported",
-        "requiresReasoningContentOnAssistantMessages": "supported"
-      },
-      "providerMetadata": {
-        "deferredToolsMode": "kimi",
-        "disabledThinkingFormat": "object-disabled",
-        "fireworksSurface": "openai",
-        "modelFamily": "kimi"
-      },
-      "thinkingLevelMap": {
-        "low": "low",
-        "high": "high",
-        "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "off",
-        "minimal",
-        "medium",
-        "xhigh"
-      ]
-    },
-    {
       "id": "accounts/fireworks/models/minimax-m3",
       "name": "MiniMax-M3 (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",
@@ -7201,55 +7100,6 @@
       ]
     },
     {
-      "id": "accounts/fireworks/models/deepseek-v4p1-flash-1017-spot",
-      "name": "DeepSeek V4.1 Flash 1017 Spot (Fireworks Anthropic)",
-      "provider": "fireworks-anthropic",
-      "api": "anthropic-messages",
-      "baseURL": "https://api.fireworks.ai/inference/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.21,
-        "outputPerMillion": 0.84,
-        "cacheReadInputPerMillion": 0.0042,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 384000,
-      "headers": {},
-      "authEnvNames": [
-        "FIREWORKS_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "anthropicMessagesCompat": {
-        "supportsEagerToolInputStreaming": "unsupported",
-        "supportsLongCacheRetention": "unsupported",
-        "supportsSessionAffinity": "supported",
-        "supportsCacheControlOnTools": "unsupported",
-        "thinkingFormat": "adaptive",
-        "supportsEmptyThinkingSignature": "supported"
-      },
-      "providerMetadata": {
-        "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek"
-      },
-      "thinkingLevelMap": {
-        "off": "none",
-        "low": "low",
-        "high": "high",
-        "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "minimal",
-        "medium",
-        "xhigh"
-      ]
-    },
-    {
       "id": "accounts/fireworks/routers/deepseek-v4p1-flash-1017-ultrafast",
       "name": "DeepSeek V4.1 Flash 1017 Ultra-fast (Fireworks Anthropic)",
       "provider": "fireworks-anthropic",
@@ -7286,55 +7136,6 @@
         "fireworksSurface": "anthropic",
         "modelFamily": "deepseek",
         "router": true
-      },
-      "thinkingLevelMap": {
-        "off": "none",
-        "low": "low",
-        "high": "high",
-        "max": "max"
-      },
-      "unsupportedThinkingLevels": [
-        "minimal",
-        "medium",
-        "xhigh"
-      ]
-    },
-    {
-      "id": "accounts/fireworks/models/deepseek-v4p1-flash-spot",
-      "name": "DeepSeek V4.1 Flash Spot (Fireworks Anthropic)",
-      "provider": "fireworks-anthropic",
-      "api": "anthropic-messages",
-      "baseURL": "https://api.fireworks.ai/inference/v1",
-      "supportedInputs": [
-        "text",
-        "image"
-      ],
-      "supportsTools": true,
-      "supportsThinking": true,
-      "cost": {
-        "inputPerMillion": 0.21,
-        "outputPerMillion": 0.84,
-        "cacheReadInputPerMillion": 0.0042,
-        "currency": "USD"
-      },
-      "contextWindow": 1000000,
-      "maxOutputTokens": 384000,
-      "headers": {},
-      "authEnvNames": [
-        "FIREWORKS_API_KEY"
-      ],
-      "defaultTransport": "sse",
-      "anthropicMessagesCompat": {
-        "supportsEagerToolInputStreaming": "unsupported",
-        "supportsLongCacheRetention": "unsupported",
-        "supportsSessionAffinity": "supported",
-        "supportsCacheControlOnTools": "unsupported",
-        "thinkingFormat": "adaptive",
-        "supportsEmptyThinkingSignature": "supported"
-      },
-      "providerMetadata": {
-        "fireworksSurface": "anthropic",
-        "modelFamily": "deepseek"
       },
       "thinkingLevelMap": {
         "off": "none",

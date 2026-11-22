@@ -8,7 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
-- [x] Use Fireworks' documented Spot model IDs and prices.
+- [x] Leave Fireworks Spot models out of the catalog until Spot access can be verified.
 - [x] Skip the disabled-thinking surface-probe case for thinking-only Fireworks models.
 - [x] Add the current OpenCode Zen, OpenCode Go, and Fireworks models to the catalog.
 - [x] Settle the catalog rows left open by the November 22 retirement review.
@@ -1092,6 +1092,10 @@ upstream.
 - [x] Review Responses translation of `ThinkingLevelOff`: adapters now send
       the model's mapped off effort or native `none` instead of omitting
       reasoning, keeping this adapter behavior separate from catalog metadata.
+- [ ] Add Fireworks Spot models (`accounts/fireworks/models/glm-5p3-spot`,
+      `kimi-k3-spot`, `deepseek-v4p1-flash-spot`, and
+      `deepseek-v4p1-flash-1017-spot`) once a Spot-enabled account confirms
+      them with the surface probe; Spot prices are 30% below Standard.
 - [ ] Recheck catalog retirements due after the November 22, 2026 review:
       Claude Sonnet 4.5 on Anthropic and Vertex (November 30), direct Gemini
       2.5 Pro and Flash (December 1), OpenAI GPT-5, GPT-5 Mini, Nano, and Pro,
