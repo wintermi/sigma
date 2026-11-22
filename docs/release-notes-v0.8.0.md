@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Fireworks Kimi K3.1 Pro and the Kimi K3 Fast router now accept requests that turn thinking off, as Kimi K3 already did. Fireworks accepted disabled thinking for both in a live surface probe, so sigma no longer rejects those requests locally.
+
 Fireworks Spot models are not in the built-in catalog. Spot requests fail with a 403 or 404 for accounts without Spot access, so callers with Spot access should define the `accounts/fireworks/models/<model>-spot` models themselves.
 
 Surface-probe runs against thinking-only Fireworks models, such as GLM 5.3 and its routers, no longer report a failed disabled-thinking case. The probe now skips that case when the model's catalog metadata says thinking cannot be turned off, as it already did for other providers.

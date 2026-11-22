@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Allow the off thinking level for Fireworks Kimi K3.1 Pro and Kimi K3 Fast.
 - [x] Leave Fireworks Spot models out of the catalog until Spot access can be verified.
 - [x] Skip the disabled-thinking surface-probe case for thinking-only Fireworks models.
 - [x] Add the current OpenCode Zen, OpenCode Go, and Fireworks models to the catalog.

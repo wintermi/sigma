@@ -372,6 +372,9 @@ func TestFireworksOpenAIProbeCasesFollowDisabledThinkingSupport(t *testing.T) {
 	}{
 		{id: "accounts/fireworks/models/glm-5p3", want: false},
 		{id: "accounts/fireworks/models/kimi-k3", want: true},
+		// Fireworks accepted disabled thinking for these in a live probe.
+		{id: "accounts/fireworks/models/kimi-k3p1-pro", want: true},
+		{id: "accounts/fireworks/routers/kimi-k3-fast", want: true},
 	} {
 		cases := openAICompatibleProbeCases(route, route.Model(route, tt.id))
 		if got := hasRepairVariant(cases, "thinking_object_disabled"); got != tt.want {

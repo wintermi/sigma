@@ -6851,7 +6851,6 @@
         "max": "max"
       },
       "unsupportedThinkingLevels": [
-        "off",
         "minimal",
         "medium",
         "xhigh"
@@ -6904,7 +6903,6 @@
         "max": "max"
       },
       "unsupportedThinkingLevels": [
-        "off",
         "minimal",
         "medium",
         "xhigh"
