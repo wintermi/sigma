@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Treat whitespace-only tool output as empty on Chat Completions, Responses, and Gemini.
 - [x] Report Bedrock `model_context_window_exceeded` stops as context overflow.
 - [x] Map Gemini `CONTINUATION` to a max-tokens stop.
 - [x] Reuse Codex WebSocket connections for at most 45 minutes.
@@ -268,9 +269,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Send the empty-tool-result placeholder for whitespace-only tool output on
-      Chat Completions, Responses, and Google (`openai/payload.go`,
-      `responses_payload.go`, `google/payload.go`).
 - [ ] Request streaming usage (`stream_options.include_usage`) for DeepSeek, Z.ai,
       Cerebras, Together, and Cloudflare compat routes (`provider/openai/compat.go`).
 - [ ] Merge caller `anthropic_beta` values with Bedrock thinking betas instead of

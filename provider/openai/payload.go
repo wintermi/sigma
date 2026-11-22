@@ -416,7 +416,12 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		}
 		return converted, nil
 	case sigma.RoleTool:
+		// Some providers reject whitespace-only tool content, so it gets the
+		// same placeholder as empty output.
 		content := textContent(message.Content)
+		if strings.TrimSpace(content) == "" {
+			content = ""
+		}
 		if content == "" && hasImageContent(message.Content) {
 			content = "(see attached image)"
 		}

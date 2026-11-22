@@ -977,8 +977,10 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 			return nil, fmt.Errorf("openai responses: unsupported tool result content block %q", block.Type)
 		}
 	}
+	// Whitespace-only output counts as empty; some providers reject it.
+	hasText := strings.TrimSpace(text.String()) != ""
 	if len(parts) == 0 {
-		if text.Len() > 0 {
+		if hasText {
 			return text.String(), nil
 		}
 		if hasImage {
@@ -986,7 +988,7 @@ func responsesToolOutput(model sigma.Model, message sigma.Message) (any, error) 
 		}
 		return "(no tool output)", nil
 	}
-	if text.Len() > 0 {
+	if hasText {
 		parts = append([]map[string]any{{
 			providerToolOptionTypeKey: "input_text",
 			providerOptionText:        text.String(),

@@ -263,6 +263,9 @@ func googleToolResultContents(model sigma.Model, message sigma.Message, ids *goo
 	if err != nil {
 		return nil, err
 	}
+	if strings.TrimSpace(text) == "" {
+		text = ""
+	}
 	response := map[string]any{"output": text}
 	if message.IsError {
 		response = map[string]any{"error": text}
