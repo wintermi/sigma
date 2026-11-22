@@ -90,6 +90,11 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	}
 	if compat.reasoningFormat == sigma.OpenAICompletionsReasoningZAI {
 		compat.requiresReasoningContentOnAssistantMessages = true
+		// Z.ai controls thinking with thinking.type; only models that declare
+		// reasoning_effort support also receive it.
+		if override.SupportsReasoningEffort == "" {
+			compat.supportsReasoningEffort = false
+		}
 	}
 	compat.requiresReasoningContentOnAssistantMessages = supportOverride(
 		compat.requiresReasoningContentOnAssistantMessages,

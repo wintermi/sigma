@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Z.ai-format Chat Completions requests now send `reasoning_effort` only when the model declares support for it, as the GLM-5.2 and GLM-5.3 rows do. GLM-4.6V, GLM-4.7, GLM-5 Turbo, and custom Z.ai models received it alongside `thinking.type` although they do not accept it.
 - Radius finals now report the gateway's `responseModel` through `AssistantMessage.ResponseModel()`. It was ignored, so for virtual models such as `cheap` the physical model that answered was unknown.
 - Anthropic subscription requests now identify as Claude Code 2.1.322 instead of 2.1.280.
 - `sigma.Options` and `sigma.AuthResolution` now redact their API key, header values, and provider environment values when formatted with `%v`, `%+v`, `%#v`, or `%s`, and the Codex WebSocket error for a malformed proxy URL no longer quotes the URL. Logging either struct printed the API key, and a proxy password in `HTTPS_PROXY` appeared in the error.

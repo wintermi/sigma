@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send `reasoning_effort` only to Z.ai models that declare support.
 - [x] Read `responseModel` from Radius terminal events.
 - [x] Update the Claude Code identity version to 2.1.322.
 - [x] Redact `Options` and `AuthResolution` under fmt verbs and the Codex proxy URL in errors.
@@ -307,7 +308,6 @@ reproduces the failure before it is checked off.
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).
-- [ ] Stop sending `reasoning_effort` to Z.ai rows without a compat override.
 - [ ] Stop sending `prompt_cache_retention` to Azure Responses.
 - [ ] Send `none` for thinking off on OpenRouter reasoning rows without an `off`
       mapping.

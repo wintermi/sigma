@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Z.ai models without effort levels no longer receive `reasoning_effort`. Z.ai switches thinking on and off with `thinking.type`, and only some GLM models also accept a reasoning effort. Sigma sent `reasoning_effort` to every Z.ai model with thinking enabled, including GLM-4.6V, GLM-4.7, and GLM-5 Turbo, so those requests carried a parameter the model does not support. It is now sent only to models whose compatibility metadata declares it.
+
 Radius reports which model answered. For virtual models such as `cheap`, the gateway names the physical model in the terminal event's `responseModel`, which sigma ignored. `AssistantMessage.ResponseModel()` now returns it, alongside the response ID.
 
 Anthropic subscription requests report the current Claude Code client version, 2.1.322, in their `User-Agent` and identity headers.
