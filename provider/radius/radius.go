@@ -562,8 +562,8 @@ type radiusPayload struct {
 	Options radiusOptions `json:"options"`
 }
 
-// radiusContext is pi's transcript context: the system prompt and tools travel
-// in a leading system message rather than beside the messages.
+// radiusContext is the gateway's transcript context: the system prompt and
+// tools travel in a leading system message rather than beside the messages.
 type radiusContext struct {
 	Messages []radiusMessage `json:"messages"`
 }

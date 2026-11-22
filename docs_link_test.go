@@ -21,7 +21,7 @@ var markdownLinkPattern = regexp.MustCompile(`!?\[[^\]]+\]\(([^)]+)\)`)
 
 func TestComparisonImageExampleResolves(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("docs/inspired-by-pi-ai.md")
+	data, err := os.ReadFile("docs/typescript-concepts.md")
 	if err != nil {
 		t.Fatal(err)
 	}

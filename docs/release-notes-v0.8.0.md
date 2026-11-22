@@ -127,9 +127,9 @@ OpenAI image edits that upload more than one image name the file parts `image[]`
 
 OpenAI and Google image generation now handle over-limit success bodies the same way OpenRouter does. A response over 64 MiB returns a `ProviderError` with the HTTP status and a size-limit diagnostic, instead of a silently truncated body that failed JSON decoding.
 
-Radius requests use the transcript context shape that current pi clients send. The system prompt and tool declarations are carried by a leading `{"role":"system","content":...,"toolsAdded":[...]}` message instead of the legacy `context.systemPrompt` and `context.tools` fields. Requests with neither a prompt nor tools send only the conversation messages.
+Radius requests use the gateway's current transcript context shape. The system prompt and tool declarations are carried by a leading `{"role":"system","content":...,"toolsAdded":[...]}` message instead of the legacy `context.systemPrompt` and `context.tools` fields. Requests with neither a prompt nor tools send only the conversation messages.
 
-Radius forwards the provider-neutral `ToolChoice` option as `options.toolChoice`, as pi's pi-messages client does. Previously, `none` and other tool choices were silently ignored on this route.
+Radius forwards the provider-neutral `ToolChoice` option as `options.toolChoice`. Previously, `none` and other tool choices were silently ignored on this route.
 
 Bedrock event-stream frames with `:message-type: error` now end the stream with a classified provider error carrying the frame's `:error-code` and `:error-message`. Previously they were skipped, and the stream could end without a terminal error.
 
@@ -137,17 +137,17 @@ Bedrock tool specs omit `description` for tools without one. Converse requires a
 
 Vertex Anthropic requests send the same `anthropic-beta` header as direct Anthropic requests. Previously, Vertex silently dropped configured betas such as `context-1m-2025-08-07` and the automatic tool-streaming and thinking betas.
 
-Kimi Coding token refresh retries transient failures (transport errors, rate limits, and server errors) up to three times with exponential backoff, as pi does. Other rejections, such as `invalid_grant` or 401, still fail immediately so the caller can prompt for a new login.
+Kimi Coding token refresh retries transient failures (transport errors, rate limits, and server errors) up to three times with exponential backoff. Other rejections, such as `invalid_grant` or 401, still fail immediately so the caller can prompt for a new login.
 
-GitHub Copilot device login follows the poll interval GitHub sends with a `slow_down` response, as pi does. The fixed five-second increment remains the fallback when the server omits an interval. This avoids polling early repeatedly and timing out.
+GitHub Copilot device login follows the poll interval GitHub sends with a `slow_down` response. The fixed five-second increment remains the fallback when the server omits an interval. This avoids polling early repeatedly and timing out.
 
 Bedrock applies the AWS SDK host rule to `AWS_CONTAINER_CREDENTIALS_FULL_URI`. HTTPS endpoints may use any host. Plain HTTP endpoints must be loopback, `169.254.170.2`, `169.254.170.23`, or `fd00:ec2::23`; any other value is reported as a container credential error instead of being fetched.
 
 Credential structs no longer print secrets when formatted with `%v`, `%+v`, `%#v`, or `%s`. `StoredCredential`, the Anthropic, Codex, Copilot, Kimi, OpenRouter, Radius, and xAI OAuth credentials, Bedrock `StaticCredentials`, and `openai.AzureAccessToken` now follow `sigma.Credential` and print a description that names the secret fields without their values. JSON encoding is unchanged.
 
-Bedrock's default chain honours an explicit `AWS_PROFILE` ahead of static environment keys, as pi and the AWS SDK for JavaScript do. Previously, ambient access keys silently overrode the selected profile. Without `AWS_PROFILE`, or when the profile has no static keys, the environment keys are still used.
+Bedrock's default chain honours an explicit `AWS_PROFILE` ahead of static environment keys, as the AWS SDK for JavaScript does. Previously, ambient access keys silently overrode the selected profile. Without `AWS_PROFILE`, or when the profile has no static keys, the environment keys are still used.
 
-The environment resolver recognizes `GEMINI_API_KEY` for `google` models, the variable pi and Google AI Studio document. `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY` still take precedence when set.
+The environment resolver recognizes `GEMINI_API_KEY` for `google` models, the variable Google AI Studio documents. `GOOGLE_API_KEY` and `GOOGLE_CLOUD_API_KEY` still take precedence when set.
 
 Tool-call validation and coercion walk object properties in sorted name order. When more than one property fails, the reported error no longer varies between runs with Go map iteration order.
 
@@ -157,11 +157,11 @@ OpenRouter requests for non-Anthropic models no longer carry message-level `cach
 
 Chat Completions compat detection matches xAI and Z.ai base URLs by domain or subdomain instead of by substring. Custom endpoints on hosts that merely end in `x.ai` or `z.ai` now get the default compat settings.
 
-Chat Completions history skips assistant turns that contain only reasoning, as pi does. Previously, such a turn (for example, an aborted DeepSeek response) was replayed with `reasoning_content` and no `content`, which compatible servers reject.
+Chat Completions history skips assistant turns that contain only reasoning. Previously, such a turn (for example, an aborted DeepSeek response) was replayed with `reasoning_content` and no `content`, which compatible servers reject.
 
 Chat Completions tool results join multiple text blocks with newlines instead of concatenating them. Empty results send `(no tool output)`, since some compatible servers reject empty tool content.
 
-Chat Completions tool-call streaming now matches deltas by stream index and then by provider id, as pi does. Separate index-less calls stay separate, and a call whose continuation carries only its id stays whole.
+Chat Completions tool-call streaming now matches deltas by stream index and then by provider id. Separate index-less calls stay separate, and a call whose continuation carries only its id stays whole.
 
 Vertex express mode is supported for native Gemini text. When an API key is supplied without a project ID, requests go to the global `publishers/google/models/{model}` route instead of failing locally. OAuth credentials still require a project and location.
 

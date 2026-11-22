@@ -1,8 +1,8 @@
-# Inspired by `@earendil-works/pi-ai`
+# TypeScript Concepts in Go
 
-The `sigma` project is inspired by the TypeScript `@earendil-works/pi-ai`
-package. This guide maps familiar TypeScript concepts to Go `sigma` patterns
-without presenting `sigma` as a replacement path or exact API-name port.
+This guide maps familiar TypeScript LLM-client concepts to Go `sigma`
+patterns without presenting `sigma` as a replacement path or exact API-name
+port.
 
 `sigma` keeps the same provider-neutral goal, but uses Go conventions:
 
@@ -53,8 +53,8 @@ examples.
 
 ## Provider Coverage
 
-The TypeScript package lists more provider IDs than Go `sigma` currently runs
-out of the box. Sigma's Go design is intentionally explicit:
+Sigma's Go design is intentionally explicit about which providers run out of
+the box:
 
 - Built-in text adapters currently cover OpenAI-compatible Chat Completions,
   OpenAI Responses, Azure OpenAI Responses, OpenAI Codex Responses, Anthropic
@@ -82,8 +82,6 @@ out of the box. Sigma's Go design is intentionally explicit:
 TypeScript:
 
 ```typescript
-import { getModel } from "@earendil-works/pi-ai";
-
 const model = getModel("openai", "gpt-4o-mini");
 console.log(model.name, model.api);
 ```
@@ -336,8 +334,7 @@ if model.SupportsImages() {
 }
 ```
 
-Unlike the source package's historical behavior of silently ignoring images for
-some non-vision models, Go callers should check model metadata and the
+Go callers should check model metadata and the
 [provider parity matrix](provider-parity.md) before relying on image input.
 
 ## Image Generation
@@ -615,7 +612,7 @@ capability losses and repairs; callers still own execution and orchestration.
 
 ## Auth, Environment, OAuth, And Browser Differences
 
-The TypeScript package includes Node/browser-specific guidance, environment
+TypeScript clients often include Node/browser-specific guidance, environment
 checks, OAuth login helpers, and CLI credential storage. Go intentionally keeps
 those concerns explicit:
 

@@ -180,8 +180,8 @@ images, `GenerateImages` dispatches to a registered image provider and returns
 - [Testing](docs/testing.md) covers `sigmatest`, `httptest`, and live-test
   boundaries.
 - [Request persistence](docs/persistence.md) covers JSON replay.
-- [Inspired by `@earendil-works/pi-ai`](docs/inspired-by-pi-ai.md) maps
-  familiar TypeScript concepts to Go.
+- [TypeScript concepts](docs/typescript-concepts.md) maps familiar TypeScript
+  concepts to Go.
 - [Provider parity](docs/provider-parity.md) distinguishes implemented, partial,
   planned, unsupported, and preview provider features.
 - [Security](docs/security.md) covers credential handling and diagnostic
