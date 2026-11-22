@@ -214,6 +214,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- The surface probe no longer sends a disabled-thinking request to Fireworks models whose catalog metadata marks thinking off as unsupported, so thinking-only models such as GLM 5.3 no longer report an inconclusive `thinking_object_disabled` case.
 - The Mistral Medium 3.5 catalog row uses Mistral's documented API ID, `mistral-medium-3-5`, instead of `mistral-medium-3.5`, and the Mistral adapter's reasoning-mode fallback matches the corrected ID.
 - Anthropic, OpenAI Codex, and Radius browser logins now shut their callback server down gracefully, so the browser receives the full success page. Login completes from inside the callback handler and closed the server immediately, which could drop the page mid-response and show the user a connection error after a successful login.
 - OpenCode Zen and Go requests now use OpenCode's protocol-specific endpoints under `https://opencode.ai/inference`: `/openai/v1` for Chat Completions and Responses, `/anthropic/v1` for Anthropic Messages, and `/google/v1beta` for Gemini, with the same paths under `/inference/go` for OpenCode Go. `opencode.ZenBaseURL` and `GoBaseURL` now name the `/inference` OpenAI-compatible bases. Every protocol was sent to the older shared `/zen/v1` and `/zen/go/v1` bases, which OpenCode no longer documents.

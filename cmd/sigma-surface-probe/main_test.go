@@ -360,6 +360,26 @@ func TestStructuredOutputProbeCasesSelectsJSONOnly(t *testing.T) {
 	}
 }
 
+// Thinking-only Fireworks models reject disabled thinking, so the probe must
+// not report that rejection as a failure.
+func TestFireworksOpenAIProbeCasesFollowDisabledThinkingSupport(t *testing.T) {
+	t.Parallel()
+
+	route := routes["fireworks-openai"]
+	for _, tt := range []struct {
+		id   string
+		want bool
+	}{
+		{id: "accounts/fireworks/models/glm-5p3", want: false},
+		{id: "accounts/fireworks/models/kimi-k3", want: true},
+	} {
+		cases := openAICompatibleProbeCases(route, route.Model(route, tt.id))
+		if got := hasRepairVariant(cases, "thinking_object_disabled"); got != tt.want {
+			t.Errorf("%s probes thinking_object_disabled = %v, want %v", tt.id, got, tt.want)
+		}
+	}
+}
+
 func TestFireworksOpenAIProbeCasesSkipScalarThinkingControls(t *testing.T) {
 	t.Parallel()
 

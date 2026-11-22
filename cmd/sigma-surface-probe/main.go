@@ -1898,6 +1898,8 @@ func skipOpenAICompatibleProbeCase(route routeSpec, model sigma.Model, name stri
 		switch name {
 		case "thinking_string_none", "thinking_bool_false", "enable_thinking_false":
 			return true
+		case "thinking_object_disabled":
+			return modelUnsupportedThinkingOff(model)
 		default:
 			return false
 		}
