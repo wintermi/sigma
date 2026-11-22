@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Document that `CredentialStore.ModifyCredential` must finish writing after cancellation.
 - [x] Wrap OnRefresh failures and retry the save on the next use.
 - [x] Skip ambient AWS keys when an explicit `AWS_PROFILE` has no static keys.
 - [x] Enable unconfigured GitHub Copilot catalog models during device login.
@@ -286,9 +287,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Document that `CredentialStore.ModifyCredential` must persist a rotated token
-      even if the caller cancels, or pass it a detached context
-      (`provider_auth.go`).
 - [ ] Add a 1-second minimum device-flow poll interval, honor xAI `slow_down`
       intervals, and wait one interval before the first Copilot poll.
 - [ ] Add a timeout to the Anthropic login code exchange; fall back to a

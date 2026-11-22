@@ -102,3 +102,10 @@ provider. They do not run the waiting callback or remove credentials. Cancellati
 does not release an active callback's ownership or discard its successful
 credential rotation; that callback must cooperate with its own context. Other
 providers can continue independently.
+
+Custom `CredentialStore` implementations must follow the same rule: the
+`ModifyCredential` context bounds the wait for the provider's lock, but once the
+callback returns a credential to store, the write must complete even if that
+context has been canceled. Sigma refreshes stored OAuth tokens inside the
+callback, and a provider that rotates refresh tokens has already invalidated the
+stored one, so a dropped write forces a new login.

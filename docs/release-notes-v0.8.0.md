@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Custom credential stores have a documented cancellation contract. Sigma refreshes a stored OAuth token inside the `ModifyCredential` callback and detaches the refresh from the caller's cancellation, but passes the caller's context to the store. A third-party store that stopped writing when that context was canceled could drop a token the provider had already rotated, forcing a new login. `CredentialStore` and the cancellation guide now state that the context bounds only the lock wait, and the write must complete; `InMemoryCredentialStore` already behaves this way.
+
 A failed save of refreshed OAuth credentials is retried. When an `OnRefresh` callback failed, the token providers kept the new credentials in memory, reported an error that discarded the callback's cause, and never tried to save again. Providers that rotate refresh tokens had already invalidated the stored one, so the next process start needed a fresh login. The error now wraps the cause (its message still omits it, since it may quote the credentials), and each later `Token` call retries the save before using the credentials; a failed retry does not block the request.
 
 Bedrock no longer signs as the wrong identity when `AWS_PROFILE` names a profile without static keys. An explicit profile already took precedence over environment keys when it had static keys, but an SSO, `credential_process`, or `role_arn` profile, which sigma cannot resolve, fell through to whatever `AWS_ACCESS_KEY_ID` was set and silently used that account. With `AWS_PROFILE` set, environment keys are now skipped, as the AWS SDKs do, and the chain continues to the container, web identity, and instance sources, or reports credentials as unavailable.

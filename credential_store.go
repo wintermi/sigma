@@ -42,6 +42,13 @@ func (c StoredCredential) Format(state fmt.State, _ rune) {
 type CredentialModifyFunc func(current StoredCredential, ok bool) (next StoredCredential, nextOK bool, err error)
 
 // CredentialStore stores one credential per provider.
+//
+// ModifyCredential's context bounds only the wait for the provider's lock and
+// the reads before modify is called. Once modify returns a credential to
+// store, the write must complete even if the context is canceled: sigma
+// refreshes OAuth tokens inside modify, and a provider that rotates refresh
+// tokens has already invalidated the stored one, so dropping the write would
+// force a new login.
 type CredentialStore interface {
 	ReadCredential(context.Context, ProviderID) (StoredCredential, bool, error)
 	ModifyCredential(context.Context, ProviderID, CredentialModifyFunc) (StoredCredential, bool, error)
