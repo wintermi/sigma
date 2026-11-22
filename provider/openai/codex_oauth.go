@@ -572,10 +572,10 @@ func (s *codexBrowserCallbackServer) finish(result codexBrowserCallbackResult) {
 }
 
 func (s *codexBrowserCallbackServer) close() {
-	if s == nil || s.server == nil {
+	if s == nil {
 		return
 	}
-	_ = s.server.Close()
+	oauthvalidity.CloseCallbackServer(s.server)
 }
 
 func waitOpenAICodexBrowserAuthorizationCode(

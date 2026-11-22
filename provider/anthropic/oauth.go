@@ -481,10 +481,10 @@ func (s *anthropicBrowserCallbackServer) finish(result anthropicBrowserCallbackR
 }
 
 func (s *anthropicBrowserCallbackServer) close() {
-	if s == nil || s.server == nil {
+	if s == nil {
 		return
 	}
-	_ = s.server.Close()
+	oauthvalidity.CloseCallbackServer(s.server)
 }
 
 func waitAnthropicBrowserAuthorizationCode(

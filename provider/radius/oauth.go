@@ -787,8 +787,8 @@ func (server *radiusBrowserCallbackServer) finish(result radiusBrowserCallbackRe
 }
 
 func (server *radiusBrowserCallbackServer) close() {
-	if server != nil && server.server != nil {
-		_ = server.server.Close()
+	if server != nil {
+		oauthvalidity.CloseCallbackServer(server.server)
 	}
 }
 

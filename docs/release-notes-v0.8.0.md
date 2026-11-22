@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Browser logins reliably show their success page. Anthropic, OpenAI Codex, and Radius logins finish from inside the callback request and then closed the local callback server at once, which could cut off the success page still being sent, so the browser sometimes showed a connection error although login had succeeded. The callback server now waits up to a second for the in-flight response before closing, as OpenRouter's login already did.
+
 Changing the thinking level no longer invalidates the prompt cache on GPT-6. The reasoning effort is part of the cached prompt, so moving a GPT-6 conversation from high to low effort, or turning thinking off, re-read the whole history at full price. GPT-6 models on OpenAI Responses and Codex now send a fixed top-level effort and carry the requested level in `configuration_update` input items, with each earlier turn's level replayed before it from the assistant message's `ProviderThinkingLevel`. Other Responses models can opt in with `OpenAIResponsesCompat.SupportsMidConversationEffort`.
 
 Callers can see when OpenAI drops replayed reasoning. From GPT-6.2 on, the Responses API removes replayed reasoning that follows an edit of earlier input, or that came from another organization, end user, or model, and reports the removal in `input_transformations`; sigma ignored it, so a caller could not tell the model had answered without its earlier reasoning. Final messages from OpenAI, Azure, and Codex Responses now carry those removals in `ProviderMetadata["input_transformations"]`.

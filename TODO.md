@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Shut down login callback servers gracefully so the success page is delivered.
 - [x] Send mid-conversation effort changes as `configuration_update` items on Responses and Codex.
 - [x] Report reasoning dropped by OpenAI `input_transformations`.
 - [x] Move OpenCode routes to the protocol-specific `/inference` endpoints.
