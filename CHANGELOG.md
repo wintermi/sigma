@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Azure OpenAI Responses requests with `CacheRetentionLong` no longer send `prompt_cache_retention` unless the model's `OpenAIResponsesCompat.SupportsLongCacheRetention` is explicitly supported. Azure does not document the field, so deployments that reject it failed long-retention requests; explicit `prompt_cache_options` support and caller-supplied cache directives are unchanged.
 - Z.ai-format Chat Completions requests now send `reasoning_effort` only when the model declares support for it, as the GLM-5.2 and GLM-5.3 rows do. GLM-4.6V, GLM-4.7, GLM-5 Turbo, and custom Z.ai models received it alongside `thinking.type` although they do not accept it.
 - Radius finals now report the gateway's `responseModel` through `AssistantMessage.ResponseModel()`. It was ignored, so for virtual models such as `cheap` the physical model that answered was unknown.
 - Anthropic subscription requests now identify as Claude Code 2.1.322 instead of 2.1.280.

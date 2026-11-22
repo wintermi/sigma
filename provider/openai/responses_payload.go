@@ -228,7 +228,7 @@ func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, op
 		responsesSupportsLongCacheRetention(model) {
 		if responsesSupportsExplicitPromptCacheMode(model) {
 			payload[providerOptionPromptCacheOptions] = map[string]any{"ttl": "30m"}
-		} else {
+		} else if responsesAcceptsPromptCacheRetention(model) {
 			payload[providerOptionPromptCacheRetention] = "24h"
 		}
 	}
@@ -282,6 +282,17 @@ func responsesHasExplicitPromptCacheDirective(provider sigma.ProviderID, opts si
 func responsesSupportsLongCacheRetention(model sigma.Model) bool {
 	return model.OpenAIResponsesCompat == nil ||
 		model.OpenAIResponsesCompat.SupportsLongCacheRetention != sigma.OpenAICompatUnsupported
+}
+
+// responsesAcceptsPromptCacheRetention reports whether the legacy
+// prompt_cache_retention field may be sent. Azure does not document it, so
+// Azure deployments get it only when their metadata opts in.
+func responsesAcceptsPromptCacheRetention(model sigma.Model) bool {
+	if model.API != sigma.APIAzureOpenAIResponses {
+		return true
+	}
+	return model.OpenAIResponsesCompat != nil &&
+		model.OpenAIResponsesCompat.SupportsLongCacheRetention == sigma.OpenAICompatSupported
 }
 
 func responsesSupportsMaxOutputTokens(model sigma.Model) bool {

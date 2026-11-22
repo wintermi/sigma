@@ -98,6 +98,11 @@ func TestResponsesCompatibilityAcrossRequestPaths(t *testing.T) {
 				if _, ok := payload["prompt_cache_retention"]; ok {
 					t.Fatal("legacy retention sent with cache options")
 				}
+			} else if tt.provider == sigma.ProviderAzureOpenAIResponses {
+				// Azure does not document prompt_cache_retention.
+				if retention, ok := payload["prompt_cache_retention"]; ok {
+					t.Fatalf("Azure legacy retention = %#v, want absent", retention)
+				}
 			} else {
 				if payload["prompt_cache_retention"] != "24h" {
 					t.Fatalf("legacy retention = %#v", payload["prompt_cache_retention"])
