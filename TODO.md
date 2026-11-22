@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Update the Claude Code identity version to 2.1.322.
 - [x] Redact `Options` and `AuthResolution` under fmt verbs and the Codex proxy URL in errors.
 - [x] Time out the Anthropic code exchange and default Kimi device-code lifetimes.
 - [x] Poll device-code logins at least one second apart, honour xAI slow_down intervals, and wait before Copilot's first poll.
@@ -318,7 +319,6 @@ reproduces the failure before it is checked off.
       one to disable `prompt_cache_key`.
 - [ ] Keep a 15% (minimum 4096-token) input margin and a 32768 output cap near a
       full window when clamping max tokens for OpenRouter (`estimate.go`).
-- [ ] Update the Claude Code identity version to 2.1.322.
 - [ ] Read `responseModel` from Radius terminal events.
 
 ### Features and catalog

@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Anthropic subscription requests report the current Claude Code client version, 2.1.322, in their `User-Agent` and identity headers.
+
 Logging request options no longer prints credentials. `Options.APIKey`, `Options.Headers`, and `AuthResolution`'s headers and provider environment values were printed in full by `fmt` verbs, unlike `Credential` and the other credential types, which already redact themselves; they now redact the same way while other fields print as before. The Codex WebSocket error for a malformed `HTTPS_PROXY` or `ALL_PROXY` also quoted the URL, including any password, and now describes the problem without it.
 
 Two login edge cases no longer fail or hang. Anthropic's browser login exchanged the authorization code with no deadline of its own, so an unresponsive token endpoint left the login waiting indefinitely; the exchange now times out after 30 seconds. Kimi Coding rejected a device authorization response without `expires_in` as incomplete; it now polls for 15 minutes, the lifetime Kimi issues codes for.
