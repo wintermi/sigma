@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Map Gemini `CONTINUATION` to a max-tokens stop.
 - [x] Reuse Codex WebSocket connections for at most 45 minutes.
 - [x] Forward `MaxTokens` as Codex `max_output_tokens`.
 - [x] Send the Codex system prompt as a leading developer message.
@@ -266,8 +267,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Map Gemini `CONTINUATION` to `StopReasonMaxTokens` instead of an error
-      (`provider/google/stream.go` `googleStopReason`).
 - [ ] Decide whether Bedrock `model_context_window_exceeded` is a max-tokens stop
       or an overflow error; today it is an "unhandled stop reason" error
       (`provider/bedrock/stream.go`).

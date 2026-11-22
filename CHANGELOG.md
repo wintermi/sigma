@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Gemini and Vertex Gemini turns that finish with `CONTINUATION` now end with `StopReasonMaxTokens` instead of a provider error. The reason reports that the per-request token limit was reached before the answer was complete, so the truncated turn was valid output.
 - Cached Codex WebSocket connections are now reused for at most 45 minutes instead of 55. A long reasoning response started on a 54-minute-old connection could still be cut off by the backend's 60-minute limit mid-stream, after which the turn failed without an SSE fallback.
 - OpenAI Codex requests now send `max_output_tokens` when `MaxTokens` is set, raised to the 16-token minimum, unless the model sets `OpenAIResponsesCompat.SupportsMaxOutputTokens` to unsupported; explicit sampling and body overrides apply as on other Responses routes. The field was always deleted, so caller output caps were ignored on Codex.
 - OpenAI Codex requests now send the system prompt as a leading `developer` input message instead of top-level `instructions`, and no longer fill in a default `You are a helpful assistant.` instruction. From GPT-6.2 on, the Codex backend appends `instructions` after the input, so the system prompt was never served from the prompt cache.

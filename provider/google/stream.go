@@ -535,7 +535,9 @@ func googleStopReason(reason string) sigma.StopReason {
 	switch reason {
 	case "STOP":
 		return sigma.StopReasonEndTurn
-	case "MAX_TOKENS":
+	// CONTINUATION reports the per-request token limit was reached before the
+	// answer was complete; sigma does not resume with the continuation token.
+	case "MAX_TOKENS", "CONTINUATION":
 		return sigma.StopReasonMaxTokens
 	case "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII",
 		"IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "IMAGE_OTHER",
