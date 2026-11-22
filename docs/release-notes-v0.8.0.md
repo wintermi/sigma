@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Radius browser login accepts any valid loopback redirect path. The callback server registered the caller's redirect path as an `http.ServeMux` pattern next to its own `/` fallback, so a redirect URI with path `/` registered the same pattern twice, and paths with spaces or braces failed pattern parsing. Both panicked the process after the callback port had been opened. The server now matches the path directly and answers other paths with a not-found page.
+
 GitHub Copilot validates stored account base URLs, not just newly derived ones. The `proxy-ep` host check applied only when a base URL was derived from a fresh token, so a URL already saved in a credential store, from before the check or edited there, kept receiving the Copilot bearer token until the token was refreshed. Stored and supplied base URLs now go through the same trusted-host check and fall back to the token's own host. Enterprise domains configured with a port, such as `ghe.example.com:8443`, now match their hosts.
 
 OAuth tokens are refreshed earlier. Sigma used a token until one minute before its recorded expiry, so a machine whose clock ran a minute or more fast, such as a VM or WSL host, or a request retried near the end of that minute, sent a token the provider already considered expired and got a 401. Stored credentials and every built-in OAuth token provider now refresh five minutes before expiry; `RefreshBefore` options still override it.

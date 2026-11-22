@@ -730,8 +730,14 @@ func startRadiusBrowserCallbackServer(redirectURI string, state string) (*radius
 		return nil, fmt.Errorf("radius oauth: start callback server: %w", err)
 	}
 	serverInfo := &radiusBrowserCallbackServer{done: make(chan radiusBrowserCallbackResult, 1)}
-	mux := http.NewServeMux()
-	mux.HandleFunc(callback.Path, func(w http.ResponseWriter, req *http.Request) {
+	// The path is matched directly rather than registered as a ServeMux
+	// pattern: a caller-supplied path such as "/" or one with spaces would
+	// collide with or fail pattern parsing and panic after the listener opened.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != callback.Path {
+			writeRadiusOAuthHTML(w, http.StatusNotFound, "Authentication failed", "Callback route not found.")
+			return
+		}
 		// Only a request carrying this login's state may end it; stray or
 		// cross-site requests are refused while the login keeps waiting.
 		if req.Method != http.MethodGet {
@@ -756,10 +762,7 @@ func startRadiusBrowserCallbackServer(redirectURI string, state string) (*radius
 		writeRadiusOAuthHTML(w, http.StatusOK, "Authentication successful", "Radius authentication completed. You can close this window.")
 		serverInfo.finish(radiusBrowserCallbackResult{code: code})
 	})
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		writeRadiusOAuthHTML(w, http.StatusNotFound, "Authentication failed", "Callback route not found.")
-	})
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second}
 	serverInfo.server = server
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {

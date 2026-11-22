@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Stop Radius login panicking on redirect paths that are not valid ServeMux patterns.
 - [x] Re-validate stored GitHub Copilot base URLs before sending the token.
 - [x] Refresh OAuth tokens five minutes before expiry.
 - [x] Fail Anthropic login on any IPv6 loopback bind error except missing IPv6, including on Windows.
@@ -281,9 +282,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Reject Radius redirect URIs whose path is `/` or otherwise collides with the
-      callback mux, instead of panicking after the listener opens
-      (`provider/radius/oauth.go`).
 - [ ] Cancel the `OnManualCode` context when the browser callback wins for
       Anthropic, Codex, and Radius, as OpenRouter does.
 - [ ] Enable unconfigured GitHub Copilot models during device login.
