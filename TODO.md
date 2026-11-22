@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Move Qwen Token Plan to the current gateways and per-plan key variables.
 - [x] Add Copilot Claude 5.5 and Gemini 4 rows and remove retired GPT-5.4 and GPT-5.5.
 - [x] Add long-context price tiers to the Azure GPT-5.4, 5.5, and 5.6 rows.
 - [x] Add GPT-6.1 and GPT-6.2 rows to the Codex and Azure catalogs.

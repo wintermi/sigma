@@ -530,9 +530,14 @@ _ = qwen.RegisterCN(registry)
 client := sigma.NewClient(sigma.WithRegistry(registry))
 ```
 
-Environment: `QWEN_TOKEN_PLAN_API_KEY` for `ProviderQwenTokenPlan` and
-`ProviderQwenTokenPlanIndividual`; `QWEN_TOKEN_PLAN_CN_API_KEY` for
-`ProviderQwenTokenPlanCN`.
+Environment: `QWEN_TOKEN_PLAN_TEAM_API_KEY` for `ProviderQwenTokenPlan`,
+`QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY` for `ProviderQwenTokenPlanIndividual`, and
+`QWEN_TOKEN_PLAN_TEAM_CN_API_KEY` for `ProviderQwenTokenPlanCN`. Each falls back
+to the regional variable the plans used to share, `QWEN_TOKEN_PLAN_API_KEY` or
+`QWEN_TOKEN_PLAN_CN_API_KEY`. Requests go to the QwenCloud
+(`token-plan.maas.qwencloudapi.com`) and Qianwen AI Platform
+(`token-plan.maas.qianwenaiapi.com`) gateways; the former
+`*.maas.aliyuncs.com` hosts reach the same gateways.
 
 The Qwen Token Plan wrappers use Sigma's shared OpenAI-compatible Chat
 Completions adapter with international, Individual subscription, and China

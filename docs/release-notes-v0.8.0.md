@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Qwen Token Plan uses its current gateways and a key per plan. Team and Individual plans issue different API keys, but both read `QWEN_TOKEN_PLAN_API_KEY`, so only one plan could be configured from the environment at a time. Each plan now reads its own variable first, `QWEN_TOKEN_PLAN_TEAM_API_KEY`, `QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY`, or `QWEN_TOKEN_PLAN_TEAM_CN_API_KEY`, and still falls back to the shared regional variable. Requests now default to the QwenCloud and Qianwen AI Platform gateway hosts; the former Alibaba Cloud hosts resolve to the same gateways, so configurations that name them keep working.
+
 The GitHub Copilot catalog follows Copilot's current models more closely. Claude Sonnet 5.5 and Haiku 5.5 are added on the Messages route with their direct Anthropic reasoning levels, temperature restrictions, and strict tool support, and Gemini 4 Argon and Carbon are added on Chat Completions with low, medium, and high reasoning effort. GPT-5.4 and GPT-5.5, which Copilot has retired, are removed.
 
 Azure cost estimates for long prompts use the long-context price. Azure bills GPT-5.4, GPT-5.5, and GPT-5.6 at higher rates above 272K input tokens, as OpenAI does, but seven Azure rows lacked that tier, so long prompts were estimated at the base price. They now carry the same tiers as their OpenAI rows.

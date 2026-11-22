@@ -13,10 +13,14 @@ import (
 )
 
 const (
-	// DefaultBaseURL is the Qwen Token Plan international OpenAI-compatible API base URL.
-	DefaultBaseURL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-	// DefaultCNBaseURL is the Qwen Token Plan China OpenAI-compatible API base URL.
-	DefaultCNBaseURL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+	// DefaultBaseURL is the Qwen Token Plan international (QwenCloud)
+	// OpenAI-compatible API base URL. The former
+	// token-plan.ap-southeast-1.maas.aliyuncs.com host reaches the same gateway.
+	DefaultBaseURL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"
+	// DefaultCNBaseURL is the Qwen Token Plan China (Qianwen AI Platform)
+	// OpenAI-compatible API base URL. The former
+	// token-plan.cn-beijing.maas.aliyuncs.com host reaches the same gateway.
+	DefaultCNBaseURL = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 )
 
 // Provider adapts Qwen Token Plan's OpenAI-compatible Chat Completions endpoint to sigma.

@@ -162,6 +162,9 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 		{name: "qwen token plan", provider: sigma.ProviderQwenTokenPlan, env: "QWEN_TOKEN_PLAN_API_KEY"},
 		{name: "qwen token plan individual", provider: sigma.ProviderQwenTokenPlanIndividual, env: "QWEN_TOKEN_PLAN_API_KEY"},
 		{name: "qwen token plan china", provider: sigma.ProviderQwenTokenPlanCN, env: "QWEN_TOKEN_PLAN_CN_API_KEY"},
+		{name: "qwen token plan team key", provider: sigma.ProviderQwenTokenPlan, env: "QWEN_TOKEN_PLAN_TEAM_API_KEY"},
+		{name: "qwen token plan individual key", provider: sigma.ProviderQwenTokenPlanIndividual, env: "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY"},
+		{name: "qwen token plan team china key", provider: sigma.ProviderQwenTokenPlanCN, env: "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY"},
 	}
 
 	for _, tt := range tests {
@@ -181,6 +184,30 @@ func TestEnvironmentAuthResolverCommonStaticKeys(t *testing.T) {
 				t.Fatalf("credential source = %q, want %q", got, want)
 			}
 		})
+	}
+}
+
+// Qwen Token Plan Team and Individual keys differ, so each plan's own
+// variable wins over the regional variable both plans used to share.
+func TestEnvironmentAuthResolverPrefersQwenPlanKeys(t *testing.T) {
+	t.Parallel()
+	values := map[string]string{
+		"QWEN_TOKEN_PLAN_API_KEY":            "shared",
+		"QWEN_TOKEN_PLAN_TEAM_API_KEY":       "team",
+		"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY": "individual",
+	}
+	resolver := sigma.EnvironmentAuthResolver{LookupEnv: func(name string) (string, bool) {
+		value, ok := values[name]
+		return value, ok
+	}}
+	for provider, want := range map[sigma.ProviderID]string{
+		sigma.ProviderQwenTokenPlan:           "team",
+		sigma.ProviderQwenTokenPlanIndividual: "individual",
+	} {
+		credential, err := resolver.Resolve(context.Background(), sigma.Model{ID: "model", Provider: provider}, sigma.Options{})
+		if err != nil || credential.Value != want {
+			t.Errorf("%s credential = %q, %v; want %q", provider, credential.Value, err, want)
+		}
 	}
 }
 
@@ -407,6 +434,11 @@ func clearCredentialEnv(t *testing.T) {
 		"FIREWORKS_API_KEY",
 		"OPENCODE_API_KEY",
 		"XIAOMI_API_KEY",
+		"QWEN_TOKEN_PLAN_API_KEY",
+		"QWEN_TOKEN_PLAN_CN_API_KEY",
+		"QWEN_TOKEN_PLAN_TEAM_API_KEY",
+		"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
+		"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
 	} {
 		t.Setenv(name, "")
 	}

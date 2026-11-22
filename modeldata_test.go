@@ -1667,8 +1667,8 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		baseURL  string
 		envVars  []string
 	}{
-		{provider: ProviderQwenTokenPlan, baseURL: "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_API_KEY"}},
-		{provider: ProviderQwenTokenPlanCN, baseURL: "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_CN_API_KEY"}},
+		{provider: ProviderQwenTokenPlan, baseURL: "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_TEAM_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"}},
+		{provider: ProviderQwenTokenPlanCN, baseURL: "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1", envVars: []string{"QWEN_TOKEN_PLAN_TEAM_CN_API_KEY", "QWEN_TOKEN_PLAN_CN_API_KEY"}},
 	} {
 		qwenMax, ok := registry.Model(tt.provider, "qwen3.7-max")
 		if !ok {
@@ -1773,9 +1773,9 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 			model.OutputCostPerMillion != 0 {
 			t.Fatalf("Qwen Token Plan Individual model %s metadata = %+v", model.ID, model)
 		}
-		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1")
+		assertMetadataString(t, model.ProviderMetadata, "baseURL", "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1")
 		assertMetadataString(t, model.ProviderMetadata, "modelFamily", want.family)
-		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"QWEN_TOKEN_PLAN_API_KEY"})
+		assertMetadataStrings(t, model.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY", "QWEN_TOKEN_PLAN_API_KEY"})
 		if model.OpenAICompletionsCompat == nil ||
 			model.OpenAICompletionsCompat.ReasoningFormat != OpenAICompletionsReasoningQwen ||
 			model.OpenAICompletionsCompat.SupportsStore != OpenAICompatUnsupported ||

@@ -20453,7 +20453,7 @@
       "name": "Qwen3.7 Max",
       "provider": "qwen-token-plan",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20468,6 +20468,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_TEAM_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20486,7 +20487,7 @@
       "name": "Qwen3.8 Max",
       "provider": "qwen-token-plan",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -20507,6 +20508,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_TEAM_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20530,7 +20532,7 @@
       "name": "DeepSeek V4 Flash 0731",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20549,6 +20551,7 @@
       "maxOutputTokens": 384000,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20573,7 +20576,7 @@
       "name": "DeepSeek V4 Pro",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20592,6 +20595,7 @@
       "maxOutputTokens": 384000,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20616,7 +20620,7 @@
       "name": "DeepSeek V4 Pro 0813",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20635,6 +20639,7 @@
       "maxOutputTokens": 384000,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20659,7 +20664,7 @@
       "name": "GLM-5.2",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20678,6 +20683,7 @@
       "maxOutputTokens": 131072,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20702,7 +20708,7 @@
       "name": "Qwen3.6 Flash",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -20718,6 +20724,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20736,7 +20743,7 @@
       "name": "Qwen3.7 Max",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20751,6 +20758,7 @@
       "maxOutputTokens": 131072,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20769,7 +20777,7 @@
       "name": "Qwen3.7 Plus",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -20785,6 +20793,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20803,7 +20812,7 @@
       "name": "Qwen3.8 Max",
       "provider": "qwen-token-plan-individual",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -20824,6 +20833,7 @@
       "maxOutputTokens": 131072,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_INDIVIDUAL_API_KEY",
         "QWEN_TOKEN_PLAN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20848,7 +20858,7 @@
       "name": "Qwen3.7 Max",
       "provider": "qwen-token-plan-cn",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text"
       ],
@@ -20863,6 +20873,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
         "QWEN_TOKEN_PLAN_CN_API_KEY"
       ],
       "defaultTransport": "sse",
@@ -20881,7 +20892,7 @@
       "name": "Qwen3.8 Max",
       "provider": "qwen-token-plan-cn",
       "api": "openai-completions",
-      "baseURL": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+      "baseURL": "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
       "supportedInputs": [
         "text",
         "image"
@@ -20902,6 +20913,7 @@
       "maxOutputTokens": 65536,
       "headers": {},
       "authEnvNames": [
+        "QWEN_TOKEN_PLAN_TEAM_CN_API_KEY",
         "QWEN_TOKEN_PLAN_CN_API_KEY"
       ],
       "defaultTransport": "sse",
