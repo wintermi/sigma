@@ -643,7 +643,10 @@ The current adapter covers streaming text, streamed thinking chunks, function
 tools, request-scoped `x-affinity` session reuse through `sigma.WithSessionID`,
 base64 image input, image-bearing tool results, and replay of cross-provider
 tool-call IDs. URL/file image references, built-in connectors, append, and
-restart are not implemented.
+restart are not implemented. Requests send `store: false`, because sigma resends
+the full history each turn and the Conversations API otherwise keeps every
+conversation server-side; set the `store` provider option to `true` to keep
+them.
 
 ### Amazon Bedrock Converse Stream
 

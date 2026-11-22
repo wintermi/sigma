@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send `store: false` to Mistral Conversations by default.
 - [x] Drop other models' thinking in `TransformRequestForModel` instead of converting it to text.
 - [x] Declare GPT-5.4 and GPT-5.5 tools at the top level.
 - [x] Read Copilot reasoning tokens, send its reasoning effort, and send strict tools to Copilot Claude.
@@ -274,9 +275,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Decide whether Mistral should send `store: false` by default or move to the
-      stateless chat completions endpoint; Conversations stores transcripts by
-      default (`provider/mistral/mistral.go`).
 
 ### Security and OAuth
 

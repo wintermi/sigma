@@ -63,10 +63,13 @@ func conversationPayload(model sigma.Model, req sigma.Request, opts sigma.Option
 		return nil, err
 	}
 
+	// The Conversations API stores conversations unless told not to; sigma
+	// sends the full history each turn, so nothing needs to be kept.
 	payload := map[string]any{
 		"model":  string(model.ID),
 		"inputs": inputs,
 		"stream": true,
+		"store":  false,
 	}
 	if transformed.SystemPrompt != "" {
 		payload["instructions"] = providertext.Clean(transformed.SystemPrompt)

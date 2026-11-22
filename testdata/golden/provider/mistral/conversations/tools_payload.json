@@ -8,6 +8,7 @@
     }
   ],
   "model": "mistral-test",
+  "store": false,
   "stream": true,
   "tools": [
     {

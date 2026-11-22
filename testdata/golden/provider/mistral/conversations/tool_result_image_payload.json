@@ -32,5 +32,6 @@
     }
   ],
   "model": "pixtral-12b",
+  "store": false,
   "stream": true
 }
