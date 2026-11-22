@@ -3416,7 +3416,13 @@ func TestResponsesDefaultsStoreAndReasoningReplayInclude(t *testing.T) {
 			wantSummary: "auto",
 		},
 		{
-			name:          "no reasoning keeps include absent",
+			name:        "unset level on a reasoning model requests encrypted reasoning",
+			wantStore:   false,
+			wantInclude: []any{"reasoning.encrypted_content"},
+		},
+		{
+			name:          "explicit off keeps include absent",
+			opts:          []sigma.Option{sigma.WithReasoningLevel(sigma.ThinkingLevelOff)},
 			wantStore:     false,
 			wantNoInclude: true,
 		},
@@ -3475,6 +3481,12 @@ func TestResponsesDefaultsStoreAndReasoningReplayInclude(t *testing.T) {
 			if !reflect.DeepEqual(payload["include"], tt.wantInclude) {
 				t.Fatalf("include = %#v, want %#v", payload["include"], tt.wantInclude)
 			}
+			if tt.wantSummary == nil {
+				if reasoning, ok := payload["reasoning"]; ok {
+					t.Fatalf("reasoning = %#v, want absent", reasoning)
+				}
+				return
+			}
 			reasoning, ok := payload["reasoning"].(map[string]any)
 			if !ok {
 				t.Fatalf("reasoning = %#v, want object", payload["reasoning"])
@@ -3505,7 +3517,7 @@ func TestResponsesIgnoresNeutralThinkingBudget(t *testing.T) {
 			wantReasoning: map[string]any{"effort": "high", "summary": "auto"},
 		},
 		{
-			name: "budget alone sends no reasoning",
+			name: "budget alone sends no reasoning effort",
 			opts: []sigma.Option{sigma.WithThinkingBudgetTokens(16384)},
 		},
 	}
@@ -3541,11 +3553,6 @@ func TestResponsesIgnoresNeutralThinkingBudget(t *testing.T) {
 			}
 			if !reflect.DeepEqual(payload["reasoning"], tt.wantReasoning) {
 				t.Fatalf("reasoning = %#v, want %#v", payload["reasoning"], tt.wantReasoning)
-			}
-			if tt.wantReasoning == nil {
-				if include, ok := payload["include"]; ok {
-					t.Fatalf("include = %#v, want absent", include)
-				}
 			}
 		})
 	}

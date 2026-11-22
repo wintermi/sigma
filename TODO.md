@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Request encrypted Responses reasoning when the reasoning level is unset.
 - [x] Omit Bedrock Claude thinking when the structured-output tool is forced.
 - [x] Cap deferred Responses bodies at 64 MiB.
 - [x] Keep Radius catalog base URLs on the gateway origin that receives the credential.
@@ -250,10 +251,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Send the `off` effort (or `none`) on Responses reasoning models when no
-      reasoning level is set, and always request `reasoning.encrypted_content` for
-      xAI, so default requests do not reason without replayable reasoning
-      (`provider/openai/responses_payload.go` `addResponsesReasoningInclude`).
 - [ ] Classify more mid-stream and gateway failures as transient: `timed out`/
       `timeout`, network and connection errors, `connection reset by peer`, bare
       `ECONNRESET`/`ETIMEDOUT`/`EPIPE`/`ECONNABORTED` text, status numbers in message

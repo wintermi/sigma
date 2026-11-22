@@ -759,8 +759,13 @@ func addResponsesReasoningInclude(payload map[string]any, model sigma.Model, opt
 }
 
 // responsesReasoningEnabled ignores ThinkingBudgetTokens: the Responses API
-// has no reasoning token budget, only effort.
+// has no reasoning token budget, only effort. An unset level on a reasoning
+// model still reasons at the provider's default effort, so its encrypted
+// reasoning is requested too; without it the reasoning cannot be replayed.
 func responsesReasoningEnabled(model sigma.Model, opts sigma.Options) bool {
+	if requestedReasoningLevel(opts) == "" {
+		return model.SupportsReasoning()
+	}
 	return reasoningEffort(model, opts) != ""
 }
 

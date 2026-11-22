@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Responses, Azure, and other Responses routes now request `reasoning.encrypted_content` for reasoning models when no reasoning level is set. Those models still reason at the provider's default effort, but the reasoning came back without encrypted content under `store: false`, so it was dropped on the next turn while its tokens were billed. An explicit `ThinkingLevelOff` and models without reasoning metadata still send no `include`.
 - Bedrock Claude requests with `BedrockOptions.ResponseFormat` (and `WithStructuredOutput`) no longer send thinking. The response format forces its synthetic tool, and Claude rejects thinking with a forced `tool_choice`, so every structured-output request with a reasoning level failed with a 400.
 - OpenAI Responses deferred submit, fetch, and cancel now read at most 64 MiB of the response body and return a provider response error when it is larger. The body was decoded with no size limit, so a misbehaving endpoint or proxy could make the client read without bound.
 - Radius catalog refreshes now reject a catalog whose `baseUrl` is not on the gateway's scheme, host, and port. Any http(s) URL was accepted, and model requests then sent the Radius credential to that host, including over plain HTTP; a different path on the gateway origin is still allowed.

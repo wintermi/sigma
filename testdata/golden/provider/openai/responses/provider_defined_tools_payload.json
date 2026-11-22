@@ -1,4 +1,7 @@
 {
+  "include": [
+    "reasoning.encrypted_content"
+  ],
   "input": [
     {
       "content": [
