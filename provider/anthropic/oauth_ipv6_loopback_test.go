@@ -6,9 +6,12 @@
 package anthropic
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -64,5 +67,32 @@ func TestAnthropicCallbackServerAcceptsIPv6LoopbackCallback(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("callback server did not receive the IPv6 callback")
+	}
+}
+
+// Only a missing IPv6 loopback lets login continue on IPv4 alone; any other
+// bind failure, including Windows' WSAEADDRINUSE (10048), stops it.
+func TestIPv6LoopbackUnavailableOnlyForMissingIPv6(t *testing.T) {
+	t.Parallel()
+	bindError := func(err error) error {
+		return &net.OpError{Op: "listen", Net: "tcp", Err: os.NewSyscallError("bind", err)}
+	}
+	for _, tt := range []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "address not available", err: bindError(syscall.EADDRNOTAVAIL), want: true},
+		{name: "address family unsupported", err: bindError(syscall.EAFNOSUPPORT), want: true},
+		{name: "windows address not available", err: bindError(syscall.Errno(10049)), want: true},
+		{name: "windows address family unsupported", err: bindError(syscall.Errno(10047)), want: true},
+		{name: "address in use", err: bindError(syscall.EADDRINUSE)},
+		{name: "windows address in use", err: bindError(syscall.Errno(10048))},
+		{name: "windows access denied", err: bindError(syscall.Errno(10013))},
+		{name: "other failure", err: errors.New("listen failed")},
+	} {
+		if got := ipv6LoopbackUnavailable(tt.err); got != tt.want {
+			t.Errorf("%s: unavailable = %v, want %v", tt.name, got, tt.want)
+		}
 	}
 }

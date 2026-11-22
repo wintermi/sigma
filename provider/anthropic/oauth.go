@@ -435,8 +435,9 @@ func startAnthropicBrowserCallbackServer(listenAddr string, state string) (*anth
 }
 
 // listenIPv6Loopback listens on [::1] at the IPv4 listener's port. It returns
-// nil without error when the host has no IPv6 loopback, and an error when the
-// port is already taken there.
+// nil without error when the host has no IPv6 loopback, and an error for any
+// other failure, such as the port being taken there: a browser that resolves
+// localhost to ::1 would otherwise send the code to whoever holds it.
 func listenIPv6Loopback(listenConfig *net.ListenConfig, ipv4 net.Listener) (net.Listener, error) {
 	_, port, err := net.SplitHostPort(ipv4.Addr().String())
 	if err != nil {
@@ -446,10 +447,22 @@ func listenIPv6Loopback(listenConfig *net.ListenConfig, ipv4 net.Listener) (net.
 	if err == nil {
 		return listener, nil
 	}
-	if errors.Is(err, syscall.EADDRINUSE) {
-		return nil, fmt.Errorf("IPv6 loopback callback port is in use: %w", err)
+	if ipv6LoopbackUnavailable(err) {
+		return nil, nil
 	}
-	return nil, nil
+	return nil, fmt.Errorf("IPv6 loopback callback port is unavailable: %w", err)
+}
+
+// ipv6LoopbackUnavailable reports bind errors meaning the host has no IPv6
+// loopback. Windows reports Winsock codes, which Go's errno constants do not
+// match there, so they are checked by number.
+func ipv6LoopbackUnavailable(err error) bool {
+	if errors.Is(err, syscall.EADDRNOTAVAIL) || errors.Is(err, syscall.EAFNOSUPPORT) || errors.Is(err, syscall.EPROTONOSUPPORT) {
+		return true
+	}
+	// WSAEPROTONOSUPPORT, WSAEAFNOSUPPORT, and WSAEADDRNOTAVAIL.
+	var errno syscall.Errno
+	return errors.As(err, &errno) && (errno == 10043 || errno == 10047 || errno == 10049)
 }
 
 func (s *anthropicBrowserCallbackServer) finish(result anthropicBrowserCallbackResult) {

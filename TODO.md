@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Fail Anthropic login on any IPv6 loopback bind error except missing IPv6, including on Windows.
 - [x] Send `store: false` to Mistral Conversations by default.
 - [x] Drop other models' thinking in `TransformRequestForModel` instead of converting it to text.
 - [x] Declare GPT-5.4 and GPT-5.5 tools at the top level.
@@ -278,9 +279,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Treat every IPv6 loopback bind error other than "address unavailable" as
-      fatal in the Anthropic OAuth callback, so Windows `WSAEADDRINUSE` is caught
-      (`provider/anthropic/oauth.go`).
 - [ ] Refresh OAuth tokens 5 minutes before expiry instead of 60 seconds
       (`provider_auth.go` and each provider's refresh-window constant).
 - [ ] Re-validate stored GitHub Copilot `baseURL` metadata and
