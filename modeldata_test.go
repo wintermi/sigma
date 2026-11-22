@@ -1366,8 +1366,6 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenRouter, id: "openai/gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
 		{provider: ProviderVercelAIGateway, id: "openai/gpt-5.4", want: ModelCostTier{InputTokensAbove: 271_999, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
 		{provider: ProviderVercelAIGateway, id: "openai/gpt-5.5", want: ModelCostTier{InputTokensAbove: 271_999, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
-		{provider: ProviderGitHubCopilot, id: "gpt-5.4", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 5, OutputCostPerMillion: 22.5, CacheReadInputCostPerMillion: 0.5}},
-		{provider: ProviderGitHubCopilot, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
 		{provider: ProviderXAI, id: "grok-4.6", want: ModelCostTier{InputTokensAbove: 200_000, InputCostPerMillion: 4, OutputCostPerMillion: 12, CacheReadInputCostPerMillion: 1}},
 	}
 	for _, tt := range tests {

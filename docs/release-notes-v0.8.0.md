@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The GitHub Copilot catalog follows Copilot's current models more closely. Claude Sonnet 5.5 and Haiku 5.5 are added on the Messages route with their direct Anthropic reasoning levels, temperature restrictions, and strict tool support, and Gemini 4 Argon and Carbon are added on Chat Completions with low, medium, and high reasoning effort. GPT-5.4 and GPT-5.5, which Copilot has retired, are removed.
+
 Azure cost estimates for long prompts use the long-context price. Azure bills GPT-5.4, GPT-5.5, and GPT-5.6 at higher rates above 272K input tokens, as OpenAI does, but seven Azure rows lacked that tier, so long prompts were estimated at the base price. They now carry the same tiers as their OpenAI rows.
 
 GPT-6.1 and GPT-6.2 are available on OpenAI Codex and Azure OpenAI Responses. The direct OpenAI catalog already had GPT-6.1 Sol and Terra and GPT-6.2 Astra and Sol; Codex and Azure now list them too, with the same pricing tiers and reasoning levels. Codex rows use the context windows Codex serves, 272K for GPT-6.2 Astra and 500K for the others, and Azure rows use 1.05M like Azure's other GPT-6 rows. Catalog inclusion does not guarantee account access.
