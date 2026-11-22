@@ -391,9 +391,9 @@ func TestOpenCodeProbeCasesFollowRoutedAPI(t *testing.T) {
 	}
 }
 
-// DeepSeek-format models take only the thinking object sigma sends; the raw
-// scalar forms fail upstream without saying anything about sigma.
-func TestDeepSeekFormatProbeCasesSkipScalarThinkingControls(t *testing.T) {
+// DeepSeek-format models and OpenCode Go Hy4 take only the thinking object;
+// the raw scalar forms fail upstream without saying anything about sigma.
+func TestProbeCasesSkipRejectedScalarThinkingControls(t *testing.T) {
 	t.Parallel()
 
 	route := routes["go"]
@@ -402,7 +402,9 @@ func TestDeepSeekFormatProbeCasesSkipScalarThinkingControls(t *testing.T) {
 		scalar bool
 	}{
 		{id: "deepseek-v4-pro"},
+		{id: "hy4"},
 		{id: "hy3", scalar: true},
+		{id: "hy4-preview", scalar: true},
 	} {
 		cases := route.Cases(route, route.Model(route, tt.id))
 		for _, name := range []string{"thinking_string_none", "thinking_bool_false"} {

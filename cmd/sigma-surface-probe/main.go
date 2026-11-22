@@ -1933,12 +1933,22 @@ func skipOpenAICompatibleProbeCase(route routeSpec, model sigma.Model, name stri
 		default:
 			return false
 		}
-	case model.OpenAICompletionsCompat != nil && model.OpenAICompletionsCompat.ReasoningFormat == sigma.OpenAICompletionsReasoningDeepSeek:
-		// DeepSeek-format models take only the thinking object sigma sends.
+	case rejectsScalarThinking(model):
 		return name == "thinking_string_none" || name == "thinking_bool_false"
 	default:
 		return false
 	}
+}
+
+// rejectsScalarThinking reports models that accept only a thinking object.
+// DeepSeek-format models take the object sigma sends. OpenCode Go Hy4 shares
+// its catalog format with Hy4 siblings that accept scalar forms, so it is
+// matched by ID.
+func rejectsScalarThinking(model sigma.Model) bool {
+	if model.OpenAICompletionsCompat != nil && model.OpenAICompletionsCompat.ReasoningFormat == sigma.OpenAICompletionsReasoningDeepSeek {
+		return true
+	}
+	return model.Provider == sigma.ProviderOpenCodeGo && model.ID == "hy4"
 }
 
 func modelUnsupportedThinkingOff(model sigma.Model) bool {
