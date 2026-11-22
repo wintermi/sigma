@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenAI Codex keeps the system prompt in the prompt cache. Sigma sent the system prompt as top-level `instructions`, which the Codex backend places after the conversation from GPT-6.2 on, so each new turn changed the prompt ahead of it and the system prompt was re-read at full price. Codex requests now send it as the first `developer` input message, as the Codex client does, and send no instructions when there is no system prompt. Other Responses routes are unchanged.
+
 Strict tool schemas with untyped nodes fail locally. OpenAI-compatible, Responses, Mistral, and Anthropic strict modes reject schema nodes without a type, but strict derivation accepted `{}`, `items: {}`, and bare `const` nodes and sent them, so the provider rejected the request with a 400. Derivation now reports "schemas without a type are unsupported" for the tool before dispatch; an `enum` still counts as typed.
 
 Anthropic strict tools fail locally, with the tool and keyword named, when their schema uses a keyword Claude's strict mode rejects. A strict tool with `{"type":"integer","minimum":1}`, a `maxItems` bound, or an unsupported string `format` was sent as is, and Claude rejected the whole request with a 400. Sigma now checks every schema node against Claude's documented strict-mode limitations before dispatch, as it already did for references and unions; tools without strict metadata are unchanged.

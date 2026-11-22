@@ -218,7 +218,7 @@ func TestCodexResponsesKeepsDeferredToolMarkersEagerWhenUnsupported(t *testing.T
 	assertDeferredToolsRemainEager(t, receiveRequest(t, requests).Body)
 }
 
-func TestCodexResponsesPreservesSystemPromptInstructionsAndForcesStoreFalse(t *testing.T) {
+func TestCodexResponsesSendsSystemPromptAsLeadingDeveloperMessageAndForcesStoreFalse(t *testing.T) {
 	t.Parallel()
 
 	requests := make(chan capturedRequest, 1)
@@ -250,8 +250,16 @@ func TestCodexResponsesPreservesSystemPromptInstructionsAndForcesStoreFalse(t *t
 	if err := json.Unmarshal(request.Body, &payload); err != nil {
 		t.Fatalf("Unmarshal request body returned error: %v", err)
 	}
-	if got, want := payload["instructions"], "Use concise replies."; got != want {
-		t.Fatalf("instructions = %v, want %q", got, want)
+	if instructions, ok := payload["instructions"]; ok {
+		t.Fatalf("instructions = %v, want absent", instructions)
+	}
+	input, _ := payload["input"].([]any)
+	if len(input) != 2 {
+		t.Fatalf("input = %#v, want developer and user messages", payload["input"])
+	}
+	want := map[string]any{"role": "developer", "content": []any{map[string]any{"type": "input_text", "text": "Use concise replies."}}}
+	if !reflect.DeepEqual(input[0], want) {
+		t.Fatalf("input[0] = %#v, want %#v", input[0], want)
 	}
 	if got, want := payload["store"], false; got != want {
 		t.Fatalf("store = %v, want %v", got, want)

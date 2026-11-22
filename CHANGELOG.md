@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenAI Codex requests now send the system prompt as a leading `developer` input message instead of top-level `instructions`, and no longer fill in a default `You are a helpful assistant.` instruction. From GPT-6.2 on, the Codex backend appends `instructions` after the input, so the system prompt was never served from the prompt cache.
 - Strict tool schemas now reject nodes with no `type`, `anyOf`, or `enum`, such as `items: {}` or a bare `const`, before dispatch. Strict modes reject untyped nodes, so these tools were sent and the request failed with a 400.
 - Anthropic Messages strict tools now reject, before dispatch, the schema keywords Claude's strict mode does not accept: numeric bounds, `multipleOf`, `maxItems`, `uniqueItems`, contains and property-count bounds, `minItems` other than 0 or 1, and unsupported `format` values. They were sent with `strict: true`, and Claude rejected the whole request with a 400.
 - OpenCode Zen Claude Opus 5, Opus 5.5, and Fable 5.1 now use mid-conversation effort, which sends `thinking.block_binding` with `drop_block`. OpenCode forwards both to Claude, and without `drop_block` replayed thinking was rejected with a persistent 400 once the system prompt, tools, or history changed.

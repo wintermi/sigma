@@ -23,7 +23,6 @@ import (
 const (
 	codexOptionOAuthTokenProvider   = "oauth_token_provider"
 	codexOptionOAuthTokenProviderGo = "oauthTokenProvider"
-	codexDefaultInstructions        = "You are a helpful assistant."
 	codexResponsesWebSocketBeta     = "responses_websockets=2026-02-06"
 )
 
@@ -225,14 +224,25 @@ func normalizeCodexResponsesPayload(payload map[string]any) {
 	if _, ok := payload["parallel_tool_calls"]; !ok {
 		payload["parallel_tool_calls"] = true
 	}
-	if instructions, _ := payload["instructions"].(string); instructions != "" {
-		return
+}
+
+// codexSystemPromptAsDeveloperMessage moves the system prompt into a leading
+// developer message, as Codex sends it. From GPT-6.2 on, the backend appends
+// top-level instructions after the input, so every new turn changed the prompt
+// ahead of the system prompt and it was never served from the prompt cache.
+func codexSystemPromptAsDeveloperMessage(req sigma.Request) sigma.Request {
+	if req.SystemPrompt == "" {
+		return req
 	}
-	payload["instructions"] = codexDefaultInstructions
+	messages := make([]sigma.Message, 0, len(req.Messages)+1)
+	messages = append(messages, sigma.Message{Role: sigma.RoleDeveloper, Content: []sigma.ContentBlock{sigma.Text(req.SystemPrompt)}})
+	req.Messages = append(messages, req.Messages...)
+	req.SystemPrompt = ""
+	return req
 }
 
 func (p *CodexResponsesProvider) requestBody(model sigma.Model, req sigma.Request, opts sigma.Options) ([]byte, error) {
-	payload, err := responsesPayload(model, req, opts)
+	payload, err := responsesPayload(model, codexSystemPromptAsDeveloperMessage(req), opts)
 	if err != nil {
 		return nil, err
 	}

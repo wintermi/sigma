@@ -13,7 +13,6 @@
       "role": "user"
     }
   ],
-  "instructions": "You are a helpful assistant.",
   "model": "codex-mini-latest",
   "parallel_tool_calls": true,
   "prompt_cache_retention": "24h",

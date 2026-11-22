@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Send the Codex system prompt as a leading developer message.
 - [x] Reject untyped nodes in strict tool schemas before dispatch.
 - [x] Reject Claude strict-mode-unsupported schema keywords before dispatch.
 - [x] Send `drop_block` for OpenCode Claude Opus 5, Opus 5.5, and Fable 5.1.
@@ -263,9 +264,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Send the Codex system prompt as a leading `developer` input item instead of
-      top-level `instructions` so GPT-6.2 keeps it in the prompt cache; review the
-      same for OpenAI Responses (`responses_payload.go`, `codex_responses.go`).
 - [ ] Revisit always deleting Codex `max_output_tokens`; forward `max(MaxTokens, 16)`
       unless the model opts out (`codex_responses.go`).
 - [ ] Lower the Codex WebSocket reuse window from 55 to 45 minutes so long turns
