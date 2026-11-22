@@ -1077,18 +1077,27 @@ func addReasoning(payload map[string]any, model sigma.Model, opts sigma.Options,
 			payload["reasoning_effort"] = effort
 		}
 	case sigma.OpenAICompletionsReasoningObject:
-		if compat.supportsReasoningEffort {
-			if effort == "" {
-				if off, ok := model.ThinkingLevelMap[sigma.ThinkingLevelOff]; ok {
-					effort = off
-				}
-			}
-			if effort == "" {
-				return
-			}
+		if !compat.supportsReasoningEffort {
+			return
+		}
+		if effort == "" {
+			effort = objectReasoningOffEffort(model, opts)
+		}
+		if effort != "" {
 			payload["reasoning"] = map[string]any{"effort": effort}
 		}
 	}
+}
+
+// objectReasoningOffEffort returns the effort for a request without a
+// reasoning level: an explicit Off sends the model's mapped off value, or
+// "none", since OpenRouter otherwise applies the model's default reasoning;
+// an unset level sends the mapped off value if there is one.
+func objectReasoningOffEffort(model sigma.Model, opts sigma.Options) string {
+	if requestedReasoningLevel(opts) == sigma.ThinkingLevelOff {
+		return explicitOffEffort(model, opts, "none")
+	}
+	return model.ThinkingLevelMap[sigma.ThinkingLevelOff]
 }
 
 func addThinkingTokenBudget(payload map[string]any, model sigma.Model, opts sigma.Options, compat completionsCompat) {

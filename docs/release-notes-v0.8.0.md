@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Turning thinking off works on every OpenRouter reasoning model. An explicit `ThinkingLevelOff` sent the model's mapped off value only when its metadata had one, so refreshed or custom OpenRouter rows without the mapping sent no reasoning setting at all, and the model kept reasoning at its default effort. These requests now send `reasoning.effort: "none"`.
+
 Azure OpenAI no longer receives `prompt_cache_retention` by default. Long cache retention sent OpenAI's `prompt_cache_retention: "24h"` to every Azure Responses deployment, a field Azure does not document, so a deployment that rejects unknown fields failed the request. Azure now gets it only when the model's metadata marks long cache retention as supported. Deployments that declare explicit cache-mode support still receive `prompt_cache_options`, and explicit caller directives still pass through.
 
 Z.ai models without effort levels no longer receive `reasoning_effort`. Z.ai switches thinking on and off with `thinking.type`, and only some GLM models also accept a reasoning effort. Sigma sent `reasoning_effort` to every Z.ai model with thinking enabled, including GLM-4.6V, GLM-4.7, and GLM-5 Turbo, so those requests carried a parameter the model does not support. It is now sent only to models whose compatibility metadata declares it.
