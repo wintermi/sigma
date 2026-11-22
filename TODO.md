@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Omit Bedrock Claude thinking when the structured-output tool is forced.
 - [x] Cap deferred Responses bodies at 64 MiB.
 - [x] Keep Radius catalog base URLs on the gateway origin that receives the credential.
 - [x] Validate the GitHub Copilot `proxy-ep` host before sending the bearer token to it.
@@ -249,10 +250,6 @@ reproduces the failure before it is checked off.
 
 ### High
 
-- [ ] Stop sending Bedrock thinking with the forced structured-output tool choice;
-      Claude rejects thinking with a forced `tool_choice` (`provider/bedrock/payload.go`
-      `addBedrockResponseFormatTool`/`bedrockThinkingFields`; the "response format"
-      case in `reasoning_test.go` asserts the failing payload).
 - [ ] Send the `off` effort (or `none`) on Responses reasoning models when no
       reasoning level is set, and always request `reasoning.encrypted_content` for
       xAI, so default requests do not reason without replayable reasoning

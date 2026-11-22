@@ -148,7 +148,7 @@ func TestManualThinkingRespectsOutputCap(t *testing.T) {
 
 func TestManualThinkingUsesFinalTools(t *testing.T) {
 	t.Parallel()
-	for _, mode := range []string{"response format", "replay", "suppressed"} {
+	for _, mode := range []string{"tools", "replay", "suppressed"} {
 		t.Run(mode, func(t *testing.T) {
 			t.Parallel()
 			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
@@ -156,8 +156,8 @@ func TestManualThinkingUsesFinalTools(t *testing.T) {
 			req := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}
 			opts := sigma.Options{ReasoningLevel: sigma.ThinkingLevelHigh, MaxTokens: intPtr(2048)}
 			switch mode {
-			case "response format":
-				opts.BedrockOptions = &sigma.BedrockOptions{ResponseFormat: sigma.Schema{"type": "object"}}
+			case "tools":
+				req.Tools = []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}}
 			case "replay":
 				req.Messages = append(req.Messages, sigma.Message{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call", "lookup", map[string]any{})}},
 					sigma.Message{Role: sigma.RoleTool, ToolCallID: "call", ToolName: "lookup", Content: []sigma.ContentBlock{sigma.Text("done")}})
@@ -175,6 +175,34 @@ func TestManualThinkingUsesFinalTools(t *testing.T) {
 			}
 			if got := payload.AdditionalModelRequestFields["thinking"].(map[string]any)["budget_tokens"]; got != want {
 				t.Fatalf("budget = %v, want %d", got, want)
+			}
+		})
+	}
+}
+
+func TestResponseFormatOmitsClaudeThinking(t *testing.T) {
+	t.Parallel()
+	for _, id := range []string{"anthropic.claude-sonnet-4-5", "anthropic.claude-opus-4-6-v1"} {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+			model.ID = sigma.ModelID(id)
+			req := sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}}
+			opts := sigma.Options{
+				ReasoningLevel: sigma.ThinkingLevelHigh,
+				BedrockOptions: &sigma.BedrockOptions{ResponseFormat: sigma.Schema{"type": "object"}},
+			}
+			payload, err := conversePayload(model, req, opts, Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if payload.ToolChoice == nil || payload.ToolChoice.Type != sigma.BedrockToolChoiceTool {
+				t.Fatalf("tool choice = %#v, want the forced response format tool", payload.ToolChoice)
+			}
+			for _, key := range []string{"thinking", "output_config", "anthropic_beta"} {
+				if _, ok := payload.AdditionalModelRequestFields[key]; ok {
+					t.Fatalf("%s sent with a forced tool choice: %#v", key, payload.AdditionalModelRequestFields)
+				}
 			}
 		})
 	}

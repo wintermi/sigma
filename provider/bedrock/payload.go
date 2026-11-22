@@ -220,6 +220,11 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 	} else if toolChoice == nil || toolChoice.Type != sigma.BedrockToolChoiceNone {
 		payload.Tools = replayToolSpecs(transformed.Messages)
 	}
+	// Claude rejects thinking when tool_choice forces a tool, and structured
+	// output depends on forcing the synthetic tool, so it takes precedence.
+	if isClaudeBedrockModel(model) && responseFormatToolForced(payload.ToolChoice) {
+		return payload, nil
+	}
 	if thinkingFields := bedrockThinkingFields(model, opts, config, &payload); len(thinkingFields) > 0 {
 		if payload.AdditionalModelRequestFields == nil {
 			payload.AdditionalModelRequestFields = make(map[string]any)
@@ -321,6 +326,10 @@ func addBedrockResponseFormatTool(model sigma.Model, tools []sigma.Tool, toolCho
 	out = append(out, synthetic)
 	out = append(out, tools...)
 	return out, &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: bedrockResponseFormatToolName}, nil
+}
+
+func responseFormatToolForced(choice *sigma.BedrockToolChoice) bool {
+	return choice != nil && choice.Type == sigma.BedrockToolChoiceTool && choice.Name == bedrockResponseFormatToolName
 }
 
 func bedrockResponseFormatSchema(value any) (any, error) {
