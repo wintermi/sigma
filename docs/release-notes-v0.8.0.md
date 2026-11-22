@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Two new compatibility controls cover strict OpenAI-compatible servers. Some servers reject a replayed assistant turn that has tool calls but no `content` field; `OpenAICompletionsCompat.RequiresAssistantContent` now sends an empty string for those turns. Some proxies reject `prompt_cache_key`, which sigma sends whenever a session ID and caching are set; setting `SupportsPromptCacheKey` to unsupported on `OpenAICompletionsCompat` or `OpenAIResponsesCompat` omits it. Both default to the existing behavior.
+
 Custom Gemini models get the thinking control their generation accepts. A Gemini 2.x model registered without a thinking-level map sent `thinkingLevel: "HIGH"` for a reasoning level, which only Gemini 3 and later accept, so the request failed. These models now send a `thinkingBudget`: the documented Gemini 2.5 Pro, Flash, and Flash-Lite budgets for each level, or `-1` (dynamic) for other versions. Gemini version detection also finds the version in IDs a host has prefixed, such as `vendor-gemini-4-argon`, which previously lost the tool call IDs Gemini 3 and later require.
 
 `MessagesCompat.AdaptiveThinking` now takes effect. A custom Anthropic-compatible router that accepts only adaptive thinking could set the flag through `anthropic.WithMessagesCompat`, but the detected default thinking format, budget, was always checked first, so requests still sent `thinking.budget_tokens` and the router rejected them. The override now selects adaptive thinking unless the model's own metadata names a format.

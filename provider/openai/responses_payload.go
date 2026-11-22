@@ -220,7 +220,8 @@ func addResponsesOpenAIPromptCache(payload map[string]any, model sigma.Model, op
 		!responsesHasExplicitPromptCacheDirective(model.Provider, opts) {
 		payload[providerOptionPromptCacheOptions] = map[string]any{"mode": "explicit"}
 	}
-	if key := openAIPromptCacheKey(opts); key != "" {
+	if key := openAIPromptCacheKey(opts); key != "" &&
+		(model.OpenAIResponsesCompat == nil || model.OpenAIResponsesCompat.SupportsPromptCacheKey != sigma.OpenAICompatUnsupported) {
 		payload["prompt_cache_key"] = key
 	}
 	if opts.CacheRetention.CacheLongLived() &&

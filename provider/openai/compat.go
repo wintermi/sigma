@@ -36,6 +36,8 @@ type completionsCompat struct {
 	requiresToolResultName                      bool
 	requiresAssistantAfterToolResult            bool
 	requiresToolsForToolHistory                 bool
+	requiresAssistantContent                    bool
+	supportsPromptCacheKey                      bool
 	requiresReasoningContentOnAssistantMessages bool
 	openRouterRouting                           *sigma.OpenRouterRoutingPreference
 	vercelAIGatewayRouting                      *sigma.VercelAIGatewayRoutingPreference
@@ -48,6 +50,7 @@ const deferredToolsModeKimi deferredToolsMode = "kimi"
 
 func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompat {
 	compat := detectedCompletionsCompat(model, baseURL)
+	compat.supportsPromptCacheKey = true
 	if model.OpenAICompletionsCompat == nil {
 		if model.Provider == sigma.ProviderFireworks && model.ProviderMetadata["deferredToolsMode"] == string(deferredToolsModeKimi) {
 			compat.deferredToolsMode = deferredToolsModeKimi
@@ -85,6 +88,8 @@ func openAICompletionsCompat(model sigma.Model, baseURL string) completionsCompa
 	compat.requiresToolResultName = supportOverride(compat.requiresToolResultName, override.RequiresToolResultName)
 	compat.requiresAssistantAfterToolResult = supportOverride(compat.requiresAssistantAfterToolResult, override.RequiresAssistantAfterToolResult)
 	compat.requiresToolsForToolHistory = supportOverride(compat.requiresToolsForToolHistory, override.RequiresToolsForToolHistory)
+	compat.requiresAssistantContent = supportOverride(compat.requiresAssistantContent, override.RequiresAssistantContent)
+	compat.supportsPromptCacheKey = supportOverride(compat.supportsPromptCacheKey, override.SupportsPromptCacheKey)
 	if override.ReasoningFormat != sigma.OpenAICompletionsReasoningDefault {
 		compat.reasoningFormat = override.ReasoningFormat
 	}

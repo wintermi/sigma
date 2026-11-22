@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `OpenAICompletionsCompat.RequiresAssistantContent` sends `content: ""` on assistant turns that contain only tool calls, and `SupportsPromptCacheKey` set to unsupported on `OpenAICompletionsCompat` or `OpenAIResponsesCompat` omits `prompt_cache_key`. Servers that reject a missing assistant content or an unknown `prompt_cache_key` had no way to be accommodated.
 - Custom Gemini and Vertex models before Gemini 3 without a thinking-level mapping now send `thinkingBudget` for a reasoning level (the Gemini 2.5 Pro, Flash, and Flash-Lite budgets, or `-1` for dynamic thinking) instead of `thinkingLevel`, which those models reject. Gemini versions are also detected in prefixed IDs such as `vendor-gemini-4-argon`, so those models send the tool call IDs Gemini 3 and later require.
 - `anthropic.WithMessagesCompat(anthropic.MessagesCompat{AdaptiveThinking: true})` now selects adaptive thinking for models whose metadata names no thinking format. The detected budget default always took precedence, so the override had no effect and adaptive-only routers rejected the budget thinking request.
 - OpenRouter reasoning models without an `off` thinking-level mapping now send `reasoning.effort: "none"` for an explicit `ThinkingLevelOff`. Nothing was sent, so OpenRouter applied the model's default reasoning and billed reasoning tokens although thinking was turned off.

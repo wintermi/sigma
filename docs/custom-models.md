@@ -56,6 +56,10 @@ ID, and a model ID.
 - how prompt cache markers are represented
 - whether tool-result messages need a tool name
 - whether an assistant message is required after a tool result
+- whether a tool-call-only assistant message needs `content: ""`
+  (`RequiresAssistantContent`)
+- whether `prompt_cache_key` is accepted (`SupportsPromptCacheKey`; the
+  Responses equivalent is on `OpenAIResponsesCompat`)
 - OpenRouter and Vercel AI Gateway routing preferences
 
 Leave fields at zero values when provider/base-URL detection is enough. Set

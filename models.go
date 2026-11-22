@@ -243,6 +243,9 @@ type OpenAIResponsesCompat struct {
 	SupportsExplicitPromptCacheMode bool                                 `json:"supportsExplicitPromptCacheMode,omitempty"`
 	SupportsLongCacheRetention      OpenAICompatSupport                  `json:"supportsLongCacheRetention,omitempty"`
 	SessionAffinityFormat           OpenAIResponsesSessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
+	// SupportsPromptCacheKey set to unsupported omits prompt_cache_key, for
+	// proxies that reject it. Unspecified sends it when a session is set.
+	SupportsPromptCacheKey OpenAICompatSupport `json:"supportsPromptCacheKey,omitempty"`
 }
 
 // OpenAICodexResponsesConfig carries Codex-specific Responses metadata. Model

@@ -391,8 +391,15 @@ type OpenAICompletionsCompat struct {
 	RequiresAssistantAfterToolResult            OpenAICompatSupport                       `json:"requiresAssistantAfterToolResult,omitempty"`
 	RequiresToolsForToolHistory                 OpenAICompatSupport                       `json:"requiresToolsForToolHistory,omitempty"`
 	RequiresReasoningContentOnAssistantMessages OpenAICompatSupport                       `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
-	OpenRouterRouting                           *OpenRouterRoutingPreference              `json:"openRouterRouting,omitempty"`
-	VercelAIGatewayRouting                      *VercelAIGatewayRoutingPreference         `json:"vercelAIGatewayRouting,omitempty"`
+	// RequiresAssistantContent sends an empty string as the content of an
+	// assistant turn that has only tool calls, for servers that reject a
+	// missing or null content.
+	RequiresAssistantContent OpenAICompatSupport `json:"requiresAssistantContent,omitempty"`
+	// SupportsPromptCacheKey set to unsupported omits prompt_cache_key, for
+	// proxies that reject it. Unspecified sends it when a session is set.
+	SupportsPromptCacheKey OpenAICompatSupport               `json:"supportsPromptCacheKey,omitempty"`
+	OpenRouterRouting      *OpenRouterRoutingPreference      `json:"openRouterRouting,omitempty"`
+	VercelAIGatewayRouting *VercelAIGatewayRoutingPreference `json:"vercelAIGatewayRouting,omitempty"`
 }
 
 // AnthropicMessagesCompat describes Messages compatibility differences for

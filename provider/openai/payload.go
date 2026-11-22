@@ -204,7 +204,7 @@ func addChatPromptCache(payload map[string]any, opts sigma.Options, compat compl
 }
 
 func addOpenAIPromptCache(payload map[string]any, opts sigma.Options, compat completionsCompat) {
-	if key := openAIPromptCacheKey(opts); key != "" {
+	if key := openAIPromptCacheKey(opts); key != "" && compat.supportsPromptCacheKey {
 		payload["prompt_cache_key"] = key
 	}
 	if compat.supportsLongCacheRetention && opts.CacheRetention.CacheLongLived() && (opts.OpenAIOptions == nil || opts.OpenAIOptions.PromptCacheRetention == "") {
@@ -410,6 +410,9 @@ func chatMessage(model sigma.Model, message sigma.Message, retention sigma.Cache
 		}
 		if len(toolCalls) > 0 {
 			converted["tool_calls"] = toolCalls
+			if text == "" && compat.requiresAssistantContent {
+				converted["content"] = ""
+			}
 		}
 		if !assistantHasContent(converted) {
 			return nil, nil
