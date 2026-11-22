@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Remove the Codex `gpt-5.5` and `gpt-5.3-codex-spark` rows that ChatGPT accounts cannot use.
 - [x] Require an explicit map entry for `xhigh` and `max` on thinking models without level metadata.
 - [x] Claim the IPv6 loopback port for the Anthropic OAuth callback.
 - [x] Fetch Bedrock ECS and IMDS credentials without the environment proxy.

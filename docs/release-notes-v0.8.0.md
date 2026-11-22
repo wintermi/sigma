@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The OpenAI Codex catalog drops `gpt-5.5` and `gpt-5.3-codex-spark`. The Codex backend rejects both for ChatGPT accounts, so a model chosen from the registry failed on every request. The surface probe now defaults its Codex checks to `gpt-5.6-terra`, and direct OpenAI and other routes still list these models.
+
 Thinking models without level metadata no longer claim `xhigh` and `max`. `Model.SupportsThinkingLevel` already required an explicit map entry for these levels when a model had a `ThinkingLevelMap`, but returned true for any level on thinking models with no map, such as GPT-5, o3, and Claude Sonnet 4.5, so callers and adapters accepted levels those models do not offer. The rule now applies to every thinking model. Claude Sonnet 4.6 rows map `max` and Sonnet 5 rows map `xhigh` and `max` on each route, and Cloudflare GLM-5.2 and OpenCode Qwen3.8 Flash map the levels they accept, so supported levels are unchanged.
 
 The Anthropic browser login can no longer be intercepted through the IPv6 loopback address. The callback server listened only on `127.0.0.1`, but the redirect URI uses `localhost`, which browsers may resolve to `::1` first. Another local process listening on `[::1]` at the same port could therefore receive the authorization code, and since Anthropic's flow uses the PKCE verifier as the state value, it would hold everything needed to redeem the token. The login now listens on both loopback addresses and moves to another port when the IPv6 side is already taken.

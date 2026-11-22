@@ -1342,7 +1342,6 @@ func assertGeneratedCostTiers(t *testing.T, registry *Registry) {
 		{provider: ProviderOpenAI, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.4, OutputCostPerMillion: 1.8, CacheReadInputCostPerMillion: 0.04, CacheWriteInputCostPerMillion: 0.5}},
 		{provider: ProviderOpenAI, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8, OutputCostPerMillion: 30, CacheReadInputCostPerMillion: 0.8, CacheWriteInputCostPerMillion: 10}},
 		{provider: ProviderOpenAI, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
-		{provider: ProviderOpenAICodex, id: "gpt-5.5", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 10, OutputCostPerMillion: 45, CacheReadInputCostPerMillion: 1}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-luna", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 0.4, OutputCostPerMillion: 1.8, CacheReadInputCostPerMillion: 0.04, CacheWriteInputCostPerMillion: 0.5}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-sol", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 8, OutputCostPerMillion: 30, CacheReadInputCostPerMillion: 0.8, CacheWriteInputCostPerMillion: 10}},
 		{provider: ProviderOpenAICodex, id: "gpt-5.6-terra", want: ModelCostTier{InputTokensAbove: 272_000, InputCostPerMillion: 4, OutputCostPerMillion: 18, CacheReadInputCostPerMillion: 0.4, CacheWriteInputCostPerMillion: 5}},
@@ -2342,7 +2341,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		}
 	}
 	for _, id := range []ModelID{
-		"gpt-5.5",
 		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
 	} {
 		responses, ok := registry.Model(ProviderOpenAICodex, id)
@@ -2363,7 +2361,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 		id       ModelID
 	}{
 		{provider: ProviderOpenAI, id: "gpt-5.3-codex-spark"},
-		{provider: ProviderOpenAICodex, id: "gpt-5.3-codex-spark"},
 	} {
 		model, ok := registry.Model(tt.provider, tt.id)
 		if !ok {
