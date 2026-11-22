@@ -8,6 +8,7 @@ package sigma
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -154,10 +155,11 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 
 	code := normalizedErrorText(providerErr.ProviderCode)
 	message := normalizedErrorText(firstNonEmpty(providerErr.ProviderMessage, providerErr.BodyPreview, err.Error()))
+	status := effectiveErrorStatus(providerErr.StatusCode, code)
 	if class, ok := classForCodeAndMessage(code, message); ok {
 		// Without a structured code, a 429 is throttling even when its text
 		// reads like overflow ("Too many tokens, please wait").
-		if class == ErrorClassContextOverflow && code == "" && providerErr.StatusCode == http.StatusTooManyRequests {
+		if class == ErrorClassContextOverflow && codeIsStatusOrEmpty(code) && status == http.StatusTooManyRequests {
 			return ErrorClassRateLimited
 		}
 		return class
@@ -165,13 +167,34 @@ func classifyProviderError(err error, providerErr *ProviderError) ErrorClass {
 	if bodylessCerebrasOverflow(providerErr.Provider, providerErr.StatusCode, providerErr.ProviderCode, providerErr.ProviderMessage, providerErr.BodyPreview) {
 		return ErrorClassContextOverflow
 	}
-	if class, ok := classForStatus(providerErr.StatusCode); ok {
+	if class, ok := classForStatus(status); ok {
 		return class
 	}
 	if providerErr.StatusCode != 0 {
 		return ErrorClassProvider
 	}
 	return ErrorClassUnknown
+}
+
+// effectiveErrorStatus returns the HTTP status, or, for errors relayed without
+// one, an HTTP status the provider sent as its error code ({"code":504}).
+func effectiveErrorStatus(status int, code string) int {
+	if status != 0 {
+		return status
+	}
+	return httpStatusCode(code)
+}
+
+func httpStatusCode(code string) int {
+	value, err := strconv.Atoi(code)
+	if err != nil || value < 400 || value > 599 {
+		return 0
+	}
+	return value
+}
+
+func codeIsStatusOrEmpty(code string) bool {
+	return code == "" || httpStatusCode(code) != 0
 }
 
 // classForCodeAndMessage prefers a structured provider code, except that a
@@ -369,7 +392,7 @@ func diagnosticClass(diagnostic Diagnostic) ErrorClass {
 	if bodylessCerebrasOverflow(diagnostic.Provider, diagnostic.StatusCode, diagnostic.ProviderCode, diagnostic.ProviderMessage, diagnostic.BodyPreview) {
 		return ErrorClassContextOverflow
 	}
-	if class, ok := classForStatus(diagnostic.StatusCode); ok {
+	if class, ok := classForStatus(effectiveErrorStatus(diagnostic.StatusCode, code)); ok {
 		return class
 	}
 	return ErrorClassUnknown

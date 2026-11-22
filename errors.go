@@ -6,6 +6,7 @@
 package sigma
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -289,20 +290,18 @@ func providerErrorDetails(body []byte) (string, string) {
 	if len(body) == 0 {
 		return "", ""
 	}
+	// Decode numbers as json.Number so numeric codes such as 504 or 1308 are
+	// kept rather than dropped as float64.
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
 	var payload map[string]any
-	if err := json.Unmarshal(body, &payload); err != nil {
+	if err := decoder.Decode(&payload); err != nil {
 		return "", ""
 	}
 
 	code, message := errorObjectDetails(payload["error"])
 	if code == "" {
-		code = stringValue(payload["code"])
-	}
-	if code == "" {
-		code = stringValue(payload["type"])
-	}
-	if code == "" {
-		code = stringValue(payload["status"])
+		code = errorCode(payload)
 	}
 	if message == "" {
 		message = stringValue(payload["message"])
@@ -316,13 +315,7 @@ func providerErrorDetails(body []byte) (string, string) {
 func errorObjectDetails(value any) (string, string) {
 	switch typed := value.(type) {
 	case map[string]any:
-		code := stringValue(typed["code"])
-		if code == "" {
-			code = stringValue(typed["type"])
-		}
-		if code == "" {
-			code = stringValue(typed["status"])
-		}
+		code := errorCode(typed)
 		message := stringValue(typed["message"])
 		if message == "" {
 			message = stringValue(typed["error_description"])
@@ -333,6 +326,16 @@ func errorObjectDetails(value any) (string, string) {
 	default:
 		return "", ""
 	}
+}
+
+// errorCode prefers a textual code, type, or status; a numeric code such as
+// Google's {"code":500,"status":"INTERNAL"} is used only when no text exists.
+func errorCode(object map[string]any) string {
+	code := stringValue(object["code"])
+	if _, numeric := object["code"].(json.Number); !numeric && code != "" {
+		return code
+	}
+	return firstNonEmpty(stringValue(object["type"]), stringValue(object["status"]), code)
 }
 
 func stringValue(value any) string {

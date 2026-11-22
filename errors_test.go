@@ -582,6 +582,27 @@ func TestClassifyError(t *testing.T) {
 			split: true,
 		},
 		{
+			name:      "numeric gateway code mid-stream",
+			err:       NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "gpt-test", 0, "", 0, []byte(`{"error":{"code":504,"message":"Gateway error"}}`), ErrProviderResponse),
+			class:     ErrorClassTransient,
+			retryable: true,
+			code:      "504",
+		},
+		{
+			name:      "numeric 429 code with token wording is rate limited",
+			err:       NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "gpt-test", 0, "", 0, []byte(`{"error":{"code":429,"message":"Too many tokens, please wait before trying again."}}`), ErrProviderResponse),
+			class:     ErrorClassRateLimited,
+			retryable: true,
+			code:      "429",
+		},
+		{
+			name:  "numeric code does not override an overflow message",
+			err:   NewProviderError(ProviderOpenRouter, APIOpenAICompletions, "gpt-test", 0, "", 0, []byte(`{"error":{"code":400,"message":"This model's maximum context length is 8192 tokens"}}`), ErrProviderResponse),
+			class: ErrorClassContextOverflow,
+			split: true,
+			code:  "400",
+		},
+		{
 			name:      "codex websocket connection limit code",
 			err:       &ProviderError{Provider: ProviderOpenAICodex, ProviderCode: "websocket_connection_limit_reached", Err: ErrProviderResponse},
 			class:     ErrorClassTransient,
