@@ -13098,9 +13098,7 @@ var builtinTextModels = []Model{
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
 		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsAdditionalTools: true,
-			SupportsToolSearch:      true,
-			SupportsGrammarTools:    true,
+			SupportsGrammarTools: true,
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
@@ -13129,10 +13127,6 @@ var builtinTextModels = []Model{
 		CacheReadInputCostPerMillion: 0.075,
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
-		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsAdditionalTools: true,
-			SupportsToolSearch:      true,
-		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -13192,10 +13186,6 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
-		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsAdditionalTools: true,
-			SupportsToolSearch:      true,
-		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",
@@ -13231,10 +13221,6 @@ var builtinTextModels = []Model{
 		},
 		CostCurrency:     "USD",
 		DefaultTransport: Transport("sse"),
-		OpenAIResponsesCompat: &OpenAIResponsesCompat{
-			SupportsAdditionalTools: true,
-			SupportsToolSearch:      true,
-		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENAI_API_KEY"},
 			"baseURL":             "https://api.openai.com/v1",

@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "2def40021d0f8d8fc8bd2b443844666000fd912e8958b1475e031389f655c92a"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "09c956d9f21d889b818c753a631cfd5a5b701bcdcf0a0bd8bc4dfe45d2bbceeb"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -48,11 +48,9 @@ func TestCatalogAdditionalToolsCapabilityCohorts(t *testing.T) {
 			codexModels = append(codexModels, model.Provider+"/"+model.ID)
 		}
 	}
+	// GPT-5.5 and older namespace dynamically loaded tools, so they declare
+	// tools at the top level.
 	if want := []string{
-		"openai/gpt-5.4",
-		"openai/gpt-5.4-mini",
-		"openai/gpt-5.4-pro",
-		"openai/gpt-5.5",
 		"openai/gpt-5.6-luna",
 		"openai/gpt-5.6-sol",
 		"openai/gpt-5.6-terra",

@@ -14729,8 +14729,6 @@
         "minimal"
       ],
       "openAIResponsesCompat": {
-        "supportsAdditionalTools": true,
-        "supportsToolSearch": true,
         "supportsGrammarTools": true
       }
     },
@@ -14768,11 +14766,7 @@
       },
       "unsupportedThinkingLevels": [
         "minimal"
-      ],
-      "openAIResponsesCompat": {
-        "supportsAdditionalTools": true,
-        "supportsToolSearch": true
-      }
+      ]
     },
     {
       "id": "gpt-5.4-nano",
@@ -14851,11 +14845,7 @@
         "off",
         "minimal",
         "low"
-      ],
-      "openAIResponsesCompat": {
-        "supportsAdditionalTools": true,
-        "supportsToolSearch": true
-      }
+      ]
     },
     {
       "id": "gpt-5.5",
@@ -14899,11 +14889,7 @@
       },
       "unsupportedThinkingLevels": [
         "minimal"
-      ],
-      "openAIResponsesCompat": {
-        "supportsAdditionalTools": true,
-        "supportsToolSearch": true
-      }
+      ]
     },
     {
       "id": "gpt-5.5-pro",

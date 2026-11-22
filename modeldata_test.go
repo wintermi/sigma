@@ -2327,7 +2327,6 @@ func assertGeneratedOpenAICompatibleProviderMetadata(t *testing.T, registry *Reg
 	assertMetadataStrings(t, azure.ProviderMetadata, MetadataAPIKeyEnvVars, []string{"AZURE_OPENAI_API_KEY"})
 
 	for _, id := range []ModelID{
-		"gpt-5.4", "gpt-5.4-mini", "gpt-5.4-pro", "gpt-5.5",
 		"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra",
 	} {
 		responses, ok := registry.Model(ProviderOpenAI, id)

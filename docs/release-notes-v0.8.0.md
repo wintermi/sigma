@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Switching to GPT-5.4 or GPT-5.5 after another model's tool calls works again. These models place tools loaded through `additional_tools` or tool search in a namespace named after the tool and reject replayed calls that lack it, and history from other models has no namespace, so the request failed with "Missing namespace for function_call". Their catalog rows no longer advertise dynamic tool loading, so deferred tools are declared up front; GPT-5.6 and later keep loading them dynamically.
+
 GitHub Copilot reasoning and strict tools work as on the direct providers. Copilot reports reasoning tokens at the top level of `usage`, which sigma did not read, so thinking usage was always zero. Its Gemini 3.5 to 3.8 Flash and Kimi K3 rows were marked as not accepting a reasoning effort, so the requested thinking level was dropped; they now send `reasoning_effort` with the levels Copilot lists for each model, and Kimi K3 accepts `max`. Copilot Claude rows now advertise strict tool support, so tools that opt in are sent with `strict: true`.
 
 Bedrock no longer drops caller-supplied Anthropic betas when reasoning is on. Thinking adds the interleaved-thinking or thinking-binding beta to `additionalModelRequestFields.anthropic_beta`, and it overwrote any betas the caller set there, so enabling reasoning silently removed betas such as the 1M-context beta and prompts over 200K tokens failed. The thinking beta is now added after the caller's betas, without duplicates.

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Declare GPT-5.4 and GPT-5.5 tools at the top level.
 - [x] Read Copilot reasoning tokens, send its reasoning effort, and send strict tools to Copilot Claude.
 - [x] Merge caller `anthropic_beta` values with Bedrock thinking betas.
 - [x] Request streaming usage from DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI.
@@ -272,9 +273,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Remove tool-search and additional-tools support from direct OpenAI
-      `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-pro`, and `gpt-5.5` rows so cross-provider
-      tool history does not fail with "Missing namespace for function_call".
 - [ ] Decide whether `TransformRequestForModel` should drop thinking from other
       models, as `internal/transform` now does, instead of converting it to
       visible `<thinking>` text (`handoff.go` `shouldConvertHandoffThinking`).
