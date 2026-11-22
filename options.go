@@ -6,11 +6,13 @@
 package sigma
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/wintermi/sigma/internal/headerutil"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 const (
@@ -243,6 +245,29 @@ func WithTemperature(temperature float64) Option {
 	return func(options *Options) {
 		options.Temperature = float64Ptr(temperature)
 	}
+}
+
+// Format prints options with APIKey and header values redacted, so logging
+// options with any fmt verb does not expose credentials.
+func (o Options) Format(state fmt.State, verb rune) {
+	type plain Options
+	redacted := plain(o)
+	if redacted.APIKey != "" {
+		redacted.APIKey = redact.Secret(redacted.APIKey)
+	}
+	redacted.Headers = redactedHeaderMap(o.Headers)
+	_, _ = fmt.Fprintf(state, fmt.FormatString(state, verb), redacted)
+}
+
+func redactedHeaderMap(headers map[string]string) map[string]string {
+	if headers == nil {
+		return nil
+	}
+	redacted := make(map[string]string, len(headers))
+	for name, value := range headers {
+		redacted[name] = redact.Header(name, value)
+	}
+	return redacted
 }
 
 // WithMaxTokens configures the maximum output tokens for a request.

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/wintermi/sigma/internal/oauthvalidity"
+	"github.com/wintermi/sigma/internal/redact"
 )
 
 // defaultOAuthRefreshBefore refreshes OAuth tokens five minutes before they
@@ -27,6 +28,22 @@ type AuthResolution struct {
 	Headers         map[string]string
 	ProviderOptions map[string]any
 	Source          string
+}
+
+// Format prints the resolution with its credential, header values, and
+// provider environment values redacted, since environment values can be API
+// keys.
+func (r AuthResolution) Format(state fmt.State, verb rune) {
+	type plain AuthResolution
+	redacted := plain(r)
+	redacted.Headers = redactedHeaderMap(r.Headers)
+	if r.ProviderEnv != nil {
+		redacted.ProviderEnv = make(map[string]string, len(r.ProviderEnv))
+		for name, value := range r.ProviderEnv {
+			redacted.ProviderEnv[name] = redact.Secret(value)
+		}
+	}
+	_, _ = fmt.Fprintf(state, fmt.FormatString(state, verb), redacted)
 }
 
 // ProviderAuth describes supported credential flows for one provider.

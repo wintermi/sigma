@@ -1002,12 +1002,14 @@ func codexWebSocketProxyURL(parsed *url.URL) (*url.URL, error) {
 	if !strings.Contains(proxy, "://") {
 		proxy = "http://" + proxy
 	}
+	// The proxy URL can carry a password, and url.Parse errors quote it, so
+	// neither appears in the error.
 	proxyURL, err := url.Parse(proxy)
-	if err != nil || proxyURL.Scheme == "" || proxyURL.Host == "" {
-		if err == nil {
-			err = fmt.Errorf("missing scheme or host")
-		}
-		return nil, fmt.Errorf("invalid proxy URL %q: %w", proxy, err)
+	if err != nil {
+		return nil, errors.New("invalid proxy URL: it cannot be parsed")
+	}
+	if proxyURL.Scheme == "" || proxyURL.Host == "" {
+		return nil, errors.New("invalid proxy URL: missing scheme or host")
 	}
 	if proxyURL.Scheme != "http" && proxyURL.Scheme != "https" {
 		return nil, fmt.Errorf("unsupported proxy protocol %q", proxyURL.Scheme)

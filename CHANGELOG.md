@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `sigma.Options` and `sigma.AuthResolution` now redact their API key, header values, and provider environment values when formatted with `%v`, `%+v`, `%#v`, or `%s`, and the Codex WebSocket error for a malformed proxy URL no longer quotes the URL. Logging either struct printed the API key, and a proxy password in `HTTPS_PROXY` appeared in the error.
 - Anthropic browser login now bounds its authorization-code exchange to 30 seconds, and Kimi Coding device login polls for 15 minutes when the device authorization response omits `expires_in` instead of failing with "missing fields". A token endpoint that never answered hung the Anthropic login, which has no other deadline.
 - Device-code logins for GitHub Copilot, Kimi Coding, and xAI now wait at least one second between token polls, xAI adopts the interval sent with `slow_down` instead of always adding five seconds, and GitHub Copilot waits one interval before its first poll. A zero or tiny server interval made polling a tight loop, xAI could keep polling early, and Copilot's immediate first poll always returned `authorization_pending`.
 - `CredentialStore` now documents that a `ModifyCredential` implementation must complete the write of a credential returned by its callback even if the context has been canceled. Sigma refreshes stored OAuth tokens inside that callback, so a store that abandoned the write on cancellation lost a rotated refresh token.

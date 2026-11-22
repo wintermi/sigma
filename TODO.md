@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Redact `Options` and `AuthResolution` under fmt verbs and the Codex proxy URL in errors.
 - [x] Time out the Anthropic code exchange and default Kimi device-code lifetimes.
 - [x] Poll device-code logins at least one second apart, honour xAI slow_down intervals, and wait before Copilot's first poll.
 - [x] Document that `CredentialStore.ModifyCredential` must finish writing after cancellation.
@@ -289,8 +290,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Redact `sigma.Options.APIKey` and `AuthResolution` under `fmt` verbs, and the
-      proxy password in the Codex invalid-proxy-URL error.
 
 ### Low
 
