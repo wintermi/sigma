@@ -624,8 +624,6 @@ provider-default reasoning and reject named levels locally. GLM's Vertex-specifi
 `chat_template_kwargs.enable_thinking` switch can be supplied explicitly through
 provider `extra_body`; the direct Z.ai `thinking` shape does not apply. See
 [Vertex thinking controls](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/capabilities/thinking).
-Native Flash and Flash-Lite latest aliases retain their existing named-thinking
-restrictions.
 
 ```go
 registry := sigma.NewRegistry()

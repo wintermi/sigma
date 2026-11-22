@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+The Vertex `gemini-flash-latest` and `gemini-flash-lite-latest` aliases are removed. Vertex now returns 404 for them in the global location, while every other Vertex Gemini model in the catalog answers normally, and Vertex's model list does not include them. Switch to `gemini-3.8-flash` and `gemini-3.5-flash-lite`, which the aliases resolved to. The Gemini API keeps both aliases.
+
 The surface probe now checks `json_schema` replies against the requested schema instead of treating an accepted request as success, so a route that accepts `response_format` but ignores it no longer passes.
 
 OpenCode Go DeepSeek V4.1 Flash no longer downgrades JSON schema response formats to JSON object mode. A live probe confirmed the route accepts `json_schema`, matching the OpenCode Zen route.
@@ -33,7 +35,7 @@ Surface-probe runs against thinking-only Fireworks models, such as GLM 5.3 and i
 
 The OpenCode and Fireworks catalogs gain 52 current models. OpenCode Zen and Go add the models their live model lists serve, among them Claude 5.5, Gemini 4, GPT-6.1 and 6.2, Muse, and several free preview models. Fireworks adds GLM 5.3, Kimi K3.1 Pro, DeepSeek V4.1 Flash, MiniMax M3.1 Flash, Muse Spark Open, and Qwen3.8, with their Fireworks routers. Each row takes limits, prices, and thinking levels from models.dev and request settings from a reviewed catalog sibling; new Fireworks Anthropic-compatible models use adaptive thinking.
 
-The last open catalog rows from the retirement review are settled. The Gemini API rows for Gemini 3.5 and 3.7 Flash are removed: Google silently answers those IDs with Gemini 3.6 and 3.8 Flash, so the catalog reported the wrong model and, for 3.5 Flash, double the price. The Z.ai Coding Plan `glm-5.2-highspeed` row becomes `glm-5.3-highspeed`. Vertex Gemini 4 Neon and the Flash `-latest` aliases stay, as do the Copilot Claude Opus 4.8 and Sonnet 4.6 rows, which annual Copilot Pro and Pro+ plans still serve.
+The last open catalog rows from the retirement review are settled. The Gemini API rows for Gemini 3.5 and 3.7 Flash are removed: Google silently answers those IDs with Gemini 3.6 and 3.8 Flash, so the catalog reported the wrong model and, for 3.5 Flash, double the price. The Z.ai Coding Plan `glm-5.2-highspeed` row becomes `glm-5.3-highspeed`. Vertex Gemini 4 Neon stays, as do the Copilot Claude Opus 4.8 and Sonnet 4.6 rows, which annual Copilot Pro and Pro+ plans still serve.
 
 The Mistral Medium 3.5 row now uses Mistral's documented model ID, `mistral-medium-3-5`. The previous `mistral-medium-3.5` ID is not a name Mistral's API documents; callers that used it should switch to `mistral-medium-3-5`.
 
@@ -692,10 +694,9 @@ Vertex Gemini Pro estimates now apply documented pricing above 200,000 input
 tokens, including cached input. Newer Claude models retain flat global rates
 across that boundary. Claude Sonnet 4.6's output limit, Llama 3.3's pricing and
 output limit, and Gemini image aspect ratios are corrected. Deprecated models
-with future retirement dates remain discoverable. Existing restrictions on
-named thinking levels for Vertex latest aliases remain in place; Grok and GLM
-MaaS entries preserve provider-default reasoning without advertising named
-controls that the adapter cannot express.
+with future retirement dates remain discoverable. Grok and GLM MaaS entries
+preserve provider-default reasoning without advertising named controls that the
+adapter cannot express.
 
 Vertex embeddings add `gemini-embedding-001`, with default batching limited to
 one input per request. Default Vertex discovery excludes

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Remove the Vertex Gemini Flash and Flash-Lite latest aliases that Vertex no longer serves.
 - [x] Validate surface-probe json_schema replies against the requested schema.
 - [x] Mark OpenCode Go DeepSeek V4.1 Flash as supporting JSON schema response formats.
 - [x] Skip OpenCode Go surface-probe cases that specific models reject upstream.

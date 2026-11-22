@@ -2551,8 +2551,6 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		{id: "gemini-3.1-flash-lite", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025, supportsReasoning: true},
 		{id: "gemini-3.5-flash", inputCost: 1.5, outputCost: 9, cacheRead: 0.15, supportsReasoning: true},
 		{id: "gemini-3.5-flash-lite", inputCost: 0.3, outputCost: 2.5, cacheRead: 0.03, supportsReasoning: true},
-		{id: "gemini-flash-latest", inputCost: 1.5, outputCost: 9, cacheRead: 0.15},
-		{id: "gemini-flash-lite-latest", inputCost: 0.25, outputCost: 1.5, cacheRead: 0.025},
 	} {
 		model, ok := registry.Model(ProviderGoogleVertex, tt.id)
 		if !ok {
@@ -2610,8 +2608,6 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 
 	for _, modelID := range []ModelID{
 		"gemini-3-flash-preview",
-		"gemini-flash-latest",
-		"gemini-flash-lite-latest",
 	} {
 		if _, ok := registry.Model(ProviderGoogleVertex, modelID); !ok {
 			t.Fatalf("fresh registry missing retained Vertex model %s", modelID)
@@ -2625,6 +2621,8 @@ func assertGeneratedVertexMetadata(t *testing.T, registry *Registry) {
 		"gemini-2.0-flash-lite",
 		"gemini-2.5-flash-lite-preview-09-2025",
 		"gemini-3-pro-preview",
+		"gemini-flash-latest",
+		"gemini-flash-lite-latest",
 	} {
 		if _, ok := registry.Model(ProviderGoogleVertex, modelID); ok {
 			t.Fatalf("fresh registry unexpectedly contains retired Vertex model %s", modelID)

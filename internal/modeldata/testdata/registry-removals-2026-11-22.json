@@ -231,6 +231,16 @@
       "reason": "provider-retirement"
     },
     {
+      "provider": "google-vertex",
+      "id": "gemini-flash-latest",
+      "reason": "provider-retirement"
+    },
+    {
+      "provider": "google-vertex",
+      "id": "gemini-flash-lite-latest",
+      "reason": "provider-retirement"
+    },
+    {
       "provider": "google-vertex-anthropic",
       "id": "claude-opus-4",
       "reason": "provider-retirement"

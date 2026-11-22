@@ -1009,14 +1009,6 @@ func TestGoogleVertexProbeCasesFollowModelCapabilities(t *testing.T) {
 			want:    []string{"reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
 			notWant: []string{"thinking_disabled"},
 		},
-		{
-			modelID: "gemini-flash-latest",
-			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
-		},
-		{
-			modelID: "gemini-flash-lite-latest",
-			notWant: []string{"thinking_disabled", "reasoning_level_low", "reasoning_level_medium", "reasoning_level_high"},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.modelID, func(t *testing.T) {
