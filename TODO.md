@@ -1014,9 +1014,9 @@ upstream.
       167 text entries, three OpenRouter image previews, and direct Text
       Embedding 004. Apply exact provider/ID inventory removals, preserving
       supported routes and provider-specific estimates;
-- [ ] Review Responses translation of `ThinkingLevelOff`: existing adapters omit
-      reasoning instead of explicitly sending native `none` for models that
-      support it. Keep this adapter behavior separate from catalog metadata.
+- [x] Review Responses translation of `ThinkingLevelOff`: adapters now send
+      the model's mapped off effort or native `none` instead of omitting
+      reasoning, keeping this adapter behavior separate from catalog metadata.
 - [ ] Recheck upcoming direct OpenAI retirements on October 23 and December 1,
       2026, Google image retirement notices, Google Flash introductory pricing
       before January 1, 2027, and the GPT-5.6 Sol promotional pricing period.
