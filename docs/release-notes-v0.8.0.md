@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock no longer drops caller-supplied Anthropic betas when reasoning is on. Thinking adds the interleaved-thinking or thinking-binding beta to `additionalModelRequestFields.anthropic_beta`, and it overwrote any betas the caller set there, so enabling reasoning silently removed betas such as the 1M-context beta and prompts over 200K tokens failed. The thinking beta is now added after the caller's betas, without duplicates.
+
 DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI streams report usage and cost again. Their compatibility defaults did not request streaming usage, and these endpoints only include a usage chunk when `stream_options.include_usage` is set, so the final message carried no usage and no cost estimate. Sigma now requests it for these hosts, as it does for other known providers and unknown endpoints; `OpenAICompletionsCompat.SupportsStreamingUsage` can still turn it off.
 
 Whitespace-only tool results no longer fail requests. A tool that returned only whitespace, for example a shell command printing a bare newline, was sent to the provider unchanged, and some OpenAI-compatible providers reject such tool content with a 400. Chat Completions and Responses now send the same placeholder as for empty output, and Gemini sends an empty result as it does for empty output.

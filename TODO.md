@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Merge caller `anthropic_beta` values with Bedrock thinking betas.
 - [x] Request streaming usage from DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI.
 - [x] Treat whitespace-only tool output as empty on Chat Completions, Responses, and Gemini.
 - [x] Report Bedrock `model_context_window_exceeded` stops as context overflow.
@@ -270,8 +271,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Merge caller `anthropic_beta` values with Bedrock thinking betas instead of
-      overwriting them (`provider/bedrock/payload.go`).
 - [ ] Read top-level `usage.reasoning_tokens` for GitHub Copilot, send reasoning
       effort on Copilot `gemini-3.8-flash` and `kimi-k3`, and mark Copilot Claude
       rows as supporting strict tools.

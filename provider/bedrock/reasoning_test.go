@@ -180,6 +180,35 @@ func TestManualThinkingUsesFinalTools(t *testing.T) {
 	}
 }
 
+func TestThinkingBetasKeepCallerBetas(t *testing.T) {
+	t.Parallel()
+	for _, id := range []string{"anthropic.claude-sonnet-4-5", "anthropic.claude-opus-5"} {
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			model := bedrockTestModel(sigma.ProviderAmazonBedrock)
+			model.ID = sigma.ModelID(id)
+			req := sigma.Request{
+				Messages: []sigma.Message{sigma.UserText("hi")},
+				Tools:    []sigma.Tool{{Name: "lookup", InputSchema: sigma.Schema{"type": "object"}}},
+			}
+			opts := sigma.Options{
+				ReasoningLevel: sigma.ThinkingLevelHigh,
+				BedrockOptions: &sigma.BedrockOptions{AdditionalModelRequestFields: map[string]any{
+					"anthropic_beta": []any{"context-1m-2025-08-07"},
+				}},
+			}
+			payload, err := conversePayload(model, req, opts, Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			betas, _ := payload.AdditionalModelRequestFields["anthropic_beta"].([]string)
+			if len(betas) != 2 || betas[0] != "context-1m-2025-08-07" {
+				t.Fatalf("anthropic_beta = %#v, want the caller beta kept ahead of the thinking beta", payload.AdditionalModelRequestFields["anthropic_beta"])
+			}
+		})
+	}
+}
+
 func TestResponseFormatOmitsClaudeThinking(t *testing.T) {
 	t.Parallel()
 	for _, id := range []string{"anthropic.claude-sonnet-4-5", "anthropic.claude-opus-4-6-v1"} {

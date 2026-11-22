@@ -230,6 +230,9 @@ func conversePayload(model sigma.Model, req sigma.Request, opts sigma.Options, c
 			payload.AdditionalModelRequestFields = make(map[string]any)
 		}
 		for key, value := range thinkingFields {
+			if key == "anthropic_beta" {
+				value = mergeAnthropicBetas(payload.AdditionalModelRequestFields[key], value)
+			}
 			payload.AdditionalModelRequestFields[key] = value
 		}
 	}
@@ -326,6 +329,37 @@ func addBedrockResponseFormatTool(model sigma.Model, tools []sigma.Tool, toolCho
 	out = append(out, synthetic)
 	out = append(out, tools...)
 	return out, &sigma.BedrockToolChoice{Type: sigma.BedrockToolChoiceTool, Name: bedrockResponseFormatToolName}, nil
+}
+
+// mergeAnthropicBetas keeps caller-supplied betas, such as the 1M context
+// beta, ahead of the thinking betas instead of replacing them.
+func mergeAnthropicBetas(existing any, added any) []string {
+	var merged []string
+	seen := make(map[string]bool)
+	appendBetas := func(value any) {
+		var betas []string
+		switch typed := value.(type) {
+		case []string:
+			betas = typed
+		case []any:
+			for _, item := range typed {
+				if beta, ok := item.(string); ok {
+					betas = append(betas, beta)
+				}
+			}
+		case string:
+			betas = []string{typed}
+		}
+		for _, beta := range betas {
+			if beta != "" && !seen[beta] {
+				seen[beta] = true
+				merged = append(merged, beta)
+			}
+		}
+	}
+	appendBetas(existing)
+	appendBetas(added)
+	return merged
 }
 
 func responseFormatToolForced(choice *sigma.BedrockToolChoice) bool {

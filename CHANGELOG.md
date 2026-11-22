@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Bedrock Claude requests with reasoning now keep `anthropic_beta` values supplied through `BedrockOptions.AdditionalModelRequestFields`, adding the interleaved-thinking or thinking-binding beta after them. The thinking beta replaced the caller's list, so a beta such as `context-1m-2025-08-07` was silently dropped and long prompts failed.
 - Chat Completions requests to DeepSeek, Together, Cerebras, Z.ai, and Cloudflare Workers AI now send `stream_options.include_usage`. These hosts only report usage on a stream when asked, so final messages had no usage or cost.
 - Whitespace-only tool output, such as a command that prints only `\r\n`, is now treated as empty: Chat Completions and Responses send the `(no tool output)` or image placeholder, and Gemini sends an empty result. It was sent as is, and some providers reject whitespace-only tool content with a 400.
 - Bedrock Claude turns that stop with `model_context_window_exceeded` now fail with a context-overflow `ProviderError`, so `ClassifyError` and `IsContextOverflow` report overflow, as on direct Anthropic Messages. The stop reason was unrecognized and returned an unclassified "unhandled stop reason" error.
