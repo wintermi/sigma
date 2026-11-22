@@ -7,6 +7,10 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Surface probes skip the raw scalar thinking cases for OpenCode Go Hy4, which rejects them; Hy4's `reasoning_effort` controls, which sigma uses, are still tested.
+
+The surface probe's default overall timeout rises from 10 to 30 minutes. Full OpenCode Go runs outlasted the old default, and every case after the deadline reported a misleading upstream-availability failure.
+
 Surface probes no longer report inconclusive scalar thinking cases for models that use the DeepSeek reasoning format. These models accept only the `thinking` object sigma sends, which the probe still tests; the raw string and boolean forms failed upstream without reflecting sigma's request shape.
 
 OpenCode Zen and Go surface probes now test each model through the API OpenCode routes it to. Claude, GPT, Grok, and Gemini models served over Messages, Responses, or Gemini run that API's typed cases instead of Chat Completions cases whose raw fields those APIs reject, so their results reflect sigma's real request shapes.

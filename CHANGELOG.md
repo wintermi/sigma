@@ -179,6 +179,7 @@ See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Changed
 
+- The surface probe's default overall `-timeout` is 30 minutes instead of 10, so a full OpenCode Go run no longer fails its later cases with `context deadline exceeded`.
 - The catalog drops the deprecated Gemini API `gemini-3.5-flash` and `gemini-3.7-flash` rows, which Google now answers with Gemini 3.6 and 3.8 Flash, and replaces the deprecated Z.ai Coding Plan `glm-5.2-highspeed` row with `glm-5.3-highspeed`. Vertex Gemini 4 Neon, the Vertex Flash `-latest` aliases, and the Copilot Claude Opus 4.8 and Sonnet 4.6 rows are kept after review.
 - The catalog drops 129 text models that their providers have retired or no longer serve, checked against provider deprecation pages and live model lists as of November 22, 2026. They span OpenAI, Azure OpenAI, Vertex, Mistral, Fireworks, OpenCode Zen and Go, NVIDIA, Together, Baseten, Cloudflare, Groq, MiniMax, GitHub Copilot, Ant Ling, and Xiaomi. Ling-3.1-flash, MiMo-V2.6-Flash, and MiMo-V2.6-Pro replace the retired Ant Ling and Xiaomi models, and the surface probe's NVIDIA default moves to Nemotron 3.5 Super VL.
 - The surface probe sends requests with each model's catalog row instead of synthetic route defaults, so cases follow the row's API, inputs, thinking levels, limits, and compatibility settings. The Fireworks live model-metadata lookup is removed, the Codex route uses the `openai-codex` provider, and the xAI route registers Responses or Chat Completions to match each row.
@@ -214,6 +215,7 @@ See [release notes](docs/release-notes-v1.0.0.md).
 
 ### Fixed
 
+- The surface probe also skips the raw scalar thinking cases for OpenCode Go Hy4, which accepts only a thinking object. sigma turns its thinking off with `reasoning_effort`, which the probe still tests.
 - The surface probe skips the raw `thinking: "none"` and `thinking: false` cases for models that use the DeepSeek reasoning format, such as DeepSeek, Kimi K2.6, MiMo, and Ling 3.1 Flash. Those models accept only the thinking object sigma sends, and upstream rejections of the scalar forms said nothing about sigma.
 - Surface-probe Zen and Go runs choose cases by the API OpenCode routes each model to. Models served through Anthropic Messages, OpenAI Responses, or Gemini no longer receive raw Chat Completions fields such as `response_format`, `logprobs`, and `reasoning_effort`, which those APIs reject.
 - Fireworks Kimi K3.1 Pro and the Kimi K3 Fast router accept the `off` thinking level, matching Kimi K3. A live surface probe showed Fireworks accepts disabled thinking for both.

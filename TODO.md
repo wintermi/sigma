@@ -8,6 +8,8 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Skip scalar thinking surface-probe cases for OpenCode Go Hy4.
+- [x] Raise the surface probe default timeout to 30 minutes.
 - [x] Skip scalar thinking surface-probe cases for DeepSeek-format models.
 - [x] Choose OpenCode surface-probe cases by each model's routed API.
 - [x] Allow the off thinking level for Fireworks Kimi K3.1 Pro and Kimi K3 Fast.
