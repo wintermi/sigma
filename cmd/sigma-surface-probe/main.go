@@ -408,7 +408,7 @@ func parseConfig() config {
 	flag.BoolVar(&structuredOutput, "structured-output", false, "run focused OpenAI-compatible JSON object and JSON Schema capability probes")
 	flag.BoolVar(&jsonText, "json-text", false, "run only the locally validated JSON text fallback on Chat Completions routes")
 	flag.BoolVar(&images, "images", false, "run focused image-generation surface probes")
-	flag.DurationVar(&timeout, "timeout", 10*time.Minute, "overall probe timeout")
+	flag.DurationVar(&timeout, "timeout", 30*time.Minute, "overall probe timeout")
 	flag.DurationVar(&caseTimeout, "case-timeout", defaultCaseTimeout, "maximum duration for one probe case or repair attempt; 0 uses only the overall timeout")
 	flag.Parse()
 	if images && routeList == defaultRouteList {

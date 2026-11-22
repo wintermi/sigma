@@ -26,7 +26,7 @@ Common flags:
 -handoff                run cross-provider replay handoff diagnostics
 -structured-output      run focused OpenAI-compatible structured-output probes
 -images                 run focused image-generation probes
--timeout                overall probe timeout, default 10m
+-timeout                overall probe timeout, default 30m
 -case-timeout           maximum duration per case or repair attempt, default 1m
 ```
 
