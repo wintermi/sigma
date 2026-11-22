@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+GitHub Copilot device login enables models that need it. Copilot lists some models, such as Claude and Grok, with an "unconfigured" policy until the account enables them, and requests to them fail until then. Sigma's login returned credentials without enabling them, so these models failed after a successful login unless the caller called `EnableGitHubCopilotModels`. Login now enables the unconfigured models in sigma's Copilot catalog that the account offers. A failure there leaves login successful, and the models can still be enabled later.
+
 Browser logins stop the paste-the-code prompt once the browser finishes. Anthropic, OpenAI Codex, and Radius pass `OnManualCode` a context so a caller can read a pasted code while the browser callback is pending, but the context outlived the login. A terminal prompt reading stdin therefore stayed active and consumed the next line the user typed. The context is now cancelled when login completes either way, as OpenRouter's login already did.
 
 Radius browser login accepts any valid loopback redirect path. The callback server registered the caller's redirect path as an `http.ServeMux` pattern next to its own `/` fallback, so a redirect URI with path `/` registered the same pattern twice, and paths with spaces or braces failed pattern parsing. Both panicked the process after the callback port had been opened. The server now matches the path directly and answers other paths with a not-found page.

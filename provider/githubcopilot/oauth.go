@@ -290,7 +290,9 @@ type GitHubCopilotOAuthTokenProvider struct {
 }
 
 // LoginGitHubCopilotDeviceCode runs the GitHub Copilot device-code OAuth flow
-// and returns credentials for caller-managed persistence.
+// and returns credentials for caller-managed persistence. After login it
+// enables the policy of catalog models the account offers but has not
+// configured; failures there do not fail the login.
 func LoginGitHubCopilotDeviceCode(ctx context.Context, opts GitHubCopilotDeviceCodeLoginOptions) (GitHubCopilotOAuthCredentials, error) {
 	domain, err := githubCopilotDomain(opts.EnterpriseDomain)
 	if err != nil {
@@ -312,10 +314,35 @@ func LoginGitHubCopilotDeviceCode(ctx context.Context, opts GitHubCopilotDeviceC
 	if err != nil {
 		return GitHubCopilotOAuthCredentials{}, err
 	}
-	return RefreshGitHubCopilotToken(ctx, githubToken, GitHubCopilotOAuthTokenProviderOptions{
+	credentials, err := RefreshGitHubCopilotToken(ctx, githubToken, GitHubCopilotOAuthTokenProviderOptions{
 		HTTPClient:       opts.HTTPClient,
 		EnterpriseDomain: opts.EnterpriseDomain,
 	})
+	if err != nil {
+		return GitHubCopilotOAuthCredentials{}, err
+	}
+	enableUnconfiguredGitHubCopilotModels(ctx, credentials.AccessToken, opts)
+	return credentials, nil
+}
+
+// enableUnconfiguredGitHubCopilotModels enables the policy of catalog models
+// the account offers but has not configured, such as Claude and Grok, which
+// fail until enabled. It is best effort: login has already succeeded, and the
+// models can still be enabled later with EnableGitHubCopilotModels.
+func enableUnconfiguredGitHubCopilotModels(ctx context.Context, accessToken string, opts GitHubCopilotDeviceCodeLoginOptions) {
+	body, individual, err := fetchGitHubCopilotModels(ctx, accessToken, GitHubCopilotModelDiscoveryOptions{
+		HTTPClient:       opts.HTTPClient,
+		EnterpriseDomain: opts.EnterpriseDomain,
+	})
+	if err != nil {
+		return
+	}
+	if ids := unconfiguredGitHubCopilotModelIDs(body, individual); len(ids) > 0 {
+		EnableGitHubCopilotModels(ctx, accessToken, ids, GitHubCopilotModelEnableOptions{
+			HTTPClient:       opts.HTTPClient,
+			EnterpriseDomain: opts.EnterpriseDomain,
+		})
+	}
 }
 
 // RefreshGitHubCopilotToken refreshes GitHub Copilot OAuth credentials from the
@@ -545,12 +572,26 @@ func (p *GitHubCopilotOAuthTokenProvider) shouldRefresh(opts sigma.Options) bool
 // authenticated GitHub Copilot account. Discovery is advisory and does not
 // enable model policies or mutate a Sigma registry.
 func DiscoverGitHubCopilotModels(ctx context.Context, accessToken string, opts GitHubCopilotModelDiscoveryOptions) (GitHubCopilotModelAvailability, error) {
+	body, individual, err := fetchGitHubCopilotModels(ctx, accessToken, opts)
+	if err != nil {
+		return GitHubCopilotModelAvailability{}, err
+	}
+	modelIDs, err := parseGitHubCopilotModelIDs(body, individual)
+	if err != nil {
+		return GitHubCopilotModelAvailability{}, err
+	}
+	return GitHubCopilotModelAvailability{ModelIDs: modelIDs}, nil
+}
+
+// fetchGitHubCopilotModels returns the account's models response and whether
+// the account uses the individual endpoint, retrying one rate limit.
+func fetchGitHubCopilotModels(ctx context.Context, accessToken string, opts GitHubCopilotModelDiscoveryOptions) ([]byte, bool, error) {
 	if accessToken == "" {
-		return GitHubCopilotModelAvailability{}, &sigma.CredentialUnavailableError{Sources: []string{"github-copilot-oauth"}}
+		return nil, false, &sigma.CredentialUnavailableError{Sources: []string{"github-copilot-oauth"}}
 	}
 	domain, err := githubCopilotDomain(opts.EnterpriseDomain)
 	if err != nil {
-		return GitHubCopilotModelAvailability{}, err
+		return nil, false, err
 	}
 	accountBaseURL := GitHubCopilotBaseURL(accessToken, domain)
 	baseURL := accountBaseURL
@@ -562,24 +603,20 @@ func DiscoverGitHubCopilotModels(ctx context.Context, accessToken string, opts G
 	for attempt := 0; attempt < 2; attempt++ {
 		status, headers, body, err := requestGitHubCopilotModels(ctx, accessToken, endpoint, opts.HTTPClient)
 		if err != nil {
-			return GitHubCopilotModelAvailability{}, err
+			return nil, false, err
 		}
 		if status == http.StatusTooManyRequests && attempt == 0 {
 			if err := githubCopilotSleepContext(ctx, githubCopilotModelsRetryAfter(headers)); err != nil {
-				return GitHubCopilotModelAvailability{}, err
+				return nil, false, err
 			}
 			continue
 		}
 		if status < http.StatusOK || status >= http.StatusMultipleChoices {
-			return GitHubCopilotModelAvailability{}, fmt.Errorf("github copilot oauth: discover models failed (%d): %s", status, redact.Preview(string(body), 1024))
+			return nil, false, fmt.Errorf("github copilot oauth: discover models failed (%d): %s", status, redact.Preview(string(body), 1024))
 		}
-		modelIDs, err := parseGitHubCopilotModelIDs(body, accountBaseURL == DefaultBaseURL)
-		if err != nil {
-			return GitHubCopilotModelAvailability{}, err
-		}
-		return GitHubCopilotModelAvailability{ModelIDs: modelIDs}, nil
+		return body, accountBaseURL == DefaultBaseURL, nil
 	}
-	return GitHubCopilotModelAvailability{}, fmt.Errorf("github copilot oauth: discover models failed")
+	return nil, false, fmt.Errorf("github copilot oauth: discover models failed")
 }
 
 func requestGitHubCopilotModels(ctx context.Context, accessToken string, endpoint string, client *http.Client) (int, http.Header, []byte, error) {
@@ -613,6 +650,34 @@ func githubCopilotModelsRetryAfter(headers http.Header) time.Duration {
 		delay = githubCopilotModelsDefaultRetryAfter
 	}
 	return min(delay, githubCopilotModelsMaxRetryAfter)
+}
+
+// unconfiguredGitHubCopilotModelIDs returns catalog models whose account
+// policy is still unconfigured among those the account would offer: picker
+// models, or every model when an individual account lists no picker models.
+// Requests to them fail until their policy is enabled.
+func unconfiguredGitHubCopilotModelIDs(body []byte, allowPolicyFallback bool) []string {
+	var response githubCopilotModelsResponse
+	if err := json.Unmarshal(body, &response); err != nil || response.Data == nil {
+		return nil
+	}
+	picker := false
+	for _, model := range *response.Data {
+		if model.ModelPickerEnabled && model.Policy.State != "disabled" {
+			picker = true
+		}
+	}
+	var ids []string
+	for _, model := range *response.Data {
+		offered := model.ModelPickerEnabled || allowPolicyFallback && !picker
+		if model.Policy.State != "unconfigured" || !offered {
+			continue
+		}
+		if _, ok := sigma.GetModel(sigma.ProviderGitHubCopilot, sigma.ModelID(model.ID)); ok {
+			ids = append(ids, model.ID)
+		}
+	}
+	return ids
 }
 
 func parseGitHubCopilotModelIDs(body []byte, allowPolicyFallback bool) ([]sigma.ModelID, error) {

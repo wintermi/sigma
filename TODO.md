@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Enable unconfigured GitHub Copilot catalog models during device login.
 - [x] Cancel the manual-code prompt when the browser callback wins for Anthropic, Codex, and Radius.
 - [x] Stop Radius login panicking on redirect paths that are not valid ServeMux patterns.
 - [x] Re-validate stored GitHub Copilot base URLs before sending the token.
@@ -283,7 +284,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Enable unconfigured GitHub Copilot models during device login.
 - [ ] Skip ambient AWS environment keys when an explicit `AWS_PROFILE` has no
       static keys (`provider/bedrock/auth.go`).
 - [ ] Return the underlying error and retry persistence when `OnRefresh` fails for

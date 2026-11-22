@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -25,8 +26,18 @@ func TestLoginGitHubCopilotDeviceCodeReportsDeviceAndReturnsCredentials(t *testi
 
 	var deviceRequest string
 	var tokenRequestAuth string
+	var enabledPolicies []string
 	client := githubCopilotOAuthTestClient(func(r *http.Request) *http.Response {
 		switch r.URL.Path {
+		case "/models":
+			return githubCopilotJSONResponse(http.StatusOK, `{"data":[
+				{"id":"claude-sonnet-5","model_picker_enabled":true,"policy":{"state":"unconfigured"}},
+				{"id":"not-in-catalog","model_picker_enabled":true,"policy":{"state":"unconfigured"}},
+				{"id":"gpt-5-mini","model_picker_enabled":true,"policy":{"state":"enabled"}}
+			]}`)
+		case "/models/claude-sonnet-5/policy", "/models/not-in-catalog/policy", "/models/gpt-5-mini/policy":
+			enabledPolicies = append(enabledPolicies, r.URL.Path)
+			return githubCopilotJSONResponse(http.StatusOK, `{}`)
 		case "/login/device/code":
 			deviceRequest = readRequestBody(t, r)
 			assertHeader(t, r.Header, "User-Agent", "GitHubCopilotChat/0.35.0")
@@ -86,6 +97,10 @@ func TestLoginGitHubCopilotDeviceCodeReportsDeviceAndReturnsCredentials(t *testi
 	}
 	if got, want := credentials.BaseURL, "https://api.individual.githubcopilot.com"; got != want {
 		t.Fatalf("base URL = %q, want %q", got, want)
+	}
+	// Claude and other unconfigured catalog models fail until enabled.
+	if want := []string{"/models/claude-sonnet-5/policy"}; !reflect.DeepEqual(enabledPolicies, want) {
+		t.Fatalf("enabled policies = %v, want %v", enabledPolicies, want)
 	}
 }
 
