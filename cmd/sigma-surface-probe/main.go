@@ -181,7 +181,7 @@ var routes = map[string]routeSpec{
 		APIKeyEnv:        "OPENCODE_API_KEY",
 		RegisterProvider: registerOpenCodeProvider,
 		Model:            catalogProbeModel,
-		Cases:            openAICompatibleProbeCases,
+		Cases:            openCodeProbeCases,
 	},
 	"go": {
 		Name:             "go",
@@ -190,7 +190,7 @@ var routes = map[string]routeSpec{
 		APIKeyEnv:        "OPENCODE_API_KEY",
 		RegisterProvider: registerOpenCodeProvider,
 		Model:            catalogProbeModel,
-		Cases:            openAICompatibleProbeCases,
+		Cases:            openCodeProbeCases,
 	},
 	routeGoogleVertex: {
 		Name:             routeGoogleVertex,
@@ -1778,6 +1778,21 @@ func xaiProbeCases(route routeSpec, model sigma.Model) []probeCase {
 		return openAIResponsesProbeCases(route, model)
 	}
 	return openAICompatibleProbeCases(route, model)
+}
+
+// openCodeProbeCases follows the API OpenCode routes the model to, since the
+// Messages, Responses, and Gemini surfaces reject raw Chat Completions fields.
+func openCodeProbeCases(route routeSpec, model sigma.Model) []probeCase {
+	switch opencode.OpenCodeAPI(model) {
+	case sigma.APIAnthropicMessages:
+		return anthropicCompatibleProbeCases(route, model)
+	case sigma.APIOpenAIResponses:
+		return openAIResponsesProbeCases(route, model)
+	case sigma.APIGoogleGenerativeAI:
+		return googleVertexProbeCases(route, model)
+	default:
+		return openAICompatibleProbeCases(route, model)
+	}
 }
 
 func openAICodexProbeCases(route routeSpec, model sigma.Model) []probeCase {

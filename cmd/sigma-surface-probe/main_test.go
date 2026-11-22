@@ -360,6 +360,36 @@ func TestStructuredOutputProbeCasesSelectsJSONOnly(t *testing.T) {
 	}
 }
 
+// OpenCode routes some models to Messages, Responses, or Gemini, which reject
+// the raw Chat Completions fields the Chat Completions cases send.
+func TestOpenCodeProbeCasesFollowRoutedAPI(t *testing.T) {
+	t.Parallel()
+
+	chatOnly := []string{"json_object", "logprobs", "thinking_string_none", "reasoning_effort_low"}
+	for _, tt := range []struct {
+		route string
+		id    string
+		chat  bool
+	}{
+		{route: "go", id: "glm-5.3", chat: true},
+		{route: "go", id: "claude-haiku-5-5"},
+		{route: "go", id: "gemini-4-argon"},
+		{route: "go", id: "gpt-6-luna"},
+		{route: "zen", id: "grok-4.7"},
+	} {
+		route := routes[tt.route]
+		cases := route.Cases(route, route.Model(route, tt.id))
+		if len(cases) == 0 {
+			t.Fatalf("%s/%s has no probe cases", tt.route, tt.id)
+		}
+		for _, name := range chatOnly {
+			if got := hasRepairVariant(cases, name); got != (tt.chat && name != "thinking_string_none") {
+				t.Errorf("%s/%s probes %s = %v", tt.route, tt.id, name, got)
+			}
+		}
+	}
+}
+
 // Thinking-only Fireworks models reject disabled thinking, so the probe must
 // not report that rejection as a failure.
 func TestFireworksOpenAIProbeCasesFollowDisabledThinkingSupport(t *testing.T) {

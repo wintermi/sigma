@@ -102,6 +102,10 @@ variants and sent as `x-opencode-session` across the routed APIs. OpenCode Go
 requires this header for routing. A provider `MissingSessionID` error is
 classified as `sigma_request_shape`.
 
+Zen and Go models that OpenCode routes to Anthropic Messages, OpenAI Responses,
+or Gemini run the cases for that API instead of the Chat Completions cases,
+which send raw fields those APIs reject.
+
 Probe the Fireworks OpenAI-compatible route:
 
 ```bash
