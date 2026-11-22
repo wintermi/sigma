@@ -12,6 +12,19 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- The November 22 catalog review adds 75 text models through existing
+  adapters, built from the models.dev snapshot with thinking and compatibility
+  metadata copied from each model's closest reviewed sibling. It adds Claude
+  Sonnet 5.5, Haiku 5.5, and Fable 5.2 on Anthropic, with their Bedrock and
+  Vertex routes; Bedrock Claude Opus 5.5, Fable 5.1, and the regional Opus 5
+  profiles; GPT-6.1 Sol and Terra and GPT-6.2 Astra and Sol on OpenAI; the
+  GPT-6 generation on Bedrock; Gemini 4 Argon, Carbon, Hydrogen, and Neon on
+  Gemini and Vertex, plus Gemini Pro (latest); DeepSeek Flash; Mistral Large 4;
+  Qwen3.8 27B on Groq and Cerebras; and five NVIDIA NIM rows. It also corrects
+  GPT-5 Pro's output limit, the Gemini Flash and Flash-Lite alias prices, and
+  OpenRouter GPT-5.6 Sol's launch-era price. Direct OpenAI rows keep the 272K
+  context default.
+
 - The October Vertex catalog review adds 14 text models across the existing
   Claude and OpenAI-compatible MaaS routes, two Gemini image models, and
   Gemini Embedding 001. It refreshes native Gemini long-context pricing,

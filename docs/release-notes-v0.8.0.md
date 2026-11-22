@@ -839,6 +839,41 @@ selection remains available through existing provider-specific controls.
 
 ## Added
 
+- The November 22 catalog review adds 75 text models through existing
+  adapters. Each new row takes its name, input types, limits, and prices from
+  the models.dev snapshot, and its thinking, compatibility, auth, and transport
+  metadata from the closest reviewed sibling, then adjusts thinking levels to
+  the model's own controls:
+  - Anthropic: Claude Sonnet 5.5 and Fable 5.2 reject disabled thinking like
+    Opus 5.5 and Fable 5.1; Claude Haiku 5.5 accepts it like Opus 5. Haiku 5.5
+    prices requests above 100,000 input tokens at its long-context tier.
+  - Bedrock: Claude Sonnet 5.5, Opus 5.5, Haiku 5.5, Fable 5.1, and Fable 5.2
+    on the in-region, geographic, and global routes the snapshot lists, plus
+    the US, EU, AU, and JP Opus 5 profiles. Geographic profiles cost 1.1 times
+    the global rate, and in-region IDs carry the global rate like existing
+    rows. The plain `anthropic.claude-opus-5` ID stays excluded. GPT-6, 6.1,
+    and 6.2 arrive on the in-region, US, and global routes at the snapshot's
+    prices.
+  - OpenAI: GPT-6.1 Sol, GPT-6.1 Terra, GPT-6.2 Astra, and GPT-6.2 Sol keep the
+    272,000-token context default and long-context price tier; only GPT-6.1
+    Terra accepts a `none` effort for thinking off.
+  - Gemini and Vertex: Gemini 4 Argon, Carbon, Hydrogen, and Neon support low,
+    medium, and high thinking, since Gemini has no xhigh level to send.
+    Gemini Pro (latest) follows Gemini 3.1 Pro Preview. Vertex adds Claude
+    Haiku 5.5 and Fable 5.2.
+  - Others: DeepSeek Flash; Mistral Large 4 with low, medium, and high effort
+    and no off; Qwen3.8 27B on Groq and Cerebras with a `none` off effort; and
+    NVIDIA NIM DeepSeek V4.1 Flash, Nemotron 3.5 Super VL and Lightning,
+    MiniMax M3.1 Flash, and GLM-5.3 Flash.
+
+  The review also raises GPT-5 Pro's output limit to 272,000 tokens, prices
+  `gemini-flash-latest` and `gemini-flash-lite-latest` as Gemini 3.8 Flash and
+  3.5 Flash Lite, which they now resolve to, and moves OpenRouter GPT-5.6 Sol
+  from its launch price to the 4/20 rate the direct, Azure, and Bedrock rows
+  already use. Other snapshot differences, including bulk OpenRouter rows,
+  realtime and research models, and unverified price or limit changes, were
+  not imported. Catalog inclusion does not guarantee account access.
+
 - Direct OpenAI and OpenAI Codex now include `gpt-6-astra` through their
   existing Responses adapters, with text/image input, function tools,
   low/medium/high/xhigh/max reasoning, and message-anchored deferred tools.

@@ -23,7 +23,7 @@ func TestCatalogFileChecksumAndValidation(t *testing.T) {
 		t.Fatalf("ReadFile returned error: %v", err)
 	}
 	sum := sha256.Sum256(data)
-	if got, want := hex.EncodeToString(sum[:]), "3d3eac046e1b3feb3d53a40f2f1e477892521242d236514d06172a512209ffb1"; got != want {
+	if got, want := hex.EncodeToString(sum[:]), "08c31f4bf5fe9d8503fc2cf3642fe093f457752bd79b2667ac74711ccb2b120b"; got != want {
 		t.Fatalf("catalog checksum = %s, want %s", got, want)
 	}
 	if _, err := Decode(strings.NewReader(string(data))); err != nil {
@@ -59,6 +59,10 @@ func TestCatalogAdditionalToolsCapabilityCohorts(t *testing.T) {
 		"openai/gpt-6-astra",
 		"openai/gpt-6-luna",
 		"openai/gpt-6-sol",
+		"openai/gpt-6.1-sol",
+		"openai/gpt-6.1-terra",
+		"openai/gpt-6.2-astra",
+		"openai/gpt-6.2-sol",
 	}; !reflect.DeepEqual(responsesModels, want) {
 		t.Fatalf("Responses additional-tools cohort = %v, want %v", responsesModels, want)
 	}

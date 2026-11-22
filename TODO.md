@@ -1005,6 +1005,10 @@ upstream.
 - [x] Add focused Hugging Face Router metadata after settling provider ID,
       credential env var, compatibility metadata, and first-class provider-row
       requirements.
+- [x] Complete the November 22 catalog review against the models.dev
+      snapshot with 75 curated text additions copied from reviewed siblings,
+      model-specific thinking controls, and four verified row corrections,
+      keeping the direct OpenAI 272K context default.
 - [x] Complete the September 23 UTC registry review with 50 text additions,
       18 text revisions, two image additions, Gemini Embedding 2, and removal of
       167 text entries, three OpenRouter image previews, and direct Text

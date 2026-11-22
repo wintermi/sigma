@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "snapshotDate": "2026-10-03",
+  "snapshotDate": "2026-11-22",
   "sources": [
     {
       "name": "Amazon Bedrock model catalog",
@@ -189,6 +189,10 @@
     {
       "name": "Google Vertex MaaS thinking controls",
       "url": "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/capabilities/thinking"
+    },
+    {
+      "name": "models.dev API snapshot",
+      "url": "https://models.dev/api.json"
     }
   ],
   "textModels": [
@@ -11053,8 +11057,8 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.3,
-        "outputPerMillion": 2.5,
+        "inputPerMillion": 0.75,
+        "outputPerMillion": 3.75,
         "cacheReadInputPerMillion": 0.075,
         "currency": "USD"
       },
@@ -11083,9 +11087,9 @@
       "supportsTools": true,
       "supportsThinking": true,
       "cost": {
-        "inputPerMillion": 0.1,
-        "outputPerMillion": 0.4,
-        "cacheReadInputPerMillion": 0.025,
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "cacheReadInputPerMillion": 0.03,
         "currency": "USD"
       },
       "contextWindow": 1048576,
@@ -14444,7 +14448,7 @@
         "currency": "USD"
       },
       "contextWindow": 400000,
-      "maxOutputTokens": 128000,
+      "maxOutputTokens": 272000,
       "headers": {},
       "authEnvNames": [
         "OPENAI_API_KEY"
@@ -20359,20 +20363,20 @@
         "minimal"
       ],
       "cost": {
-        "inputPerMillion": 2,
-        "outputPerMillion": 10,
-        "cacheReadInputPerMillion": 0.2,
-        "cacheWriteInputPerMillion": 2.5,
-        "currency": "USD",
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 5,
         "tiers": [
           {
             "inputTokensAbove": 272000,
-            "inputPerMillion": 4,
-            "outputPerMillion": 15,
-            "cacheReadInputPerMillion": 0.4,
-            "cacheWriteInputPerMillion": 5
+            "inputPerMillion": 8,
+            "outputPerMillion": 30,
+            "cacheReadInputPerMillion": 0.8,
+            "cacheWriteInputPerMillion": 10
           }
-        ]
+        ],
+        "currency": "USD"
       },
       "contextWindow": 1050000,
       "maxOutputTokens": 128000,
@@ -22309,6 +22313,3382 @@
       "unsupportedThinkingLevels": [
         "off"
       ]
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5",
+      "provider": "anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.anthropic.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "authEnvNames": [
+        "ANTHROPIC_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsStrictTools": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsTemperature": "unsupported",
+        "supportsMidConversationEffort": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-fable-5-2",
+      "name": "Claude Fable 5.2",
+      "provider": "anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.anthropic.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "authEnvNames": [
+        "ANTHROPIC_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsStrictTools": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsTemperature": "unsupported",
+        "supportsMidConversationEffort": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off"
+      ]
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5",
+      "provider": "anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://api.anthropic.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {
+        "anthropic-version": "2023-06-01"
+      },
+      "authEnvNames": [
+        "ANTHROPIC_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsStrictTools": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsTemperature": "unsupported",
+        "supportsMidConversationEffort": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsToolReferences": "supported"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh",
+        "max": "max"
+      }
+    },
+    {
+      "id": "anthropic.claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "eu.anthropic.claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-sonnet-5-5",
+      "name": "Claude Sonnet 5.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.4,
+        "outputPerMillion": 22,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 5.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "eu.anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.4,
+        "outputPerMillion": 22,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 5.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.4,
+        "outputPerMillion": 22,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 5.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4.4,
+        "outputPerMillion": 22,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 5.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-opus-5-5",
+      "name": "Claude Opus 5.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 4,
+        "outputPerMillion": 20,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "anthropic.claude-fable-5-1",
+      "name": "Claude Fable 5.1",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-fable-5-1",
+      "name": "Claude Fable 5.1 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 11,
+        "outputPerMillion": 55,
+        "cacheReadInputPerMillion": 0.275,
+        "cacheWriteInputPerMillion": 13.75,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-fable-5-1",
+      "name": "Claude Fable 5.1 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 0.25,
+        "cacheWriteInputPerMillion": 12.5,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "anthropic.claude-fable-5-2",
+      "name": "Claude Fable 5.2",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-fable-5-2",
+      "name": "Claude Fable 5.2 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8.8,
+        "outputPerMillion": 44,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 11,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-fable-5-2",
+      "name": "Claude Fable 5.2 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "supportsDisabledThinking": "unsupported",
+        "thinkingFormat": "adaptive"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.55,
+            "outputPerMillion": 2.75,
+            "cacheReadInputPerMillion": 0.055,
+            "cacheWriteInputPerMillion": 0.6875
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "eu.anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.55,
+            "outputPerMillion": 2.75,
+            "cacheReadInputPerMillion": 0.055,
+            "cacheWriteInputPerMillion": 0.6875
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.55,
+            "outputPerMillion": 2.75,
+            "cacheReadInputPerMillion": 0.055,
+            "cacheWriteInputPerMillion": 0.6875
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.55,
+            "outputPerMillion": 2.75,
+            "cacheReadInputPerMillion": 0.055,
+            "cacheWriteInputPerMillion": 0.6875
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "global.anthropic.claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "us.anthropic.claude-opus-5",
+      "name": "Claude Opus 5 (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 27.5,
+        "cacheReadInputPerMillion": 0.55,
+        "cacheWriteInputPerMillion": 6.875,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "eu.anthropic.claude-opus-5",
+      "name": "Claude Opus 5 (EU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 27.5,
+        "cacheReadInputPerMillion": 0.55,
+        "cacheWriteInputPerMillion": 6.875,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "au.anthropic.claude-opus-5",
+      "name": "Claude Opus 5 (AU)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 27.5,
+        "cacheReadInputPerMillion": 0.55,
+        "cacheWriteInputPerMillion": 6.875,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "jp.anthropic.claude-opus-5",
+      "name": "Claude Opus 5 (JP)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 5.5,
+        "outputPerMillion": 27.5,
+        "cacheReadInputPerMillion": 0.55,
+        "cacheWriteInputPerMillion": 6.875,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude"
+      },
+      "thinkingLevelMap": {
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "budget"
+      }
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "provider": "openai",
+      "api": "openai-responses",
+      "baseURL": "https://api.openai.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.1-terra",
+      "name": "GPT-6.1 Terra",
+      "provider": "openai",
+      "api": "openai-responses",
+      "baseURL": "https://api.openai.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.05,
+        "cacheWriteInputPerMillion": 1.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 7.5,
+            "cacheReadInputPerMillion": 0.1,
+            "cacheWriteInputPerMillion": 2.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-astra",
+      "name": "GPT-6.2 Astra",
+      "provider": "openai",
+      "api": "openai-responses",
+      "baseURL": "https://api.openai.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 10,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 16,
+            "outputPerMillion": 60,
+            "cacheReadInputPerMillion": 0.8,
+            "cacheWriteInputPerMillion": 20
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "name": "GPT-6.2 Sol",
+      "provider": "openai",
+      "api": "openai-responses",
+      "baseURL": "https://api.openai.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 272000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "OPENAI_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gpt"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "openAIResponsesCompat": {
+        "supportsAdditionalTools": true,
+        "supportsToolSearch": true,
+        "supportsExplicitPromptCacheMode": true
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "openai.gpt-6-astra",
+      "name": "GPT-6 Astra",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 11,
+        "outputPerMillion": 55,
+        "cacheReadInputPerMillion": 1.1,
+        "cacheWriteInputPerMillion": 13.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 22,
+            "outputPerMillion": 82.5,
+            "cacheReadInputPerMillion": 2.2,
+            "cacheWriteInputPerMillion": 27.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6-astra",
+      "name": "GPT-6 Astra (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 11,
+        "outputPerMillion": 55,
+        "cacheReadInputPerMillion": 1.1,
+        "cacheWriteInputPerMillion": 13.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 22,
+            "outputPerMillion": 82.5,
+            "cacheReadInputPerMillion": 2.2,
+            "cacheWriteInputPerMillion": 27.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6-astra",
+      "name": "GPT-6 Astra (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 10,
+        "outputPerMillion": 50,
+        "cacheReadInputPerMillion": 1,
+        "cacheWriteInputPerMillion": 12.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 20,
+            "outputPerMillion": 75,
+            "cacheReadInputPerMillion": 2,
+            "cacheWriteInputPerMillion": 25
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6-luna",
+      "name": "GPT-6 Luna",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.22,
+            "outputPerMillion": 0.825,
+            "cacheReadInputPerMillion": 0.022,
+            "cacheWriteInputPerMillion": 0.275
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6-luna",
+      "name": "GPT-6 Luna (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.11,
+        "outputPerMillion": 0.55,
+        "cacheReadInputPerMillion": 0.011,
+        "cacheWriteInputPerMillion": 0.1375,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.22,
+            "outputPerMillion": 0.825,
+            "cacheReadInputPerMillion": 0.022,
+            "cacheWriteInputPerMillion": 0.275
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6-luna",
+      "name": "GPT-6 Luna (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 0.2,
+            "outputPerMillion": 0.75,
+            "cacheReadInputPerMillion": 0.02,
+            "cacheWriteInputPerMillion": 0.25
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6-sol",
+      "name": "GPT-6 Sol",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.44,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6-sol",
+      "name": "GPT-6 Sol (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.22,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.44,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6-sol",
+      "name": "GPT-6 Sol (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.4,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.22,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6.1-sol",
+      "name": "GPT-6.1 Sol (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.22,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6.1-sol",
+      "name": "GPT-6.1 Sol (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6.1-terra",
+      "name": "GPT-6.1 Terra",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.1,
+        "outputPerMillion": 5.5,
+        "cacheReadInputPerMillion": 0.055,
+        "cacheWriteInputPerMillion": 1.375,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2.2,
+            "outputPerMillion": 8.25,
+            "cacheReadInputPerMillion": 0.11,
+            "cacheWriteInputPerMillion": 2.75
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6.1-terra",
+      "name": "GPT-6.1 Terra (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.1,
+        "outputPerMillion": 5.5,
+        "cacheReadInputPerMillion": 0.055,
+        "cacheWriteInputPerMillion": 1.375,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2.2,
+            "outputPerMillion": 8.25,
+            "cacheReadInputPerMillion": 0.11,
+            "cacheWriteInputPerMillion": 2.75
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6.1-terra",
+      "name": "GPT-6.1 Terra (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5,
+        "cacheReadInputPerMillion": 0.05,
+        "cacheWriteInputPerMillion": 1.25,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 2,
+            "outputPerMillion": 7.5,
+            "cacheReadInputPerMillion": 0.1,
+            "cacheWriteInputPerMillion": 2.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6.2-astra",
+      "name": "GPT-6.2 Astra",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8.8,
+        "outputPerMillion": 44,
+        "cacheReadInputPerMillion": 0.44,
+        "cacheWriteInputPerMillion": 11,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 17.6,
+            "outputPerMillion": 66,
+            "cacheReadInputPerMillion": 0.88,
+            "cacheWriteInputPerMillion": 22
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6.2-astra",
+      "name": "GPT-6.2 Astra (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8.8,
+        "outputPerMillion": 44,
+        "cacheReadInputPerMillion": 0.44,
+        "cacheWriteInputPerMillion": 11,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 17.6,
+            "outputPerMillion": 66,
+            "cacheReadInputPerMillion": 0.88,
+            "cacheWriteInputPerMillion": 22
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6.2-astra",
+      "name": "GPT-6.2 Astra (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.4,
+        "cacheWriteInputPerMillion": 10,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 16,
+            "outputPerMillion": 60,
+            "cacheReadInputPerMillion": 0.8,
+            "cacheWriteInputPerMillion": 20
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "openai.gpt-6.2-sol",
+      "name": "GPT-6.2 Sol",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.22,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "us.openai.gpt-6.2-sol",
+      "name": "GPT-6.2 Sol (US)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2.2,
+        "outputPerMillion": 11,
+        "cacheReadInputPerMillion": 0.11,
+        "cacheWriteInputPerMillion": 2.75,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4.4,
+            "outputPerMillion": 16.5,
+            "cacheReadInputPerMillion": 0.22,
+            "cacheWriteInputPerMillion": 5.5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "global.openai.gpt-6.2-sol",
+      "name": "GPT-6.2 Sol (Global)",
+      "provider": "amazon-bedrock",
+      "api": "bedrock-converse-stream",
+      "baseURL": "https://bedrock-runtime.{region}.amazonaws.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "cacheWriteInputPerMillion": 2.5,
+        "tiers": [
+          {
+            "inputTokensAbove": 272000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 15,
+            "cacheReadInputPerMillion": 0.2,
+            "cacheWriteInputPerMillion": 5
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1050000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "o-series"
+      },
+      "thinkingLevelMap": {
+        "xhigh": "xhigh"
+      }
+    },
+    {
+      "id": "gemini-4-argon",
+      "name": "Gemini 4 Argon",
+      "provider": "google",
+      "api": "google-generative-ai",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-argon",
+      "name": "Gemini 4 Argon",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-carbon",
+      "name": "Gemini 4 Carbon",
+      "provider": "google",
+      "api": "google-generative-ai",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 32768,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-carbon",
+      "name": "Gemini 4 Carbon",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 10,
+        "cacheReadInputPerMillion": 0.1,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
+      "provider": "google",
+      "api": "google-generative-ai",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 7.5,
+        "cacheReadInputPerMillion": 0.075,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 1.5,
+        "outputPerMillion": 7.5,
+        "cacheReadInputPerMillion": 0.075,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-neon",
+      "name": "Gemini 4 Neon",
+      "provider": "google",
+      "api": "google-generative-ai",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-4-neon",
+      "name": "Gemini 4 Neon",
+      "provider": "google-vertex",
+      "api": "google-vertex",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 3,
+        "outputPerMillion": 15,
+        "cacheReadInputPerMillion": 0.15,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini",
+        "vertexPublisher": "google"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "gemini-pro-latest",
+      "name": "Gemini Pro (latest)",
+      "provider": "google",
+      "api": "google-generative-ai",
+      "baseURL": "https://generativelanguage.googleapis.com/v1beta",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 2,
+        "outputPerMillion": 12,
+        "cacheReadInputPerMillion": 0.2,
+        "tiers": [
+          {
+            "inputTokensAbove": 200000,
+            "inputPerMillion": 4,
+            "outputPerMillion": 18,
+            "cacheReadInputPerMillion": 0.4
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CLOUD_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "gemini"
+      },
+      "thinkingLevelMap": {
+        "low": "LOW",
+        "high": "HIGH"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "medium"
+      ]
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Claude Haiku 5.5 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.1,
+        "outputPerMillion": 0.5,
+        "cacheReadInputPerMillion": 0.01,
+        "cacheWriteInputPerMillion": 0.125,
+        "tiers": [
+          {
+            "inputTokensAbove": 100000,
+            "inputPerMillion": 0.5,
+            "outputPerMillion": 2.5,
+            "cacheReadInputPerMillion": 0.05,
+            "cacheWriteInputPerMillion": 0.625
+          }
+        ],
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "claude-fable-5-2",
+      "name": "Claude Fable 5.2 (Vertex)",
+      "provider": "google-vertex-anthropic",
+      "api": "anthropic-messages",
+      "baseURL": "https://{location}-aiplatform.googleapis.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 8,
+        "outputPerMillion": 40,
+        "cacheReadInputPerMillion": 0.2,
+        "cacheWriteInputPerMillion": 10,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "headers": {},
+      "authEnvNames": [
+        "GOOGLE_CLOUD_API_KEY",
+        "GOOGLE_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "claude",
+        "vertexPublisher": "anthropic"
+      },
+      "anthropicMessagesCompat": {
+        "supportsEagerToolInputStreaming": "supported",
+        "supportsLongCacheRetention": "supported",
+        "supportsCacheControlOnTools": "supported",
+        "thinkingFormat": "adaptive",
+        "supportsDisabledThinking": "unsupported"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal"
+      ]
+    },
+    {
+      "id": "deepseek-flash",
+      "name": "DeepSeek Flash",
+      "provider": "deepseek",
+      "api": "openai-completions",
+      "baseURL": "https://api.deepseek.com",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.15,
+        "outputPerMillion": 0.6,
+        "cacheReadInputPerMillion": 0.003,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 393216,
+      "headers": {},
+      "authEnvNames": [
+        "DEEPSEEK_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "deepseek",
+        "requiresReasoningContentOnAssistantMessages": "supported"
+      },
+      "thinkingLevelMap": {
+        "high": "high",
+        "xhigh": "max"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "low",
+        "medium"
+      ]
+    },
+    {
+      "id": "mistral-large-4",
+      "name": "Mistral Large 4",
+      "provider": "mistral",
+      "api": "mistral-conversations",
+      "baseURL": "https://api.mistral.ai",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.7,
+        "outputPerMillion": 2.1,
+        "cacheReadInputPerMillion": 0.07,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 262144,
+      "headers": {},
+      "authEnvNames": [
+        "MISTRAL_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "mistral",
+        "mistral_reasoning_mode": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "off",
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "qwen/qwen3.8-27b",
+      "name": "Qwen3.8 27B",
+      "provider": "groq",
+      "api": "openai-completions",
+      "baseURL": "https://api.groq.com/openai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.8,
+        "outputPerMillion": 4,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 16384,
+      "headers": {},
+      "authEnvNames": [
+        "GROQ_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "qwen-3.8-27b",
+      "name": "Qwen 3.8 27B",
+      "provider": "cerebras",
+      "api": "openai-completions",
+      "baseURL": "https://api.cerebras.ai/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0.99,
+        "outputPerMillion": 1.49,
+        "cacheReadInputPerMillion": 0.99,
+        "currency": "USD"
+      },
+      "contextWindow": 131072,
+      "maxOutputTokens": 40960,
+      "headers": {},
+      "authEnvNames": [
+        "CEREBRAS_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "qwen"
+      },
+      "openAICompletionsCompat": {
+        "reasoningFormat": "reasoning_effort"
+      },
+      "thinkingLevelMap": {
+        "off": "none",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "unsupportedThinkingLevels": [
+        "minimal",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "id": "deepseek-ai/deepseek-v4.1-flash",
+      "name": "DeepSeek V4.1 Flash",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "deepseek"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+      "name": "Nemotron 3.5 Super VL 120B A12B",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1048576,
+      "maxOutputTokens": 8192,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nvidia"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "nvidia/nemotron-3.5-lightning-30b-a3b",
+      "name": "Nemotron 3.5 Lightning 30B A3B",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "nvidia"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "minimaxai/minimax-m3.1-flash",
+      "name": "MiniMax M3.1 Flash",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 262144,
+      "maxOutputTokens": 262144,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "minimax"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
+    },
+    {
+      "id": "z-ai/glm-5.3-flash",
+      "name": "GLM-5.3 Flash",
+      "provider": "nvidia",
+      "api": "openai-completions",
+      "baseURL": "https://integrate.api.nvidia.com/v1",
+      "supportedInputs": [
+        "text",
+        "image"
+      ],
+      "supportsTools": true,
+      "supportsThinking": true,
+      "cost": {
+        "inputPerMillion": 0,
+        "outputPerMillion": 0,
+        "currency": "USD"
+      },
+      "contextWindow": 1000000,
+      "maxOutputTokens": 131072,
+      "headers": {
+        "NVCF-POLL-SECONDS": "3600"
+      },
+      "authEnvNames": [
+        "NVIDIA_API_KEY"
+      ],
+      "defaultTransport": "sse",
+      "providerMetadata": {
+        "modelFamily": "glm"
+      },
+      "openAICompletionsCompat": {
+        "supportsStore": "unsupported",
+        "supportsDeveloperRole": "unsupported",
+        "supportsReasoningEffort": "unsupported",
+        "supportsStreamingUsage": "supported",
+        "supportsStrictTools": "unsupported",
+        "maxTokensField": "max_tokens"
+      }
     }
   ],
   "imageModels": [
