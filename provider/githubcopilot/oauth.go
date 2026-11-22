@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -117,7 +118,7 @@ func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAut
 				if enterpriseDomain == "" {
 					enterpriseDomain = opts.EnterpriseDomain
 				}
-				if baseURL == "" {
+				if !trustedGitHubCopilotBaseURL(baseURL, enterpriseDomain) {
 					baseURL = GitHubCopilotBaseURL(stored.Value, enterpriseDomain)
 					if metadata == nil {
 						metadata = make(map[string]any)
@@ -158,7 +159,7 @@ func ProviderAuth(opts GitHubCopilotOAuthTokenProviderOptions) sigma.ProviderAut
 // targets. Business, enterprise, and data-residency accounts are served from
 // the token's proxy-ep host.
 func githubCopilotRequestBaseURL(model sigma.Model, accountBaseURL, token, enterpriseDomain string) string {
-	if accountBaseURL == "" {
+	if !trustedGitHubCopilotBaseURL(accountBaseURL, enterpriseDomain) {
 		accountBaseURL = GitHubCopilotBaseURL(token, enterpriseDomain)
 	}
 	accountBaseURL = strings.TrimRight(accountBaseURL, "/")
@@ -942,11 +943,30 @@ func githubCopilotBaseURLFromToken(token, enterpriseDomain string) string {
 	return ""
 }
 
+// trustedGitHubCopilotBaseURL reports whether a stored account base URL may
+// receive the Copilot bearer token: an https origin on a trusted host, with
+// no port, userinfo, path, query, or fragment. Stored values predating host
+// validation, or edited in a credential store, are otherwise re-derived.
+func trustedGitHubCopilotBaseURL(baseURL, enterpriseDomain string) bool {
+	parsed, err := url.Parse(strings.TrimRight(baseURL, "/"))
+	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" ||
+		parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return false
+	}
+	return githubCopilotTrustedHost(parsed.Host, enterpriseDomain)
+}
+
 func githubCopilotTrustedHost(host, enterpriseDomain string) bool {
 	if !validDNSHostname(host) {
 		return false
 	}
-	for _, domain := range []string{"githubcopilot.com", "ghe.com", strings.ToLower(enterpriseDomain)} {
+	// The enterprise domain can carry the server's port; hosts are compared
+	// without it.
+	enterpriseHost := strings.ToLower(enterpriseDomain)
+	if hostname, _, err := net.SplitHostPort(enterpriseHost); err == nil {
+		enterpriseHost = hostname
+	}
+	for _, domain := range []string{"githubcopilot.com", "ghe.com", enterpriseHost} {
 		if domain == "" || domain == githubCopilotOAuthDefaultDomain {
 			continue
 		}
