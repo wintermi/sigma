@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Validate surface-probe json_schema replies against the requested schema.
 - [x] Mark OpenCode Go DeepSeek V4.1 Flash as supporting JSON schema response formats.
 - [x] Skip OpenCode Go surface-probe cases that specific models reject upstream.
 - [x] Apply overall-deadline skips to handoff and image surface probes.

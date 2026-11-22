@@ -1600,6 +1600,9 @@ func runCase(ctx context.Context, route routeSpec, client *sigma.Client, model s
 	if err == nil && testCase.Name == jsonTextCase {
 		err = validateJSONTextProbe(message)
 	}
+	if err == nil && validatesJSONSchema(testCase.Name) {
+		err = validateJSONSchemaProbe(message)
+	}
 	if err == nil {
 		return probeResult{
 			Route:   route.Name,

@@ -27,17 +27,21 @@ func validateJSONTextProbe(message sigma.AssistantMessage) error {
 	if message.StopReason != sigma.StopReasonEndTurn && message.StopReason != sigma.StopReasonStopSequence {
 		return errors.New("JSON text fallback did not complete normally")
 	}
+	var compact bytes.Buffer
+	// Validate the exact probe answer, allowing whitespace but not prose,
+	// Markdown fences, duplicate keys, extra fields, or trailing JSON values.
+	if err := json.Compact(&compact, []byte(assistantText(message))); err != nil || compact.String() != `{"ok":true}` {
+		return errors.New(`JSON text fallback did not return the expected {"ok":true} object`)
+	}
+	return nil
+}
+
+func assistantText(message sigma.AssistantMessage) string {
 	var text strings.Builder
 	for _, block := range message.Content {
 		if block.Type == sigma.ContentBlockText {
 			text.WriteString(block.Text)
 		}
 	}
-	var compact bytes.Buffer
-	// Validate the exact probe answer, allowing whitespace but not prose,
-	// Markdown fences, duplicate keys, extra fields, or trailing JSON values.
-	if err := json.Compact(&compact, []byte(text.String())); err != nil || compact.String() != `{"ok":true}` {
-		return errors.New(`JSON text fallback did not return the expected {"ok":true} object`)
-	}
-	return nil
+	return text.String()
 }

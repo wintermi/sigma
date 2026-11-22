@@ -325,6 +325,13 @@ strict_tool_required_write
 three_turn_file_update
 ```
 
+The `json_schema` case and its `json_schema_more_tokens` repair also check the
+reply locally against the requested schema: one JSON object whose only field is
+a string `answer`. Prose, Markdown fences, missing, extra, or non-string fields,
+truncated output, and trailing JSON fail the case, so an upstream that accepts
+`response_format` but ignores the schema is not reported as `ok`. The fallback
+attempts that drop the schema are not checked.
+
 OpenAI Responses and OpenAI Codex Responses routes run a Responses-shaped subset
 covering text, developer instructions, structured output, cache keys, image
 input, typed reasoning controls, and tool calls. Codex also checks text

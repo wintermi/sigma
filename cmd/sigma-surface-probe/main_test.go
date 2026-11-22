@@ -2109,7 +2109,7 @@ func TestStructuredOutputProbeModelEachRunsOnlyStructuredCases(t *testing.T) {
 		singleTurnCase("basic_text", "basic case", basicRequest("basic"), nil),
 		singleTurnCase("json_object", "JSON object mode", basicRequest("json object"), nil),
 		singleTurnCase("json_schema", "strict JSON schema", basicRequest("json schema"), nil),
-	}, sigmatest.Script{}, sigmatest.Script{})
+	}, sigmatest.Script{}, jsonSchemaReply())
 
 	var emitted []probeResult
 	probeModelEach(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{structuredOutput: true}, func(result probeResult) {
@@ -2174,7 +2174,7 @@ func TestProbeModelPrefersTargetedRepairOverAvailabilityCheck(t *testing.T) {
 		t,
 		sigmatest.Script{Err: errors.New("strict schema failed")},
 		sigmatest.Script{},
-		sigmatest.Script{},
+		jsonSchemaReply(),
 	)
 	results := collectProbeModel(context.Background(), route, "model", routeCredential{apiKey: "key"}, config{repair: true})
 	if len(results) != 1 {
@@ -2252,7 +2252,7 @@ func TestProbeModelDoesNotAttributeSafetyRejectionToRepair(t *testing.T) {
 			t.Parallel()
 			route := openAICompatibleSigmatestProbeRoute(t, []probeCase{
 				singleTurnCase("json_schema", "strict JSON schema", basicRequest("Return JSON exactly {\"answer\":\"ok\"}."), nil),
-			}, sigmatest.Script{Err: safetyErr}, tt.availability, sigmatest.Script{})
+			}, sigmatest.Script{Err: safetyErr}, tt.availability, jsonSchemaReply())
 			results := collectProbeModel(context.Background(), route, "grok-4.3", routeCredential{apiKey: "key"}, tt.cfg)
 			if len(results) != 1 {
 				t.Fatalf("results = %+v, want one result", results)
