@@ -12,6 +12,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Added
 
+- OpenAI Codex and Azure OpenAI Responses catalogs now include GPT-6.1 Sol, GPT-6.1 Terra, GPT-6.2 Astra, and GPT-6.2 Sol, with the pricing, long-context tiers, and reasoning levels of the direct OpenAI rows. Codex rows use Codex's context windows (272K for GPT-6.2 Astra, 500K for the others); Azure rows use 1.05M like the other Azure GPT-6 rows.
 - The November 22 catalog review adds 75 text models through existing
   adapters, built from the models.dev snapshot with thinking and compatibility
   metadata copied from each model's closest reviewed sibling. It adds Claude
