@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OpenCode Zen Claude Opus 5, Opus 5.5, and Fable 5.1 now use mid-conversation effort, which sends `thinking.block_binding` with `drop_block`. OpenCode forwards both to Claude, and without `drop_block` replayed thinking was rejected with a persistent 400 once the system prompt, tools, or history changed.
 - Claude Sonnet 5 on Anthropic, Vertex, GitHub Copilot, Cloudflare AI Gateway, and Vercel AI Gateway, Opus 4.7 and 4.8 on Anthropic and Vertex, and Vertex Opus 5, Opus 5.5, Sonnet 5.5, and Haiku 5.5 now mark temperature unsupported. These Messages rows lacked the marker, so a request with `Temperature` and no thinking sent it and Anthropic rejected the request.
 - `IsContextOverflow` no longer reports overflow for an HTTP 429 without a structured code whose message mentions tokens, such as "Too many tokens, please wait before trying again." `ClassifyError` already treats that response as rate limited, so callers compacted their context for a throttled request.
 - OpenCode `FreeUsageLimitError` and `GoUsageLimitError` responses are now classified as quota and are not retryable. The classifier compared the lowercased code against `freeusage_limit_error` and `gousage_limit_error`, which never matched, so these 429s were rate limited unless their message happened to mention a usage limit.

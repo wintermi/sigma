@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenCode Claude Opus 5, Opus 5.5, and Fable 5.1 keep working after the system prompt or tools change. OpenCode forwards per-message effort and thinking block binding to Claude, but these rows did not enable them, so replayed signed thinking from an earlier prompt was rejected with "Invalid signature in thinking block" on every later turn. They now use mid-conversation effort like their direct Anthropic rows, which sends `drop_block` so stale thinking is dropped instead.
+
 Claude models that reject temperature no longer receive it on any Anthropic Messages route. Opus 4.7 and later, Sonnet 5, and Haiku 5.5 reject the `temperature` field, but 13 catalog rows, including direct Claude Sonnet 5 and most Vertex Claude rows, did not record that, so a request with a temperature and no thinking failed. Those rows now mark temperature unsupported, and the adapter omits it.
 
 `IsContextOverflow` and `ClassifyError` agree on throttled requests. A 429 with no structured code and wording like "Too many tokens, please wait" is rate limited by `ClassifyError`, but the diagnostic check behind `IsContextOverflow` lacked that rule and reported overflow, so callers compacted conversations that only needed a retry. Both now treat it as rate limiting.

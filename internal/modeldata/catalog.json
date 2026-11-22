@@ -14180,7 +14180,8 @@
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
         "thinkingFormat": "adaptive",
-        "supportsDisabledThinking": "unsupported"
+        "supportsDisabledThinking": "unsupported",
+        "supportsMidConversationEffort": "supported"
       },
       "thinkingLevelMap": {
         "xhigh": "xhigh",
@@ -19479,7 +19480,8 @@
       },
       "anthropicMessagesCompat": {
         "supportsDisabledThinking": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsMidConversationEffort": "supported"
       }
     },
     {
@@ -19522,7 +19524,8 @@
       },
       "anthropicMessagesCompat": {
         "supportsTemperature": "unsupported",
-        "thinkingFormat": "adaptive"
+        "thinkingFormat": "adaptive",
+        "supportsMidConversationEffort": "supported"
       }
     },
     {

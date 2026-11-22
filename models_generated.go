@@ -14169,8 +14169,9 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			SupportsDisabledThinking: AnthropicCompatSupport("unsupported"),
-			ThinkingFormat:           AnthropicThinkingFormat("adaptive"),
+			SupportsDisabledThinking:      AnthropicCompatSupport("unsupported"),
+			SupportsMidConversationEffort: AnthropicCompatSupport("supported"),
+			ThinkingFormat:                AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
@@ -14374,8 +14375,9 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			SupportsTemperature: AnthropicCompatSupport("unsupported"),
-			ThinkingFormat:      AnthropicThinkingFormat("adaptive"),
+			SupportsTemperature:           AnthropicCompatSupport("unsupported"),
+			SupportsMidConversationEffort: AnthropicCompatSupport("supported"),
+			ThinkingFormat:                AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
@@ -14407,9 +14409,10 @@ var builtinTextModels = []Model{
 		CostCurrency:                  "USD",
 		DefaultTransport:              Transport("sse"),
 		AnthropicMessagesCompat: &AnthropicMessagesCompat{
-			SupportsTemperature:      AnthropicCompatSupport("unsupported"),
-			SupportsDisabledThinking: AnthropicCompatSupport("unsupported"),
-			ThinkingFormat:           AnthropicThinkingFormat("adaptive"),
+			SupportsTemperature:           AnthropicCompatSupport("unsupported"),
+			SupportsDisabledThinking:      AnthropicCompatSupport("unsupported"),
+			SupportsMidConversationEffort: AnthropicCompatSupport("supported"),
+			ThinkingFormat:                AnthropicThinkingFormat("adaptive"),
 		},
 		ProviderMetadata: map[string]any{
 			MetadataAPIKeyEnvVars: []string{"OPENCODE_API_KEY"},
