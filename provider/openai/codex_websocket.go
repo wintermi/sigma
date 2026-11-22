@@ -70,8 +70,9 @@ type codexWebSocketSessionEntry struct {
 }
 
 // codexWebSocketMaxAge retires cached connections before the Codex backend's
-// 60-minute connection limit closes them mid-request.
-const codexWebSocketMaxAge = 55 * time.Minute
+// 60-minute connection limit closes them mid-request. It leaves 15 minutes
+// for a long reasoning response started on the oldest reused connection.
+const codexWebSocketMaxAge = 45 * time.Minute
 
 type codexWebSocketContinuation struct {
 	lastRequestBody   map[string]any

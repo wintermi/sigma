@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Reuse Codex WebSocket connections for at most 45 minutes.
 - [x] Forward `MaxTokens` as Codex `max_output_tokens`.
 - [x] Send the Codex system prompt as a leading developer message.
 - [x] Reject untyped nodes in strict tool schemas before dispatch.
@@ -265,9 +266,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Lower the Codex WebSocket reuse window from 55 to 45 minutes so long turns
-      finish before the 60-minute server close (`codex_websocket.go`
-      `codexWebSocketMaxAge`).
 - [ ] Map Gemini `CONTINUATION` to `StopReasonMaxTokens` instead of an error
       (`provider/google/stream.go` `googleStopReason`).
 - [ ] Decide whether Bedrock `model_context_window_exceeded` is a max-tokens stop

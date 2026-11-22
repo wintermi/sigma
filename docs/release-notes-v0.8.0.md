@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Codex WebSocket connections are retired after 45 minutes instead of 55. The backend closes connections at 60 minutes, and a turn that has started streaming cannot fall back to SSE, so a long high-effort response started on a connection close to the old 55-minute limit could be cut off mid-stream. The shorter window leaves 15 minutes for the response.
+
 OpenAI Codex honors `MaxTokens`. Codex once rejected `max_output_tokens`, so sigma deleted it from every Codex request, and output caps were silently ignored: no `StopReasonMaxTokens`, and longer, costlier responses than requested. The backend accepts the field again, so Codex now sends it like the other Responses routes, at least 16 tokens, with the existing `SupportsMaxOutputTokens` opt-out for models that reject it.
 
 OpenAI Codex keeps the system prompt in the prompt cache. Sigma sent the system prompt as top-level `instructions`, which the Codex backend places after the conversation from GPT-6.2 on, so each new turn changed the prompt ahead of it and the system prompt was re-read at full price. Codex requests now send it as the first `developer` input message, as the Codex client does, and send no instructions when there is no system prompt. Other Responses routes are unchanged.

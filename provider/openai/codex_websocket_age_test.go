@@ -26,6 +26,8 @@ func TestCodexWebSocketRetiresConnectionsNearBackendLimit(t *testing.T) {
 		reused bool
 	}{
 		{name: "fresh", age: time.Minute, reused: true},
+		{name: "under the reuse window", age: 44 * time.Minute, reused: true},
+		{name: "too old for a long response", age: 46 * time.Minute, reused: false},
 		{name: "near limit", age: 56 * time.Minute, reused: false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
