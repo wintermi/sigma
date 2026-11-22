@@ -120,6 +120,14 @@ func makeNodeStrict(schema map[string]any, unsupported UnsupportedKeyword) error
 			}
 		}
 	}
+	// Strict modes reject nodes without a type; an enum counts as typed, a
+	// bare const does not.
+	_, hasType := schema["type"]
+	_, hasAnyOf := schema["anyOf"]
+	_, hasEnum := schema["enum"]
+	if !hasType && !hasAnyOf && !hasEnum {
+		return fmt.Errorf("schemas without a type are unsupported")
+	}
 	if err := makeAnyOfStrict(schema, unsupported); err != nil {
 		return err
 	}

@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- Strict tool schemas now reject nodes with no `type`, `anyOf`, or `enum`, such as `items: {}` or a bare `const`, before dispatch. Strict modes reject untyped nodes, so these tools were sent and the request failed with a 400.
 - Anthropic Messages strict tools now reject, before dispatch, the schema keywords Claude's strict mode does not accept: numeric bounds, `multipleOf`, `maxItems`, `uniqueItems`, contains and property-count bounds, `minItems` other than 0 or 1, and unsupported `format` values. They were sent with `strict: true`, and Claude rejected the whole request with a 400.
 - OpenCode Zen Claude Opus 5, Opus 5.5, and Fable 5.1 now use mid-conversation effort, which sends `thinking.block_binding` with `drop_block`. OpenCode forwards both to Claude, and without `drop_block` replayed thinking was rejected with a persistent 400 once the system prompt, tools, or history changed.
 - Claude Sonnet 5 on Anthropic, Vertex, GitHub Copilot, Cloudflare AI Gateway, and Vercel AI Gateway, Opus 4.7 and 4.8 on Anthropic and Vertex, and Vertex Opus 5, Opus 5.5, Sonnet 5.5, and Haiku 5.5 now mark temperature unsupported. These Messages rows lacked the marker, so a request with `Temperature` and no thinking sent it and Anthropic rejected the request.

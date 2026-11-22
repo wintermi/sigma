@@ -222,8 +222,9 @@ support; custom models and compatible endpoints can use
 `AnthropicMessagesCompat.SupportsStrictTools` or
 `anthropic.MessagesCompat.StrictTools`. Strict derivation rejects schemas that
 cannot be converted safely, including references, composed object or array
-unions, tuples, conditionals, pattern properties, and schema-valued additional
-properties, before provider dispatch. Anthropic Messages also rejects the
+unions, tuples, conditionals, pattern properties, schema-valued additional
+properties, and nodes with no `type`, `anyOf`, or `enum` (such as `{}` or a bare
+`const`), before provider dispatch. Anthropic Messages also rejects the
 keywords Claude's strict mode does not accept: `minimum`, `maximum`,
 `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `maxItems`, `uniqueItems`,
 `minContains`, `maxContains`, `minProperties`, `maxProperties`, `minItems` other

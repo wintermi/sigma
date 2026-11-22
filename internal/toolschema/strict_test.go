@@ -107,6 +107,10 @@ func TestMakeStrictRejectsUnsafeSchemas(t *testing.T) {
 		{name: "malformed required", schema: map[string]any{"type": "object", "required": "value"}, want: "required must be a string array"},
 		{name: "null required", schema: map[string]any{"type": "object", "required": nil}, want: "required must be a string array"},
 		{name: "unknown required", schema: map[string]any{"type": "object", "properties": map[string]any{}, "required": []any{"missing"}}, want: "required contains unknown property"},
+		{name: "untyped property", schema: objectWithProperty(map[string]any{}), want: "schemas without a type are unsupported"},
+		{name: "untyped items", schema: objectWithProperty(map[string]any{"type": "array", "items": map[string]any{}}), want: "schemas without a type are unsupported"},
+		{name: "bare const", schema: objectWithProperty(map[string]any{"const": "x"}), want: "schemas without a type are unsupported"},
+		{name: "untyped any of variant", schema: objectWithProperty(map[string]any{"anyOf": []any{map[string]any{"type": "string"}, map[string]any{"description": "any"}}}), want: "schemas without a type are unsupported"},
 		{name: "multiple JSON values", schema: []byte(`{"type":"object"} {"type":"object"}`), want: "multiple JSON values"},
 	}
 

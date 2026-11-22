@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Strict tool schemas with untyped nodes fail locally. OpenAI-compatible, Responses, Mistral, and Anthropic strict modes reject schema nodes without a type, but strict derivation accepted `{}`, `items: {}`, and bare `const` nodes and sent them, so the provider rejected the request with a 400. Derivation now reports "schemas without a type are unsupported" for the tool before dispatch; an `enum` still counts as typed.
+
 Anthropic strict tools fail locally, with the tool and keyword named, when their schema uses a keyword Claude's strict mode rejects. A strict tool with `{"type":"integer","minimum":1}`, a `maxItems` bound, or an unsupported string `format` was sent as is, and Claude rejected the whole request with a 400. Sigma now checks every schema node against Claude's documented strict-mode limitations before dispatch, as it already did for references and unions; tools without strict metadata are unchanged.
 
 OpenCode Claude Opus 5, Opus 5.5, and Fable 5.1 keep working after the system prompt or tools change. OpenCode forwards per-message effort and thinking block binding to Claude, but these rows did not enable them, so replayed signed thinking from an earlier prompt was rejected with "Invalid signature in thinking block" on every later turn. They now use mid-conversation effort like their direct Anthropic rows, which sends `drop_block` so stale thinking is dropped instead.

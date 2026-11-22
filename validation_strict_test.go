@@ -20,18 +20,20 @@ func TestStrictNullabilityDerivationAndValidationAgree(t *testing.T) {
 	for _, tt := range []struct {
 		name, property string
 		preserve       bool
+		// untyped is set when strict derivation rejects the untyped node.
+		untyped bool
 	}{
-		{"unconstrained", `{}`, true},
-		{"null type", `{"type":"null"}`, true},
-		{"nullable type", `{"type":["string","null"]}`, true},
-		{"enum excludes null", `{"type":["string","null"],"enum":["x"]}`, false},
-		{"type excludes null", `{"type":"string","enum":["x",null]}`, false},
-		{"const excludes null", `{"type":["string","null"],"const":"x"}`, false},
-		{"const null", `{"const":null}`, true},
-		{"enum and const", `{"enum":[null,"x"],"const":"x"}`, false},
-		{"nullable union", `{"anyOf":[{"type":"string"},{"type":"null"}]}`, true},
-		{"constrained union", `{"enum":["x"],"anyOf":[{"type":"string"},{"type":"null"}]}`, false},
-		{"unconstrained union", `{"anyOf":[{"type":"string"},{}]}`, true},
+		{"unconstrained", `{}`, true, true},
+		{"null type", `{"type":"null"}`, true, false},
+		{"nullable type", `{"type":["string","null"]}`, true, false},
+		{"enum excludes null", `{"type":["string","null"],"enum":["x"]}`, false, false},
+		{"type excludes null", `{"type":"string","enum":["x",null]}`, false, false},
+		{"const excludes null", `{"type":["string","null"],"const":"x"}`, false, false},
+		{"const null", `{"const":null}`, true, true},
+		{"enum and const", `{"enum":[null,"x"],"const":"x"}`, false, false},
+		{"nullable union", `{"anyOf":[{"type":"string"},{"type":"null"}]}`, true, false},
+		{"constrained union", `{"enum":["x"],"anyOf":[{"type":"string"},{"type":"null"}]}`, false, false},
+		{"unconstrained union", `{"anyOf":[{"type":"string"},{}]}`, true, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -47,6 +49,12 @@ func TestStrictNullabilityDerivationAndValidationAgree(t *testing.T) {
 				t.Fatalf("presence=%v, want %v", present, tt.preserve)
 			}
 			strict, err := toolschema.MakeStrict(schema)
+			if tt.untyped {
+				if err == nil {
+					t.Fatal("MakeStrict accepted an untyped node")
+				}
+				return
+			}
 			if err != nil {
 				t.Fatal(err)
 			}
