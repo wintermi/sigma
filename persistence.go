@@ -87,6 +87,9 @@ func validateMessage(message Message, index int, toolCalls map[string]string) er
 	}
 
 	hasToolCall := false
+	// IDs must be unique within one assistant turn. A later turn may reuse an
+	// earlier ID, as some providers do; its results then match the newer call.
+	turnCalls := make(map[string]struct{})
 	for contentIndex, block := range message.Content {
 		if err := validateContentBlock(message.Role, block, index, contentIndex); err != nil {
 			return err
@@ -95,9 +98,10 @@ func validateMessage(message Message, index int, toolCalls map[string]string) er
 			continue
 		}
 		hasToolCall = true
-		if _, exists := toolCalls[block.ToolCallID]; exists {
+		if _, exists := turnCalls[block.ToolCallID]; exists {
 			return invalidRequestError("message %d content %d: duplicate tool call id %q", index, contentIndex, block.ToolCallID)
 		}
+		turnCalls[block.ToolCallID] = struct{}{}
 		toolCalls[block.ToolCallID] = block.ToolName
 	}
 	if message.Role == RoleAssistant && message.StopReason == StopReasonToolCalls && !hasToolCall {

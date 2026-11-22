@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- `ValidateRequest`, `MarshalRequest`, and `UnmarshalRequest` now accept a tool call ID that a later assistant turn reuses, and match its tool results to the newer call. Any reuse anywhere in the history was rejected, so a transcript from a provider that reuses IDs across turns could not be persisted at all. Duplicate IDs within one assistant message are still rejected.
 - Server-sent event streams that begin with a UTF-8 byte order mark no longer lose their first event, and the context-aware stream body returns `io.EOF` unwrapped at the end of the body. The mark became part of the first field name, and the wrapped `io.EOF` made `io.ReadAll` report an error at a normal end of stream.
 - `MaxTokensForContext`, `ReasoningBudgetForContext`, and automatic max-token clamping now keep 15% of the estimated input (at least 4,096 tokens) free in the context window while that still leaves 32,768 output tokens, and otherwise keep the fixed 4,096-token margin with output capped at 32,768. The fixed margin alone let OpenRouter, which counts input up to 12% higher, reject large prompts for exceeding the context window.
 - `OpenAICompletionsCompat.RequiresAssistantContent` sends `content: ""` on assistant turns that contain only tool calls, and `SupportsPromptCacheKey` set to unsupported on `OpenAICompletionsCompat` or `OpenAIResponsesCompat` omits `prompt_cache_key`. Servers that reject a missing assistant content or an unknown `prompt_cache_key` had no way to be accommodated.

@@ -150,15 +150,14 @@ func TestRequestPersistenceRejectsInvalidReplayState(t *testing.T) {
 			errorText: "assistant metadata requires role",
 		},
 		{
-			name: "duplicate tool call id",
+			name: "duplicate tool call id in one turn",
 			req: sigma.Request{Messages: []sigma.Message{
 				{
-					Role:    sigma.RoleAssistant,
-					Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "weather", map[string]any{"city": "Melbourne"})},
-				},
-				{
-					Role:    sigma.RoleAssistant,
-					Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "lookup", map[string]any{"query": "Melbourne"})},
+					Role: sigma.RoleAssistant,
+					Content: []sigma.ContentBlock{
+						sigma.ToolCallBlock("call_1", "weather", map[string]any{"city": "Melbourne"}),
+						sigma.ToolCallBlock("call_1", "lookup", map[string]any{"query": "Melbourne"}),
+					},
 				},
 			}},
 			errorText: "duplicate tool call id",
@@ -554,4 +553,26 @@ type apiFauxProvider struct {
 
 func (p *apiFauxProvider) API() sigma.API {
 	return p.api
+}
+
+// Some providers reuse tool call IDs across turns, and their transcripts must
+// still persist; results match the most recent call with the ID.
+func TestValidateRequestAllowsToolCallIDsReusedAcrossTurns(t *testing.T) {
+	t.Parallel()
+	req := sigma.Request{Messages: []sigma.Message{
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "weather", map[string]any{"city": "Melbourne"})}},
+		{Role: sigma.RoleTool, ToolCallID: "call_1", ToolName: "weather", Content: []sigma.ContentBlock{sigma.Text("sunny")}},
+		{Role: sigma.RoleAssistant, Content: []sigma.ContentBlock{sigma.ToolCallBlock("call_1", "lookup", map[string]any{"query": "Melbourne"})}},
+		{Role: sigma.RoleTool, ToolCallID: "call_1", ToolName: "lookup", Content: []sigma.ContentBlock{sigma.Text("a city")}},
+	}}
+	if err := sigma.ValidateRequest(req); err != nil {
+		t.Fatalf("ValidateRequest returned error: %v", err)
+	}
+	data, err := sigma.MarshalRequest(req)
+	if err != nil {
+		t.Fatalf("MarshalRequest returned error: %v", err)
+	}
+	if _, err := sigma.UnmarshalRequest(data); err != nil {
+		t.Fatalf("UnmarshalRequest returned error: %v", err)
+	}
 }

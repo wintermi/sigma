@@ -30,7 +30,8 @@ invariants:
 - content blocks have a supported type for their role
 - image blocks use supported `base64` or `url` sources
 - tool results refer to an earlier assistant tool call
-- assistant tool-call IDs are unique
+- assistant tool-call IDs are unique within each assistant message; a later turn
+  may reuse an earlier ID, and its tool results match the newer call
 - assistant provenance metadata is attached only to assistant messages
 - assistant stop reasons are known
 

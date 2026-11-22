@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Allow tool call IDs reused across turns in request validation.
 - [x] Ignore a leading BOM in event streams and return bare `io.EOF` from stream bodies.
 - [x] Keep a proportional input margin when clamping max tokens to the context window.
 - [x] Add compat options for empty assistant content and disabling `prompt_cache_key`.
@@ -308,8 +309,6 @@ reproduces the failure before it is checked off.
       `prefixItems` in tool validation (`validation.go`).
 - [ ] Avoid deep-cloning partial tool arguments on every streamed delta
       (`stream.go` `Emit` and `snapshot`).
-- [ ] Allow tool-call IDs reused across separate turns in `ValidateRequest`
-      (`persistence.go`).
 - [ ] Handle images sent to non-vision targets consistently across adapters
       (placeholder text rather than failing on Anthropic, Google, Bedrock, and
       Mistral while OpenAI drops them).
