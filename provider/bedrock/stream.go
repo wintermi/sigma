@@ -8,6 +8,7 @@ package bedrock
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -164,6 +165,15 @@ func (p *converseStreamParser) handleEvent(ctx context.Context, event ConverseEv
 			p.rawStopReason = event.StopReason
 		}
 		p.stop = bedrockStopReason(event.StopReason)
+		if p.stop == sigma.StopReasonUnknown && event.StopReason == "model_context_window_exceeded" {
+			// Claude stopped because the prompt and output filled the context
+			// window, reported as overflow like the direct Messages adapter.
+			body, _ := json.Marshal(map[string]any{"error": map[string]any{
+				bedrockFieldType: event.StopReason,
+				"message":        "Provider stop_reason: " + event.StopReason,
+			}})
+			return sigma.NewProviderError(p.model.Provider, sigma.APIBedrockConverseStream, p.model.ID, 0, "", 0, body, sigma.ErrContextOverflow)
+		}
 		if p.stop == sigma.StopReasonUnknown {
 			return providerError(p.model, fmt.Errorf("bedrock converse stream: unhandled stop reason %q", event.StopReason))
 		}

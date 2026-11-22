@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+Bedrock reports Claude context-window stops as overflow. When the prompt and output fill Claude's context window, Bedrock ends the turn with `model_context_window_exceeded`. Sigma did not recognize it and returned an unclassified error, so callers could not tell they needed to compact. It now fails with a context-overflow provider error, the same treatment the direct Anthropic adapter gives this stop reason.
+
 Gemini `CONTINUATION` finishes are max-token stops. Gemini reports `CONTINUATION` when generation reaches the per-request token limit before the answer is complete. Sigma treated the unrecognized reason as a failed turn and returned a provider error, so callers lost the partial answer and `IsRecoverableMaxTokens` could not see the stop. It now ends with `StopReasonMaxTokens`; sigma does not resume with the continuation token.
 
 Codex WebSocket connections are retired after 45 minutes instead of 55. The backend closes connections at 60 minutes, and a turn that has started streaming cannot fall back to SSE, so a long high-effort response started on a connection close to the old 55-minute limit could be cut off mid-stream. The shorter window leaves 15 minutes for the response.

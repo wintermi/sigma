@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Report Bedrock `model_context_window_exceeded` stops as context overflow.
 - [x] Map Gemini `CONTINUATION` to a max-tokens stop.
 - [x] Reuse Codex WebSocket connections for at most 45 minutes.
 - [x] Forward `MaxTokens` as Codex `max_output_tokens`.
@@ -267,9 +268,6 @@ reproduces the failure before it is checked off.
 
 ### Medium
 
-- [ ] Decide whether Bedrock `model_context_window_exceeded` is a max-tokens stop
-      or an overflow error; today it is an "unhandled stop reason" error
-      (`provider/bedrock/stream.go`).
 - [ ] Send the empty-tool-result placeholder for whitespace-only tool output on
       Chat Completions, Responses, and Google (`openai/payload.go`,
       `responses_payload.go`, `google/payload.go`).

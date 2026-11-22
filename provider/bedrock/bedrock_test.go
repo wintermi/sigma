@@ -1290,6 +1290,35 @@ func TestConverseStreamPreservesUnderlyingCloseError(t *testing.T) {
 	}
 }
 
+func TestBedrockContextWindowStopIsContextOverflow(t *testing.T) {
+	t.Parallel()
+
+	fakeClient := &fakeConverseClient{
+		stream: fakeStream(
+			ConverseEvent{Kind: ConverseEventMessageStart, Role: "assistant"},
+			ConverseEvent{Kind: ConverseEventContentBlockDelta, ContentBlockIndex: 0, TextDelta: "partial"},
+			ConverseEvent{Kind: ConverseEventMessageStop, StopReason: "model_context_window_exceeded"},
+		),
+	}
+	providerID := sigma.ProviderID("bedrock-context-window-stop-test")
+	model := bedrockTestModel(providerID)
+	client := bedrockTestClient(t, providerID, model, fakeClient, fakeCredentialDetector{})
+
+	stream := client.Stream(context.Background(), model, sigma.Request{Messages: []sigma.Message{sigma.UserText("hi")}})
+	_ = collectEvents(t, stream)
+	err := stream.Err()
+	if !errors.Is(err, sigma.ErrContextOverflow) {
+		t.Fatalf("stream error = %v, want context overflow", err)
+	}
+	if got := sigma.ClassifyError(err).Class; got != sigma.ErrorClassContextOverflow {
+		t.Fatalf("class = %q, want context overflow", got)
+	}
+	final, ok := stream.Final()
+	if !ok || !sigma.IsContextOverflow(final, 0) {
+		t.Fatalf("final = %#v, want an overflow final", final)
+	}
+}
+
 func TestUnknownBedrockStopReasonReturnsProviderError(t *testing.T) {
 	t.Parallel()
 
