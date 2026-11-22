@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+A failed save of refreshed OAuth credentials is retried. When an `OnRefresh` callback failed, the token providers kept the new credentials in memory, reported an error that discarded the callback's cause, and never tried to save again. Providers that rotate refresh tokens had already invalidated the stored one, so the next process start needed a fresh login. The error now wraps the cause (its message still omits it, since it may quote the credentials), and each later `Token` call retries the save before using the credentials; a failed retry does not block the request.
+
 Bedrock no longer signs as the wrong identity when `AWS_PROFILE` names a profile without static keys. An explicit profile already took precedence over environment keys when it had static keys, but an SSO, `credential_process`, or `role_arn` profile, which sigma cannot resolve, fell through to whatever `AWS_ACCESS_KEY_ID` was set and silently used that account. With `AWS_PROFILE` set, environment keys are now skipped, as the AWS SDKs do, and the chain continues to the container, web identity, and instance sources, or reports credentials as unavailable.
 
 GitHub Copilot device login enables models that need it. Copilot lists some models, such as Claude and Grok, with an "unconfigured" policy until the account enables them, and requests to them fail until then. Sigma's login returned credentials without enabling them, so these models failed after a successful login unless the caller called `EnableGitHubCopilotModels`. Login now enables the unconfigured models in sigma's Copilot catalog that the account offers. A failure there leaves login successful, and the models can still be enabled later.

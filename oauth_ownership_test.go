@@ -71,10 +71,13 @@ func TestOAuthOwnershipCancellation(t *testing.T) {
 					return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 				})}
 				onRefresh := func(context.Context) error {
-					callbacks.Add(1)
-					if failure == "callback" {
+					// A failed save is retried by the next caller, which must
+					// not block on the owner's barrier again.
+					if callbacks.Add(1) == 1 && failure == "callback" {
 						close(started)
 						<-release
+					}
+					if failure == "callback" {
 						return errors.New("persistence failed")
 					}
 					return nil
@@ -144,11 +147,15 @@ func TestOAuthOwnershipCancellation(t *testing.T) {
 				case <-time.After(5 * time.Second):
 					t.Fatal("successful waiter blocked")
 				}
-				wantRequests := int32(1)
+				wantRequests, wantCallbacks := int32(1), int32(1)
 				if failure == "refresh" {
 					wantRequests = 2
 				}
-				if requests.Load() != wantRequests || callbacks.Load() != 1 {
+				if failure == "callback" {
+					// The waiter retries the failed save and still gets the token.
+					wantCallbacks = 2
+				}
+				if requests.Load() != wantRequests || callbacks.Load() != wantCallbacks {
 					t.Fatalf("requests=%d callbacks=%d", requests.Load(), callbacks.Load())
 				}
 			})

@@ -8,6 +8,7 @@ cancellation/error coverage (see the coverage standards in
 
 ## Completed reliability corrections
 
+- [x] Wrap OnRefresh failures and retry the save on the next use.
 - [x] Skip ambient AWS keys when an explicit `AWS_PROFILE` has no static keys.
 - [x] Enable unconfigured GitHub Copilot catalog models during device login.
 - [x] Cancel the manual-code prompt when the browser callback wins for Anthropic, Codex, and Radius.
@@ -285,8 +286,6 @@ reproduces the failure before it is checked off.
 
 ### Security and OAuth
 
-- [ ] Return the underlying error and retry persistence when `OnRefresh` fails for
-      Kimi, xAI, and Radius.
 - [ ] Document that `CredentialStore.ModifyCredential` must persist a rotated token
       even if the caller cancels, or pass it a detached context
       (`provider_auth.go`).

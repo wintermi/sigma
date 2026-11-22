@@ -94,7 +94,10 @@ type XAIOAuthTokenProvider struct {
 	refreshBefore time.Duration
 	onRefresh     func(context.Context, XAIOAuthCredentials) error
 
-	mu          contextlock.Mutex
+	mu contextlock.Mutex
+	// unsaved records a refresh whose OnRefresh persistence failed; it is
+	// retried before the credentials are used again.
+	unsaved     bool
 	credentials XAIOAuthCredentials
 }
 
@@ -252,6 +255,12 @@ func (p *XAIOAuthTokenProvider) Token(ctx context.Context, model sigma.Model, op
 }
 
 func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma.Model, opts sigma.Options) error {
+	// The refresh token may already have rotated, so a failed save is
+	// retried rather than dropped: losing it would force a new login. The
+	// credentials are valid either way, so a failed retry does not block use.
+	if p.unsaved {
+		_ = p.persist(ctx)
+	}
 	if !p.shouldRefresh(opts) {
 		return nil
 	}
@@ -272,10 +281,8 @@ func (p *XAIOAuthTokenProvider) refreshIfNeeded(ctx context.Context, model sigma
 		return err
 	}
 	p.credentials = refreshed
-	if p.onRefresh != nil {
-		if err := p.onRefresh(refreshCtx, refreshed); err != nil {
-			return errors.New("xai oauth: refresh callback failed")
-		}
+	if err := p.persist(refreshCtx); err != nil {
+		return err
 	}
 	if opts.OAuthMinimumValidity != nil && p.shouldRefresh(opts) {
 		return fmt.Errorf("xai oauth: refreshed token expires too soon for the requested minimum validity: %w", sigma.ErrCredentialUnavailable)
@@ -581,4 +588,19 @@ func copyStoredStringMap(values map[string]string) map[string]string {
 		copied[key] = value
 	}
 	return copied
+}
+
+// persist saves the current credentials through OnRefresh, recording a
+// failure so the save is retried on the next use.
+func (p *XAIOAuthTokenProvider) persist(ctx context.Context) error {
+	if p.onRefresh == nil {
+		p.unsaved = false
+		return nil
+	}
+	if err := p.onRefresh(ctx, p.credentials); err != nil {
+		p.unsaved = true
+		return &oauthvalidity.CallbackError{Prefix: "xai oauth", Err: err}
+	}
+	p.unsaved = false
+	return nil
 }

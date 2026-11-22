@@ -379,6 +379,50 @@ func TestAnthropicOAuthTokenProviderRefreshesWithinFiveMinutesOfExpiry(t *testin
 	}
 }
 
+// A failed OnRefresh save reports its cause without quoting it and is retried
+// on the next use, so a rotated refresh token is not lost.
+func TestAnthropicOAuthTokenProviderRetriesFailedRefreshSave(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	errStore := errors.New("store unavailable: sk-ant-oat01-refreshed")
+	var saved []string
+	provider := NewAnthropicOAuthTokenProvider(AnthropicOAuthCredentials{
+		AccessToken:  "sk-ant-oat01-expired",
+		RefreshToken: "refresh-token",
+		Expiry:       now,
+	}, AnthropicOAuthTokenProviderOptions{
+		HTTPClient: anthropicOAuthTestClient(t, func(*http.Request) *http.Response {
+			return anthropicOAuthJSONResponse(http.StatusOK, map[string]any{
+				"access_token":  "sk-ant-oat01-refreshed",
+				"refresh_token": "rotated-refresh-token",
+				"expires_in":    3600,
+			})
+		}),
+		Now: func() time.Time { return now },
+		OnRefresh: func(_ context.Context, credentials AnthropicOAuthCredentials) error {
+			saved = append(saved, credentials.RefreshToken)
+			if len(saved) == 1 {
+				return errStore
+			}
+			return nil
+		},
+	})
+
+	model := sigma.Model{ID: "claude-test", Provider: sigma.ProviderAnthropic}
+	_, err := provider.Token(context.Background(), model, sigma.Options{})
+	if !errors.Is(err, errStore) || strings.Contains(err.Error(), "sk-ant-oat01-refreshed") {
+		t.Fatalf("Token error = %v, want the store error wrapped without its text", err)
+	}
+	credential, err := provider.Token(context.Background(), model, sigma.Options{})
+	if err != nil || credential.Value != "sk-ant-oat01-refreshed" {
+		t.Fatalf("Token = %q, %v; want the refreshed token", credential.Value, err)
+	}
+	if len(saved) != 2 || saved[1] != "rotated-refresh-token" {
+		t.Fatalf("saves = %v, want the rotated token saved again", saved)
+	}
+}
+
 func TestAnthropicOAuthTokenProviderMissingCredentials(t *testing.T) {
 	t.Parallel()
 

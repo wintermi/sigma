@@ -201,6 +201,7 @@ See [release notes](docs/release-notes-v0.8.0.md).
 
 ### Fixed
 
+- OAuth token providers for Anthropic, OpenAI Codex, GitHub Copilot, Kimi, Radius, and xAI now return an `OnRefresh` failure as an error that `errors.Is` and `errors.As` can reach, still without quoting it, and retry the save on the next `Token` call. The cause was discarded, and later calls used the refreshed credentials without saving them, so a process that exited before another refresh left only the already-rotated refresh token in the store.
 - Bedrock's default credential chain no longer uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` when `AWS_PROFILE` is set explicitly, matching the AWS SDKs. A profile without static keys, such as an SSO, `credential_process`, or `role_arn` profile, fell back to the ambient keys and signed requests as a different identity; it now continues to the container, web identity, and instance sources.
 - `LoginGitHubCopilotDeviceCode` now enables the policy of built-in GitHub Copilot catalog models that the account offers but has not configured, such as Claude and Grok models. Those models were listed as available after login but failed until enabled through `EnableGitHubCopilotModels`. Enablement is best effort and does not fail the login.
 - Anthropic, OpenAI Codex, and Radius browser logins now cancel the context passed to `OnManualCode` when the browser callback completes first, as OpenRouter already did. The prompt kept running, so a caller reading stdin swallowed the next line the user typed.
