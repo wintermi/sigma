@@ -7,6 +7,8 @@ checklist see [RELEASING.md](../RELEASING.md).
 
 ## Release summary
 
+OpenCode Go DeepSeek V4.1 Flash no longer downgrades JSON schema response formats to JSON object mode. A live probe confirmed the route accepts `json_schema`, matching the OpenCode Zen route.
+
 The OpenCode Go surface probe no longer reports upstream model limits as inconclusive. It skips logprobs for Beam Free and DeepSeek V4.1 Flash, structured output for Iceman Contributor Free, required tool choice for the Muse Spark contributor models, and the scalar thinking controls for Qwen3.7 Plus.
 
 Handoff and image surface probes now handle the overall `-timeout` like route probes: after the deadline they send no requests and report the unrun handoff sources, replays, and image cases as `skipped` with attempt `overall_deadline`.

@@ -1086,8 +1086,8 @@ func TestGeneratedModelMetadataRegistersIntoFreshRegistry(t *testing.T) {
 
 	openCodeGoDeepSeek, _ := registry.Model(ProviderOpenCodeGo, "deepseek-v4.1-flash")
 	if openCodeGoDeepSeek.OpenAICompletionsCompat == nil ||
-		openCodeGoDeepSeek.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat != OpenAICompatUnsupported {
-		t.Fatalf("OpenCode Go DeepSeek JSON Schema compatibility = %#v, want unsupported", openCodeGoDeepSeek.OpenAICompletionsCompat)
+		openCodeGoDeepSeek.OpenAICompletionsCompat.SupportsJSONSchemaResponseFormat == OpenAICompatUnsupported {
+		t.Fatalf("OpenCode Go DeepSeek JSON Schema compatibility = %#v, want supported", openCodeGoDeepSeek.OpenAICompletionsCompat)
 	}
 	openCodeGoKimiCode, _ := registry.Model(ProviderOpenCodeGo, "kimi-k2.7-code")
 	if openCodeGoKimiCode.OpenAICompletionsCompat == nil ||

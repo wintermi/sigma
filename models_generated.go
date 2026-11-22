@@ -16253,11 +16253,10 @@ var builtinTextModels = []Model{
 		CostCurrency:                 "USD",
 		DefaultTransport:             Transport("sse"),
 		OpenAICompletionsCompat: &OpenAICompletionsCompat{
-			SupportsStore:                               OpenAICompatSupport("unsupported"),
-			SupportsDeveloperRole:                       OpenAICompatSupport("unsupported"),
-			ReasoningFormat:                             OpenAICompletionsReasoningFormat("deepseek"),
-			SupportsJSONSchemaResponseFormat:            OpenAICompatSupport("unsupported"),
-			MaxTokensField:                              OpenAICompletionsMaxTokensField("max_tokens"),
+			SupportsStore:         OpenAICompatSupport("unsupported"),
+			SupportsDeveloperRole: OpenAICompatSupport("unsupported"),
+			ReasoningFormat:       OpenAICompletionsReasoningFormat("deepseek"),
+			MaxTokensField:        OpenAICompletionsMaxTokensField("max_tokens"),
 			RequiresReasoningContentOnAssistantMessages: OpenAICompatSupport("supported"),
 		},
 		ProviderMetadata: map[string]any{

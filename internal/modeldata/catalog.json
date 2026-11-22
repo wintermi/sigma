@@ -12952,7 +12952,6 @@
       "openAICompletionsCompat": {
         "reasoningFormat": "deepseek",
         "requiresReasoningContentOnAssistantMessages": "supported",
-        "supportsJSONSchemaResponseFormat": "unsupported",
         "supportsStore": "unsupported",
         "supportsDeveloperRole": "unsupported",
         "maxTokensField": "max_tokens"
