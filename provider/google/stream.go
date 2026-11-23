@@ -229,6 +229,10 @@ func (p *streamParser) emitStart(ctx context.Context) error {
 func (p *streamParser) emitText(ctx context.Context, part googlePart) error {
 	state := p.currentText
 	if state == nil || p.lastBlock() != state {
+		// Unsigned empty text is invalid assistant content, so it opens no block.
+		if *part.Text == "" && part.ThoughtSignature == "" {
+			return nil
+		}
 		state = p.newBlock(sigma.ContentBlockText)
 		p.currentText = state
 	}
