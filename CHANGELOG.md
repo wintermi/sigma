@@ -12,6 +12,10 @@ out in release notes.
 
 See [release notes](docs/release-notes-v1.1.0.md).
 
+### Fixed
+
+- Google Generative AI and Vertex streams drop unsigned empty text parts instead of emitting them as empty text blocks, which persistence treats as invalid. Gemini 4 Neon on Vertex sends one after a function call with finish reason `STOP`, so its tool-call finals no longer end with an empty text block or emit `text_start` and `text_end` events for it.
+
 ## [1.0.0] - 2026-11-22
 
 See [release notes](docs/release-notes-v1.0.0.md).
